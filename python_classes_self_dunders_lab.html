@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Classes, self &amp; Dunders</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --class-c:#6ea8fe; --inst-c:#7fd8a0; --dunder-c:#c792ea; --self-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:18ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--self-c); color:var(--self-c); background:rgba(242,193,78,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--self-c);} .code .c-dec{color:var(--dunder-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flash{animation:flash .6s ease;}
+  @keyframes flash{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,138,101,0.3);} 100%{box-shadow:none;}}
+
+  /* class/instance memory model */
+  .oop-diagram{display:flex; gap:2rem; flex-wrap:wrap; align-items:flex-start; margin:1.2rem 0;}
+  .class-box{border:2px solid var(--class-c); border-radius:12px; padding:1rem 1.2rem; min-width:200px; background:rgba(110,168,254,0.06);}
+  .class-box .cb-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--class-c); margin-bottom:0.6rem;}
+  .class-box .attr{font-family:var(--mono); font-size:0.8rem; padding:0.3rem 0.6rem; border-radius:6px; background:var(--panel-2); margin-bottom:0.4rem; border:1px solid var(--rule); transition:all .3s;}
+  .inst-box{border:2px solid var(--inst-c); border-radius:12px; padding:1rem 1.2rem; min-width:170px; background:rgba(127,216,160,0.06);}
+  .inst-box .cb-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--inst-c); margin-bottom:0.6rem;}
+  .inst-box .attr{font-family:var(--mono); font-size:0.8rem; padding:0.3rem 0.6rem; border-radius:6px; background:var(--panel-2); margin-bottom:0.4rem; border:1px solid var(--rule); transition:all .3s;}
+  .instances-row{display:flex; gap:1.2rem; flex-wrap:wrap;}
+  .ref-note{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); margin-top:0.4rem; font-style:italic;}
+
+  /* dataclass compare */
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.manual{border-color:var(--bad-c);}
+  .dc-col.auto{border-color:var(--inst-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.manual h4{color:var(--bad-c);} .dc-col.auto h4{color:var(--inst-c);}
+
+  /* dunder cards */
+  .dunder-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:720px){.dunder-grid{grid-template-columns:1fr;}}
+  .dunder-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel);}
+  .dunder-card .dc-name{font-family:var(--mono); color:var(--dunder-c); font-weight:700; font-size:0.95rem; margin-bottom:0.3rem;}
+  .dunder-card .dc-trigger{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-bottom:0.7rem;}
+  .dunder-card button{width:100%;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--self-c); background:rgba(242,193,78,0.06);} .callout.self b{color:var(--self-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · CLASSES, self &amp; DUNDERS</div>
+  <h1>A method call is just a <em>function call with the object smuggled in</em> as the first argument.</h1>
+  <p class="lede">Everything about classes — <code class="inline">self</code>, instance vs. class attributes, dunder methods, even <code class="inline">@dataclass</code> — is built on that one substitution. Once <code class="inline">obj.method(x)</code> and <code class="inline">Class.method(obj, x)</code> feel like the same statement, the "magic" behind Python objects stops being magic.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">dog.bark("loud")</div>
+    <div class="darrow">is exactly</div>
+    <div class="dnode">Dog.bark(dog, "loud")</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="classbasics">1 · Class Syntax &amp; __init__</a>
+  <a data-target="self">2 · self, Explicitly</a>
+  <a data-target="attributes">3 · Instance vs Class Attributes</a>
+  <a data-target="dataclass">4 · @dataclass &amp; field()</a>
+  <a data-target="dunders">5 · Common Dunders</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: CLASS BASICS ============ -->
+<section id="classbasics">
+  <div class="kicker">01 — The blueprint and the instances</div>
+  <h2>Class syntax, __init__</h2>
+  <p>A <code class="inline">class</code> is a blueprint. <code class="inline">__init__</code> is the method Python calls automatically right after a new, empty object is created — its job is to set up that specific object's starting state by attaching attributes to it.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Dog</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, name, age):
+        <span class="c-self">self</span>.name = name     <span class="c-cmt"># attach 'name' to THIS specific object</span>
+        <span class="c-self">self</span>.age = age
+
+rex = <span class="c-fn">Dog</span>(<span class="c-str">"Rex"</span>, <span class="c-num">3</span>)     <span class="c-cmt"># Python creates a blank object, then calls __init__(rex, "Rex", 3)</span>
+mia = <span class="c-fn">Dog</span>(<span class="c-str">"Mia"</span>, <span class="c-num">5</span>)     <span class="c-cmt"># a completely separate object, its own name/age</span>
+
+rex.name   <span class="c-out">→ 'Rex'</span>
+mia.name   <span class="c-out">→ 'Mia'</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH __init__ BUILD EACH INSTANCE</span><button class="btn" id="init-run">Dog("Rex", 3)</button></div>
+    <div class="oop-diagram" id="init-diagram"></div>
+    <div class="log" id="init-log"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: SELF ============ -->
+<section id="self">
+  <div class="kicker">02 — Why Python spells it out</div>
+  <h2>self and why it's explicit in Python</h2>
+  <p>In many languages, "the current object" (<code class="inline">this</code>) is implicit inside a method — you never see it as a parameter. Python does the opposite: <strong>every</strong> instance method takes the object as its first parameter, and you name it yourself (by convention, <code class="inline">self</code>).</p>
+  <p>This isn't decoration — <code class="inline">obj.method(args)</code> is syntax sugar for <code class="inline">Class.method(obj, args)</code>. The dot-call automatically slots the object in as the first argument; writing <code class="inline">self</code> in the method definition is just naming that slot so the method body can refer to it.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TWO WAYS TO CALL THE SAME METHOD</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-callmode="dot">rex.bark("loud")</button>
+      <button class="chip" data-callmode="explicit">Dog.bark(rex, "loud")</button>
+    </div>
+    <div class="code" id="self-code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">Dog</span>:
+    <span class="c-kw">def</span> <span class="c-fn">bark</span>(<span class="c-self">self</span>, volume):
+        <span class="c-kw">return</span> f<span class="c-str">"{self.name} says WOOF ({volume})"</span>
+
+rex = <span class="c-fn">Dog</span>(); rex.name = <span class="c-str">"Rex"</span>
+<span id="self-call-line"><span class="c-fn">rex</span>.bark(<span class="c-str">"loud"</span>)</span>
+    </div>
+    <div class="log" id="self-log"><span class="line">Both calls run the exact same method body with the exact same arguments — self=rex, volume="loud". The dot syntax is just shorthand.</span></div>
+  </div>
+
+  <div class="callout self"><b>Why this design:</b> making <code class="inline">self</code> explicit means there's no hidden, special-cased mechanism for "the current object" — it's an ordinary parameter, following ordinary parameter rules (LEGB scoping applies to it exactly like any other name). It's more visible in exchange for zero magic.</div>
+</section>
+
+<!-- ============ SECTION 3: INSTANCE VS CLASS ATTRIBUTES ============ -->
+<section id="attributes">
+  <div class="kicker">03 — Where the value actually lives</div>
+  <h2>Instance vs. class attributes</h2>
+  <p>A <strong>class attribute</strong> is defined directly in the class body — it lives on the class object itself, and every instance shares the exact same one (until an instance shadows it). An <strong>instance attribute</strong> is set via <code class="inline">self.x = ...</code>, usually inside <code class="inline">__init__</code> — it lives in that specific instance's own namespace.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Dog</span>:
+    species = <span class="c-str">"Canis familiaris"</span>   <span class="c-cmt"># CLASS attribute — one copy, shared</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, name):
+        <span class="c-self">self</span>.name = name         <span class="c-cmt"># INSTANCE attribute — separate per object</span>
+
+rex = <span class="c-fn">Dog</span>(<span class="c-str">"Rex"</span>)
+mia = <span class="c-fn">Dog</span>(<span class="c-str">"Mia"</span>)
+
+rex.species   <span class="c-out">→ 'Canis familiaris'   (found on the class, both instances see it)</span>
+mia.species   <span class="c-out">→ 'Canis familiaris'   (SAME string object, shared)</span>
+
+Dog.species = <span class="c-str">"Updated"</span>
+rex.species   <span class="c-out">→ 'Updated'   (changing the CLASS attribute affects every instance that hasn't shadowed it)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SHARED vs. PER-INSTANCE, LIVE</span>
+      <div><button class="btn secondary" id="attr-change-class">Dog.species = "Updated"</button> <button class="btn" id="attr-shadow">rex.species = "Rex's own"</button></div>
+    </div>
+    <div class="oop-diagram" id="attr-diagram"></div>
+    <div class="log" id="attr-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The classic trap:</b> a mutable class attribute (like <code class="inline">tricks = []</code> in the class body) is ONE shared list — appending to it through any instance mutates the same object every instance sees, exactly like the mutable-default-argument trap. Mutable state that should be per-instance belongs in <code class="inline">__init__</code> as <code class="inline">self.tricks = []</code>, not in the class body.</div>
+</section>
+
+<!-- ============ SECTION 4: DATACLASS ============ -->
+<section id="dataclass">
+  <div class="kicker">04 — Generating the boilerplate</div>
+  <h2>@dataclass: what it auto-generates, field() for defaults</h2>
+  <p>Plain data-holding classes usually need the same handful of methods written by hand: <code class="inline">__init__</code>, <code class="inline">__repr__</code>, <code class="inline">__eq__</code>. <code class="inline">@dataclass</code> generates them for you from type-annotated class attributes.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col manual">
+      <h4>✗ Written by hand</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, x, y):
+        <span class="c-self">self</span>.x = x
+        <span class="c-self">self</span>.y = y
+
+    <span class="c-kw">def</span> <span class="c-fn">__repr__</span>(<span class="c-self">self</span>):
+        <span class="c-kw">return</span> f<span class="c-str">"Point(x={self.x}, y={self.y})"</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">__eq__</span>(<span class="c-self">self</span>, other):
+        <span class="c-kw">return</span> (<span class="c-self">self</span>.x, <span class="c-self">self</span>.y) == (other.x, other.y)
+      </div>
+    </div>
+    <div class="dc-col auto">
+      <h4>✓ With @dataclass</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass
+
+<span class="c-dec">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    x: <span class="c-fn">int</span>
+    y: <span class="c-fn">int</span>
+
+
+<span class="c-cmt"># __init__, __repr__, __eq__ all generated
+# automatically from the annotated fields.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="code">
+<span class="c-fn">Point</span>(<span class="c-num">1</span>, <span class="c-num">2</span>)              <span class="c-out">→ Point(x=1, y=2)     # __repr__ generated</span>
+<span class="c-fn">Point</span>(<span class="c-num">1</span>, <span class="c-num">2</span>) == <span class="c-fn">Point</span>(<span class="c-num">1</span>, <span class="c-num">2</span>)   <span class="c-out">→ True                # __eq__ generated, compares field values</span>
+  </div>
+
+  <p>For a mutable default (like a list), a plain <code class="inline">tags: list = []</code> annotation is actually rejected by <code class="inline">@dataclass</code> at class-definition time — it refuses to let you make that mistake. Use <code class="inline">field(default_factory=list)</code> instead, which builds a fresh list per instance, just like the <code class="inline">None</code>-sentinel fix from the default-argument lesson:</p>
+
+  <div class="code">
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass, field
+
+<span class="c-dec">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">Dog</span>:
+    name: <span class="c-fn">str</span>
+    tricks: <span class="c-fn">list</span> = field(default_factory=<span class="c-fn">list</span>)   <span class="c-cmt"># fresh [] per instance</span>
+
+rex = <span class="c-fn">Dog</span>(<span class="c-str">"Rex"</span>)
+mia = <span class="c-fn">Dog</span>(<span class="c-str">"Mia"</span>)
+rex.tricks.append(<span class="c-str">"sit"</span>)
+mia.tricks   <span class="c-out">→ []    # untouched — separate list, unlike a shared mutable default</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHAT @dataclass GENERATES — CLICK TO INSPECT</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-gen="init">__init__</button>
+      <button class="chip" data-gen="repr">__repr__</button>
+      <button class="chip" data-gen="eq">__eq__</button>
+    </div>
+    <div class="log" id="dc-log" style="border-top:none; padding-top:0;"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: DUNDERS ============ -->
+<section id="dunders">
+  <div class="kicker">05 — Hooking into Python's built-in syntax</div>
+  <h2>Common dunders: __repr__, __eq__, __len__, __iter__, __hash__</h2>
+  <p>Dunder ("double underscore") methods are how a class opts into Python's built-in syntax and functions — <code class="inline">print()</code>, <code class="inline">==</code>, <code class="inline">len()</code>, <code class="inline">for</code>, and hashing all check for a specific dunder method on the object's class before falling back to a default.</p>
+
+  <div class="dunder-grid">
+    <div class="dunder-card">
+      <div class="dc-name">__repr__(self)</div>
+      <div class="dc-trigger">triggered by: repr(obj), the console/debugger, print() as a fallback</div>
+      <p style="font-size:0.85rem; margin:0 0 0.7rem;">Should return an unambiguous string, ideally one that looks like valid code to recreate the object: <code class="inline">Point(x=1, y=2)</code> not <code class="inline">"a point"</code>.</p>
+      <button class="btn secondary" data-dunder="repr">print(p)</button>
+    </div>
+    <div class="dunder-card">
+      <div class="dc-name">__eq__(self, other)</div>
+      <div class="dc-trigger">triggered by: ==</div>
+      <p style="font-size:0.85rem; margin:0 0 0.7rem;">Without it, <code class="inline">==</code> falls back to identity (<code class="inline">is</code>) — two objects with identical data would compare unequal.</p>
+      <button class="btn secondary" data-dunder="eq">p1 == p2</button>
+    </div>
+    <div class="dunder-card">
+      <div class="dc-name">__len__(self)</div>
+      <div class="dc-trigger">triggered by: len(obj)</div>
+      <p style="font-size:0.85rem; margin:0 0 0.7rem;">Must return a non-negative int. Also makes the object "truthy/falsy" by size if <code class="inline">__bool__</code> isn't defined — an empty container becomes falsy.</p>
+      <button class="btn secondary" data-dunder="len">len(basket)</button>
+    </div>
+    <div class="dunder-card">
+      <div class="dc-name">__iter__(self)</div>
+      <div class="dc-trigger">triggered by: for x in obj, list(obj), unpacking</div>
+      <p style="font-size:0.85rem; margin:0 0 0.7rem;">Should return an iterator (something with <code class="inline">__next__</code>). This is what makes <code class="inline">for item in my_object:</code> work at all.</p>
+      <button class="btn secondary" data-dunder="iter">for x in basket</button>
+    </div>
+  </div>
+
+  <div class="log" id="dunder-log" style="max-height:none;"><span class="line">Click any button above to see what that dunder produces.</span></div>
+
+  <h3>__hash__ and its relationship with __eq__</h3>
+  <p><code class="inline">__hash__</code> lets an object be used as a dict key or set member. Python enforces a rule: <strong>if two objects are equal (<code class="inline">==</code>), they must have the same hash</strong> — otherwise dicts and sets silently misbehave (two "equal" objects could end up in different buckets and never be recognized as duplicates).</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Point</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, x, y):
+        <span class="c-self">self</span>.x, <span class="c-self">self</span>.y = x, y
+
+    <span class="c-kw">def</span> <span class="c-fn">__eq__</span>(<span class="c-self">self</span>, other):
+        <span class="c-kw">return</span> (<span class="c-self">self</span>.x, <span class="c-self">self</span>.y) == (other.x, other.y)
+
+    <span class="c-kw">def</span> <span class="c-fn">__hash__</span>(<span class="c-self">self</span>):
+        <span class="c-kw">return</span> hash((<span class="c-self">self</span>.x, <span class="c-self">self</span>.y))   <span class="c-cmt"># must agree with __eq__'s notion of equality</span>
+  </div>
+
+  <div class="callout warn"><b>A gotcha worth knowing:</b> defining <code class="inline">__eq__</code> without also defining <code class="inline">__hash__</code> makes Python set the class's <code class="inline">__hash__</code> to <code class="inline">None</code> automatically — the object becomes unhashable, and <code class="inline">{obj}</code> or <code class="inline">{obj: val}</code> raises a <code class="inline">TypeError</code>. <code class="inline">@dataclass</code> does this by default too (regular dataclasses are unhashable) unless you pass <code class="inline">@dataclass(frozen=True)</code>, which generates a matching <code class="inline">__hash__</code> for you.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · __init__ basics</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Counter:
+    def __init__(self):
+        self.count = 0
+
+    def increment(self):
+        self.count += 1
+
+a = Counter()
+b = Counter()
+a.increment()
+a.increment()
+b.increment()
+print(a.count, b.count)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">2 1
+
+Each Counter() call runs __init__ fresh, creating a NEW self.count = 0 for
+that specific object. a and b are entirely separate instances with
+separate instance attributes — incrementing a never touches b.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · self desugaring</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given <code class="inline">class Dog: def bark(self, vol): return f"{self.name}: {vol}"</code> and an instance <code class="inline">rex</code> with <code class="inline">rex.name = "Rex"</code>, write the equivalent call to <code class="inline">rex.bark("loud")</code> using the class directly instead of the dot syntax.</p>
+    <details><summary>Show solution</summary><div class="solution">Dog.bark(rex, "loud")
+
+rex.bark("loud") is syntax sugar for Dog.bark(rex, "loud") — the dot call
+automatically supplies rex as the first argument (self); calling through
+the class requires passing it explicitly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · The mutable class attribute trap</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Dog:
+    tricks = []   # class attribute — NOT inside __init__
+
+    def __init__(self, name):
+        self.name = name
+
+    def learn(self, trick):
+        self.tricks.append(trick)
+
+rex = Dog("Rex")
+mia = Dog("Mia")
+rex.learn("sit")
+print(mia.tricks)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">['sit']
+
+tricks is a CLASS attribute — one shared list. self.tricks.append(...)
+doesn't create an instance attribute (append mutates in place, it doesn't
+assign), so both rex and mia are reading/writing the exact same list
+object. mia sees "sit" even though only rex.learn() was called — same bug
+family as the mutable default argument trap.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · @dataclass equality</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from dataclasses import dataclass
+
+@dataclass
+class Point:
+    x: int
+    y: int
+
+p1 = Point(1, 2)
+p2 = Point(1, 2)
+print(p1 == p2)
+print(p1 is p2)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">True
+False
+
+@dataclass generates __eq__ that compares FIELD VALUES, so p1 == p2 is True
+even though they're two separate objects in memory (p1 is p2 is False —
+identity check, same as the mutability lab's `is` vs `==` distinction).
+Without @dataclass (or a hand-written __eq__), a plain class would fall
+back to identity comparison and p1 == p2 would be False.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · field(default_factory=...)</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from dataclasses import dataclass, field
+
+@dataclass
+class Team:
+    name: str
+    members: list = field(default_factory=list)
+
+a = Team("Alpha")
+b = Team("Beta")
+a.members.append("Sam")
+print(a.members, b.members)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">['Sam'] []
+
+default_factory=list calls list() FRESH for every new Team instance, so
+a.members and b.members are two independent list objects from the start.
+This is the dataclass-safe equivalent of the None-sentinel fix for mutable
+default arguments — @dataclass would actually raise an error if you tried
+`members: list = []` directly, specifically to prevent this trap.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · __len__ and truthiness</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Basket:
+    def __init__(self, items):
+        self.items = items
+    def __len__(self):
+        return len(self.items)
+
+b = Basket([])
+if b:
+    print("has items")
+else:
+    print("empty")
+print(len(b))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">empty
+0
+
+Without a __bool__ method, Python falls back to __len__ to decide
+truthiness: an object is falsy if len(obj) == 0. b.items is [], so
+len(b) is 0, so `if b:` takes the else branch.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 7 · __eq__ without __hash__</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Point:
+    def __init__(self, x, y):
+        self.x, self.y = x, y
+    def __eq__(self, other):
+        return (self.x, self.y) == (other.x, other.y)
+
+p = Point(1, 2)
+s = {p}
+    </div>
+    <details><summary>Show solution</summary><div class="solution">TypeError: unhashable type: 'Point'
+
+Defining __eq__ without also defining __hash__ makes Python set __hash__ to
+None automatically on that class (Python won't let a hash exist that might
+disagree with equality). Trying to put p into a set requires hashing it,
+which fails. Fix: add a __hash__ method that agrees with __eq__, e.g.
+`def __hash__(self): return hash((self.x, self.y))`.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why <code class="inline">obj.method()</code> and <code class="inline">Class.method(obj)</code> are the same call, (2) why a mutable class attribute is dangerous in the exact same way a mutable default argument is, and (3) why Python disables <code class="inline">__hash__</code> when you define <code class="inline">__eq__</code> without it? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — classes, self &amp; dunders.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: __init__ BUILD */
+(function(){
+  const diagramEl = document.getElementById('init-diagram');
+  const btn = document.getElementById('init-run');
+  const logEl = document.getElementById('init-log');
+  let count = 0;
+  const dogs = [{name:'Rex', age:3}, {name:'Mia', age:5}];
+
+  btn.addEventListener('click', ()=>{
+    if(count >= dogs.length){ btn.disabled=true; btn.textContent='Done ✓'; return; }
+    const d = dogs[count];
+    const box = document.createElement('div');
+    box.className = 'inst-box fadein';
+    box.innerHTML = `<div class="cb-title">Dog instance #${count+1}</div>
+      <div class="attr">name = '${d.name}'</div>
+      <div class="attr">age = ${d.age}</div>
+      <div class="ref-note">own __dict__, separate from other instances</div>`;
+    diagramEl.appendChild(box);
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>Dog("${d.name}", ${d.age}):</b> Python creates a blank object, then runs __init__(self=this new object, name="${d.name}", age=${d.age}) → sets self.name and self.age on IT specifically.`;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    count++;
+    if(count===1){ btn.textContent = 'Dog("Mia", 5)'; }
+    if(count>=dogs.length){ btn.disabled=true; btn.textContent='Done ✓'; }
+  });
+})();
+
+/* SECTION 2: SELF DESUGARING */
+(function(){
+  const chips = document.querySelectorAll('#self .chip');
+  const lineEl = document.getElementById('self-call-line');
+  const logEl = document.getElementById('self-log');
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.callmode==='dot'){
+        lineEl.innerHTML = '<span class="c-fn">rex</span>.bark(<span class="c-str">"loud"</span>)';
+        logEl.innerHTML = '<span class="line fadein">Dot syntax: Python automatically passes rex as self. Runs bark(self=rex, volume="loud") → "Rex says WOOF (loud)"</span>';
+      } else {
+        lineEl.innerHTML = '<span class="c-fn">Dog</span>.bark(rex, <span class="c-str">"loud"</span>)';
+        logEl.innerHTML = '<span class="line fadein">Explicit form: rex is passed manually as the first argument (self). Identical result: "Rex says WOOF (loud)" — this IS what the dot syntax does under the hood.</span>';
+      }
+    });
+  });
+})();
+
+/* SECTION 3: INSTANCE VS CLASS ATTRIBUTES */
+(function(){
+  const diagramEl = document.getElementById('attr-diagram');
+  const changeClassBtn = document.getElementById('attr-change-class');
+  const shadowBtn = document.getElementById('attr-shadow');
+  const logEl = document.getElementById('attr-log');
+  let classSpecies = 'Canis familiaris';
+  let rexOwnSpecies = null;
+
+  function render(){
+    diagramEl.innerHTML = `
+      <div class="class-box">
+        <div class="cb-title">class Dog (the blueprint)</div>
+        <div class="attr" id="class-species-attr">species = '${classSpecies}'</div>
+        <div class="ref-note">one copy, on the class itself</div>
+      </div>
+      <div class="instances-row">
+        <div class="inst-box">
+          <div class="cb-title">rex (instance)</div>
+          <div class="attr">name = 'Rex'</div>
+          ${rexOwnSpecies ? `<div class="attr" id="rex-species-attr">species = '${rexOwnSpecies}' <span style="opacity:0.6;">(own, shadows class)</span></div>` : `<div class="ref-note">no own 'species' → falls through to class attribute</div>`}
+        </div>
+        <div class="inst-box">
+          <div class="cb-title">mia (instance)</div>
+          <div class="attr">name = 'Mia'</div>
+          <div class="ref-note">no own 'species' → falls through to class attribute</div>
+        </div>
+      </div>`;
+  }
+  render();
+
+  changeClassBtn.addEventListener('click', ()=>{
+    classSpecies = 'Updated';
+    render();
+    const el = document.getElementById('class-species-attr');
+    if(el){ el.classList.add('flash'); }
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>Dog.species = "Updated":</b> changes the ONE shared class attribute. mia.species now reads 'Updated' too (she has no attribute of her own to shadow it). ${rexOwnSpecies ? "rex still shows his OWN species — unaffected, since he shadowed the class attribute." : "rex.species also reads 'Updated', same reason as mia."}`;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+
+  shadowBtn.addEventListener('click', ()=>{
+    rexOwnSpecies = "Rex's own";
+    render();
+    const el = document.getElementById('rex-species-attr');
+    if(el){ el.classList.add('flash'); }
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>rex.species = "Rex's own":</b> this CREATES a new instance attribute on rex specifically — it does NOT touch the class attribute. rex.species now finds his own value first (instance attributes shadow class attributes of the same name); mia.species is completely unaffected.`;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+})();
+
+/* SECTION 4: DATACLASS GENERATED CODE */
+(function(){
+  const chips = document.querySelectorAll('#dataclass .chip');
+  const logEl = document.getElementById('dc-log');
+  const gens = {
+    init: `def __init__(self, x, y):
+    self.x = x
+    self.y = y`,
+    repr: `def __repr__(self):
+    return f"Point(x={self.x!r}, y={self.y!r})"`,
+    eq: `def __eq__(self, other):
+    if other.__class__ is not self.__class__:
+        return NotImplemented
+    return (self.x, self.y) == (other.x, other.y)`
+  };
+  function render(mode){
+    logEl.innerHTML = `<div class="code" style="margin:0;">${gens[mode].replace(/</g,'&lt;')}</div>`;
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.gen);
+    });
+  });
+  render('init');
+})();
+
+/* SECTION 5: DUNDER DEMOS */
+(function(){
+  const buttons = document.querySelectorAll('[data-dunder]');
+  const logEl = document.getElementById('dunder-log');
+  const demos = {
+    repr: `<b>print(p)</b> → calls __repr__ (as __str__ fallback) → <b>Point(x=1, y=2)</b>
+Without __repr__: <b>&lt;__main__.Point object at 0x7f2a3c1d0&gt;</b> — a memory address, useless for debugging.`,
+    eq: `<b>p1 == p2</b> → calls p1.__eq__(p2) → compares (x, y) tuples → <b>True</b>
+Without __eq__: falls back to identity (is) → <b>False</b>, even with identical x/y.`,
+    len: `<b>len(basket)</b> → calls basket.__len__() → returns len(self.items) → <b>3</b>
+Also makes 'if basket:' truthy/falsy based on this count if __bool__ isn't defined.`,
+    iter: `<b>for x in basket:</b> → calls basket.__iter__() → gets an iterator → pulls items one at a time via __next__ → <b>apple, banana, cherry</b>
+Without __iter__: TypeError: 'Basket' object is not iterable.`
+  };
+  buttons.forEach(b=>{
+    b.addEventListener('click', ()=>{
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = demos[b.dataset.dunder];
+      logEl.innerHTML = '';
+      logEl.appendChild(p);
+    });
+  });
+})();
+</script>
+</body>
+</html>
