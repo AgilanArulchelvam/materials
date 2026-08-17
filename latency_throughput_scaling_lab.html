@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Latency, Throughput &amp; Scaling</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --latency-c:#ff8a65; --throughput-c:#4fc3f7; --vert-c:#7fd8a0; --horiz-c:#f2c14e; --avail-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:17ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid; }
+  .pipe-label.lat{border-color:var(--latency-c); color:var(--latency-c); background:rgba(255,138,101,0.08);}
+  .pipe-label.thr{border-color:var(--throughput-c); color:var(--throughput-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:960px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.86rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:200px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pipe visualization */
+  .pipe-track{position:relative; height:70px; background:var(--panel-2); border:1.5px solid var(--rule); border-radius:14px; margin:1.2rem 0; overflow:hidden;}
+  .pipe-track .gate{position:absolute; top:0; bottom:0; width:3px; background:var(--rule);}
+  .pipe-track .gate.in{left:8%;} .pipe-track .gate.out{right:8%;}
+  .pipe-track .gate-lbl{position:absolute; top:-1.5rem; font-family:var(--mono); font-size:0.65rem; color:var(--ink-dim);}
+  .pipe-track .gate.in .gate-lbl{left:8%;} .pipe-track .gate.out .gate-lbl{right:8%; transform:translateX(100%);}
+  .req-dot{position:absolute; top:50%; transform:translateY(-50%); width:22px; height:22px; border-radius:50%; background:var(--latency-c); box-shadow:0 0 10px rgba(255,138,101,0.5); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.6rem; color:#14100c; font-weight:700;}
+
+  .metric-readout{display:flex; gap:1.5rem; flex-wrap:wrap; margin-top:1rem; font-family:var(--mono); font-size:0.85rem;}
+  .metric{padding:0.7rem 1.1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); min-width:150px;}
+  .metric .mk{font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-dim); display:block; margin-bottom:0.3rem;}
+  .metric .mv{font-size:1.15rem; font-weight:700;}
+  .metric.lat{border-color:var(--latency-c);} .metric.lat .mv{color:var(--latency-c);}
+  .metric.thr{border-color:var(--throughput-c);} .metric.thr .mv{color:var(--throughput-c);}
+
+  /* batching queue viz */
+  .queue-row{display:flex; gap:0.5rem; flex-wrap:wrap; min-height:3rem; align-items:center; margin:1rem 0; padding:1rem; border:1.5px dashed var(--rule); border-radius:10px;}
+  .qitem{width:34px; height:34px; border-radius:7px; background:var(--throughput-c); opacity:0.15; border:1.5px solid var(--rule); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.7rem; transition:all .3s;}
+  .qitem.filled{opacity:1; border-color:var(--throughput-c); color:#0b0d11; font-weight:700;}
+  .qitem.flushed{animation:flush .5s ease forwards;}
+  @keyframes flush{0%{opacity:1; transform:scale(1);} 100%{opacity:0; transform:scale(0.4) translateY(20px);}}
+
+  .slider-row{display:flex; align-items:center; gap:1rem; margin:1rem 0; font-family:var(--mono); font-size:0.82rem;}
+  input[type=range]{flex:1; accent-color:var(--accent);}
+
+  /* scaling visualization */
+  .scale-stage{display:flex; align-items:flex-end; gap:1rem; min-height:160px; margin:1.2rem 0; flex-wrap:wrap; padding:0.5rem 0;}
+  .server-box{border:2px solid var(--vert-c); border-radius:10px; background:rgba(127,216,160,0.08); display:flex; align-items:center; justify-content:center; font-family:var(--mono); color:var(--vert-c); transition:all .4s ease; flex-direction:column; gap:0.2rem;}
+  .server-box.horiz{border-color:var(--horiz-c); color:var(--horiz-c); background:rgba(242,193,78,0.08);}
+  .server-box .cap{font-size:0.62rem; opacity:0.75;}
+  .server-box .cval{font-size:0.95rem; font-weight:700;}
+
+  /* solves-for cards */
+  .solve-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin:1.4rem 0;}
+  @media(max-width:720px){.solve-grid{grid-template-columns:1fr;}}
+  .solve-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem; background:var(--panel);}
+  .solve-card h4{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem; display:flex; align-items:center; gap:0.5rem;}
+  .solve-card.load h4{color:var(--throughput-c);}
+  .solve-card.avail h4{color:var(--avail-c);}
+  .solve-card.cost h4{color:var(--horiz-c);}
+  .solve-card p{font-size:0.85rem; margin:0;}
+  .mini-anim{height:50px; display:flex; align-items:center; justify-content:center; margin-bottom:0.8rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.info{border-left-color:var(--throughput-c); background:rgba(79,195,247,0.06);}
+  .callout.info b{color:var(--throughput-c);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS FUNDAMENTALS LAB · LATENCY, THROUGHPUT &amp; SCALING</div>
+  <h1>Latency is how <em>long one thing takes</em>. Throughput is how <em>much gets done</em>.</h1>
+  <p class="lede">They sound like the same idea — "system speed" — but they measure different axes, and pushing one often costs you the other. This lab makes both concrete with a live request pipe, then builds up to why "just scale it" has two very different meanings and three very different reasons to reach for it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label lat">latency = time for ONE request, start to finish</div>
+    <div class="pipe-label thr">throughput = requests completed per unit time</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="definitions">1 · Latency &amp; Throughput</a>
+  <a data-target="tradeoff">2 · Why Optimizing One Hurts the Other</a>
+  <a data-target="scaling">3 · Vertical vs Horizontal Scaling</a>
+  <a data-target="solvesfor">4 · What Scaling Solves For</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: DEFINITIONS ============ -->
+<section id="definitions">
+  <div class="kicker">01 — Two different rulers</div>
+  <h2>Definitions of latency and throughput</h2>
+  <p><strong>Latency</strong> is the time between when a single request starts and when it finishes — measured in time units (milliseconds, seconds). It answers: <em>"how long did I personally wait?"</em></p>
+  <p><strong>Throughput</strong> is the number of requests a system completes per unit of time — measured in a rate (requests/second, jobs/minute). It answers: <em>"how much total work got done?"</em></p>
+  <p>These are not opposites and not the same thing — a system can have low latency and low throughput (a single very fast checkout lane, nobody else in line), or high latency and high throughput (a slow-but-massively-parallel batch pipeline still finishing thousands of jobs a minute).</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SEND REQUESTS THROUGH THE PIPE — WATCH BOTH METRICS</span>
+      <div><button class="btn secondary" id="def-reset">Reset</button> <button class="btn" id="def-send">Send request ▸</button></div>
+    </div>
+    <div class="pipe-track" id="def-pipe">
+      <div class="gate in"><span class="gate-lbl">start</span></div>
+      <div class="gate out"><span class="gate-lbl">done</span></div>
+    </div>
+    <div class="metric-readout">
+      <div class="metric lat"><span class="mk">Latency (this request)</span><span class="mv" id="def-lat">—</span></div>
+      <div class="metric thr"><span class="mk">Throughput (running)</span><span class="mv" id="def-thr">0.0 req/s</span></div>
+      <div class="metric"><span class="mk">Requests completed</span><span class="mv" id="def-count">0</span></div>
+    </div>
+    <div class="log" id="def-log"><span class="line">Each request takes ~1.4s to cross the pipe. Send a few and watch throughput accumulate while each one's own latency stays about the same.</span></div>
+  </div>
+
+  <div class="callout"><b>Little's Law (a useful anchor):</b> on average, <code class="inline">concurrent requests in flight = throughput × latency</code>. If your service handles 200 req/s and each takes 50ms (0.05s), you should expect roughly <code class="inline">200 × 0.05 = 10</code> requests in flight at any moment. This single formula ties all three quantities together.</div>
+</section>
+
+<!-- ============ SECTION 2: TRADEOFF ============ -->
+<section id="tradeoff">
+  <div class="kicker">02 — The batching tradeoff</div>
+  <h2>Why optimizing one can hurt the other</h2>
+  <p>A common way to boost throughput is <strong>batching</strong>: instead of processing each request the moment it arrives, wait to collect several, then process them together (fewer round trips, better use of fixed per-batch overhead like a disk write or a network call). This raises throughput — but every individual request now waits for the batch to fill, which raises its latency.</p>
+
+  <div class="code">
+<span class="c-cmt"># no batching: handle immediately — low latency, but throughput capped by per-request overhead</span>
+<span class="c-kw">def</span> <span class="c-fn">handle_one</span>(req):
+    <span class="c-fn">write_to_disk</span>([req])   <span class="c-cmt"># fixed overhead paid on EVERY single request</span>
+
+<span class="c-cmt"># batching: collect N requests, flush together — throughput up, per-request latency up</span>
+<span class="c-kw">def</span> <span class="c-fn">handle_batch</span>(queue, batch_size=<span class="c-num">10</span>):
+    <span class="c-kw">if</span> len(queue) >= batch_size:
+        <span class="c-fn">write_to_disk</span>(queue)  <span class="c-cmt"># overhead paid ONCE for all 10 — but request #1 waited for #2..#10</span>
+        queue.clear()
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>DRAG THE BATCH SIZE — WATCH THE TRADEOFF LIVE</span></div>
+    <div class="slider-row">
+      <span>batch size</span>
+      <input type="range" min="1" max="8" value="1" id="batch-slider">
+      <span id="batch-val" style="min-width:2ch;">1</span>
+    </div>
+    <div class="queue-row" id="batch-queue"></div>
+    <button class="btn" id="batch-add">Request arrives ▸</button>
+    <div class="metric-readout">
+      <div class="metric lat"><span class="mk">Est. latency for request #1 in this batch</span><span class="mv" id="batch-lat">~0.1s</span></div>
+      <div class="metric thr"><span class="mk">Est. throughput once batches flush steadily</span><span class="mv" id="batch-thr">~10 req/s</span></div>
+    </div>
+    <div class="log" id="batch-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Optimize for...</th><th>Typical technique</th><th>What it costs</th></tr>
+    <tr><td>Lower latency</td><td>Process immediately, small/no queues, more parallel workers per request</td><td>Higher per-request overhead → lower max throughput; more idle capacity</td></tr>
+    <tr><td>Higher throughput</td><td>Batching, queuing, buffering, pipelining</td><td>Requests wait longer in queues → higher and less predictable latency</td></tr>
+  </table>
+
+  <div class="callout"><b>Not a hard law, a common tension:</b> some changes improve both (removing genuine waste, adding real capacity). The tradeoff specifically shows up when the "improvement" works by delaying or grouping individual requests to use shared resources more efficiently.</div>
+</section>
+
+<!-- ============ SECTION 3: SCALING ============ -->
+<section id="scaling">
+  <div class="kicker">03 — Two directions to add capacity</div>
+  <h2>Vertical vs. horizontal scaling</h2>
+
+  <table class="cmp">
+    <tr><th>Type</th><th>One-line definition</th></tr>
+    <tr><td><strong>Vertical scaling</strong> (scale up)</td><td>Give <strong>one</strong> machine more resources — more CPU, more RAM, a faster disk.</td></tr>
+    <tr><td><strong>Horizontal scaling</strong> (scale out)</td><td>Add <strong>more</strong> machines running the same workload, splitting traffic between them.</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title"><span>GROW THE SAME SYSTEM TWO WAYS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-scale="vertical">Vertical</button>
+      <button class="chip" data-scale="horizontal">Horizontal</button>
+    </div>
+    <div class="scale-stage" id="scale-stage"></div>
+    <button class="btn" id="scale-add">Scale up ▸</button>
+    <div class="log" id="scale-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Vertical</th><th>Horizontal</th></tr>
+    <tr><td>Ceiling</td><td>Hard limit — biggest machine money can buy</td><td>Add machines roughly indefinitely</td></tr>
+    <tr><td>Complexity</td><td>Simple — same single system, nothing to coordinate</td><td>Needs a load balancer, and the app must tolerate running as multiple copies</td></tr>
+    <tr><td>Downtime to scale</td><td>Often requires a restart/resize</td><td>New machines can join without touching existing ones</td></tr>
+    <tr><td>Failure behavior</td><td>One machine down = everything down</td><td>One machine down = reduced capacity, not total outage</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 4: WHAT SCALING SOLVES FOR ============ -->
+<section id="solvesfor">
+  <div class="kicker">04 — Three different reasons to scale</div>
+  <h2>What "scaling" actually solves for</h2>
+  <p>"We need to scale" can mean three genuinely different problems. Naming which one you have changes the right fix entirely.</p>
+
+  <div class="solve-grid">
+    <div class="solve-card load">
+      <h4>⚡ Load</h4>
+      <div class="mini-anim"><div id="load-anim" style="font-family:var(--mono); font-size:1.6rem; color:var(--throughput-c);">▁▂▃▅█</div></div>
+      <p>Traffic exceeds what current capacity can handle — requests start queuing or getting dropped. Both scaling directions add capacity to absorb more concurrent load.</p>
+    </div>
+    <div class="solve-card avail">
+      <h4>🛡 Availability</h4>
+      <div class="mini-anim"><div id="avail-anim" style="font-family:var(--mono); font-size:0.85rem; color:var(--avail-c);">●&nbsp;&nbsp;●&nbsp;&nbsp;●</div></div>
+      <p>One machine failing shouldn't take the whole system down. This is inherently a <strong>horizontal</strong>-scaling win — redundant copies mean a failure degrades capacity instead of causing a full outage.</p>
+    </div>
+    <div class="solve-card cost">
+      <h4>💰 Cost</h4>
+      <div class="mini-anim"><div id="cost-anim" style="font-family:var(--mono); font-size:0.85rem; color:var(--horiz-c);">$ → $$$</div></div>
+      <p>Big single machines get disproportionately expensive near the top of their range. Many smaller machines are often cheaper per unit of capacity, and can be added/removed to match demand instead of paying for peak capacity all the time.</p>
+    </div>
+  </div>
+
+  <div class="callout info"><b>Why this framing matters:</b> a vertically-scaled single powerful server can absolutely solve a <em>load</em> problem — but it does nothing for <em>availability</em> (still one point of failure) and often loses on <em>cost</em> at the high end. If the real problem is "one bad deploy or one hardware failure takes us down," more horizontal capacity is the fix, not more vertical.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Definitions check</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A video call has 120ms of latency per audio packet, and the service handles 50,000 concurrent calls. Is 50,000 a throughput number, a latency number, or neither? Explain.</p>
+    <details><summary>Show solution</summary><div class="solution">Neither, strictly speaking. 50,000 concurrent calls is a CONCURRENCY /
+capacity number (how many are in flight right now), not a rate of completed
+work over time. Throughput would be something like "packets processed per
+second across all calls." Concurrency, latency, and throughput are three
+distinct measurements that Little's Law relates, but they're not
+interchangeable.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Little's Law</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service has an average latency of 200ms per request and needs to support 25 requests in flight at any given moment on average. What throughput does that imply?</p>
+    <details><summary>Show solution</summary><div class="solution">125 requests/second
+
+Little's Law: concurrency = throughput × latency
+25 = throughput × 0.2s
+throughput = 25 / 0.2 = 125 req/s</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Spotting the tradeoff</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team increases their database write batch size from 10 to 500 to reduce disk I/O overhead. Throughput improves 4x. What's the most likely cost, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Per-request latency for individual writes increases significantly — a
+write now has to wait for up to 499 other writes to accumulate before the
+batch flushes (or wait for a timeout). The system does more total work per
+second, but any single request's "how long did MY write take" number gets
+worse and more variable, especially under low traffic when the batch fills
+slowly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Vertical vs horizontal, pick one</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A single-machine app occasionally has a spike that overwhelms it, and last month a hardware fault took the whole service down for 40 minutes. Which scaling direction addresses BOTH issues, and which addresses only one?</p>
+    <details><summary>Show solution</summary><div class="solution">Horizontal scaling addresses both: more machines absorb the traffic spike
+(load) AND mean one hardware fault only removes a fraction of capacity
+instead of the whole service (availability).
+
+Vertical scaling (a bigger single machine) could absorb the spike (load)
+but does nothing for the hardware-fault outage — it's still one machine,
+so one fault still takes everything down.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Cost reasoning</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A company runs one very large server sized for their Black-Friday peak traffic, all year round. What's the cost problem here, and how would horizontal scaling change it?</p>
+    <details><summary>Show solution</summary><div class="solution">They're paying for peak capacity 365 days a year even though peak load
+only happens for a few days. That's the cost problem: a fixed vertical
+size can't shrink when demand is low.
+
+Horizontal scaling (with autoscaling) lets them run a small number of
+machines most of the year and add more only during the traffic spike,
+paying roughly in proportion to actual demand instead of worst-case
+demand.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Applying both concepts together</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A checkout API currently: single server, no batching, 40ms latency, 25 req/s throughput, and goes down completely about once a month. Propose one change and predict its effect on latency, throughput, availability, and cost — including any tradeoff.</p>
+    <details><summary>Show solution</summary><div class="solution">One reasonable answer: switch to horizontal scaling with 4 identical
+servers behind a load balancer.
+
+Latency: roughly unchanged per request (~40ms) — each server still handles
+one request the same way it did before; latency isn't primarily what
+horizontal scaling improves.
+
+Throughput: roughly 4x (up to ~100 req/s), since 4 servers can process
+requests in parallel.
+
+Availability: much improved — losing one server now costs ~25% capacity,
+not 100% downtime.
+
+Cost: goes up, since you're now paying for 4 servers instead of 1 — the
+tradeoff for the availability and throughput gains. (A follow-up
+optimization would be autoscaling so you don't pay for all 4 during low
+traffic.)</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why concurrency, latency, and throughput are three separate measurements, (2) a concrete example where increasing throughput makes latency worse, and (3) why horizontal scaling — not vertical — is the direct fix for a single-point-of-failure outage? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — latency, throughput &amp; scaling, systems fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: LATENCY / THROUGHPUT PIPE */
+(function(){
+  const pipeEl = document.getElementById('def-pipe');
+  const sendBtn = document.getElementById('def-send');
+  const resetBtn = document.getElementById('def-reset');
+  const latEl = document.getElementById('def-lat');
+  const thrEl = document.getElementById('def-thr');
+  const countEl = document.getElementById('def-count');
+  const logEl = document.getElementById('def-log');
+  const DURATION = 1400; // ms
+  let count = 0;
+  let startTime = null;
+  let reqId = 0;
+
+  function send(){
+    if(startTime === null) startTime = performance.now();
+    reqId++;
+    const id = reqId;
+    const dot = document.createElement('div');
+    dot.className = 'req-dot';
+    dot.textContent = '#'+id;
+    dot.style.left = '8%';
+    pipeEl.appendChild(dot);
+    const t0 = performance.now();
+    requestAnimationFrame(()=>{
+      dot.style.transition = `left ${DURATION}ms linear`;
+      dot.style.left = '84%';
+    });
+    setTimeout(()=>{
+      const elapsed = (performance.now() - t0)/1000;
+      count++;
+      countEl.textContent = count;
+      latEl.textContent = elapsed.toFixed(2)+'s';
+      const totalElapsed = (performance.now() - startTime)/1000;
+      const thr = count / totalElapsed;
+      thrEl.textContent = thr.toFixed(2)+' req/s';
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>Request #${id} done:</b> latency ${elapsed.toFixed(2)}s. Running throughput now ${thr.toFixed(2)} req/s over ${count} completed request(s).`;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      dot.remove();
+    }, DURATION);
+  }
+  sendBtn.addEventListener('click', send);
+  resetBtn.addEventListener('click', ()=>{
+    count = 0; startTime = null; reqId = 0;
+    latEl.textContent = '—'; thrEl.textContent = '0.0 req/s'; countEl.textContent = '0';
+    logEl.innerHTML = '<span class="line">Reset. Send a few requests and watch throughput accumulate.</span>';
+    document.querySelectorAll('.req-dot').forEach(d=>d.remove());
+  });
+})();
+
+/* SECTION 2: BATCHING TRADEOFF */
+(function(){
+  const slider = document.getElementById('batch-slider');
+  const valEl = document.getElementById('batch-val');
+  const queueEl = document.getElementById('batch-queue');
+  const addBtn = document.getElementById('batch-add');
+  const latEl = document.getElementById('batch-lat');
+  const thrEl = document.getElementById('batch-thr');
+  const logEl = document.getElementById('batch-log');
+  const PER_ITEM_ARRIVAL = 0.1; // seconds between arrivals
+  const OVERHEAD = 0.5; // fixed flush overhead per batch, seconds
+
+  let batchSize = 1;
+  let queue = [];
+
+  function renderQueue(){
+    queueEl.innerHTML = '';
+    for(let i=0;i<batchSize;i++){
+      const d = document.createElement('div');
+      d.className = 'qitem' + (i < queue.length ? ' filled' : '');
+      d.textContent = i < queue.length ? '#'+queue[i] : '';
+      queueEl.appendChild(d);
+    }
+  }
+  function updateMetrics(){
+    const estLatency = batchSize * PER_ITEM_ARRIVAL + OVERHEAD; // first item waits for batch to fill + flush
+    const cycleTime = batchSize * PER_ITEM_ARRIVAL + OVERHEAD;
+    const estThroughput = batchSize / cycleTime;
+    latEl.textContent = '~' + estLatency.toFixed(2) + 's';
+    thrEl.textContent = '~' + estThroughput.toFixed(1) + ' req/s';
+  }
+  slider.addEventListener('input', ()=>{
+    batchSize = parseInt(slider.value, 10);
+    valEl.textContent = batchSize;
+    queue = [];
+    renderQueue();
+    updateMetrics();
+    logEl.innerHTML = `<span class="line fadein">Batch size set to ${batchSize}. ${batchSize===1 ? 'No batching — every request flushes immediately.' : 'Requests will wait until '+batchSize+' arrive before flushing together.'}</span>`;
+  });
+
+  let reqCounter = 0;
+  addBtn.addEventListener('click', ()=>{
+    reqCounter++;
+    queue.push(reqCounter);
+    renderQueue();
+    const p = document.createElement('div'); p.className='line fadein';
+    if(queue.length >= batchSize){
+      p.innerHTML = `<b>Batch full (${batchSize}):</b> flushing all ${batchSize} requests together — fixed overhead paid ONCE.`;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      const items = Array.from(queueEl.children);
+      items.forEach(it=>it.classList.add('flushed'));
+      setTimeout(()=>{ queue = []; renderQueue(); }, 500);
+    } else {
+      p.innerHTML = `<b>Request #${reqCounter} queued</b> (${queue.length}/${batchSize}) — waiting for the batch to fill before it's processed.`;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    }
+  });
+
+  renderQueue();
+  updateMetrics();
+})();
+
+/* SECTION 3: VERTICAL / HORIZONTAL SCALING */
+(function(){
+  const chips = document.querySelectorAll('#scaling .chip');
+  const stageEl = document.getElementById('scale-stage');
+  const addBtn = document.getElementById('scale-add');
+  const logEl = document.getElementById('scale-log');
+  let mode = 'vertical';
+  let vertLevel = 1;
+  let horizCount = 1;
+
+  function renderVertical(){
+    stageEl.innerHTML = '';
+    const sizes = [60, 80, 105, 135, 170];
+    const caps = [100, 250, 500, 900, 1500];
+    const s = sizes[Math.min(vertLevel-1, sizes.length-1)];
+    const cap = caps[Math.min(vertLevel-1, caps.length-1)];
+    const box = document.createElement('div');
+    box.className = 'server-box';
+    box.style.width = s+'px';
+    box.style.height = s+'px';
+    box.innerHTML = `<span class="cap">1 server</span><span class="cval">${cap} req/s cap</span>`;
+    stageEl.appendChild(box);
+  }
+  function renderHorizontal(){
+    stageEl.innerHTML = '';
+    for(let i=0;i<horizCount;i++){
+      const box = document.createElement('div');
+      box.className = 'server-box horiz';
+      box.style.width = '70px';
+      box.style.height = '70px';
+      box.innerHTML = `<span class="cap">server ${i+1}</span><span class="cval">250 req/s</span>`;
+      stageEl.appendChild(box);
+    }
+  }
+  function render(){
+    if(mode==='vertical') renderVertical(); else renderHorizontal();
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.scale;
+      logEl.innerHTML = '';
+      render();
+    });
+  });
+  addBtn.addEventListener('click', ()=>{
+    const p = document.createElement('div'); p.className='line fadein';
+    if(mode==='vertical'){
+      if(vertLevel >= 5){
+        p.innerHTML = `<b>Ceiling reached:</b> this is the biggest single machine available — vertical scaling stops here.`;
+      } else {
+        vertLevel++;
+        p.innerHTML = `<b>Resized:</b> same one server, more CPU/RAM allocated. Capacity per server goes up, but it's still a single point of failure.`;
+        render();
+      }
+    } else {
+      horizCount++;
+      p.innerHTML = `<b>New server added:</b> total capacity increases roughly linearly, and load balancer now spreads traffic across ${horizCount} servers. Losing one now costs ~${Math.round(100/horizCount)}% capacity, not everything.`;
+      render();
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+  render();
+})();
+</script>
+</body>
+</html>
