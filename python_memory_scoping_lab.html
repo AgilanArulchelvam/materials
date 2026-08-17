@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Python Memory, Scope & Closures</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d212b;
+    --ink: #e9e6dd;
+    --ink-dim: #9aa0ad;
+    --rule: #2a2f3a;
+    --local: #7fd8a0;
+    --enclosing: #f2c14e;
+    --global: #6ea8fe;
+    --builtin: #c792ea;
+    --mutable: #ff8a65;
+    --immutable: #4fc3f7;
+    --accent: #ff8a65;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Fraunces', serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--body); line-height:1.6;
+    padding-bottom:6rem;
+  }
+  ::selection{background:var(--accent); color:#12141a;}
+
+  /* ---------- HERO ---------- */
+  .hero{
+    padding:5rem 6vw 4rem; position:relative; overflow:hidden;
+    border-bottom:1px solid var(--rule);
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+      radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{
+    font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem);
+    line-height:1.05; margin:0 0 1.2rem; max-width:16ch; letter-spacing:-0.01em;
+  }
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:56ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .stackframe-hero{
+    margin-top:2.8rem; display:flex; gap:0; font-family:var(--mono); font-size:0.82rem;
+    border:1px solid var(--rule); border-radius:10px; overflow:hidden; max-width:720px;
+  }
+  .sf{padding:0.9rem 1.1rem; flex:1; border-right:1px solid var(--rule); position:relative;}
+  .sf:last-child{border-right:none;}
+  .sf .lbl{text-transform:uppercase; letter-spacing:0.1em; font-size:0.65rem; opacity:0.7; margin-bottom:0.35rem; display:block;}
+  .sf.local{background:rgba(127,216,160,0.08); color:var(--local);}
+  .sf.enclosing{background:rgba(242,193,78,0.08); color:var(--enclosing);}
+  .sf.global{background:rgba(110,168,254,0.08); color:var(--global);}
+  .sf.builtin{background:rgba(199,146,234,0.08); color:var(--builtin);}
+  .sf .arrow{position:absolute; right:-9px; top:50%; transform:translateY(-50%); font-size:0.9rem; color:var(--ink-dim); z-index:2;}
+
+  /* ---------- NAV ---------- */
+  nav{
+    display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel);
+    border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);
+  }
+  nav a{
+    font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none;
+    padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s;
+    white-space:nowrap;
+  }
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:4.5rem 6vw; max-width:920px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{
+    font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-dim); margin-bottom:0.6rem;
+  }
+  h2{
+    font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;
+  }
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:70ch;}
+  strong{color:var(--ink);}
+  code.inline{
+    font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px;
+    font-size:0.88em; color:var(--accent); border:1px solid var(--rule);
+  }
+
+  /* ---------- CODE BLOCKS ---------- */
+  .code{
+    font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px;
+    padding:1.1rem 1.3rem; font-size:0.86rem; overflow-x:auto; margin:1.2rem 0; position:relative;
+    line-height:1.65;
+  }
+  .code .c-cmt{color:#5f6675;}
+  .code .c-kw{color:#ff8a65;}
+  .code .c-str{color:#7fd8a0;}
+  .code .c-num{color:#c792ea;}
+  .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  /* ---------- MEMORY DIAGRAM PRIMITIVES ---------- */
+  .lab{
+    background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem;
+    margin:1.6rem 0;
+  }
+  .lab-title{
+    font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center;
+  }
+  .btn{
+    font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none;
+    padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;
+  }
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .diagram{min-height:150px; display:flex; align-items:center; gap:2.5rem; flex-wrap:wrap; padding:0.5rem 0;}
+  .names-col{display:flex; flex-direction:column; gap:0.7rem;}
+  .name-box{
+    font-family:var(--mono); font-size:0.85rem; padding:0.5rem 0.9rem; border-radius:7px;
+    border:1.5px solid var(--rule); background:var(--panel-2); position:relative; min-width:70px; text-align:center;
+    transition:all .35s ease;
+  }
+  .obj-box{
+    font-family:var(--mono); font-size:0.8rem; padding:0.7rem 1rem; border-radius:9px;
+    border:1.5px solid; text-align:center; position:relative; transition:all .35s ease; min-width:90px;
+  }
+  .obj-box .addr{display:block; font-size:0.65rem; opacity:0.55; margin-bottom:0.25rem;}
+  .obj-box .val{font-size:1rem; font-weight:600;}
+  .obj-mutable{border-color:var(--mutable); background:rgba(255,138,101,0.09); color:var(--mutable);}
+  .obj-immutable{border-color:var(--immutable); background:rgba(79,195,247,0.09); color:var(--immutable);}
+
+  svg.wires{overflow:visible;}
+  svg.wires path{fill:none; stroke:var(--ink-dim); stroke-width:1.6; stroke-dasharray:5 4; transition:stroke .3s, opacity .3s;}
+  svg.wires path.active{stroke:var(--accent); stroke-dasharray:0; opacity:1;}
+
+  .flash{animation:flashpop 0.6s ease;}
+  @keyframes flashpop{
+    0%{transform:scale(1);} 30%{transform:scale(1.08); box-shadow:0 0 0 4px rgba(255,138,101,0.25);} 100%{transform:scale(1);}
+  }
+  .fadein{animation:fadein .45s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .popout{animation:popout .5s ease forwards;}
+  @keyframes popout{
+    0%{opacity:1; transform:scale(1);}
+    100%{opacity:0; transform:scale(0.6) translateY(-10px);}
+  }
+
+  .log{
+    font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem;
+    min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem;
+  }
+  .log .line{margin:0.15rem 0;}
+  .log .line b{color:var(--ink);}
+
+  /* LEGB stack */
+  .legb-stack{display:flex; flex-direction:column; gap:0; align-items:stretch; margin:1.6rem 0;}
+  .legb-ring{
+    border:2px solid; border-radius:16px; padding:1.4rem 1.6rem; margin-bottom:-2px; position:relative;
+    transition:all .3s ease;
+  }
+  .legb-ring .ring-label{
+    font-family:var(--mono); font-size:0.7rem; letter-spacing:0.1em; text-transform:uppercase;
+    display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem; font-weight:700;
+  }
+  .legb-ring .vars{display:flex; gap:0.5rem; flex-wrap:wrap;}
+  .legb-var{
+    font-family:var(--mono); font-size:0.8rem; padding:0.3rem 0.7rem; border-radius:6px;
+    background:rgba(255,255,255,0.04); border:1px solid var(--rule); transition:all .3s;
+  }
+  .legb-var.hit{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:700;}
+  .legb-var.dim{opacity:0.25;}
+  .ring-L{border-color:var(--local); color:var(--local);}
+  .ring-E{border-color:var(--enclosing); color:var(--enclosing);}
+  .ring-G{border-color:var(--global); color:var(--global);}
+  .ring-B{border-color:var(--builtin); color:var(--builtin);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{
+    font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px;
+    border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;
+  }
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* cell / closure */
+  .closure-diagram{display:flex; align-items:center; gap:2rem; flex-wrap:wrap;}
+  .cell{
+    font-family:var(--mono); border:2px dashed var(--enclosing); border-radius:10px; padding:0.9rem 1.1rem;
+    background:rgba(242,193,78,0.06); color:var(--enclosing); text-align:center; min-width:110px; transition:all .35s;
+  }
+  .cell .cell-lbl{font-size:0.65rem; opacity:0.7; display:block; margin-bottom:0.3rem;}
+  .cell .cell-val{font-size:1.3rem; font-weight:700;}
+
+  /* table */
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;}
+  table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  /* practice problems */
+  .problem{
+    background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem;
+    margin:1.2rem 0;
+  }
+  .problem .pnum{
+    font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em;
+    margin-bottom:0.5rem; display:block;
+  }
+  details{margin-top:0.9rem;}
+  summary{
+    font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim);
+    padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;
+  }
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{
+    font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule);
+    border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;
+  }
+
+  .callout{
+    border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem;
+    border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;
+  }
+  .callout b{color:var(--accent);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+
+  @media (max-width:640px){
+    .stackframe-hero{flex-direction:column;}
+    .sf{border-right:none; border-bottom:1px solid var(--rule);}
+    .sf .arrow{display:none;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · NAMES, OBJECTS &amp; SCOPES</div>
+  <h1>Every variable is just a <em>label</em> tied to a box in memory.</h1>
+  <p class="lede">Once that one idea clicks, mutability, default-argument bugs, LEGB lookup, closures, and <code class="inline">nonlocal</code>/<code class="inline">global</code> all fall out of it naturally. This lab walks through each concept with a live memory diagram, then gives you problems to break your own assumptions on.</p>
+
+  <div class="stackframe-hero">
+    <div class="sf local">
+      <span class="lbl">Local</span>
+      current function<span class="arrow">→</span>
+    </div>
+    <div class="sf enclosing">
+      <span class="lbl">Enclosing</span>
+      outer function(s)<span class="arrow">→</span>
+    </div>
+    <div class="sf global">
+      <span class="lbl">Global</span>
+      the module<span class="arrow">→</span>
+    </div>
+    <div class="sf builtin">
+      <span class="lbl">Built-in</span>
+      the builtins module
+    </div>
+  </div>
+</div>
+
+<nav>
+  <a href="javascript:void(0)" data-target="mutability">1 · Mutable vs Immutable</a>
+  <a href="javascript:void(0)" data-target="defaults">2 · Default Argument Trap</a>
+  <a href="javascript:void(0)" data-target="legb">3 · LEGB Lookup</a>
+  <a href="javascript:void(0)" data-target="closures">4 · Closures</a>
+  <a href="javascript:void(0)" data-target="nonlocal">5 · nonlocal vs global</a>
+  <a href="javascript:void(0)" data-target="argskwargs">6 · *args / **kwargs</a>
+  <a href="javascript:void(0)" data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ================= SECTION 1: MUTABILITY ================= -->
+<section id="mutability">
+  <div class="kicker">01 — Foundations</div>
+  <h2>Mutable vs. immutable objects</h2>
+  <p>A Python variable is a <strong>name bound to an object</strong>, not a container that holds a value directly. When you write <code class="inline">y = x</code>, you're not copying data — you're pointing a second label at the exact same box in memory.</p>
+  <p>The only thing that changes the picture is whether the <em>object itself</em> can be edited in place:</p>
+
+  <table class="cmp">
+    <tr><th>Immutable (can't change in place)</th><th>Mutable (can change in place)</th></tr>
+    <tr><td><code>int</code>, <code>float</code>, <code>bool</code>, <code>str</code>, <code>tuple</code>, <code>frozenset</code>, <code>bytes</code></td>
+        <td><code>list</code>, <code>dict</code>, <code>set</code>, <code>bytearray</code>, most custom classes</td></tr>
+  </table>
+
+  <p>"Immutable" doesn't mean the name can't be reassigned — it means the <strong>object</strong> that name points to can never be edited. Reassignment just points the name at a brand-new object.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>LIVE MEMORY DIAGRAM</span>
+      <div>
+        <button class="btn secondary" id="mut-reset">Reset</button>
+        <button class="btn" id="mut-step">Run next line ▸</button>
+      </div>
+    </div>
+    <div class="code" id="mut-code-block">
+<span class="c-num">1</span>  x = 5
+<span class="c-num">2</span>  y = x
+<span class="c-num">3</span>  y = 6          <span class="c-cmt"># rebinds y — x untouched</span>
+<span class="c-num">4</span>  a = [1, 2]
+<span class="c-num">5</span>  b = a
+<span class="c-num">6</span>  b.append(3)    <span class="c-cmt"># mutates the SAME object — a sees it too</span>
+    </div>
+    <div class="diagram" id="mut-diagram">
+      <div class="names-col" id="mut-names"></div>
+      <svg class="wires" id="mut-wires" width="120" height="150"></svg>
+      <div class="names-col" id="mut-objs"></div>
+    </div>
+    <div class="log" id="mut-log"><span class="line">Click <b>Run next line ▸</b> to step through the code above.</span></div>
+  </div>
+
+  <div class="callout"><b>Rule of thumb:</b> <code class="inline">is</code> compares identity (same box in memory, same <code class="inline">id()</code>). <code class="inline">==</code> compares value. Two different <code class="inline">int</code> objects can be <code class="inline">==</code> without being <code class="inline">is</code>.</div>
+</section>
+
+<!-- ================= SECTION 2: DEFAULT ARGS ================= -->
+<section id="defaults">
+  <div class="kicker">02 — Where this actually bites you</div>
+  <h2>Why mutability breaks default arguments</h2>
+  <p>Default argument values are evaluated <strong>once</strong> — at <em>function definition time</em> — and stored on the function object itself (in <code class="inline">__defaults__</code>). Every call that doesn't supply that argument reuses <strong>the same object</strong>.</p>
+  <p>For immutable defaults (like <code class="inline">0</code> or <code class="inline">None</code>) this is invisible, because nothing can mutate them anyway. For a mutable default like <code class="inline">[]</code>, it means every call is silently sharing — and potentially editing — the exact same list.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">add_item</span>(item, basket=[]):   <span class="c-cmt"># [] created ONCE, at def time</span>
+    basket.append(item)
+    <span class="c-kw">return</span> basket
+
+<span class="c-fn">add_item</span>(<span class="c-str">"apple"</span>)   <span class="c-out">→ ['apple']</span>
+<span class="c-fn">add_item</span>(<span class="c-str">"banana"</span>)  <span class="c-out">→ ['apple', 'banana']   😱 not a fresh basket!</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>WATCH THE SAME LIST GET REUSED</span>
+      <button class="btn" id="def-call">Call add_item() again</button>
+    </div>
+    <p style="margin-top:0; font-size:0.85rem;">Every call below reuses the <em>one</em> list object created when the function was defined.</p>
+    <div class="diagram" style="min-height:110px;">
+      <div class="obj-box obj-mutable" id="def-obj">
+        <span class="addr">basket @ 0x7f3a1c</span>
+        <span class="val" id="def-obj-val">[]</span>
+      </div>
+    </div>
+    <div class="log" id="def-log"><span class="line">Calls so far: <b>0</b></span></div>
+  </div>
+
+  <h3>The fix</h3>
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">add_item</span>(item, basket=<span class="c-kw">None</span>):
+    <span class="c-kw">if</span> basket <span class="c-kw">is</span> <span class="c-kw">None</span>:
+        basket = []        <span class="c-cmt"># fresh list, made on EVERY call</span>
+    basket.append(item)
+    <span class="c-kw">return</span> basket
+  </div>
+  <p>Use <code class="inline">None</code> as the sentinel default and build the real mutable object inside the function body, so a brand-new object is created on every call instead of one shared across all of them.</p>
+</section>
+
+<!-- ================= SECTION 3: LEGB ================= -->
+<section id="legb">
+  <div class="kicker">03 — Name resolution</div>
+  <h2>LEGB: how Python finds a name</h2>
+  <p>Every time Python sees a name being <em>read</em> (not assigned), it searches a fixed sequence of namespaces — each one is really just a dictionary of <code class="inline">name → object</code> — stopping at the first match:</p>
+  <p><strong>L</strong>ocal → <strong>E</strong>nclosing → <strong>G</strong>lobal → <strong>B</strong>uilt-in</p>
+
+  <div class="code">
+x = <span class="c-str">"global x"</span>
+
+<span class="c-kw">def</span> <span class="c-fn">outer</span>():
+    x = <span class="c-str">"enclosing x"</span>
+    <span class="c-kw">def</span> <span class="c-fn">inner</span>():
+        x = <span class="c-str">"local x"</span>
+        <span class="c-kw">print</span>(x)         <span class="c-cmt"># found in Local — search stops immediately</span>
+    <span class="c-fn">inner</span>()
+
+<span class="c-fn">outer</span>()   <span class="c-out">→ local x</span>
+  </div>
+
+  <p>Click a name below to watch Python search outward through the rings until it finds a match — exactly the order it checks in real code.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>INTERACTIVE LEGB LOOKUP</span></div>
+    <div class="lookup-controls" id="legb-chips"></div>
+    <div class="legb-stack" id="legb-stack">
+      <div class="legb-ring ring-L" data-scope="L">
+        <div class="ring-label">L · Local (inner)</div>
+        <div class="vars">
+          <span class="legb-var" data-name="z">z</span>
+        </div>
+      </div>
+      <div class="legb-ring ring-E" data-scope="E">
+        <div class="ring-label">E · Enclosing (outer)</div>
+        <div class="vars">
+          <span class="legb-var" data-name="y">y</span>
+        </div>
+      </div>
+      <div class="legb-ring ring-G" data-scope="G">
+        <div class="ring-label">G · Global (module)</div>
+        <div class="vars">
+          <span class="legb-var" data-name="x">x</span>
+          <span class="legb-var" data-name="print">print (shadowed here)</span>
+        </div>
+      </div>
+      <div class="legb-ring ring-B" data-scope="B">
+        <div class="ring-label">B · Built-in</div>
+        <div class="vars">
+          <span class="legb-var" data-name="len">len</span>
+          <span class="legb-var" data-name="print">print</span>
+          <span class="legb-var" data-name="sum">sum</span>
+        </div>
+      </div>
+    </div>
+    <div class="log" id="legb-log"><span class="line">Click a chip above to look up that name.</span></div>
+  </div>
+
+  <div class="callout"><b>Key trap:</b> assigning to a name <em>anywhere</em> inside a function makes Python treat that name as local for the <strong>entire</strong> function body — even on lines before the assignment. Referencing it earlier raises <code class="inline">UnboundLocalError</code>, not a fallback to the global value.</div>
+</section>
+
+<!-- ================= SECTION 4: CLOSURES ================= -->
+<section id="closures">
+  <div class="kicker">04 — Functions that remember</div>
+  <h2>Closures</h2>
+  <p>A <strong>closure</strong> happens when an inner function uses a variable from its enclosing function, and that inner function is then handed back out to the world (returned, stored, passed around). Normally a function's local variables die when it returns — but if an inner function still needs one, Python keeps it alive in a special <strong>cell object</strong>, tucked inside the inner function's <code class="inline">__closure__</code> attribute.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">make_counter</span>():
+    count = 0                      <span class="c-cmt"># lives in a cell, not a normal stack frame</span>
+    <span class="c-kw">def</span> <span class="c-fn">increment</span>():
+        <span class="c-kw">nonlocal</span> count
+        count += 1
+        <span class="c-kw">return</span> count
+    <span class="c-kw">return</span> increment
+
+counter = <span class="c-fn">make_counter</span>()   <span class="c-cmt"># make_counter() has already returned...</span>
+<span class="c-fn">counter</span>()                 <span class="c-out">→ 1</span>
+<span class="c-fn">counter</span>()                 <span class="c-out">→ 2   ...but 'count' is still alive, held by the closure</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>THE COUNT VARIABLE, KEPT ALIVE IN A CELL</span>
+      <div>
+        <button class="btn secondary" id="clo-reset">New counter()</button>
+        <button class="btn" id="clo-call">counter()</button>
+      </div>
+    </div>
+    <div class="closure-diagram">
+      <div style="font-family:var(--mono); font-size:0.82rem; color:var(--ink-dim); text-align:center;">
+        make_counter()<br><span style="font-size:0.7rem;">frame returned &amp; gone</span>
+      </div>
+      <div style="font-size:1.4rem; color:var(--ink-dim);">⇢</div>
+      <div class="cell" id="clo-cell">
+        <span class="cell-lbl">cell: count</span>
+        <span class="cell-val" id="clo-val">0</span>
+      </div>
+      <div style="font-size:1.4rem; color:var(--ink-dim);">⇠ closure ⇢</div>
+      <div style="font-family:var(--mono); font-size:0.82rem; color:var(--enclosing); text-align:center; border:1.5px solid var(--enclosing); border-radius:8px; padding:0.7rem 1rem;">
+        increment()<br><span style="font-size:0.7rem; opacity:0.8;">the returned function</span>
+      </div>
+    </div>
+    <div class="log" id="clo-log"><span class="line">Press <b>counter()</b> to call the closure and watch the cell update.</span></div>
+  </div>
+
+  <h3>The classic loop trap (late binding)</h3>
+  <p>Closures capture the <strong>variable</strong>, not a frozen snapshot of its value at creation time. If that variable keeps changing (like a loop counter), every closure you made in that loop sees whatever the variable's value is <em>by the time they're called</em> — usually its final value.</p>
+
+  <div class="code">
+funcs = []
+<span class="c-kw">for</span> i <span class="c-kw">in</span> range(3):
+    funcs.append(<span class="c-kw">lambda</span>: i)
+
+[f() <span class="c-kw">for</span> f <span class="c-kw">in</span> funcs]        <span class="c-out">→ [2, 2, 2]   all three share the SAME i</span>
+
+<span class="c-cmt"># fix: force capture by value using a default argument</span>
+funcs2 = []
+<span class="c-kw">for</span> i <span class="c-kw">in</span> range(3):
+    funcs2.append(<span class="c-kw">lambda</span> i=i: i)   <span class="c-cmt"># i=i binds NOW, as a local default</span>
+
+[f() <span class="c-kw">for</span> f <span class="c-kw">in</span> funcs2]       <span class="c-out">→ [0, 1, 2]</span>
+  </div>
+</section>
+
+<!-- ================= SECTION 5: nonlocal/global ================= -->
+<section id="nonlocal">
+  <div class="kicker">05 — Rebinding across scopes</div>
+  <h2><code class="inline" style="font-size:1em;">nonlocal</code> vs <code class="inline" style="font-size:1em;">global</code></h2>
+  <p>By default, <strong>assigning</strong> to a name inside a function always creates a new local variable — Python never silently reaches outward to modify an existing one. <code class="inline">global</code> and <code class="inline">nonlocal</code> are explicit opt-ins that say "don't create a local — rebind the one that already exists out there."</p>
+
+  <table class="cmp">
+    <tr><th>Keyword</th><th>Targets</th><th>Requires the name to already exist?</th></tr>
+    <tr><td><code>global x</code></td><td>The module's global namespace, no matter how deeply nested the function is.</td><td>No — creates it in globals if missing.</td></tr>
+    <tr><td><code>nonlocal x</code></td><td>The <strong>nearest enclosing function scope</strong> (skips straight past global).</td><td>Yes — raises <code>SyntaxError</code> at compile time if no enclosing scope defines it.</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title"><span>TOGGLE THE KEYWORD, SEE THE OUTCOME</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="none">no keyword</button>
+      <button class="chip" data-mode="nonlocal">nonlocal count</button>
+      <button class="chip" data-mode="global">global count</button>
+    </div>
+    <div class="code" id="nl-code">
+<span class="c-cmt">count = 100   # global</span>
+
+<span class="c-kw">def</span> <span class="c-fn">outer</span>():
+    count = 10          <span class="c-cmt"># enclosing</span>
+    <span class="c-kw">def</span> <span class="c-fn">inner</span>():
+        <span id="nl-keyword-line" style="color:var(--ink-dim);">&nbsp;&nbsp;&nbsp;&nbsp;# (no keyword)</span>
+        count = count + 1
+    <span class="c-fn">inner</span>()
+    <span class="c-kw">print</span>(<span class="c-str">"outer's count:"</span>, count)
+
+<span class="c-fn">outer</span>()
+<span class="c-kw">print</span>(<span class="c-str">"global count:"</span>, count)
+    </div>
+    <div class="log" id="nl-log"></div>
+  </div>
+</section>
+
+<!-- ================= SECTION 6: ARGS KWARGS ================= -->
+<section id="argskwargs">
+  <div class="kicker">06 — Flexible function signatures</div>
+  <h2><code class="inline" style="font-size:1em;">*args</code> and <code class="inline" style="font-size:1em;">**kwargs</code></h2>
+  <p>The <code class="inline">*</code> and <code class="inline">**</code> operators do two opposite jobs depending on which side of a function call they appear on.</p>
+
+  <table class="cmp">
+    <tr><th></th><th>In a function <em>definition</em> (packing)</th><th>In a function <em>call</em> (unpacking)</th></tr>
+    <tr><td><code>*</code></td><td>Gathers extra positional args into a <code>tuple</code> named <code>args</code>.</td><td>Spreads an iterable out into separate positional arguments.</td></tr>
+    <tr><td><code>**</code></td><td>Gathers extra keyword args into a <code>dict</code> named <code>kwargs</code>.</td><td>Spreads a dict out into separate keyword arguments.</td></tr>
+  </table>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">describe</span>(*args, **kwargs):
+    <span class="c-kw">print</span>(<span class="c-str">"args:"</span>, args)
+    <span class="c-kw">print</span>(<span class="c-str">"kwargs:"</span>, kwargs)
+
+<span class="c-fn">describe</span>(<span class="c-num">1</span>, <span class="c-num">2</span>, name=<span class="c-str">"Rex"</span>, breed=<span class="c-str">"Lab"</span>)
+<span class="c-out">args:   (1, 2)
+kwargs: {'name': 'Rex', 'breed': 'Lab'}</span>
+
+<span class="c-cmt"># --- unpacking on the CALL side ---</span>
+nums = [<span class="c-num">4</span>, <span class="c-num">5</span>, <span class="c-num">6</span>]
+info = {<span class="c-str">"name"</span>: <span class="c-str">"Milo"</span>, <span class="c-str">"breed"</span>: <span class="c-str">"Pug"</span>}
+<span class="c-fn">describe</span>(*nums, **info)     <span class="c-cmt"># same call as describe(4, 5, 6, name="Milo", breed="Pug")</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>PACK IT OR SPREAD IT — TRY BOTH</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-ak="pack">Packing (in a def)</button>
+      <button class="chip" data-ak="unpack">Unpacking (in a call)</button>
+    </div>
+    <div id="ak-pack-view">
+      <p style="font-size:0.85rem; margin-top:0;">Call: <code class="inline">describe(1, 2, name="Rex", breed="Lab")</code></p>
+      <div class="diagram" style="min-height:100px;">
+        <div style="font-family:var(--mono); font-size:0.82rem;">1, 2, name="Rex", breed="Lab"</div>
+        <div style="font-size:1.3rem;">➜</div>
+        <div class="obj-box obj-mutable"><span class="addr">args (tuple)</span><span class="val">(1, 2)</span></div>
+        <div class="obj-box obj-mutable"><span class="addr">kwargs (dict)</span><span class="val">{'name': 'Rex', 'breed': 'Lab'}</span></div>
+      </div>
+    </div>
+    <div id="ak-unpack-view" style="display:none;">
+      <p style="font-size:0.85rem; margin-top:0;">Call: <code class="inline">describe(*nums, **info)</code></p>
+      <div class="diagram" style="min-height:100px;">
+        <div class="obj-box obj-mutable"><span class="addr">nums</span><span class="val">[4, 5, 6]</span></div>
+        <div class="obj-box obj-mutable"><span class="addr">info</span><span class="val">{'name':'Milo',...}</span></div>
+        <div style="font-size:1.3rem;">➜ spread ➜</div>
+        <div style="font-family:var(--mono); font-size:0.82rem;">describe(4, 5, 6, name="Milo", breed="Pug")</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Parameter ordering rule</h3>
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">f</span>(pos1, pos2, *args, kw_only1, kw_only2=<span class="c-kw">None</span>, **kwargs):
+    ...
+    <span class="c-cmt"># positional-or-keyword → *args → keyword-only → **kwargs</span>
+  </div>
+  <p>Anything listed <em>after</em> <code class="inline">*args</code> can only be passed by keyword — that's how Python defines "keyword-only" parameters.</p>
+</section>
+
+<!-- ================= PRACTICE ================= -->
+<section id="practice">
+  <div class="kicker">Now break it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Predict the output <em>before</em> you run each one mentally. Expand the solution only after you've committed to an answer.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Mutability</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+a = [1, 2, 3]
+b = a
+c = a[:]
+b.append(4)
+c.append(5)
+print(a, b, c)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">a = [1, 2, 3, 4]
+b = [1, 2, 3, 4]
+c = [1, 2, 3, 5]
+
+b is the same object as a (append mutates it in place, visible through both names).
+c = a[:] makes a shallow COPY — a new list object — so mutating c never touches a or b.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Default arguments</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def tag(label, seen=[]):
+    seen.append(label)
+    return seen
+
+print(tag("a"))
+print(tag("b"))
+print(tag("c", []))
+print(tag("d"))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">['a']
+['a', 'b']
+['c']
+['a', 'b', 'd']
+
+The default list is created once at def time and reused across every call that
+doesn't pass its own list. Passing an explicit [] for "c" bypasses the shared
+default for that one call only — the shared list is untouched by that call, so
+the next call without an argument ("d") still appends to the original shared list.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · LEGB / UnboundLocalError</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+x = 10
+
+def f():
+    print(x)
+    x = 20
+
+f()
+    </div>
+    <details><summary>Show solution</summary><div class="solution">UnboundLocalError: local variable 'x' referenced before assignment
+
+Because x is assigned somewhere inside f() (x = 20), Python marks x as local
+for the WHOLE function body at compile time — including the print(x) line
+before the assignment. It never falls back to the global x.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Closures + late binding</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def make_multipliers():
+    return [lambda x: x * i for i in range(1, 4)]
+
+fns = make_multipliers()
+print([f(10) for f in fns])
+    </div>
+    <details><summary>Show solution</summary><div class="solution">[30, 30, 30]
+
+All three lambdas close over the SAME variable i. By the time any of them are
+called, the list comprehension has finished and i's final value is 3, so every
+call computes 10 * 3. Fix with a default argument: lambda x, i=i: x * i</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · nonlocal</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def outer():
+    total = 0
+    def add(n):
+        total += n   # no nonlocal!
+        return total
+    return add
+
+adder = outer()
+print(adder(5))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">UnboundLocalError: local variable 'total' referenced before assignment
+
+total += n is shorthand for total = total + n, which is an assignment — so
+Python treats total as local to add(), and the read on the right-hand side
+happens before any local total exists. Fix by adding `nonlocal total` as the
+first line of add().</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · *args / **kwargs forwarding</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def logged(fn):
+    def wrapper(*args, **kwargs):
+        print(f"calling with {args}, {kwargs}")
+        return fn(*args, **kwargs)
+    return wrapper
+
+@logged
+def greet(name, greeting="Hi"):
+    return f"{greeting}, {name}!"
+
+print(greet("Ada", greeting="Hello"))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">calling with ('Ada',), {'greeting': 'Hello'}
+Hello, Ada!
+
+wrapper packs whatever it's called with into args/kwargs, logs them, then
+UNPACKS them again with fn(*args, **kwargs) to forward the exact same call
+through to greet(). This pack-then-unpack pattern is how most decorators
+stay compatible with any wrapped function's signature.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 7 · Mutable default meets closures (combo)</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def make_appender(bucket=[]):
+    def appender(x):
+        bucket.append(x)
+        return bucket
+    return appender
+
+f1 = make_appender()
+f2 = make_appender()
+f1(1)
+f2(2)
+f1(3)
+print(f1(99) is f2(99))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">True
+
+f1 and f2 both close over the SAME default bucket list (created once at
+make_appender's definition time), so every call from either function appends
+to one shared list — f1(99) and f2(99) return the identical list object.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain, out loud and without looking back, (1) why <code class="inline">def f(x=[])</code> is dangerous, (2) what makes a closure different from a normal function, and (3) when Python requires <code class="inline">nonlocal</code> versus <code class="inline">global</code>? If any of the three feels shaky, re-run that section's diagram.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — build your own memory model, then trust it.</footer>
+
+<script>
+/* ============ NAV: smooth-scroll without href navigation ============ */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', (e)=>{
+      e.preventDefault();
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* ============ SECTION 1: MUTABILITY DIAGRAM ============ */
+(function(){
+  const namesEl = document.getElementById('mut-names');
+  const objsEl = document.getElementById('mut-objs');
+  const wiresEl = document.getElementById('mut-wires');
+  const logEl = document.getElementById('mut-log');
+  const stepBtn = document.getElementById('mut-step');
+  const resetBtn = document.getElementById('mut-reset');
+
+  const steps = [
+    {log:"x = 5  →  creates int object 5, binds name x to it.",
+     do(state){ state.names.x = {obj:'5'}; state.objs['5'] = {type:'immutable', val:'5', addr:'0x9a10'}; }},
+    {log:"y = x  →  y points to the SAME object as x. No copy happens.",
+     do(state){ state.names.y = {obj:'5'}; }},
+    {log:"y = 6  →  rebinds y to a NEW int object. x is untouched.",
+     do(state){ state.names.y = {obj:'6'}; state.objs['6'] = {type:'immutable', val:'6', addr:'0x9a44'}; }},
+    {log:"a = [1, 2]  →  creates a list object, binds a to it.",
+     do(state){ state.names.a = {obj:'L1'}; state.objs['L1'] = {type:'mutable', val:'[1, 2]', addr:'0x7f3a'}; }},
+    {log:"b = a  →  b points to the SAME list object as a.",
+     do(state){ state.names.b = {obj:'L1'}; }},
+    {log:"b.append(3)  →  mutates the list IN PLACE. a sees the change too — same object!",
+     do(state){ state.objs['L1'].val = '[1, 2, 3]'; state.objs['L1'].flash = true; }},
+  ];
+  let idx = 0;
+  let state;
+
+  function freshState(){ return {names:{}, objs:{}}; }
+
+  function render(){
+    namesEl.innerHTML = '';
+    objsEl.innerHTML = '';
+    wiresEl.innerHTML = '';
+    const objOrder = Object.keys(state.objs);
+    const nameOrder = Object.keys(state.names);
+
+    nameOrder.forEach((n)=>{
+      const div = document.createElement('div');
+      div.className = 'name-box fadein';
+      div.textContent = n;
+      namesEl.appendChild(div);
+    });
+    objOrder.forEach((k)=>{
+      const o = state.objs[k];
+      const div = document.createElement('div');
+      div.className = 'obj-box fadein ' + (o.type==='mutable' ? 'obj-mutable' : 'obj-immutable');
+      if(o.flash){ div.classList.add('flash'); o.flash=false; }
+      div.innerHTML = `<span class="addr">${o.addr}</span><span class="val">${o.val}</span>`;
+      objsEl.appendChild(div);
+    });
+
+    // draw simple connecting lines (visual only, approximate)
+    setTimeout(()=>{
+      const namesRect = namesEl.getBoundingClientRect();
+      const objsRect = objsEl.getBoundingClientRect();
+      const svgRect = wiresEl.getBoundingClientRect();
+      wiresEl.setAttribute('width', Math.max(60, objsRect.left - namesRect.right));
+      let svgHTML = '';
+      nameOrder.forEach((n, i)=>{
+        const nameBoxes = namesEl.children;
+        const objBoxes = objsEl.children;
+        const nb = nameBoxes[i];
+        const targetKey = state.names[n].obj;
+        const objIdx = objOrder.indexOf(targetKey);
+        if(!nb || objIdx<0) return;
+        const ob = objBoxes[objIdx];
+        const nbR = nb.getBoundingClientRect();
+        const obR = ob.getBoundingClientRect();
+        const y1 = nbR.top + nbR.height/2 - svgRect.top;
+        const y2 = obR.top + obR.height/2 - svgRect.top;
+        svgHTML += `<path class="active" d="M0,${y1} C${wiresEl.clientWidth/2},${y1} ${wiresEl.clientWidth/2},${y2} ${wiresEl.clientWidth},${y2}"/>`;
+      });
+      wiresEl.innerHTML = svgHTML;
+    }, 30);
+  }
+
+  function reset(){
+    idx = 0; state = freshState();
+    render();
+    logEl.innerHTML = '<span class="line">Click <b>Run next line ▸</b> to step through the code above.</span>';
+    stepBtn.disabled = false;
+  }
+
+  stepBtn.addEventListener('click', ()=>{
+    if(idx >= steps.length){ return; }
+    steps[idx].do(state);
+    render();
+    const p = document.createElement('div');
+    p.className = 'line fadein';
+    p.innerHTML = '<b>Line ' + (idx+1) + ':</b> ' + steps[idx].log;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+    idx++;
+    if(idx >= steps.length){ stepBtn.disabled = true; stepBtn.textContent = 'Done ✓'; }
+  });
+  resetBtn.addEventListener('click', ()=>{ stepBtn.textContent = 'Run next line ▸'; reset(); });
+  reset();
+})();
+
+/* ============ SECTION 2: DEFAULT ARG TRAP ============ */
+(function(){
+  const valEl = document.getElementById('def-obj-val');
+  const boxEl = document.getElementById('def-obj');
+  const logEl = document.getElementById('def-log');
+  const btn = document.getElementById('def-call');
+  const items = ['apple','banana','cherry','date','elderberry','fig'];
+  let calls = 0;
+  let contents = [];
+
+  btn.addEventListener('click', ()=>{
+    const item = items[calls % items.length];
+    contents.push(item);
+    calls++;
+    valEl.textContent = '[' + contents.map(c=>`'${c}'`).join(', ') + ']';
+    boxEl.classList.remove('flash'); void boxEl.offsetWidth; boxEl.classList.add('flash');
+    const p = document.createElement('div');
+    p.className = 'line fadein';
+    p.innerHTML = `<b>Call ${calls}:</b> add_item("${item}") → basket is still the same object, now ${valEl.textContent}`;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  });
+})();
+
+/* ============ SECTION 3: LEGB ============ */
+(function(){
+  const chipsEl = document.getElementById('legb-chips');
+  const logEl = document.getElementById('legb-log');
+  const names = [
+    {name:'z', found:'L', note:'defined inside inner() itself'},
+    {name:'y', found:'E', note:'not in Local, found in the enclosing outer()'},
+    {name:'x', found:'G', note:'not in Local or Enclosing, found at module level'},
+    {name:'len', found:'B', note:'not defined anywhere in this program — falls all the way to builtins'},
+    {name:'print', found:'G', note:'this program reassigned print at global scope, so Python finds THAT first, before ever reaching the real builtin print'},
+  ];
+
+  names.forEach(n=>{
+    const c = document.createElement('button');
+    c.className = 'chip';
+    c.textContent = 'lookup("' + n.name + '")';
+    c.addEventListener('click', ()=> runLookup(n));
+    chipsEl.appendChild(c);
+  });
+
+  const order = ['L','E','G','B'];
+
+  function runLookup(target){
+    document.querySelectorAll('.legb-var').forEach(v=>{v.classList.remove('hit','dim');});
+    document.querySelectorAll('.legb-ring').forEach(r=>{r.style.opacity=1; r.style.transform='scale(1)';});
+    logEl.innerHTML = '';
+    let i = 0;
+    function step(){
+      if(i >= order.length) return;
+      const scope = order[i];
+      const ring = document.querySelector(`.legb-ring[data-scope="${scope}"]`);
+      const vars = ring.querySelectorAll('.legb-var');
+      const p = document.createElement('div');
+      p.className = 'line fadein';
+      if(scope === target.found){
+        vars.forEach(v=>{ if(v.dataset.name===target.name){ v.classList.add('hit'); } else { v.classList.add('dim'); } });
+        ring.style.transform = 'scale(1.015)';
+        p.innerHTML = `<b>${scopeName(scope)}:</b> found '${target.name}' here ✓ — search stops. ${target.note}.`;
+        logEl.appendChild(p);
+      } else {
+        vars.forEach(v=>v.classList.add('dim'));
+        p.innerHTML = `<b>${scopeName(scope)}:</b> '${target.name}' not here — keep searching outward…`;
+        logEl.appendChild(p);
+        i++;
+        setTimeout(step, 550);
+      }
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    step();
+  }
+  function scopeName(s){
+    return {L:'Local', E:'Enclosing', G:'Global', B:'Built-in'}[s];
+  }
+})();
+
+/* ============ SECTION 4: CLOSURES ============ */
+(function(){
+  const valEl = document.getElementById('clo-val');
+  const cellEl = document.getElementById('clo-cell');
+  const logEl = document.getElementById('clo-log');
+  const callBtn = document.getElementById('clo-call');
+  const resetBtn = document.getElementById('clo-reset');
+  let count = 0;
+
+  callBtn.addEventListener('click', ()=>{
+    count++;
+    valEl.textContent = count;
+    cellEl.classList.remove('flash'); void cellEl.offsetWidth; cellEl.classList.add('flash');
+    const p = document.createElement('div');
+    p.className = 'line fadein';
+    p.innerHTML = `<b>counter()</b> → nonlocal count updates the cell in place → returns <b>${count}</b>`;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  });
+  resetBtn.addEventListener('click', ()=>{
+    count = 0;
+    valEl.textContent = 0;
+    logEl.innerHTML = '<span class="line fadein">New closure created — fresh cell, count = 0.</span>';
+  });
+})();
+
+/* ============ SECTION 5: nonlocal/global ============ */
+(function(){
+  const chips = document.querySelectorAll('#nonlocal .chip');
+  const kwLine = document.getElementById('nl-keyword-line');
+  const logEl = document.getElementById('nl-log');
+
+  const outcomes = {
+    none: {
+      kw: '&nbsp;&nbsp;&nbsp;&nbsp;# (no keyword)',
+      log: `<span class="line fadein">count = count + 1 inside inner() creates a NEW local 'count'.</span>
+            <span class="line fadein">Reading count on the right-hand side before that local exists →</span>
+            <span class="line fadein" style="color:var(--mutable);"><b>UnboundLocalError: local variable 'count' referenced before assignment</b></span>`
+    },
+    nonlocal: {
+      kw: '&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-kw">nonlocal</span> count',
+      log: `<span class="line fadein">nonlocal tells Python: reuse outer()'s count, don't make a local one.</span>
+            <span class="line fadein">inner() bumps it from 10 → 11.</span>
+            <span class="line fadein"><b>Output:</b> outer's count: 11</span>
+            <span class="line fadein"><b>Output:</b> global count: 100  <span style="color:var(--ink-dim);">(global untouched)</span></span>`
+    },
+    global: {
+      kw: '&nbsp;&nbsp;&nbsp;&nbsp;<span class="c-kw">global</span> count',
+      log: `<span class="line fadein">global skips PAST the enclosing scope entirely and targets the module-level count.</span>
+            <span class="line fadein">inner() bumps the global from 100 → 101. Enclosing count (10) is untouched.</span>
+            <span class="line fadein"><b>Output:</b> outer's count: 10  <span style="color:var(--ink-dim);">(enclosing untouched)</span></span>
+            <span class="line fadein"><b>Output:</b> global count: 101</span>`
+    }
+  };
+
+  function apply(mode){
+    chips.forEach(c=>c.classList.toggle('active', c.dataset.mode===mode));
+    kwLine.innerHTML = outcomes[mode].kw;
+    logEl.innerHTML = outcomes[mode].log;
+  }
+  chips.forEach(c=>c.addEventListener('click', ()=>apply(c.dataset.mode)));
+  apply('none');
+})();
+
+/* ============ SECTION 6: ARGS/KWARGS TOGGLE ============ */
+(function(){
+  const chips = document.querySelectorAll('#argskwargs .chip');
+  const packView = document.getElementById('ak-pack-view');
+  const unpackView = document.getElementById('ak-unpack-view');
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.ak==='pack'){ packView.style.display=''; unpackView.style.display='none'; }
+      else{ packView.style.display='none'; unpackView.style.display=''; }
+    });
+  });
+})();
+</script>
+</body>
+</html>
