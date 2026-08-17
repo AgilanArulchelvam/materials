@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Relational Tables &amp; Keys</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --pk-c:#f2c14e; --fk-c:#6ea8fe; --row-c:#7fd8a0; --join-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:17ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .grid-hero{margin-top:2.8rem; display:inline-grid; grid-template-columns:repeat(3, auto); gap:2px; font-family:var(--mono); font-size:0.75rem; border:1.5px solid var(--rule); border-radius:10px; overflow:hidden;}
+  .grid-hero .gh{padding:0.6rem 1rem; background:var(--panel-2); color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.05em; font-size:0.65rem;}
+  .grid-hero .gc{padding:0.6rem 1rem; background:var(--panel);}
+  .grid-hero .pk{color:var(--pk-c);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--bad-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flashbad{animation:flashbad .6s ease;}
+  @keyframes flashbad{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,107,107,0.35);} 100%{box-shadow:none;}}
+  .flashgood{animation:flashgood .6s ease;}
+  @keyframes flashgood{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(127,216,160,0.35);} 100%{box-shadow:none;}}
+
+  /* db table visualization */
+  .db-table{border:1.5px solid var(--rule); border-radius:10px; overflow:hidden; margin:1rem 0;}
+  .db-table .tname{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; background:var(--panel-2); padding:0.5rem 0.9rem; color:var(--ink-dim); border-bottom:1px solid var(--rule);}
+  .db-table table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.8rem;}
+  .db-table th{background:var(--panel-2); padding:0.5rem 0.8rem; text-align:left; border-bottom:1.5px solid var(--rule); font-weight:600; color:var(--ink-dim); font-size:0.72rem; text-transform:uppercase;}
+  .db-table th.pk-col{color:var(--pk-c);}
+  .db-table th.fk-col{color:var(--fk-c);}
+  .db-table td{padding:0.45rem 0.8rem; border-bottom:1px solid var(--rule); color:#cdd0d8; transition:all .3s;}
+  .db-table tr:last-child td{border-bottom:none;}
+  .db-table td.pk-cell{color:var(--pk-c); font-weight:600;}
+  .db-table td.fk-cell{color:var(--fk-c);}
+  .db-table tr.new-row{animation:rowin .4s ease;}
+  @keyframes rowin{from{opacity:0; background:rgba(127,216,160,0.15);} to{opacity:1; background:transparent;}}
+  .db-table tr.rejected{animation:rowreject .6s ease forwards;}
+  @keyframes rowreject{0%{background:rgba(255,107,107,0.25);} 100%{background:rgba(255,107,107,0);opacity:0.4;}}
+  .db-table tr.highlight td{background:rgba(199,146,234,0.12);}
+
+  .input-row{display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;}
+  .input-row input{font-family:var(--mono); font-size:0.8rem; background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); border-radius:6px; padding:0.4rem 0.7rem; width:110px;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  /* relationship diagram */
+  .rel-diagram{display:flex; align-items:center; justify-content:center; gap:2.5rem; flex-wrap:wrap; padding:1.5rem 0; position:relative;}
+  .rel-entity{border:1.5px solid var(--row-c); border-radius:10px; padding:0.8rem 1.2rem; font-family:var(--mono); font-size:0.82rem; color:var(--row-c); background:rgba(127,216,160,0.06); text-align:center;}
+  .rel-entity.join{border-color:var(--join-c); color:var(--join-c); background:rgba(199,146,234,0.06);}
+  .rel-lines{font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim); text-align:center;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.pk{border-left-color:var(--pk-c); background:rgba(242,193,78,0.06);} .callout.pk b{color:var(--pk-c);}
+  .callout.fk{border-left-color:var(--fk-c); background:rgba(110,168,254,0.06);} .callout.fk b{color:var(--fk-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · TABLES, KEYS &amp; RELATIONSHIPS</div>
+  <h1>A relational database is just <em>a set of grids</em> that agree on how to reference each other.</h1>
+  <p class="lede">Every relational concept — schema, primary key, foreign key, one-to-many, many-to-many — exists to answer one question: how do you keep data spread across multiple tables consistent and connected? This lab builds that up piece by piece with tables you can actually insert bad data into and watch get rejected.</p>
+
+  <div class="grid-hero">
+    <div class="gh">id (PK)</div><div class="gh">title</div><div class="gh">author_id (FK)</div>
+    <div class="gc pk">1</div><div class="gc">Dune</div><div class="gc">7</div>
+    <div class="gc pk">2</div><div class="gc">Emma</div><div class="gc">3</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="table">1 · Tables, Rows, Columns, Schema</a>
+  <a data-target="pk">2 · Primary Key</a>
+  <a data-target="fk">3 · Foreign Key</a>
+  <a data-target="relationships">4 · One-to-Many vs Many-to-Many</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TABLE ============ -->
+<section id="table">
+  <div class="kicker">01 — The basic unit</div>
+  <h2>What a relational table is: rows, columns, schema</h2>
+  <p>A relational table is a grid. Each <strong>column</strong> is a named, typed field that every row shares — the <strong>schema</strong> is that fixed set of columns and types, decided up front. Each <strong>row</strong> is one record — one concrete instance of that schema, filled in with actual values.</p>
+
+  <div class="code">
+<span class="c-kw">CREATE TABLE</span> books (
+    id          <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    title       <span class="c-fn">TEXT</span> <span class="c-kw">NOT NULL</span>,
+    author_id   <span class="c-fn">INTEGER</span>,
+    published   <span class="c-fn">INTEGER</span>
+);
+<span class="c-cmt">-- this CREATE TABLE statement IS the schema: 4 columns, each with a fixed type</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>BUILD A TABLE FROM ITS SCHEMA</span><button class="btn" id="tbl-add">Insert next row ▸</button></div>
+    <div class="db-table">
+      <div class="tname">books — schema: id (INTEGER), title (TEXT), author_id (INTEGER), published (INTEGER)</div>
+      <table>
+        <thead><tr><th>id</th><th>title</th><th>author_id</th><th>published</th></tr></thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+    <div class="log" id="tbl-log"><span class="line">The schema (column names + types) is fixed. Every row you insert must match that shape — same columns, compatible types.</span></div>
+  </div>
+
+  <div class="callout"><b>Schema vs. data:</b> the schema changes rarely and deliberately (a migration). The rows — the actual data — change constantly as the application runs. Keeping that distinction clear is most of what "database design" means.</div>
+</section>
+
+<!-- ============ SECTION 2: PRIMARY KEY ============ -->
+<section id="pk">
+  <div class="kicker">02 — Every row needs an address</div>
+  <h2>Primary key: uniqueness, why every table needs one</h2>
+  <p>A <strong>primary key</strong> is one column (or a small combination of columns) guaranteed to be <strong>unique</strong> across every row in the table — no two rows can ever share the same value. It's how you unambiguously point at "this exact row" from anywhere else, including from other tables.</p>
+  <p>Without a primary key, "update the book called Dune" is ambiguous the moment two books happen to share a title. With a primary key, "update the book with id=1" can never be ambiguous — that's the entire point.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY INSERTING A DUPLICATE PRIMARY KEY</span></div>
+    <div class="db-table">
+      <div class="tname">books — id is PRIMARY KEY</div>
+      <table>
+        <thead><tr><th class="pk-col">id (PK)</th><th>title</th></tr></thead>
+        <tbody id="pk-body">
+          <tr><td class="pk-cell">1</td><td>Dune</td></tr>
+          <tr><td class="pk-cell">2</td><td>Emma</td></tr>
+          <tr><td class="pk-cell">3</td><td>1984</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="input-row">
+      <input type="number" id="pk-input-id" placeholder="id" value="2">
+      <input type="text" id="pk-input-title" placeholder="title" value="New Book">
+      <button class="btn" id="pk-insert">INSERT this row</button>
+    </div>
+    <div class="log" id="pk-log"><span class="line">Try id=2 (already used) vs. a fresh id like 4.</span></div>
+  </div>
+
+  <div class="callout pk"><b>Common choice — surrogate keys:</b> instead of relying on a "natural" unique value (which can turn out not to be unique — two people really can share a name), most schemas use a meaningless auto-incrementing integer or UUID as the primary key, generated by the database itself. It has no business meaning; its only job is to be a stable, permanent, unique address for the row.</div>
+</section>
+
+<!-- ============ SECTION 3: FOREIGN KEY ============ -->
+<section id="fk">
+  <div class="kicker">03 — Pointing at another table's primary key</div>
+  <h2>Foreign key: referential integrity between tables</h2>
+  <p>A <strong>foreign key</strong> is a column in one table that holds the primary key value of a row in another table — it's a pointer between tables. <strong>Referential integrity</strong> is the guarantee the database enforces: a foreign key value must either be <code class="inline">NULL</code> or match an <em>actual, existing</em> primary key in the referenced table. It can never point at nothing.</p>
+
+  <div class="code">
+<span class="c-kw">CREATE TABLE</span> books (
+    id          <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    title       <span class="c-fn">TEXT</span>,
+    author_id   <span class="c-fn">INTEGER</span>,
+    <span class="c-kw">FOREIGN KEY</span> (author_id) <span class="c-kw">REFERENCES</span> authors(id)
+);
+<span class="c-cmt">-- author_id in "books" must match an id that actually exists in "authors"</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>REFERENTIAL INTEGRITY IN ACTION</span></div>
+    <div class="db-table">
+      <div class="tname">authors — id is PRIMARY KEY</div>
+      <table>
+        <thead><tr><th class="pk-col">id (PK)</th><th>name</th></tr></thead>
+        <tbody id="fk-authors">
+          <tr id="author-row-1"><td class="pk-cell">1</td><td>Frank Herbert</td></tr>
+          <tr id="author-row-2"><td class="pk-cell">2</td><td>Jane Austen</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="db-table">
+      <div class="tname">books — author_id is FOREIGN KEY → authors(id)</div>
+      <table>
+        <thead><tr><th class="pk-col">id (PK)</th><th>title</th><th class="fk-col">author_id (FK)</th></tr></thead>
+        <tbody id="fk-books">
+          <tr><td class="pk-cell">1</td><td>Dune</td><td class="fk-cell">1</td></tr>
+          <tr><td class="pk-cell">2</td><td>Emma</td><td class="fk-cell">2</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="input-row">
+      <input type="number" id="fk-input-authorid" placeholder="author_id" value="2">
+      <button class="btn" id="fk-insert">INSERT book with this author_id</button>
+      <button class="btn danger" id="fk-delete-author">DELETE authors row id=1</button>
+    </div>
+    <div class="log" id="fk-log"><span class="line">Try author_id=2 (exists) vs. author_id=99 (doesn't exist). Then try deleting an author who still has books.</span></div>
+  </div>
+
+  <div class="callout fk"><b>What the database refuses, on your behalf:</b> without this constraint, nothing stops a typo or a bug from inserting <code class="inline">author_id = 99</code> when no author 99 exists — you'd have a "book" pointing at nothing, discovered only later when some query tries to join it and gets silence. Referential integrity turns that into an immediate, loud error at insert time instead of a silent data-quality bug discovered months later.</div>
+</section>
+
+<!-- ============ SECTION 4: RELATIONSHIPS ============ -->
+<section id="relationships">
+  <div class="kicker">04 — How tables connect</div>
+  <h2>One-to-many vs. many-to-many, and join tables</h2>
+
+  <table class="cmp">
+    <tr><th>Relationship</th><th>Meaning</th><th>How it's modeled</th></tr>
+    <tr><td>One-to-many</td><td>One row in table A relates to many rows in table B, but each row in B relates to only one row in A.</td><td>A single foreign key column on the "many" side (table B).</td></tr>
+    <tr><td>Many-to-many</td><td>Many rows in A can relate to many rows in B, in any combination.</td><td>A separate <strong>join table</strong> with two foreign keys, one to each side.</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title"><span>TOGGLE THE RELATIONSHIP SHAPE</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-rel="one-many">One-to-many: author → books</button>
+      <button class="chip" data-rel="many-many">Many-to-many: students ↔ courses</button>
+    </div>
+    <div id="rel-view"></div>
+    <div class="log" id="rel-log"></div>
+  </div>
+
+  <h3>Why many-to-many needs a join table</h3>
+  <p>A single foreign key column can only point at <em>one</em> row. If a student can be in many courses, and a course can have many students, neither table can hold a plain foreign key to the other — there's nowhere to put "student 3 is in courses 1, 2, and 5" as a single column value. The fix is a third table where <strong>each row represents one connection</strong>:</p>
+
+  <div class="code">
+<span class="c-kw">CREATE TABLE</span> enrollments (        <span class="c-cmt">-- the join table</span>
+    student_id  <span class="c-fn">INTEGER</span>,
+    course_id   <span class="c-fn">INTEGER</span>,
+    <span class="c-kw">PRIMARY KEY</span> (student_id, course_id),   <span class="c-cmt">-- composite key: this PAIR must be unique</span>
+    <span class="c-kw">FOREIGN KEY</span> (student_id) <span class="c-kw">REFERENCES</span> students(id),
+    <span class="c-kw">FOREIGN KEY</span> (course_id)  <span class="c-kw">REFERENCES</span> courses(id)
+);
+<span class="c-cmt">-- one row per (student, course) pairing — a student in 3 courses = 3 rows here</span>
+  </div>
+  <p>The join table's primary key is usually the <em>combination</em> of both foreign keys — a "composite key" — which naturally prevents the same student from being enrolled in the same course twice, while still allowing any student/course combination overall.</p>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Schema vs data</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A <code class="inline">users</code> table has columns <code class="inline">id, email, created_at</code>. Someone signs up. Is that event a schema change or a data change? What about adding a new <code class="inline">phone_number</code> column later?</p>
+    <details><summary>Show solution</summary><div class="solution">Someone signing up = a data change (a new ROW is inserted; the columns
+stay the same). Adding a phone_number column = a schema change (a
+migration) — the shape every row must conform to has changed, and existing
+rows now need a value (or NULL) in that new column.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing a primary key</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A table of employees has columns: ssn, email, full_name, employee_number (auto-incrementing, assigned by the company). Which would you use as the primary key, and why not the others?</p>
+    <details><summary>Show solution</summary><div class="solution">employee_number is the best choice — it's a surrogate key, generated
+purely to be unique, with no external meaning to change or collide.
+
+full_name: not guaranteed unique (two employees can share a name).
+email: usually unique in practice, but can change (someone gets married,
+company rebrands domains) — primary keys should ideally never need to
+change, since other tables may reference them.
+ssn: technically unique, but it's sensitive personal data — using it as a
+key means it ends up copied into every table that references this one,
+which is a privacy/security liability best avoided.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Foreign key violation</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+-- authors table has rows with id = 1, 2, 3
+INSERT INTO books (id, title, author_id) VALUES (10, 'Ghost Story', 7);
+    </div>
+    <details><summary>Show solution</summary><div class="solution">This INSERT fails with a foreign key constraint violation.
+
+author_id = 7 doesn't exist in the authors table (only 1, 2, 3 do), so the
+foreign key constraint (books.author_id REFERENCES authors.id) rejects the
+insert — referential integrity means a foreign key can't point at a row
+that doesn't exist.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Identify the relationship</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">For each pair, is it one-to-many or many-to-many? (a) A blog post and its comments. (b) Products and the tags applied to them (a product can have several tags; a tag can apply to many products). (c) A country and its capital city.</p>
+    <details><summary>Show solution</summary><div class="solution">(a) One-to-many: one post has many comments, each comment belongs to
+exactly one post. Modeled with a post_id foreign key on the comments table.
+
+(b) Many-to-many: a product can have many tags AND a tag can apply to many
+products. Needs a join table, e.g. product_tags(product_id, tag_id).
+
+(c) One-to-one (a special, tighter case of one-to-many where each side is
+capped at exactly one): one country has exactly one capital, and that city
+is the capital of exactly one country. Often modeled as a foreign key with
+a UNIQUE constraint on top of it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Design a join table</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Design the table(s) for: actors can appear in many movies, and movies have many actors. Write the CREATE TABLE statements (columns only, types can be simplified).</p>
+    <details><summary>Show solution</summary><div class="solution">CREATE TABLE actors (
+    id    INTEGER PRIMARY KEY,
+    name  TEXT
+);
+
+CREATE TABLE movies (
+    id     INTEGER PRIMARY KEY,
+    title  TEXT
+);
+
+CREATE TABLE movie_actors (          -- join table
+    movie_id  INTEGER,
+    actor_id  INTEGER,
+    PRIMARY KEY (movie_id, actor_id),
+    FOREIGN KEY (movie_id) REFERENCES movies(id),
+    FOREIGN KEY (actor_id) REFERENCES actors(id)
+);
+-- one row per (movie, actor) appearance — a cast of 5 in one movie = 5 rows</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Reading a schema</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given: <code class="inline">orders(id PK, customer_id FK→customers.id, order_date)</code> and <code class="inline">order_items(id PK, order_id FK→orders.id, product_id FK→products.id, quantity)</code> — describe the relationship between customers and orders, and between orders and products.</p>
+    <details><summary>Show solution</summary><div class="solution">customers → orders: one-to-many. Each order has exactly one customer_id,
+but a customer can place many orders — a single foreign key on the "many"
+side (orders) is enough.
+
+orders ↔ products: many-to-many, modeled through order_items as the join
+table. One order can contain many products (many rows in order_items with
+the same order_id), and one product can appear in many different orders
+(many rows with the same product_id across different orders). order_items
+also carries its own extra data (quantity) — a common and useful pattern:
+the join table isn't just two foreign keys, it can hold facts ABOUT that
+specific pairing.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why every table needs a primary key even if nothing else is required, (2) what specifically referential integrity prevents, and (3) why a many-to-many relationship can't just be two foreign key columns without a join table? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — relational tables &amp; keys, database fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: SCHEMA BUILD */
+(function(){
+  const bodyEl = document.getElementById('tbl-body');
+  const btn = document.getElementById('tbl-add');
+  const logEl = document.getElementById('tbl-log');
+  const rows = [
+    {id:1, title:'Dune', author_id:7, published:1965},
+    {id:2, title:'Emma', author_id:3, published:1815},
+    {id:3, title:'1984', author_id:9, published:1949},
+  ];
+  let idx = 0;
+  btn.addEventListener('click', ()=>{
+    if(idx >= rows.length){ btn.disabled = true; btn.textContent='Table complete ✓'; return; }
+    const r = rows[idx];
+    const tr = document.createElement('tr');
+    tr.className = 'new-row';
+    tr.innerHTML = `<td>${r.id}</td><td>${r.title}</td><td>${r.author_id}</td><td>${r.published}</td>`;
+    bodyEl.appendChild(tr);
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>Row inserted:</b> (${r.id}, '${r.title}', ${r.author_id}, ${r.published}) — matches the schema's 4 columns and types exactly.`;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    idx++;
+    if(idx>=rows.length){ btn.disabled = true; btn.textContent='Table complete ✓'; }
+  });
+})();
+
+/* SECTION 2: PRIMARY KEY UNIQUENESS */
+(function(){
+  const bodyEl = document.getElementById('pk-body');
+  const idInput = document.getElementById('pk-input-id');
+  const titleInput = document.getElementById('pk-input-title');
+  const insertBtn = document.getElementById('pk-insert');
+  const logEl = document.getElementById('pk-log');
+
+  function existingIds(){
+    return Array.from(bodyEl.querySelectorAll('tr')).map(tr=>parseInt(tr.children[0].textContent,10));
+  }
+
+  insertBtn.addEventListener('click', ()=>{
+    const id = parseInt(idInput.value, 10);
+    const title = titleInput.value || '(untitled)';
+    const p = document.createElement('div'); p.className='line fadein';
+    if(isNaN(id)){
+      p.innerHTML = `<span class="err"><b>Error:</b> id must be a number.</span>`;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      return;
+    }
+    if(existingIds().includes(id)){
+      p.innerHTML = `<span class="err"><b>REJECTED:</b> id=${id} already exists. PRIMARY KEY constraint violated — every value in this column must be unique.</span>`;
+      const rows = bodyEl.querySelectorAll('tr');
+      rows.forEach(tr=>{
+        if(parseInt(tr.children[0].textContent,10)===id){
+          tr.classList.remove('flashbad'); void tr.offsetWidth; tr.classList.add('flashbad');
+        }
+      });
+    } else {
+      const tr = document.createElement('tr');
+      tr.className = 'new-row';
+      tr.innerHTML = `<td class="pk-cell">${id}</td><td>${title}</td>`;
+      bodyEl.appendChild(tr);
+      p.innerHTML = `<b>INSERTED:</b> id=${id} is unique — row added successfully.`;
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+})();
+
+/* SECTION 3: FOREIGN KEY / REFERENTIAL INTEGRITY */
+(function(){
+  const booksBody = document.getElementById('fk-books');
+  const authorIdInput = document.getElementById('fk-input-authorid');
+  const insertBtn = document.getElementById('fk-insert');
+  const deleteBtn = document.getElementById('fk-delete-author');
+  const logEl = document.getElementById('fk-log');
+  let nextBookId = 3;
+
+  function existingAuthorIds(){
+    return Array.from(document.querySelectorAll('#fk-authors tr')).map(tr=>parseInt(tr.children[0].textContent,10));
+  }
+  function booksReferencingAuthor(authorId){
+    return Array.from(booksBody.querySelectorAll('tr')).filter(tr=>parseInt(tr.children[2].textContent,10)===authorId);
+  }
+
+  insertBtn.addEventListener('click', ()=>{
+    const aid = parseInt(authorIdInput.value, 10);
+    const p = document.createElement('div'); p.className='line fadein';
+    if(isNaN(aid)){
+      p.innerHTML = `<span class="err"><b>Error:</b> author_id must be a number.</span>`;
+    } else if(!existingAuthorIds().includes(aid)){
+      p.innerHTML = `<span class="err"><b>REJECTED:</b> author_id=${aid} does not exist in authors. FOREIGN KEY constraint violated — can't reference a row that isn't there.</span>`;
+    } else {
+      const tr = document.createElement('tr');
+      tr.className = 'new-row';
+      tr.innerHTML = `<td class="pk-cell">${nextBookId}</td><td>New Book</td><td class="fk-cell">${aid}</td>`;
+      booksBody.appendChild(tr);
+      nextBookId++;
+      p.innerHTML = `<b>INSERTED:</b> author_id=${aid} exists in authors — reference is valid.`;
+      const authorRow = document.getElementById('author-row-'+aid);
+      if(authorRow){ authorRow.classList.remove('flashgood'); void authorRow.offsetWidth; authorRow.classList.add('flashgood'); }
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+
+  deleteBtn.addEventListener('click', ()=>{
+    const p = document.createElement('div'); p.className='line fadein';
+    const referencing = booksReferencingAuthor(1);
+    if(referencing.length > 0){
+      p.innerHTML = `<span class="err"><b>REJECTED:</b> can't delete authors.id=1 — ${referencing.length} row(s) in books still reference it (author_id=1). Deleting it would leave those books pointing at nothing.</span>`;
+      referencing.forEach(tr=>{ tr.classList.remove('flashbad'); void tr.offsetWidth; tr.classList.add('flashbad'); });
+      const authorRow = document.getElementById('author-row-1');
+      if(authorRow){ authorRow.classList.remove('flashbad'); void authorRow.offsetWidth; authorRow.classList.add('flashbad'); }
+    } else {
+      const authorRow = document.getElementById('author-row-1');
+      if(authorRow) authorRow.remove();
+      p.innerHTML = `<b>DELETED:</b> no books reference author_id=1 anymore — safe to remove.`;
+      deleteBtn.disabled = true;
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+})();
+
+/* SECTION 4: RELATIONSHIP TOGGLE */
+(function(){
+  const chips = document.querySelectorAll('#relationships .chip');
+  const viewEl = document.getElementById('rel-view');
+  const logEl = document.getElementById('rel-log');
+
+  function renderOneMany(){
+    viewEl.innerHTML = `
+      <div class="db-table">
+        <div class="tname">authors — id is PK</div>
+        <table><thead><tr><th class="pk-col">id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td class="pk-cell">1</td><td>Frank Herbert</td></tr>
+          <tr><td class="pk-cell">2</td><td>Jane Austen</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-table">
+        <div class="tname">books — author_id is FK → authors.id</div>
+        <table><thead><tr><th class="pk-col">id</th><th>title</th><th class="fk-col">author_id</th></tr></thead>
+        <tbody>
+          <tr><td class="pk-cell">1</td><td>Dune</td><td class="fk-cell">1</td></tr>
+          <tr><td class="pk-cell">2</td><td>Dune Messiah</td><td class="fk-cell">1</td></tr>
+          <tr><td class="pk-cell">3</td><td>Children of Dune</td><td class="fk-cell">1</td></tr>
+          <tr><td class="pk-cell">4</td><td>Emma</td><td class="fk-cell">2</td></tr>
+        </tbody></table>
+      </div>`;
+    logEl.innerHTML = `<span class="line fadein">Frank Herbert (author id=1) has 3 rows in books pointing at him. Each book has exactly ONE author_id — that's the "many" side holding the single foreign key.</span>`;
+  }
+
+  function renderManyMany(){
+    viewEl.innerHTML = `
+      <div class="db-table">
+        <div class="tname">students — id is PK</div>
+        <table><thead><tr><th class="pk-col">id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td class="pk-cell">1</td><td>Mia</td></tr>
+          <tr><td class="pk-cell">2</td><td>Leo</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-table">
+        <div class="tname">courses — id is PK</div>
+        <table><thead><tr><th class="pk-col">id</th><th>title</th></tr></thead>
+        <tbody>
+          <tr><td class="pk-cell">1</td><td>Biology</td></tr>
+          <tr><td class="pk-cell">2</td><td>Art History</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-table">
+        <div class="tname">enrollments — JOIN TABLE — composite PK (student_id, course_id)</div>
+        <table><thead><tr><th class="fk-col">student_id (FK)</th><th class="fk-col">course_id (FK)</th></tr></thead>
+        <tbody>
+          <tr><td class="fk-cell">1</td><td class="fk-cell">1</td></tr>
+          <tr><td class="fk-cell">1</td><td class="fk-cell">2</td></tr>
+          <tr><td class="fk-cell">2</td><td class="fk-cell">1</td></tr>
+        </tbody></table>
+      </div>`;
+    logEl.innerHTML = `<span class="line fadein">Mia (id=1) is in BOTH Biology and Art History — 2 rows in enrollments. Leo (id=2) is only in Biology — 1 row. Biology (id=1) has 2 students. Neither students nor courses needed a foreign key to the other directly — the join table holds every connection as its own row.</span>`;
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.rel==='one-many') renderOneMany(); else renderManyMany();
+    });
+  });
+  renderOneMany();
+})();
+</script>
+</body>
+</html>
