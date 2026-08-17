@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Comprehensions &amp; Unpacking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1d212b;
+    --ink: #e9e6dd;
+    --ink-dim: #9aa0ad;
+    --rule: #2a2f3a;
+    --list-c: #7fd8a0;
+    --dict-c: #f2c14e;
+    --set-c: #6ea8fe;
+    --gen-c: #c792ea;
+    --accent: #ff8a65;
+    --mono: 'JetBrains Mono', monospace;
+    --display: 'Fraunces', serif;
+    --body: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{
+    padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:
+      radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+      radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);
+  }
+  .eyebrow{
+    font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;
+  }
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:17ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipeline-hero{
+    margin-top:2.8rem; display:flex; gap:0.6rem; font-family:var(--mono); font-size:0.82rem;
+    flex-wrap:wrap; align-items:center; max-width:760px;
+  }
+  .pnode{padding:0.7rem 1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel);}
+  .pnode.src{color:var(--gen-c); border-color:var(--gen-c); background:rgba(199,146,234,0.08);}
+  .pnode.filt{color:var(--accent); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+  .pnode.tr{color:var(--list-c); border-color:var(--list-c); background:rgba(127,216,160,0.08);}
+  .pnode.out{color:var(--dict-c); border-color:var(--dict-c); background:rgba(242,193,78,0.08);}
+  .parrow{color:var(--ink-dim);}
+
+  nav{
+    display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel);
+    border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);
+  }
+  nav a{
+    font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none;
+    padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;
+  }
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:920px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:70ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{
+    font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px;
+    padding:1.1rem 1.3rem; font-size:0.86rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65;
+  }
+  .code .c-cmt{color:#5f6675;}
+  .code .c-kw{color:#ff8a65;}
+  .code .c-str{color:#7fd8a0;}
+  .code .c-num{color:#c792ea;}
+  .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .src-row{display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-bottom:1rem; font-family:var(--mono); font-size:0.85rem;}
+  .src-item{padding:0.4rem 0.8rem; border-radius:7px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .3s;}
+  .src-item.cur{border-color:var(--gen-c); color:var(--gen-c); background:rgba(199,146,234,0.12); transform:scale(1.08);}
+  .src-item.rejected{opacity:0.25; text-decoration:line-through;}
+  .src-item.accepted{border-color:var(--list-c); color:var(--list-c);}
+
+  .result-row{display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; min-height:3rem; font-family:var(--mono); font-size:0.85rem; border-top:1px dashed var(--rule); padding-top:1rem;}
+  .result-item{padding:0.4rem 0.8rem; border-radius:7px; border:1.5px solid var(--dict-c); color:var(--dict-c); background:rgba(242,193,78,0.1); animation:popin .35s ease;}
+  @keyframes popin{from{opacity:0; transform:scale(0.5) translateY(-8px);} to{opacity:1; transform:scale(1) translateY(0);}}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem;}
+  .log .line{margin:0.15rem 0;}
+  .log .line b{color:var(--ink);}
+
+  .lazy-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1rem 0;}
+  @media(max-width:640px){.lazy-compare{grid-template-columns:1fr;}}
+  .lazy-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem;}
+  .lazy-col.eager{border-color:var(--dict-c);}
+  .lazy-col.lazy{border-color:var(--gen-c);}
+  .lazy-col h4{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .lazy-col.eager h4{color:var(--dict-c);}
+  .lazy-col.lazy h4{color:var(--gen-c);}
+  .tank{display:flex; gap:4px; flex-wrap:wrap; min-height:2.6rem; align-items:flex-end;}
+  .cell-block{width:26px; height:26px; border-radius:5px; border:1.5px solid var(--rule); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.65rem; transition:all .25s;}
+  .cell-block.filled.eager-fill{border-color:var(--dict-c); background:rgba(242,193,78,0.18); color:var(--dict-c);}
+  .cell-block.filled.lazy-fill{border-color:var(--gen-c); background:rgba(199,146,234,0.18); color:var(--gen-c);}
+  .mem-readout{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-top:0.7rem;}
+
+  .unpack-row{display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; font-family:var(--mono); font-size:0.9rem; margin:0.6rem 0;}
+  .up-box{padding:0.5rem 0.9rem; border-radius:7px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .35s; min-width:40px; text-align:center;}
+  .up-box.name{border-color:var(--list-c); color:var(--list-c);}
+  .up-box.rest{border-color:var(--gen-c); color:var(--gen-c); min-width:70px;}
+  .up-box.matched{animation:flashpop .5s ease;}
+  @keyframes flashpop{0%{transform:scale(1);} 30%{transform:scale(1.12); box-shadow:0 0 0 5px rgba(255,138,101,0.25);} 100%{transform:scale(1);}}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;}
+  table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--dict-c); background:rgba(242,193,78,0.07);}
+  .callout.warn b{color:var(--dict-c);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}
+  @media(max-width:640px){.grid3{grid-template-columns:repeat(3,1fr);}}
+  .gcell{aspect-ratio:1; border-radius:6px; border:1.5px solid var(--rule); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.85rem; transition:all .3s;}
+  .gcell.on{border-color:var(--list-c); background:rgba(127,216,160,0.15); color:var(--list-c); transform:scale(1.05);}
+  .gcell.done{opacity:0.5;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · COMPREHENSIONS &amp; UNPACKING</div>
+  <h1>A comprehension is just a <em>for-loop wearing a costume.</em></h1>
+  <p class="lede">Every comprehension is really: iterate a source, optionally filter it, transform what survives, and collect the results into a container. Once you see that pipeline explicitly, list/dict/set comprehensions and generator expressions are the same idea with a different collector. Unpacking is the same "match the shape" instinct applied to assignment instead of iteration.</p>
+
+  <div class="pipeline-hero">
+    <div class="pnode src">source</div>
+    <div class="parrow">→</div>
+    <div class="pnode filt">filter (if)</div>
+    <div class="parrow">→</div>
+    <div class="pnode tr">transform (expr)</div>
+    <div class="parrow">→</div>
+    <div class="pnode out">collect [ ] { } ( )</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="listcomp">1 · List Comprehensions</a>
+  <a data-target="dictset">2 · Dict &amp; Set Comprehensions</a>
+  <a data-target="genexpr">3 · Generator Expressions</a>
+  <a data-target="nested">4 · Nested Comprehensions</a>
+  <a data-target="unpacking">5 · Unpacking</a>
+  <a data-target="callreturn">6 · Unpacking in Calls/Returns</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: LIST COMPREHENSIONS ============ -->
+<section id="listcomp">
+  <div class="kicker">01 — The core pattern</div>
+  <h2>List comprehensions</h2>
+  <p>A list comprehension builds a new list by walking a source iterable once, keeping only the items that pass an optional filter, and transforming each survivor with an expression.</p>
+
+  <div class="code">
+squares = [n**<span class="c-num">2</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> range(<span class="c-num">6</span>) <span class="c-kw">if</span> n % <span class="c-num">2</span> == <span class="c-num">0</span>]
+<span class="c-cmt">#           ^expr        ^source          ^filter</span>
+<span class="c-out">→ [0, 4, 16]</span>
+  </div>
+  <p>This is exactly equivalent to the longer loop form — the comprehension is syntax sugar, not new behavior:</p>
+  <div class="code">
+squares = []
+<span class="c-kw">for</span> n <span class="c-kw">in</span> range(<span class="c-num">6</span>):
+    <span class="c-kw">if</span> n % <span class="c-num">2</span> == <span class="c-num">0</span>:
+        squares.append(n**<span class="c-num">2</span>)
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>WATCH THE PIPELINE PROCESS EACH ITEM</span>
+      <div><button class="btn secondary" id="lc-reset">Reset</button> <button class="btn" id="lc-step">Process next ▸</button></div>
+    </div>
+    <p style="margin:0 0 0.6rem; font-size:0.85rem;"><code class="inline">[n**2 for n in range(6) if n % 2 == 0]</code></p>
+    <div class="src-row" id="lc-src"></div>
+    <div class="result-row" id="lc-result"></div>
+    <div class="log" id="lc-log"><span class="line">Click <b>Process next ▸</b> to step the pipeline through each source item.</span></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: DICT & SET COMPREHENSIONS ============ -->
+<section id="dictset">
+  <div class="kicker">02 — Same pipeline, different collector</div>
+  <h2>Dict &amp; set comprehensions</h2>
+  <p>Swap the brackets and the expression shape, and the exact same source → filter → transform pipeline builds a <code class="inline">dict</code> or a <code class="inline">set</code> instead of a <code class="inline">list</code>.</p>
+
+  <table class="cmp">
+    <tr><th>Container</th><th>Syntax</th><th>Collects</th></tr>
+    <tr><td>list</td><td><code>[expr for x in it]</code></td><td>ordered, duplicates allowed</td></tr>
+    <tr><td>set</td><td><code>{expr for x in it}</code></td><td>unordered, duplicates auto-removed</td></tr>
+    <tr><td>dict</td><td><code>{key: value for x in it}</code></td><td>unordered, keys unique (last write wins)</td></tr>
+  </table>
+
+  <div class="code">
+words = [<span class="c-str">"owl"</span>, <span class="c-str">"cat"</span>, <span class="c-str">"ant"</span>, <span class="c-str">"cat"</span>]
+
+lengths = {w: len(w) <span class="c-kw">for</span> w <span class="c-kw">in</span> words}       <span class="c-cmt"># dict comprehension</span>
+<span class="c-out">→ {'owl': 3, 'cat': 3, 'ant': 3}   # 'cat' repeated → key just overwritten</span>
+
+first_letters = {w[<span class="c-num">0</span>] <span class="c-kw">for</span> w <span class="c-kw">in</span> words}  <span class="c-cmt"># set comprehension</span>
+<span class="c-out">→ {'o', 'c', 'a'}                  # duplicate 'c' silently collapses</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>SAME SOURCE, THREE COLLECTORS</span>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-dsl="list">[ ] list</button>
+      <button class="chip" data-dsl="set">{ } set</button>
+      <button class="chip" data-dsl="dict">{ : } dict</button>
+    </div>
+    <p style="margin:0 0 0.6rem; font-size:0.85rem;">source words: <code class="inline">["owl", "cat", "ant", "cat"]</code></p>
+    <div class="result-row" id="dsl-result" style="border-top:none; padding-top:0;"></div>
+    <div class="log" id="dsl-log"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: GENERATOR EXPRESSIONS ============ -->
+<section id="genexpr">
+  <div class="kicker">03 — The lazy variant</div>
+  <h2>Generator expressions</h2>
+  <p>Swap <code class="inline">[ ]</code> for <code class="inline">( )</code> and you no longer build a list at all — you build a <strong>generator object</strong> that computes each value <em>on demand</em>, one at a time, only when something asks for the next one (via a <code class="inline">for</code> loop, <code class="inline">next()</code>, or a call like <code class="inline">sum()</code>).</p>
+
+  <div class="code">
+squares_list = [n**<span class="c-num">2</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> range(<span class="c-num">1000000</span>)]   <span class="c-cmt"># builds ALL 1,000,000 ints in memory NOW</span>
+squares_gen  = (n**<span class="c-num">2</span> <span class="c-kw">for</span> n <span class="c-kw">in</span> range(<span class="c-num">1000000</span>))   <span class="c-cmt"># builds nothing yet — just a recipe</span>
+
+<span class="c-kw">next</span>(squares_gen)   <span class="c-out">→ 0   (computed right now, on demand)</span>
+<span class="c-kw">next</span>(squares_gen)   <span class="c-out">→ 1   (computed right now, on demand)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>EAGER LIST vs LAZY GENERATOR — same expression, opposite memory story</span></div>
+    <div class="lazy-compare">
+      <div class="lazy-col eager">
+        <h4>[n**2 for n in range(6)] — eager</h4>
+        <div class="tank" id="eager-tank"></div>
+        <div class="mem-readout" id="eager-readout">0 of 6 values in memory</div>
+        <button class="btn secondary" id="eager-btn" style="margin-top:0.8rem;">Build the whole list()</button>
+      </div>
+      <div class="lazy-col lazy">
+        <h4>(n**2 for n in range(6)) — lazy</h4>
+        <div class="tank" id="lazy-tank"></div>
+        <div class="mem-readout" id="lazy-readout">0 of 6 values computed — generator is "paused"</div>
+        <button class="btn secondary" id="lazy-btn" style="margin-top:0.8rem;">next(gen)</button>
+      </div>
+    </div>
+    <div class="log" id="gen-log"><span class="line">The list button computes everything in one shot. The generator button computes exactly one value per click — the rest stay un-computed until asked for.</span></div>
+  </div>
+
+  <div class="callout"><b>When laziness matters:</b> generators shine when the source is huge or infinite, or when you'll likely stop early (e.g. <code class="inline">any(x > 100 for x in huge_source)</code> stops at the first match instead of building a full list first).</div>
+
+  <table class="cmp">
+    <tr><th></th><th>List comprehension</th><th>Generator expression</th></tr>
+    <tr><td>Memory</td><td>All items stored at once</td><td>One item at a time</td></tr>
+    <tr><td>Speed to get item 1</td><td>Waits for the whole list</td><td>Immediate</td></tr>
+    <tr><td>Reusable?</td><td>Yes, iterate as many times as you want</td><td>No — exhausted after one pass</td></tr>
+    <tr><td><code>len()</code> works?</td><td>Yes</td><td>No</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 4: NESTED COMPREHENSIONS ============ -->
+<section id="nested">
+  <div class="kicker">04 — How far is too far</div>
+  <h2>Nested comprehensions — and when they hurt</h2>
+  <p>A comprehension can contain more than one <code class="inline">for</code>, which reads left-to-right exactly like nested loops written normally. The classic use is flattening a matrix:</p>
+
+  <div class="code">
+matrix = [[<span class="c-num">1</span>,<span class="c-num">2</span>,<span class="c-num">3</span>], [<span class="c-num">4</span>,<span class="c-num">5</span>,<span class="c-num">6</span>], [<span class="c-num">7</span>,<span class="c-num">8</span>,<span class="c-num">9</span>]]
+
+flat = [n <span class="c-kw">for</span> row <span class="c-kw">in</span> matrix <span class="c-kw">for</span> n <span class="c-kw">in</span> row]
+<span class="c-cmt"># reads as:  for row in matrix:  →  for n in row:  →  collect n</span>
+<span class="c-out">→ [1, 2, 3, 4, 5, 6, 7, 8, 9]</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>FLATTENING A MATRIX, IN ORDER</span><button class="btn" id="flat-step">Next element ▸</button></div>
+    <div class="grid3" id="flat-grid"></div>
+    <div class="result-row" id="flat-result" style="margin-top:1rem;"></div>
+  </div>
+
+  <h3>Where nesting starts to hurt</h3>
+  <p>A single <code class="inline">for</code> plus an optional <code class="inline">if</code> is usually still readable. Stack two <code class="inline">for</code>s, two <code class="inline">if</code>s, and a nested comprehension inside the expression itself, and you get something that's technically one line but takes longer to parse than the equivalent loop:</p>
+
+  <div class="code">
+<span class="c-cmt"># hard to read — three levels of logic crammed into one expression</span>
+result = [[y <span class="c-kw">for</span> y <span class="c-kw">in</span> row <span class="c-kw">if</span> y % <span class="c-num">2</span> == <span class="c-num">0</span>] <span class="c-kw">for</span> row <span class="c-kw">in</span> matrix <span class="c-kw">if</span> sum(row) > <span class="c-num">10</span>]
+
+<span class="c-cmt"># same logic, unrolled — genuinely faster to read and to debug</span>
+result = []
+<span class="c-kw">for</span> row <span class="c-kw">in</span> matrix:
+    <span class="c-kw">if</span> sum(row) > <span class="c-num">10</span>:
+        evens_in_row = [y <span class="c-kw">for</span> y <span class="c-kw">in</span> row <span class="c-kw">if</span> y % <span class="c-num">2</span> == <span class="c-num">0</span>]
+        result.append(evens_in_row)
+  </div>
+  <div class="callout warn"><b>Rule of thumb:</b> if you need more than one <code class="inline">for</code> <em>and</em> a filter, or you're nesting a comprehension inside another comprehension's expression, switch to named intermediate variables or a real loop. A comprehension should be readable in one glance — once it needs re-reading twice, it stopped saving you anything.</div>
+</section>
+
+<!-- ============ SECTION 5: UNPACKING ============ -->
+<section id="unpacking">
+  <div class="kicker">05 — Matching shape on the left</div>
+  <h2>Tuple / list unpacking</h2>
+  <p>Unpacking assigns multiple names at once by matching the <strong>shape</strong> of the right-hand side. Python doesn't care whether the right side is a tuple or a list — any iterable of the right length works.</p>
+
+  <div class="code">
+x, y = <span class="c-num">3</span>, <span class="c-num">4</span>                 <span class="c-out">→ x=3, y=4</span>
+a, (b, c) = <span class="c-num">1</span>, (<span class="c-num">2</span>, <span class="c-num">3</span>)       <span class="c-out">→ a=1, b=2, c=3   (nested shapes match too)</span>
+first, *rest = [<span class="c-num">10</span>, <span class="c-num">20</span>, <span class="c-num">30</span>, <span class="c-num">40</span>]
+                              <span class="c-out">→ first=10, rest=[20, 30, 40]</span>
+*init, last = [<span class="c-num">10</span>, <span class="c-num">20</span>, <span class="c-num">30</span>, <span class="c-num">40</span>]
+                              <span class="c-out">→ init=[10, 20, 30], last=40</span>
+first, *mid, last = [<span class="c-num">10</span>, <span class="c-num">20</span>, <span class="c-num">30</span>, <span class="c-num">40</span>]
+                              <span class="c-out">→ first=10, mid=[20, 30], last=40</span>
+  </div>
+  <p><code class="inline">*rest</code> is the "give me everything left over" collector. It always becomes a <code class="inline">list</code>, it can only appear once per unpacking, and it can sit anywhere — Python figures out how many items belong to it from how many are needed to satisfy the other names.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>TRY DIFFERENT UNPACKING SHAPES</span>
+    </div>
+    <div class="lookup-controls" id="up-chips">
+      <button class="chip active" data-up="basic">a, b = [1, 2]</button>
+      <button class="chip" data-up="star-first">first, *rest = [10,20,30,40]</button>
+      <button class="chip" data-up="star-last">*init, last = [10,20,30,40]</button>
+      <button class="chip" data-up="star-mid">first, *mid, last = [10,20,30,40]</button>
+      <button class="chip" data-up="swap">a, b = b, a</button>
+    </div>
+    <div class="unpack-row" id="up-source"></div>
+    <div style="font-family:var(--mono); color:var(--ink-dim); margin:0.3rem 0;">↓ unpacks into ↓</div>
+    <div class="unpack-row" id="up-target"></div>
+    <div class="log" id="up-log"></div>
+  </div>
+
+  <h3>The classic swap trick</h3>
+  <div class="code">
+a, b = <span class="c-num">1</span>, <span class="c-num">2</span>
+a, b = b, a     <span class="c-cmt"># the right side (b, a) builds a full tuple FIRST, then unpacks</span>
+<span class="c-out">→ a=2, b=1   — no temp variable needed</span>
+  </div>
+</section>
+
+<!-- ============ SECTION 6: UNPACKING IN CALLS/RETURNS ============ -->
+<section id="callreturn">
+  <div class="kicker">06 — The same idea, at the boundary of a function</div>
+  <h2>Unpacking in function calls and returns</h2>
+  <p>Functions that "return multiple values" are really just returning a single tuple, which the caller then unpacks using the exact same shape-matching rules.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">min_max</span>(nums):
+    <span class="c-kw">return</span> min(nums), max(nums)   <span class="c-cmt"># this is really: return (min(nums), max(nums))</span>
+
+lo, hi = <span class="c-fn">min_max</span>([<span class="c-num">4</span>, <span class="c-num">1</span>, <span class="c-num">9</span>, <span class="c-num">2</span>])
+<span class="c-out">→ lo=1, hi=9</span>
+  </div>
+
+  <p>Unpacking also happens on the <em>call</em> side, spreading an iterable or a dict out into individual arguments — the same <code class="inline">*</code>/<code class="inline">**</code> operators from packing, used in reverse:</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">point</span>(x, y, z):
+    <span class="c-kw">return</span> f<span class="c-str">"({x}, {y}, {z})"</span>
+
+coords = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>]
+<span class="c-fn">point</span>(*coords)          <span class="c-out">→ "(1, 2, 3)"     same as point(1, 2, 3)</span>
+
+opts = {<span class="c-str">"x"</span>: <span class="c-num">1</span>, <span class="c-str">"y"</span>: <span class="c-num">2</span>, <span class="c-str">"z"</span>: <span class="c-num">3</span>}
+<span class="c-fn">point</span>(**opts)          <span class="c-out">→ "(1, 2, 3)"     same as point(x=1, y=2, z=3)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>RETURN → UNPACK, ROUND TRIP</span><button class="btn" id="rt-run">Run round trip</button></div>
+    <div class="log" id="rt-log"><span class="line">Watch a tuple get built on return, then unpacked immediately by the caller.</span></div>
+  </div>
+
+  <p>You can also unpack in a loop when iterating over pairs — this is exactly why <code class="inline">for key, value in dict.items()</code> works:</p>
+  <div class="code">
+pairs = [(<span class="c-str">"a"</span>, <span class="c-num">1</span>), (<span class="c-str">"b"</span>, <span class="c-num">2</span>), (<span class="c-str">"c"</span>, <span class="c-num">3</span>)]
+<span class="c-kw">for</span> letter, number <span class="c-kw">in</span> pairs:   <span class="c-cmt"># each 2-tuple unpacks into (letter, number) per iteration</span>
+    <span class="c-kw">print</span>(letter, number)
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now break it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · List comprehension basics</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+words = ["hi", "world", "ok", "python"]
+result = [w.upper() for w in words if len(w) > 2]
+print(result)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">['WORLD', 'PYTHON']
+
+"hi" and "ok" fail the len(w) > 2 filter (length 2), so they never reach the
+.upper() transform. Filter runs before transform for each item.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Dict comprehension with collision</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+names = ["Ann", "Bob", "Amy", "Ben"]
+by_initial = {n[0]: n for n in names}
+print(by_initial)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">{'A': 'Amy', 'B': 'Ben'}
+
+Dict comprehensions keep only ONE value per key — later items overwrite
+earlier ones with the same key. "Ann" is overwritten by "Amy" (both start
+with 'A'), and "Bob" is overwritten by "Ben".</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Generator exhaustion</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+gen = (n * 2 for n in range(3))
+print(list(gen))
+print(list(gen))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">[0, 2, 4]
+[]
+
+A generator can only be iterated ONCE. After the first list(gen) pulls every
+value out and the generator is exhausted, there's nothing left — the second
+list(gen) gets an empty list, not an error.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Nested comprehension flattening</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+grid = [[1, 2], [3, 4], [5, 6]]
+result = [x * 10 for row in grid for x in row if x % 2 == 0]
+print(result)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">[20, 40, 60]
+
+Reading left to right: for row in grid, then for x in row, then keep x only
+if x % 2 == 0 (2, 4, 6 survive), then multiply by 10. Order of the for
+clauses matters — it mirrors nested loops written normally, outer loop first.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Extended unpacking</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+data = [1, 2, 3, 4, 5]
+a, *b, c = data
+print(a, b, c)
+
+x, *y = [42]
+print(x, y)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">1 [2, 3, 4] 5
+42 []
+
+*b grabs everything not needed by a and c — three middle elements. In the
+second line, x takes the only element (42) and *y is left with nothing, but
+it's still a list — an empty one, not None or an error.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Unpacking in a function return + call</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def stats(nums):
+    return min(nums), max(nums), sum(nums) / len(nums)
+
+def report(*args, **kwargs):
+    return args, kwargs
+
+lo, hi, avg = stats([4, 8, 2, 10])
+data = {"lo": lo, "hi": hi}
+print(report(avg, **data))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">((5.5,), {'lo': 2, 'hi': 10})
+
+stats() returns a 3-tuple that unpacks into lo=2, hi=10, avg=6.0... wait,
+compute it: min=2, max=10, avg=(4+8+2+10)/4=6.0. So lo=2, hi=10.
+report(avg, **data) passes avg=6.0 positionally and unpacks data as keyword
+args, so args=(6.0,), kwargs={'lo': 2, 'hi': 10}.
+Correct output: ((6.0,), {'lo': 2, 'hi': 10})</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 7 · Readability judgment call</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Rewrite this into a more readable form — no single "correct" answer, but explain your reasoning:</p>
+    <div class="code" style="margin:0.6rem 0 0;">
+report = {u["id"]: [o["total"] for o in u["orders"] if o["total"] > 50]
+          for u in users if len(u["orders"]) > 0}
+    </div>
+    <details><summary>Show solution</summary><div class="solution">One reasonable rewrite:
+
+report = {}
+for u in users:
+    if not u["orders"]:
+        continue
+    big_orders = [o["total"] for o in u["orders"] if o["total"] > 50]
+    report[u["id"]] = big_orders
+
+Reasoning: the original nests a list comprehension INSIDE a dict
+comprehension's value position, with a filter on each level. That's two
+different filtering ideas and two different collectors stacked in one
+expression — a reader has to hold both nesting levels in their head at once.
+Unrolling it into a loop with a named `big_orders` variable costs a few
+extra lines but reads in the order a person actually thinks about it.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why a generator expression can only be looped over once, (2) what decides whether nested <code class="inline">for</code>s in a comprehension should become a real loop instead, and (3) why <code class="inline">a, b = b, a</code> doesn't need a temporary variable? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — comprehensions &amp; unpacking, same visual language as the scoping lab.</footer>
+
+<script>
+/* ============ NAV ============ */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* ============ SECTION 1: LIST COMPREHENSION PIPELINE ============ */
+(function(){
+  const srcEl = document.getElementById('lc-src');
+  const resultEl = document.getElementById('lc-result');
+  const logEl = document.getElementById('lc-log');
+  const stepBtn = document.getElementById('lc-step');
+  const resetBtn = document.getElementById('lc-reset');
+  const source = [0,1,2,3,4,5];
+  let idx = 0;
+
+  function renderSrc(){
+    srcEl.innerHTML = '';
+    source.forEach((n,i)=>{
+      const d = document.createElement('div');
+      d.className = 'src-item';
+      d.textContent = n;
+      if(i < idx) d.classList.add(n % 2 === 0 ? 'accepted' : 'rejected');
+      if(i === idx) d.classList.add('cur');
+      d.id = 'lc-src-'+i;
+      srcEl.appendChild(d);
+    });
+  }
+  function reset(){
+    idx = 0; resultEl.innerHTML=''; renderSrc();
+    logEl.innerHTML = '<span class="line">Click <b>Process next ▸</b> to step the pipeline through each source item.</span>';
+    stepBtn.disabled = false; stepBtn.textContent = 'Process next ▸';
+  }
+  stepBtn.addEventListener('click', ()=>{
+    if(idx >= source.length) return;
+    const n = source[idx];
+    renderSrc();
+    const p = document.createElement('div');
+    p.className = 'line fadein';
+    if(n % 2 === 0){
+      const r = document.createElement('div');
+      r.className = 'result-item';
+      r.textContent = n*n;
+      resultEl.appendChild(r);
+      p.innerHTML = `<b>n=${n}:</b> passes filter (n % 2 == 0) → transform n**2 = ${n*n} → appended to result`;
+    } else {
+      p.innerHTML = `<b>n=${n}:</b> fails filter (n % 2 == 0) → skipped, never transformed`;
+    }
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+    idx++;
+    if(idx >= source.length){ stepBtn.disabled = true; stepBtn.textContent = 'Done ✓'; }
+  });
+  resetBtn.addEventListener('click', reset);
+  reset();
+})();
+
+/* ============ SECTION 2: DICT/SET/LIST TOGGLE ============ */
+(function(){
+  const chips = document.querySelectorAll('#dictset .chip');
+  const resultEl = document.getElementById('dsl-result');
+  const logEl = document.getElementById('dsl-log');
+  const words = ['owl','cat','ant','cat'];
+
+  function render(mode){
+    resultEl.innerHTML = '';
+    let log = '';
+    if(mode === 'list'){
+      words.forEach(w=>{
+        const d = document.createElement('div'); d.className='result-item'; d.textContent = `'${w}'`; resultEl.appendChild(d);
+      });
+      log = `<span class="line">[w for w in words] → keeps ALL 4 items, order preserved, duplicates kept.</span>`;
+    } else if(mode === 'set'){
+      const seen = new Set();
+      words.forEach(w=>{
+        const letter = w[0];
+        if(!seen.has(letter)){
+          seen.add(letter);
+          const d = document.createElement('div'); d.className='result-item'; d.textContent = `'${letter}'`; resultEl.appendChild(d);
+        }
+      });
+      log = `<span class="line">{w[0] for w in words} → duplicate 'c' (from the 2nd "cat") silently collapses. Only 3 unique letters remain, order not guaranteed.</span>`;
+    } else {
+      const map = {};
+      const order = [];
+      words.forEach(w=>{ if(!(w in map)) order.push(w); map[w] = w.length; });
+      order.forEach(w=>{
+        const d = document.createElement('div'); d.className='result-item'; d.textContent = `'${w}': ${map[w]}`; resultEl.appendChild(d);
+      });
+      log = `<span class="line">{w: len(w) for w in words} → 'cat' appears twice; the SECOND occurrence just overwrites the key's value (same value here, but it would win if different).</span>`;
+    }
+    logEl.innerHTML = log;
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.dsl);
+    });
+  });
+  render('list');
+})();
+
+/* ============ SECTION 3: EAGER vs LAZY ============ */
+(function(){
+  const eagerTank = document.getElementById('eager-tank');
+  const lazyTank = document.getElementById('lazy-tank');
+  const eagerReadout = document.getElementById('eager-readout');
+  const lazyReadout = document.getElementById('lazy-readout');
+  const eagerBtn = document.getElementById('eager-btn');
+  const lazyBtn = document.getElementById('lazy-btn');
+  const genLog = document.getElementById('gen-log');
+  const N = 6;
+
+  function buildTank(tank){
+    tank.innerHTML = '';
+    for(let i=0;i<N;i++){
+      const c = document.createElement('div');
+      c.className = 'cell-block';
+      c.textContent = '?';
+      c.id = tank.id+'-'+i;
+      tank.appendChild(c);
+    }
+  }
+  buildTank(eagerTank); buildTank(lazyTank);
+
+  eagerBtn.addEventListener('click', ()=>{
+    for(let i=0;i<N;i++){
+      const c = document.getElementById('eager-tank-'+i);
+      c.textContent = i*i;
+      c.classList.add('filled','eager-fill');
+    }
+    eagerReadout.textContent = `${N} of ${N} values in memory — all computed in one call`;
+    eagerBtn.disabled = true;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>list(...)</b> forced the WHOLE comprehension to run immediately — all ${N} squares now sit in memory whether you need them or not.`;
+    genLog.appendChild(p); genLog.scrollTop = genLog.scrollHeight;
+  });
+
+  let lazyIdx = 0;
+  lazyBtn.addEventListener('click', ()=>{
+    if(lazyIdx >= N){ return; }
+    const c = document.getElementById('lazy-tank-'+lazyIdx);
+    c.textContent = lazyIdx*lazyIdx;
+    c.classList.add('filled','lazy-fill');
+    lazyReadout.textContent = `${lazyIdx+1} of ${N} computed — the rest haven't run yet`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = `<b>next(gen)</b> computed exactly ONE value (${lazyIdx}**2 = ${lazyIdx*lazyIdx}) and paused — nothing beyond it exists yet.`;
+    genLog.appendChild(p); genLog.scrollTop = genLog.scrollHeight;
+    lazyIdx++;
+    if(lazyIdx>=N){ lazyBtn.disabled = true; lazyBtn.textContent = 'Exhausted ✓'; }
+  });
+})();
+
+/* ============ SECTION 4: NESTED FLATTEN ============ */
+(function(){
+  const gridEl = document.getElementById('flat-grid');
+  const resultEl = document.getElementById('flat-result');
+  const stepBtn = document.getElementById('flat-step');
+  const matrix = [[1,2,3],[4,5,6],[7,8,9]];
+  const flatOrder = [];
+  matrix.forEach((row,r)=>row.forEach((v,c)=>flatOrder.push({r,c,v})));
+  let idx = 0;
+
+  function buildGrid(){
+    gridEl.innerHTML = '';
+    matrix.forEach((row,r)=>{
+      row.forEach((v,c)=>{
+        const d = document.createElement('div');
+        d.className = 'gcell';
+        d.textContent = v;
+        d.id = 'flat-'+r+'-'+c;
+        gridEl.appendChild(d);
+      });
+    });
+  }
+  buildGrid();
+
+  stepBtn.addEventListener('click', ()=>{
+    if(idx >= flatOrder.length){ stepBtn.disabled = true; stepBtn.textContent='Done ✓'; return; }
+    document.querySelectorAll('.gcell.on').forEach(el=>{el.classList.remove('on'); el.classList.add('done');});
+    const {r,c,v} = flatOrder[idx];
+    document.getElementById('flat-'+r+'-'+c).classList.add('on');
+    const item = document.createElement('div');
+    item.className = 'result-item';
+    item.textContent = v;
+    resultEl.appendChild(item);
+    idx++;
+  });
+})();
+
+/* ============ SECTION 5: UNPACKING SHAPES ============ */
+(function(){
+  const chips = document.querySelectorAll('#up-chips .chip');
+  const srcEl = document.getElementById('up-source');
+  const tgtEl = document.getElementById('up-target');
+  const logEl = document.getElementById('up-log');
+
+  const scenarios = {
+    basic: {
+      src:['1','2'],
+      names:[{n:'a', cls:'name'}, {n:'b', cls:'name'}],
+      map:[[0],[1]],
+      log:'a matches item 0 (1), b matches item 1 (2). One-to-one shape.'
+    },
+    'star-first': {
+      src:['10','20','30','40'],
+      names:[{n:'first', cls:'name'}, {n:'*rest', cls:'rest'}],
+      map:[[0],[1,2,3]],
+      log:'first grabs item 0. *rest scoops up everything else into a list: [20, 30, 40].'
+    },
+    'star-last': {
+      src:['10','20','30','40'],
+      names:[{n:'*init', cls:'rest'}, {n:'last', cls:'name'}],
+      map:[[0,1,2],[3]],
+      log:'last grabs the final item. *init scoops up everything before it: [10, 20, 30].'
+    },
+    'star-mid': {
+      src:['10','20','30','40'],
+      names:[{n:'first', cls:'name'}, {n:'*mid', cls:'rest'}, {n:'last', cls:'name'}],
+      map:[[0],[1,2],[3]],
+      log:'first and last claim the ends, *mid absorbs whatever is left in the middle: [20, 30].'
+    },
+    swap: {
+      src:['b=2','a=1'],
+      names:[{n:'a', cls:'name'}, {n:'b', cls:'name'}],
+      map:[[0],[1]],
+      log:'Right side (b, a) is built as a full tuple FIRST using the OLD values, then unpacked into a, b — so a=2, b=1. No temp variable needed.'
+    }
+  };
+
+  function render(mode){
+    const s = scenarios[mode];
+    srcEl.innerHTML = '';
+    s.src.forEach((v,i)=>{
+      const d = document.createElement('div'); d.className='up-box'; d.textContent = v; d.id='up-src-'+i;
+      srcEl.appendChild(d);
+    });
+    tgtEl.innerHTML = '';
+    s.names.forEach((nm,i)=>{
+      const d = document.createElement('div'); d.className='up-box '+nm.cls+' matched'; d.textContent = nm.n;
+      tgtEl.appendChild(d);
+    });
+    logEl.innerHTML = `<span class="line fadein">${s.log}</span>`;
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.up);
+    });
+  });
+  render('basic');
+})();
+
+/* ============ SECTION 6: RETURN/CALL ROUND TRIP ============ */
+(function(){
+  const btn = document.getElementById('rt-run');
+  const logEl = document.getElementById('rt-log');
+  btn.addEventListener('click', ()=>{
+    logEl.innerHTML = '';
+    const steps = [
+      "min_max([4,1,9,2]) runs → computes min=1, max=9",
+      "return min(nums), max(nums)  →  builds the tuple (1, 9) and returns it",
+      "lo, hi = (1, 9)  →  caller unpacks the tuple by shape: lo=1, hi=9",
+      "Final: lo=1, hi=9 — 'returning two values' was really returning one tuple."
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s}`;
+        logEl.appendChild(p);
+        logEl.scrollTop = logEl.scrollHeight;
+      }, i*500);
+    });
+  });
+})();
+</script>
+</body>
+</html>
