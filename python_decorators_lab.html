@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Decorators</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:17ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .onion-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.5rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .layer{padding:0.7rem 1.1rem; border-radius:999px; border:1.5px solid; text-align:center;}
+  .layer.l1{border-color:var(--wrap-c); color:var(--wrap-c); background:rgba(127,216,160,0.08);}
+  .layer.l2{border-color:var(--core-c); color:var(--core-c); background:rgba(110,168,254,0.08);}
+  .oarrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:920px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:70ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.86rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-dec{color:var(--factory-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* call-stack visualization for wrapping */
+  .callstack{display:flex; flex-direction:column; gap:0; align-items:stretch; margin:1.2rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .frame{border:2px solid; border-radius:12px; padding:1rem 1.3rem; margin-bottom:-2px; opacity:0.25; transition:all .35s ease; position:relative;}
+  .frame.active{opacity:1; transform:scale(1.01);}
+  .frame.caller{border-color:var(--ink-dim); color:var(--ink-dim);}
+  .frame.wrapper{border-color:var(--wrap-c); color:var(--wrap-c); background:rgba(127,216,160,0.05);}
+  .frame.factory{border-color:var(--factory-c); color:var(--factory-c); background:rgba(242,193,78,0.05);}
+  .frame.core{border-color:var(--core-c); color:var(--core-c); background:rgba(110,168,254,0.05);}
+  .frame .flbl{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.75; display:block; margin-bottom:0.3rem;}
+
+  /* metadata comparison */
+  .meta-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:640px){.meta-compare{grid-template-columns:1fr;}}
+  .meta-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; font-family:var(--mono); font-size:0.8rem;}
+  .meta-col.bad{border-color:var(--accent);}
+  .meta-col.good{border-color:var(--wrap-c);}
+  .meta-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .meta-col.bad h4{color:var(--accent);} .meta-col.good h4{color:var(--wrap-c);}
+  .meta-row{display:flex; justify-content:space-between; padding:0.35rem 0; border-bottom:1px dashed var(--rule);}
+  .meta-row:last-child{border-bottom:none;}
+  .meta-row .k{color:var(--ink-dim);}
+
+  /* cache visualization */
+  .cache-grid{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;}
+  .cache-slot{padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.8rem; text-align:center; min-width:70px; transition:all .3s;}
+  .cache-slot.filled{border-color:var(--cache-c); color:var(--cache-c); background:rgba(199,146,234,0.1);}
+  .cache-slot.hit{animation:flashhit .6s ease;}
+  @keyframes flashhit{0%{transform:scale(1);} 30%{transform:scale(1.15); box-shadow:0 0 0 6px rgba(199,146,234,0.3);} 100%{transform:scale(1);}}
+  .callbar{display:flex; gap:0.4rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .callbtn{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.8rem; border-radius:7px; border:1px solid var(--rule); background:var(--panel-2); color:var(--ink); cursor:pointer; transition:all .2s;}
+  .callbtn:hover{border-color:var(--cache-c);}
+
+  /* stacking */
+  .stack-onion{display:flex; flex-direction:column; align-items:center; margin:1.4rem 0; font-family:var(--mono); font-size:0.85rem;}
+  .onion-ring{border:2px solid; border-radius:14px; padding:1rem; width:100%; max-width:520px; text-align:center; margin-bottom:-2px; transition:all .35s;}
+  .onion-ring .rlbl{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.7; margin-bottom:0.2rem; display:block;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.info{border-left-color:var(--core-c); background:rgba(110,168,254,0.06);}
+  .callout.info b{color:var(--core-c);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · DECORATORS</div>
+  <h1>A decorator is just a function that <em>swaps another function out</em> for a wrapped version.</h1>
+  <p class="lede">No new syntax magic is happening — <code class="inline">@decorator</code> above a function is 100% equivalent to reassigning the function name to whatever the decorator returns. Once that's concrete, decorator factories, <code class="inline">functools.wraps</code>, <code class="inline">lru_cache</code>, <code class="inline">partial</code>, and stacking order all become predictable instead of mysterious.</p>
+
+  <div class="onion-hero">
+    <div class="layer l1">wrapper(*args, **kwargs)</div>
+    <div class="oarrow">calls ⟶</div>
+    <div class="layer l2">original function</div>
+    <div class="oarrow">⟶ returns</div>
+    <div class="layer l1">back through wrapper</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="wrapping">1 · How Wrapping Works</a>
+  <a data-target="factory">2 · Decorator Factories</a>
+  <a data-target="wraps">3 · functools.wraps</a>
+  <a data-target="lrucache">4 · lru_cache</a>
+  <a data-target="partial">5 · functools.partial</a>
+  <a data-target="stacking">6 · Stacking Order</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: HOW WRAPPING WORKS ============ -->
+<section id="wrapping">
+  <div class="kicker">01 — The mechanism, de-mystified</div>
+  <h2>How a decorator wraps a function</h2>
+  <p><code class="inline">@my_decorator</code> written above <code class="inline">def greet(): ...</code> is exactly this, in one line:</p>
+  <div class="code">
+greet = my_decorator(greet)
+  </div>
+  <p>The decorator is just a regular function. It receives the original function as an argument, defines a new inner function (the "wrapper") that does something extra, and returns that wrapper. The name <code class="inline">greet</code> in your module now points at the wrapper — the original function still exists, but only the wrapper (which holds a reference to it in its closure) can reach it.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">my_decorator</span>(func):
+    <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):
+        <span class="c-kw">print</span>(<span class="c-str">"before the call"</span>)
+        result = func(*args, **kwargs)      <span class="c-cmt"># the original function, called from inside the closure</span>
+        <span class="c-kw">print</span>(<span class="c-str">"after the call"</span>)
+        <span class="c-kw">return</span> result
+    <span class="c-kw">return</span> wrapper
+
+<span class="c-dec">@my_decorator</span>
+<span class="c-kw">def</span> <span class="c-fn">greet</span>(name):
+    <span class="c-kw">return</span> f<span class="c-str">"Hello, {name}!"</span>
+
+<span class="c-fn">greet</span>(<span class="c-str">"Ada"</span>)
+<span class="c-out">before the call
+after the call
+→ "Hello, Ada!"</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE CALL FLOW THROUGH THE WRAPPER</span><button class="btn" id="wrap-run">greet("Ada")</button></div>
+    <div class="callstack" id="wrap-stack">
+      <div class="frame caller" id="wf-caller"><span class="flbl">caller</span>greet("Ada")</div>
+      <div class="frame wrapper" id="wf-wrapper"><span class="flbl">wrapper (this is what "greet" now IS)</span>print("before the call")</div>
+      <div class="frame core" id="wf-core"><span class="flbl">original greet, reached via closure</span>return f"Hello, {name}!"</div>
+    </div>
+    <div class="log" id="wrap-log"></div>
+  </div>
+
+  <div class="callout"><b>Key insight:</b> after decoration, the name <code class="inline">greet</code> no longer refers to the function you wrote — it refers to <code class="inline">wrapper</code>. The original function object still exists in memory, kept alive only because <code class="inline">wrapper</code>'s closure holds a reference to it (this is the same closure mechanism from the scoping lab).</div>
+</section>
+
+<!-- ============ SECTION 2: DECORATOR FACTORIES ============ -->
+<section id="factory">
+  <div class="kicker">02 — Adding a configuration layer</div>
+  <h2>Decorators with arguments (decorator factory)</h2>
+  <p>A plain decorator takes one argument: the function. If you want <code class="inline">@repeat(3)</code> — a decorator that itself takes arguments — you need <strong>one more layer</strong>: a factory function that takes your config and <em>returns</em> a real decorator.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">repeat</span>(times):                  <span class="c-cmt"># layer 1: the factory — takes YOUR arguments</span>
+    <span class="c-kw">def</span> <span class="c-fn">decorator</span>(func):             <span class="c-cmt"># layer 2: the real decorator — takes the function</span>
+        <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):  <span class="c-cmt"># layer 3: the wrapper — takes the call's arguments</span>
+            <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(times):
+                result = func(*args, **kwargs)
+            <span class="c-kw">return</span> result
+        <span class="c-kw">return</span> wrapper
+    <span class="c-kw">return</span> decorator
+
+<span class="c-dec">@repeat</span>(<span class="c-num">3</span>)
+<span class="c-kw">def</span> <span class="c-fn">wave</span>():
+    <span class="c-kw">print</span>(<span class="c-str">"👋"</span>)
+
+<span class="c-fn">wave</span>()   <span class="c-out">👋
+👋
+👋</span>
+  </div>
+  <p><code class="inline">@repeat(3)</code> above <code class="inline">def wave()</code> unfolds to <code class="inline">wave = repeat(3)(wave)</code> — <code class="inline">repeat(3)</code> runs first and returns <code class="inline">decorator</code>, then <code class="inline">decorator(wave)</code> runs and returns <code class="inline">wrapper</code>. <code class="inline">times</code> stays alive in <code class="inline">wrapper</code>'s closure, exactly like the counter example from the closures lab.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>THREE LAYERS, THREE DIFFERENT ARGUMENT TYPES</span><button class="btn" id="fac-run">@repeat(3) def wave()</button></div>
+    <div class="callstack" id="fac-stack">
+      <div class="frame factory" id="ff-factory"><span class="flbl">1 · repeat(3) — receives YOUR config</span>captures times=3 in a closure, returns decorator</div>
+      <div class="frame wrapper" id="ff-decorator"><span class="flbl">2 · decorator(wave) — receives the FUNCTION</span>captures func=wave, returns wrapper</div>
+      <div class="frame core" id="ff-wrapper"><span class="flbl">3 · wrapper(*args, **kwargs) — receives the CALL's arguments</span>loops range(times), calling func() each time</div>
+    </div>
+    <div class="log" id="fac-log"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: functools.wraps ============ -->
+<section id="wraps">
+  <div class="kicker">03 — Fixing an identity problem</div>
+  <h2>functools.wraps and why it matters</h2>
+  <p>The wrapper function is a brand-new function object with its own <code class="inline">__name__</code>, <code class="inline">__doc__</code>, and other metadata — none of it copied from the original. After decorating, tools that introspect functions (debuggers, <code class="inline">help()</code>, documentation generators) see the wrapper's identity, not the real one.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">my_decorator</span>(func):
+    <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):
+        <span class="c-kw">return</span> func(*args, **kwargs)
+    <span class="c-kw">return</span> wrapper
+
+<span class="c-dec">@my_decorator</span>
+<span class="c-kw">def</span> <span class="c-fn">greet</span>(name):
+    <span class="c-str">"""Say hello to someone."""</span>
+    <span class="c-kw">return</span> f<span class="c-str">"Hello, {name}!"</span>
+
+<span class="c-fn">greet</span>.__name__   <span class="c-out">→ 'wrapper'    😬 lost its real name</span>
+<span class="c-fn">greet</span>.__doc__    <span class="c-out">→ None        😬 lost its docstring</span>
+  </div>
+
+  <p>The fix: decorate the wrapper itself with <code class="inline">@functools.wraps(func)</code>, which copies <code class="inline">__name__</code>, <code class="inline">__doc__</code>, <code class="inline">__module__</code>, and more from the original onto the wrapper.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> functools <span class="c-kw">import</span> wraps
+
+<span class="c-kw">def</span> <span class="c-fn">my_decorator</span>(func):
+    <span class="c-dec">@wraps</span>(func)              <span class="c-cmt"># copies metadata from func onto wrapper</span>
+    <span class="c-kw">def</span> <span class="c-fn">wrapper</span>(*args, **kwargs):
+        <span class="c-kw">return</span> func(*args, **kwargs)
+    <span class="c-kw">return</span> wrapper
+
+<span class="c-fn">greet</span>.__name__   <span class="c-out">→ 'greet'     ✓ correct now</span>
+<span class="c-fn">greet</span>.__doc__    <span class="c-out">→ 'Say hello to someone.'   ✓ correct now</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WITHOUT vs WITH functools.wraps</span></div>
+    <div class="meta-compare">
+      <div class="meta-col bad">
+        <h4>✗ without @wraps</h4>
+        <div class="meta-row"><span class="k">greet.__name__</span><span>'wrapper'</span></div>
+        <div class="meta-row"><span class="k">greet.__doc__</span><span>None</span></div>
+        <div class="meta-row"><span class="k">greet.__module__</span><span>'decorator_module'</span></div>
+        <div class="meta-row"><span class="k">help(greet)</span><span>shows wrapper's signature</span></div>
+      </div>
+      <div class="meta-col good">
+        <h4>✓ with @wraps(func)</h4>
+        <div class="meta-row"><span class="k">greet.__name__</span><span>'greet'</span></div>
+        <div class="meta-row"><span class="k">greet.__doc__</span><span>'Say hello to someone.'</span></div>
+        <div class="meta-row"><span class="k">greet.__module__</span><span>'__main__'</span></div>
+        <div class="meta-row"><span class="k">help(greet)</span><span>shows greet's real signature</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout"><b>Rule of thumb:</b> every wrapper you write should be decorated with <code class="inline">@functools.wraps(func)</code> — it costs one line and prevents confusing bugs in stack traces, docs, and any code that inspects <code class="inline">__name__</code>.</div>
+</section>
+
+<!-- ============ SECTION 4: lru_cache ============ -->
+<section id="lrucache">
+  <div class="kicker">04 — A decorator that remembers results</div>
+  <h2>functools.lru_cache</h2>
+  <p><code class="inline">@lru_cache</code> wraps a function so that calls with arguments it's seen before return instantly from a cache instead of recomputing. "LRU" (Least Recently Used) means once the cache is full, the oldest unused entry gets evicted to make room.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> functools <span class="c-kw">import</span> lru_cache
+
+<span class="c-dec">@lru_cache</span>(maxsize=<span class="c-num">3</span>)
+<span class="c-kw">def</span> <span class="c-fn">slow_square</span>(n):
+    <span class="c-kw">print</span>(f<span class="c-str">"computing {n}**2..."</span>)
+    <span class="c-kw">return</span> n ** <span class="c-num">2</span>
+
+<span class="c-fn">slow_square</span>(<span class="c-num">4</span>)   <span class="c-out">computing 4**2...  → 16   (cache MISS — actually ran)</span>
+<span class="c-fn">slow_square</span>(<span class="c-num">4</span>)   <span class="c-out">→ 16                     (cache HIT — no print, instant)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>CALL slow_square(n) AND WATCH THE CACHE (maxsize=3)</span></div>
+    <div class="callbar" id="cache-buttons"></div>
+    <div class="cache-grid" id="cache-slots"></div>
+    <div class="log" id="cache-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Detail</th><th>Behavior</th></tr>
+    <tr><td>Cache key</td><td>Built from the function's arguments — must be hashable (no lists/dicts as args)</td></tr>
+    <tr><td>maxsize</td><td>Oldest unused entry evicted once full; <code>maxsize=None</code> means unbounded</td></tr>
+    <tr><td>Great for</td><td>Pure functions (same input always → same output), especially recursive ones like Fibonacci</td></tr>
+    <tr><td>Bad for</td><td>Functions with side effects, or that depend on mutable/changing state</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 5: functools.partial ============ -->
+<section id="partial">
+  <div class="kicker">05 — Pre-filling arguments</div>
+  <h2>functools.partial</h2>
+  <p><code class="inline">partial</code> isn't a decorator — it's a factory that takes a function plus some arguments, and returns a <strong>new callable</strong> with those arguments already locked in. Calling the new callable only requires whatever arguments weren't fixed.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> functools <span class="c-kw">import</span> partial
+
+<span class="c-kw">def</span> <span class="c-fn">power</span>(base, exponent):
+    <span class="c-kw">return</span> base ** exponent
+
+square = partial(power, exponent=<span class="c-num">2</span>)   <span class="c-cmt"># exponent is now permanently 2</span>
+cube   = partial(power, exponent=<span class="c-num">3</span>)   <span class="c-cmt"># a separate, independent callable</span>
+
+<span class="c-fn">square</span>(<span class="c-num">5</span>)   <span class="c-out">→ 25    (same as power(5, exponent=2))</span>
+<span class="c-fn">cube</span>(<span class="c-num">5</span>)     <span class="c-out">→ 125   (same as power(5, exponent=3))</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>partial() BUILDS A NEW CALLABLE WITH SOME ARGS FROZEN</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-pt="square">square = partial(power, exponent=2)</button>
+      <button class="chip" data-pt="cube">cube = partial(power, exponent=3)</button>
+    </div>
+    <div class="callstack" id="partial-stack">
+      <div class="frame factory active"><span class="flbl">frozen inside the partial object</span><span id="pt-frozen">exponent = 2</span></div>
+      <div class="frame core active"><span class="flbl">supplied at call time</span>base = (whatever you pass)</div>
+    </div>
+    <div class="log" id="partial-log">Try: <span id="pt-example">square(5) → power(5, exponent=2) → 25</span></div>
+  </div>
+
+  <p>This is common for adapting a general function to a specific callback signature — e.g. giving a UI callback a pre-configured handler without writing a whole new <code class="inline">def</code> and without losing introspection the way a lambda sometimes does.</p>
+</section>
+
+<!-- ============ SECTION 6: STACKING ============ -->
+<section id="stacking">
+  <div class="kicker">06 — Multiple decorators, one function</div>
+  <h2>Stacking decorators — order of application</h2>
+  <p>Stacked decorators apply <strong>bottom-up</strong> (closest to the function first), but <strong>execute top-down</strong> at call time. Think of it as wrapping presents: the last box you put on is the first one someone opens.</p>
+
+  <div class="code">
+<span class="c-dec">@decorator_a</span>
+<span class="c-dec">@decorator_b</span>
+<span class="c-kw">def</span> <span class="c-fn">func</span>():
+    ...
+
+<span class="c-cmt"># exactly equivalent to:</span>
+func = decorator_a(decorator_b(func))
+<span class="c-cmt">#                   ^applied FIRST (closest to func)
+#      ^applied SECOND, wraps the already-wrapped result</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>@upper THEN @exclaim, STACKED ON shout()</span><button class="btn" id="stack-run">shout()</button></div>
+    <div class="code" style="margin:0 0 1rem;">
+<span class="c-dec">@exclaim</span>
+<span class="c-dec">@upper</span>
+<span class="c-kw">def</span> <span class="c-fn">shout</span>():
+    <span class="c-kw">return</span> <span class="c-str">"hello"</span>
+    </div>
+    <div class="stack-onion" id="stack-onion">
+      <div class="onion-ring" id="or-exclaim" style="border-color:var(--wrap-c); color:var(--wrap-c);"><span class="rlbl">exclaim wrapper (applied 2nd / outermost — runs FIRST)</span>adds "!"</div>
+      <div class="onion-ring" id="or-upper" style="border-color:var(--factory-c); color:var(--factory-c);"><span class="rlbl">upper wrapper (applied 1st / innermost — runs SECOND)</span>uppercases result</div>
+      <div class="onion-ring" id="or-core" style="border-color:var(--core-c); color:var(--core-c);"><span class="rlbl">shout() — the original function — runs LAST (deepest)</span>return "hello"</div>
+    </div>
+    <div class="log" id="stack-log"></div>
+  </div>
+
+  <div class="callout info"><b>Build order vs. run order:</b> Python builds the wrapper chain bottom-up when the module loads (<code class="inline">upper</code> wraps <code class="inline">shout</code> first, then <code class="inline">exclaim</code> wraps that result). But when you actually <em>call</em> the decorated function, execution starts at the outermost layer and works inward — so the decorator written closest to <code class="inline">def</code> runs its logic last on the way in, first on the way out.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now break it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Basic wrapping</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def loud(func):
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs).upper()
+    return wrapper
+
+@loud
+def greet(name):
+    return f"hi {name}"
+
+print(greet("sam"))
+print(greet.__name__)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">HI SAM
+wrapper
+
+greet is called through wrapper, which calls the real greet() then uppercases
+its result. But greet.__name__ shows 'wrapper', not 'greet' — no
+functools.wraps was used, so the wrapper's own identity leaked through.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Decorator factory math</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def multiply_result(factor):
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs) * factor
+        return wrapper
+    return decorator
+
+@multiply_result(10)
+def add(a, b):
+    return a + b
+
+print(add(2, 3))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">50
+
+add = multiply_result(10)(add). multiply_result(10) returns decorator with
+factor=10 captured in its closure. decorator(add) returns wrapper. Calling
+add(2, 3) runs wrapper, which computes add(2,3)=5, then 5 * factor = 50.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Missing functools.wraps in practice</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def timer(func):
+    def wrapper(*args, **kwargs):
+        print(f"running {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
+
+@timer
+def process():
+    """Process the data."""
+    return 42
+
+help(process)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">Help on function wrapper in module __main__:
+
+wrapper(*args, **kwargs)
+
+help() shows wrapper's own signature and has no docstring — process's real
+signature "process()" and its docstring "Process the data." are both hidden
+because timer never used @functools.wraps(func) on wrapper. Note that the
+print("running process") line still works, because func.__name__ is read
+from the ORIGINAL func object inside the closure — that's unaffected by
+wraps. It's process.__name__ (the outer, reassigned name) that's wrong.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · lru_cache with recursion</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from functools import lru_cache
+
+calls = 0
+
+@lru_cache(maxsize=None)
+def fib(n):
+    global calls
+    calls += 1
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+
+fib(10)
+print(calls)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">11
+
+Without caching, naive recursive fib(10) would make hundreds of calls
+(exponential blowup, ~177 calls). With lru_cache, each distinct n from 0 to
+10 is computed exactly once and reused for every repeat request — so calls
+increments exactly 11 times (once per unique n in 0..10).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · partial vs lambda</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from functools import partial
+
+def greet(greeting, name):
+    return f"{greeting}, {name}!"
+
+hello = partial(greet, "Hello")
+print(hello("Ada"))
+print(hello.func, hello.args)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">Hello, Ada!
+<function greet at 0x...> ('Hello',)
+
+partial(greet, "Hello") locks in the FIRST positional argument (greeting).
+hello("Ada") supplies the remaining one (name). partial objects expose
+.func (the original function) and .args (the frozen positional args) —
+useful for introspection in a way a lambda wrapping the same logic wouldn't
+give you as cleanly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Stacking order</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def bracket(func):
+    def wrapper(*args, **kwargs):
+        return f"[{func(*args, **kwargs)}]"
+    return wrapper
+
+def star(func):
+    def wrapper(*args, **kwargs):
+        return f"*{func(*args, **kwargs)}*"
+    return wrapper
+
+@bracket
+@star
+def word():
+    return "hi"
+
+print(word())
+    </div>
+    <details><summary>Show solution</summary><div class="solution">[*hi*]
+
+word = bracket(star(word)). star is applied first (innermost), so it wraps
+the raw "hi" into "*hi*" first. bracket is applied second (outermost), so it
+wraps THAT result: "[*hi*]". Reading top-to-bottom in the source gives you
+outside-to-inside in the final nesting.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 7 · Combo: factory + wraps + stacking</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from functools import wraps
+
+def retry(times):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(times):
+                try:
+                    return func(*args, **kwargs)
+                except ValueError as e:
+                    last_error = e
+            raise last_error
+        return wrapper
+    return decorator
+
+attempts = 0
+
+@retry(3)
+def flaky():
+    """Fails twice, then succeeds."""
+    global attempts
+    attempts += 1
+    if attempts < 3:
+        raise ValueError("not yet")
+    return "success"
+
+print(flaky())
+print(flaky.__name__)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">success
+flaky
+
+flaky = retry(3)(flaky). Calling flaky() runs wrapper, which tries func() up
+to 3 times, catching ValueError each time. attempts goes 1 (fails), 2
+(fails), 3 (succeeds) — all within ONE call to flaky() during its retry
+loop, so it returns "success" on the third internal attempt.
+flaky.__name__ correctly shows 'flaky', not 'wrapper', because @wraps(func)
+was applied to wrapper inside decorator.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why <code class="inline">@decorator</code> is just <code class="inline">name = decorator(name)</code>, (2) why a decorator factory needs three nested function layers instead of two, and (3) why stacked decorators apply bottom-up but run top-down? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — decorators, third in the series.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: WRAPPING FLOW */
+(function(){
+  const btn = document.getElementById('wrap-run');
+  const logEl = document.getElementById('wrap-log');
+  const caller = document.getElementById('wf-caller');
+  const wrapper = document.getElementById('wf-wrapper');
+  const core = document.getElementById('wf-core');
+
+  btn.addEventListener('click', ()=>{
+    [caller, wrapper, core].forEach(f=>f.classList.remove('active'));
+    logEl.innerHTML = '';
+    const steps = [
+      {el:caller, text:'greet("Ada") is called — but "greet" IS wrapper now.'},
+      {el:wrapper, text:'wrapper runs: prints "before the call".'},
+      {el:core, text:'wrapper calls func("Ada") — reaches the ORIGINAL greet via closure — returns "Hello, Ada!"'},
+      {el:wrapper, text:'wrapper resumes: prints "after the call", then returns the result up to the caller.'},
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        [caller,wrapper,core].forEach(f=>f.classList.remove('active'));
+        s.el.classList.add('active');
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s.text}`;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i*650);
+    });
+  });
+})();
+
+/* SECTION 2: FACTORY LAYERS */
+(function(){
+  const btn = document.getElementById('fac-run');
+  const logEl = document.getElementById('fac-log');
+  const f1 = document.getElementById('ff-factory');
+  const f2 = document.getElementById('ff-decorator');
+  const f3 = document.getElementById('ff-wrapper');
+
+  btn.addEventListener('click', ()=>{
+    [f1,f2,f3].forEach(f=>f.classList.remove('active'));
+    logEl.innerHTML = '';
+    const steps = [
+      {el:f1, text:'repeat(3) runs immediately at decoration time — captures times=3, returns decorator.'},
+      {el:f2, text:'decorator(wave) runs next — captures func=wave, returns wrapper. "wave" now equals this wrapper.'},
+      {el:f3, text:'Later, wave() is called → runs wrapper → loops range(3), calling func() 3 times, printing 👋 each time.'},
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        [f1,f2,f3].forEach(f=>f.classList.remove('active'));
+        s.el.classList.add('active');
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s.text}`;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i*700);
+    });
+  });
+})();
+
+/* SECTION 4: LRU CACHE */
+(function(){
+  const buttonsEl = document.getElementById('cache-buttons');
+  const slotsEl = document.getElementById('cache-slots');
+  const logEl = document.getElementById('cache-log');
+  const maxsize = 3;
+  let cache = []; // array of {n, val}
+
+  [4,7,4,9,7,2].forEach(n=>{
+    const b = document.createElement('button');
+    b.className = 'callbtn';
+    b.textContent = `slow_square(${n})`;
+    b.addEventListener('click', ()=>callFn(n));
+    buttonsEl.appendChild(b);
+  });
+
+  function renderSlots(){
+    slotsEl.innerHTML = '';
+    for(let i=0;i<maxsize;i++){
+      const d = document.createElement('div');
+      d.className = 'cache-slot';
+      d.id = 'cache-slot-'+i;
+      if(cache[i]){
+        d.classList.add('filled');
+        d.textContent = `${cache[i].n} → ${cache[i].val}`;
+      } else {
+        d.textContent = 'empty';
+      }
+      slotsEl.appendChild(d);
+    }
+  }
+  renderSlots();
+
+  function callFn(n){
+    const existingIdx = cache.findIndex(c=>c.n===n);
+    const p = document.createElement('div'); p.className='line fadein';
+    if(existingIdx >= 0){
+      // cache hit: move to end (most recently used), flash it
+      const entry = cache.splice(existingIdx,1)[0];
+      cache.push(entry);
+      renderSlots();
+      const slotIdx = cache.length-1;
+      setTimeout(()=>{
+        const el = document.getElementById('cache-slot-'+slotIdx);
+        if(el) el.classList.add('hit');
+      }, 30);
+      p.innerHTML = `<b>slow_square(${n}):</b> cache HIT → returns ${n*n} instantly, no "computing..." print.`;
+    } else {
+      const val = n*n;
+      if(cache.length >= maxsize){
+        const evicted = cache.shift();
+        p.innerHTML = `<b>slow_square(${n}):</b> cache MISS → prints "computing ${n}**2..." → computes ${val}. Cache full, evicts least-recently-used entry (${evicted.n} → ${evicted.val}).`;
+      } else {
+        p.innerHTML = `<b>slow_square(${n}):</b> cache MISS → prints "computing ${n}**2..." → computes ${val} → stored in cache.`;
+      }
+      cache.push({n, val});
+      renderSlots();
+    }
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+})();
+
+/* SECTION 5: PARTIAL */
+(function(){
+  const chips = document.querySelectorAll('#partial .chip');
+  const frozenEl = document.getElementById('pt-frozen');
+  const exampleEl = document.getElementById('pt-example');
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.pt === 'square'){
+        frozenEl.textContent = 'exponent = 2';
+        exampleEl.textContent = 'square(5) → power(5, exponent=2) → 25';
+      } else {
+        frozenEl.textContent = 'exponent = 3';
+        exampleEl.textContent = 'cube(5) → power(5, exponent=3) → 125';
+      }
+    });
+  });
+})();
+
+/* SECTION 6: STACKING */
+(function(){
+  const btn = document.getElementById('stack-run');
+  const logEl = document.getElementById('stack-log');
+  const rExclaim = document.getElementById('or-exclaim');
+  const rUpper = document.getElementById('or-upper');
+  const rCore = document.getElementById('or-core');
+
+  btn.addEventListener('click', ()=>{
+    logEl.innerHTML = '';
+    [rExclaim,rUpper,rCore].forEach(r=>r.style.opacity=1);
+    const steps = [
+      {el:rExclaim, text:'shout() called → this IS the exclaim wrapper now → it calls the layer beneath it before adding "!".'},
+      {el:rUpper, text:'exclaim\'s inner call reaches the upper wrapper → it calls the ORIGINAL shout() before uppercasing.'},
+      {el:rCore, text:'Original shout() finally runs → returns "hello".'},
+      {el:rUpper, text:'upper wrapper receives "hello" → uppercases → "HELLO" → returns it upward.'},
+      {el:rExclaim, text:'exclaim wrapper receives "HELLO" → appends "!" → "HELLO!" → this is the final result.'},
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s.text}`;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+        [rExclaim,rUpper,rCore].forEach(r=>r.style.transform='scale(1)');
+        s.el.style.transform='scale(1.02)';
+      }, i*650);
+    });
+    setTimeout(()=>{
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>shout() →</b> "HELLO!"`;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    }, 5*650);
+  });
+})();
+</script>
+</body>
+</html>
