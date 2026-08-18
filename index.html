@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
-    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --accent:#ff8a65;
+    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --backend-c:#ff6b9d; --accent:#ff8a65;
     --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
   }
   *{box-sizing:border-box;}
@@ -56,6 +56,9 @@
   .dsa .tag{color:var(--dsa-c);}
   .dsa:hover{border-color:var(--dsa-c);}
   .dsa .arrow{color:var(--dsa-c);}
+  .backend .tag{color:var(--backend-c);}
+  .backend:hover{border-color:var(--backend-c);}
+  .backend .arrow{color:var(--backend-c);}
 
   .card.roadmap{position:relative;}
   .card .status{font-family:var(--mono); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid var(--rule); color:var(--ink-dim); position:absolute; top:1.4rem; right:1.5rem;}
@@ -69,8 +72,8 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Thirty-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
-  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, and relational databases — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
+  <h1>Thirty-seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, and backend API design — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
 <main>
@@ -267,7 +270,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">4 labs</span>
+      <span class="count">5 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -292,6 +295,51 @@
         <span class="tag">Schema-on-Write vs Schema-on-Read</span>
         <h3>SQL vs NoSQL</h3>
         <p>Where relational (ACID, joins) wins, where document/key-value (flexible schema, horizontal scale) wins, and the real consistency trade-offs between them.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/indexing.html">
+        <span class="tag">B-Trees, Composite Indexes &amp; EXPLAIN</span>
+        <h3>Indexing</h3>
+        <p>Why a range query narrows through a B-tree instead of scanning every row, the leftmost-prefix rule for composite indexes, and reading real EXPLAIN ANALYZE output.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Backend &amp; APIs</h2>
+      <span class="count">5 labs</span>
+    </div>
+    <div class="cards">
+      <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
+        <span class="tag">Routing, Pydantic V2 &amp; OpenAPI</span>
+        <h3>FastAPI Routing &amp; Pydantic</h3>
+        <p>Path/query/body params, Pydantic V2 validators and Field() constraints, nested and response models, and how automatic OpenAPI docs are generated from the same type hints.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/dependency_injection.html">
+        <span class="tag">Depends(), Resolution Order &amp; Caching</span>
+        <h3>Dependency Injection</h3>
+        <p>How Depends() chains resolve depth-first, why a dependency used twice in one request is only ever computed once, and overriding dependencies for tests.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/custom_middleware.html">
+        <span class="tag">BaseHTTPMiddleware, ASGI &amp; Ordering</span>
+        <h3>Custom Middleware</h3>
+        <p>Why the first middleware registered wraps outermost — running first on the way in and last on the way out — animated across 3 layers, both directions.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/url_shortener_design.html">
+        <span class="tag">System Design — Encoding &amp; Storage</span>
+        <h3>URL Shortener Design</h3>
+        <p>Base62 encoding worked by hand with real division/remainder arithmetic, a read-heavy key-value storage design, and why counters sidestep collisions that hashing can't.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/auth_jwt_oauth2.html">
+        <span class="tag">JWT Structure &amp; OAuth2 Password Flow</span>
+        <h3>Auth: JWT &amp; OAuth2</h3>
+        <p>Decode a real JWT into its three parts live, trace the OAuth2 password flow request by request, and why localStorage is a real XSS risk for tokens.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -350,7 +398,7 @@
 
 </main>
 
-<footer>materials/ · thirty-one standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · thirty-seven standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

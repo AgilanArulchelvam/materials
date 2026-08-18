@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — JWT &amp; OAuth2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --header-c:#ff6b9d; --payload-c:#f2c14e; --sig-c:#6ea8fe; --refresh-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,107,157,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .jwt-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.3rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .jh-part{padding:0.5rem 0.8rem; border-radius:8px; border:1.5px solid;}
+  .jh-part.h{border-color:var(--header-c); color:var(--header-c); background:rgba(255,107,157,0.08);}
+  .jh-part.p{border-color:var(--payload-c); color:var(--payload-c); background:rgba(242,193,78,0.08);}
+  .jh-part.s{border-color:var(--sig-c); color:var(--sig-c); background:rgba(110,168,254,0.08);}
+  .jh-dot{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* JWT string with clickable parts */
+  .jwt-string{font-family:var(--mono); font-size:0.85rem; word-break:break-all; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:1rem 0; line-height:1.8;}
+  .jwt-seg{cursor:pointer; padding:0.1em 0.15em; border-radius:4px; transition:all .2s;}
+  .jwt-seg.h{color:var(--header-c);} .jwt-seg.h:hover, .jwt-seg.h.open{background:rgba(255,107,157,0.15);}
+  .jwt-seg.p{color:var(--payload-c);} .jwt-seg.p:hover, .jwt-seg.p.open{background:rgba(242,193,78,0.15);}
+  .jwt-seg.s{color:var(--sig-c);} .jwt-seg.s:hover, .jwt-seg.s.open{background:rgba(110,168,254,0.15);}
+  .jwt-dot{color:var(--ink-dim);}
+
+  .jwt-decoded{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.2rem 0;}
+  @media(max-width:820px){.jwt-decoded{grid-template-columns:1fr;}}
+  .jwt-panel{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; font-family:var(--mono); font-size:0.78rem; opacity:0.3; transition:opacity .3s;}
+  .jwt-panel.shown{opacity:1;}
+  .jwt-panel.h{border-color:var(--header-c);}
+  .jwt-panel.p{border-color:var(--payload-c);}
+  .jwt-panel.s{border-color:var(--sig-c);}
+  .jwt-panel h4{margin:0 0 0.6rem; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em;}
+  .jwt-panel.h h4{color:var(--header-c);} .jwt-panel.p h4{color:var(--payload-c);} .jwt-panel.s h4{color:var(--sig-c);}
+  .jwt-panel pre{margin:0; white-space:pre-wrap; color:#cdd0d8;}
+
+  /* sequence diagram */
+  .seq-diagram{margin:1.6rem 0;}
+  .seq-actors{display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.78rem; margin-bottom:0.6rem;}
+  .seq-actor{padding:0.5rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2);}
+  .seq-steps{display:flex; flex-direction:column; gap:0.5rem;}
+  .seq-step{display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.78rem; opacity:0.25; transition:opacity .3s; padding:0.5rem 0;}
+  .seq-step.active{opacity:1;}
+  .seq-num{width:24px; height:24px; border-radius:50%; background:var(--panel-2); border:1.5px solid var(--rule); display:flex; align-items:center; justify-content:center; font-size:0.68rem; flex-shrink:0;}
+  .seq-step.active .seq-num{border-color:var(--accent); color:var(--accent);}
+  .seq-arrow{flex:1; height:2px; background:var(--rule); position:relative;}
+  .seq-step.active .seq-arrow{background:var(--accent);}
+  .seq-arrow:after{content:'→'; position:absolute; right:-4px; top:-11px; color:inherit;}
+  .seq-label{flex-shrink:0; max-width:280px;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--refresh-c);} .dc-col.b h4{color:var(--refresh-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--sig-c); background:rgba(110,168,254,0.06);} .callout.def b{color:var(--sig-c);}
+  .callout.info{border-left-color:var(--refresh-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--refresh-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · JWT &amp; OAUTH2</div>
+  <h1>A JWT isn't encrypted — anyone can read the payload. Its signature only proves it wasn't <em>tampered with</em>.</h1>
+  <p class="lede">JSON Web Tokens and OAuth2 solve two different but related problems: JWT is a compact, self-contained way to represent claims about a user, verifiably signed; OAuth2's password flow is the actual request/response choreography for exchanging credentials for a token. This lab decodes a real-looking JWT part by part, walks the OAuth2 password flow request by request, and covers why refresh tokens and safe storage aren't just extra complexity for its own sake.</p>
+
+  <div class="jwt-hero">
+    <div class="jh-part h">HEADER</div><span class="jh-dot">.</span>
+    <div class="jh-part p">PAYLOAD</div><span class="jh-dot">.</span>
+    <div class="jh-part s">SIGNATURE</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="jwt">1 · JWT Structure, Decoded</a>
+  <a data-target="oauth2">2 · OAuth2 Password Flow</a>
+  <a data-target="lifecycle">3 · Expiry, Refresh Tokens &amp; Safe Storage</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: JWT STRUCTURE ============ -->
+<section id="jwt">
+  <div class="kicker">01 — Three parts, and only one of them is a secret</div>
+  <h2>JWT structure: header, payload, signature</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a wax-sealed letter with the text written in plain, ordinary handwriting — anyone who intercepts the letter can read every word of it without any special key. What the wax seal actually proves is narrower: that the letter came from whoever holds the matching stamp, and that nobody altered the text after it was sealed. A JWT is exactly that kind of letter: its contents are NOT secret or encrypted (just base64url-encoded, which is trivially reversible by anyone), and its signature exists purely to prove authenticity and integrity — not confidentiality.</p>
+
+  <p>A JWT is three base64url-encoded segments joined by dots: a <strong>header</strong> (declares the token type and signing algorithm), a <strong>payload</strong> (the actual claims — user ID, roles, expiry — as a JSON object), and a <strong>signature</strong> (a cryptographic signature over the header and payload, computed with a secret or private key the server holds).</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>DECODE A REAL-LOOKING JWT, PART BY PART</span></div>
+    <div class="jwt-string" id="jwt-string"></div>
+    <div class="jwt-decoded">
+      <div class="jwt-panel h" id="panel-h"><h4>Header (decoded)</h4><pre id="panel-h-content">Click the pink segment above.</pre></div>
+      <div class="jwt-panel p" id="panel-p"><h4>Payload (decoded)</h4><pre id="panel-p-content">Click the gold segment above.</pre></div>
+      <div class="jwt-panel s" id="panel-s"><h4>Signature</h4><pre id="panel-s-content">Click the blue segment above.</pre></div>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>The mistake this trips people into:</b> because a JWT LOOKS like an opaque random string, it's easy to assume it's encrypted and safe to stuff sensitive data into. It is not — anyone holding the token (a browser extension, a proxy log, a curious user with devtools open) can base64url-DEcode the payload instantly and read every claim in plain text. Never put secrets (passwords, raw API keys, sensitive PII) directly in a JWT payload; put only what's safe for the token holder themselves to see.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> a JWT (JSON Web Token) is a compact, URL-safe token format consisting of three base64url-encoded, dot-separated segments — a header specifying the algorithm and token type, a payload containing claims (arbitrary JSON data about the subject, plus standard claims like expiry), and a signature computed over the header and payload using a server-held key. The signature allows any party with the corresponding verification key to confirm the token's contents haven't been altered since issuance (integrity and authenticity), but the header and payload themselves are NOT encrypted and are trivially readable by anyone holding the token.</div>
+</section>
+
+<!-- ============ SECTION 2: OAUTH2 PASSWORD FLOW ============ -->
+<section id="oauth2">
+  <div class="kicker">02 — The actual sequence of requests</div>
+  <h2>OAuth2 password flow, conceptually</h2>
+
+  <p><strong>Start here, before any diagram.</strong> Think of checking into a hotel: you show ID and pay at the front desk ONCE, and in exchange you get a keycard. For the rest of your stay, you show the KEYCARD to get into your room — nobody re-checks your ID and payment on every single door you open. The keycard is a stand-in credential, scoped (it only opens your room, not every room), and it can be deactivated or expire without needing to redo the entire check-in process.</p>
+
+  <p>OAuth2's <strong>password flow</strong> (technically the "Resource Owner Password Credentials" grant) is that check-in process: the client collects the user's username and password directly, sends them ONCE to an authorization/token endpoint, and receives back an access token to use on every subsequent request instead of resending credentials each time.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE REQUEST/RESPONSE SEQUENCE</span>
+      <div><button class="btn secondary" id="seq-reset">Reset</button></div>
+    </div>
+    <div class="seq-diagram">
+      <div class="seq-actors">
+        <div class="seq-actor">Client (app)</div>
+        <div class="seq-actor">Auth Server</div>
+        <div class="seq-actor">Resource API</div>
+      </div>
+      <div class="seq-steps" id="seq-steps">
+        <div class="seq-step" data-n="1"><span class="seq-num">1</span><span class="seq-arrow"></span><span class="seq-label">POST /token — username + password + grant_type=password</span></div>
+        <div class="seq-step" data-n="2"><span class="seq-num">2</span><span class="seq-arrow"></span><span class="seq-label">Auth server validates credentials against the user store</span></div>
+        <div class="seq-step" data-n="3"><span class="seq-num">3</span><span class="seq-arrow"></span><span class="seq-label">200 OK — { access_token, refresh_token, expires_in }</span></div>
+        <div class="seq-step" data-n="4"><span class="seq-num">4</span><span class="seq-arrow"></span><span class="seq-label">GET /api/profile — Authorization: Bearer &lt;access_token&gt;</span></div>
+        <div class="seq-step" data-n="5"><span class="seq-num">5</span><span class="seq-arrow"></span><span class="seq-label">Resource API verifies the token's signature + expiry (no password needed)</span></div>
+        <div class="seq-step" data-n="6"><span class="seq-num">6</span><span class="seq-arrow"></span><span class="seq-label">200 OK — profile data returned</span></div>
+      </div>
+    </div>
+    <button class="btn" id="seq-run">Play sequence ▸</button>
+  </div>
+
+  <div class="callout warn"><b>Why this flow is increasingly discouraged:</b> the password flow requires the CLIENT itself to directly handle the user's raw username and password, which only makes sense when the client is fully trusted (a first-party app). It's a poor fit for third-party integrations, which is why the authorization code flow (redirecting to a login page the third-party app never sees) is preferred in most modern OAuth2 usage — the password flow is still worth understanding conceptually because it's the simplest illustration of "trade credentials for a token, then use the token."</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the OAuth2 password grant is a flow where a client submits a resource owner's username and password directly to an authorization server's token endpoint, receives back an access token (and often a refresh token), and then authenticates all subsequent API requests by presenting that token (typically via an <code class="inline">Authorization: Bearer &lt;token&gt;</code> header) instead of resending credentials — decoupling "proving who you are" (done once) from "proving you're still authorized" (done on every request, cheaply, via the token).</div>
+</section>
+
+<!-- ============ SECTION 3: LIFECYCLE & STORAGE ============ -->
+<section id="lifecycle">
+  <div class="kicker">03 — Tokens don't live forever, and where they live matters</div>
+  <h2>Token expiry, refresh tokens, and safe storage</h2>
+
+  <p><strong>Start here, before any code.</strong> A hotel keycard that worked forever, even after checkout, would be a real security problem — anyone who ever held one could keep using it indefinitely. That's why keycards (and access tokens) are time-limited. But making guests re-do the entire check-in desk process every hour would be miserable — so hotels sometimes offer an easy re-issue process for returning guests without repeating the full ID check. That's what a refresh token is for.</p>
+
+  <p>An <strong>access token</strong> is deliberately short-lived (minutes to a couple hours) — if it leaks, the exposure window is small. A <strong>refresh token</strong> is longer-lived and used ONLY to obtain a new access token from the auth server, without re-sending the username and password again — trading "how often do I need real credentials" against "how long is a leaked access token dangerous for."</p>
+
+  <div class="code">
+<span class="c-cmt">// Access token: short-lived, sent on every API request</span>
+{ <span class="c-str">"access_token"</span>: <span class="c-str">"eyJhbGciOi..."</span>, <span class="c-str">"expires_in"</span>: <span class="c-num">900</span> }  <span class="c-cmt">// 15 minutes</span>
+
+<span class="c-cmt">// When it expires, the client uses the refresh token to get a new one --
+// no password re-entry needed:</span>
+<span class="c-kw">POST</span> /token
+{ <span class="c-str">"grant_type"</span>: <span class="c-str">"refresh_token"</span>, <span class="c-str">"refresh_token"</span>: <span class="c-str">"def502..."</span> }
+
+<span class="c-cmt">// Response: a brand new access_token (and often a rotated refresh_token)</span>
+{ <span class="c-str">"access_token"</span>: <span class="c-str">"eyJhbGciOi_NEW..."</span>, <span class="c-str">"expires_in"</span>: <span class="c-num">900</span> }
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Storing a JWT in localStorage</h4>
+      <p>JavaScript on the page can read localStorage directly. If the site has ANY cross-site scripting (XSS) vulnerability — a single unsanitized field rendering attacker-controlled script — that malicious script can read the token straight out of localStorage and exfiltrate it, no special privilege needed.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Storing a token in an httpOnly cookie</h4>
+      <p>An httpOnly cookie is deliberately INVISIBLE to JavaScript — <code class="inline">document.cookie</code> simply cannot read it. Even a successful XSS injection can't directly steal the token this way, though httpOnly cookies bring their own concern (CSRF) that needs separate mitigation (e.g. SameSite cookie attributes, CSRF tokens).</p>
+    </div>
+  </div>
+
+  <div class="callout info"><b>Why this matters in practice:</b> "where do I store the token" is not a minor implementation detail — it's a real security boundary decision. XSS vulnerabilities are common enough in real applications that "assume XSS will eventually happen somewhere" is a reasonable defensive posture, which is why httpOnly cookies are generally recommended over localStorage for storing tokens in browser-based apps, despite localStorage being simpler to use from ordinary JavaScript.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> access tokens are intentionally short-lived to limit the damage window if one is stolen, while refresh tokens are longer-lived credentials used solely to obtain new access tokens without re-authenticating with a password — allowing a system to keep sessions convenient for users while keeping the actively-used bearer token's exposure window small. Storing tokens in browser localStorage exposes them to theft via any XSS vulnerability (since page JavaScript can read localStorage), while httpOnly cookies are inaccessible to JavaScript entirely, making them the generally safer default for browser-based token storage, at the cost of needing separate CSRF protections.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · What the signature does and doesn't prove</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An attacker intercepts a valid JWT and, without the server's signing secret, changes the payload's "role" claim from "user" to "admin," re-encodes it, and sends the modified token to the server. What happens, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">The server rejects the token. The signature was computed over the ORIGINAL
+header and payload using the server's secret key -- changing even one
+character of the payload produces a completely different expected
+signature. When the server re-verifies the token, it recomputes the
+signature over the (now-modified) header and payload and compares it
+against the signature the attacker sent, which still reflects the OLD,
+unmodified payload. These won't match, so verification fails and the
+server rejects the token as tampered. This is exactly what the signature
+is FOR -- proving the payload hasn't changed since a party holding the
+secret signed it -- even though the payload itself was always readable in
+plain text.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Confidentiality vs integrity</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A developer stores a user's full home address directly in a JWT payload, reasoning "it's fine, the token is signed." Explain what's wrong with this reasoning.</p>
+    <details><summary>Show solution</summary><div class="solution">Signing provides INTEGRITY (proof the data wasn't tampered with) and
+authenticity (proof it came from whoever holds the signing key) -- it does
+NOT provide CONFIDENTIALITY. The payload is only base64url-encoded, which
+is a reversible encoding scheme, not encryption; anyone who obtains the
+token (through a browser extension, a server log, a network proxy, or
+simply opening devtools) can decode the payload and read the home address
+in plain text instantly. "Signed" and "encrypted" are different
+properties, and conflating them is a common and genuinely dangerous
+mistake -- sensitive data needs actual encryption (or simply shouldn't be
+placed in a JWT payload at all), not just a signature.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Tracing the password flow</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In the OAuth2 password flow, after the client receives an access token, does it need to send the username/password again on subsequent API requests? What does it send instead, and why is this a meaningful improvement?</p>
+    <details><summary>Show solution</summary><div class="solution">No, the client does not resend the username/password on subsequent
+requests -- it sends the access token instead, typically as an
+Authorization: Bearer <token> header. This is a meaningful improvement for
+several reasons: the raw password is transmitted only ONCE (at initial
+login), minimizing how often the most sensitive credential travels over
+the network at all; verifying a token (checking a signature and an expiry
+timestamp) is far cheaper for the server than re-validating a password
+against a user store (which often involves an expensive hash comparison);
+and if a token needs to be revoked or expires, that doesn't require
+changing the user's actual password.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Why refresh tokens exist at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Why not just issue access tokens with a very long expiry (say, 30 days) and skip refresh tokens entirely?</p>
+    <details><summary>Show solution</summary><div class="solution">A long-lived access token is dangerous specifically BECAUSE it's the
+token sent on every single API request -- it's exposed far more often
+(every request, potentially logged by proxies, visible in network traffic
+inspection tools) than a refresh token, which is only sent occasionally
+(when actually refreshing). If a long-lived access token leaks, an
+attacker has a full 30 days of access with no further action needed. The
+refresh token pattern splits this risk: the frequently-exposed access
+token has a short leak-exposure window (minutes to hours), while the
+rarely-exposed refresh token can safely be longer-lived, since it's used
+far less often and can be more tightly protected (e.g. stored only in a
+secure httpOnly cookie, checked against a revocation list server-side).
+This gets you both convenience (users don't re-login constantly) and a
+much smaller blast radius if the token that's actually in constant
+circulation gets stolen.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · localStorage vs httpOnly cookie under XSS</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A site has a stored XSS vulnerability (an attacker can get arbitrary JavaScript to run on other users' pages). Compare what the attacker can do if the access token is stored in localStorage versus in an httpOnly cookie.</p>
+    <details><summary>Show solution</summary><div class="solution">If stored in localStorage: the attacker's injected JavaScript can directly
+call localStorage.getItem(...) and read the token, then send it to an
+attacker-controlled server -- full token theft, trivially, the moment the
+XSS payload executes on a victim's page.
+
+If stored in an httpOnly cookie: the injected JavaScript CANNOT read the
+cookie's value at all -- document.cookie simply omits httpOnly cookies by
+browser design. The attacker's script could still potentially make
+requests that ride along with the cookie automatically (since browsers
+attach cookies to same-origin requests without JS needing to touch them),
+which is a CSRF-shaped risk, not direct token theft -- but the attacker
+cannot exfiltrate the actual token value to use it independently
+elsewhere (e.g. from their own machine, outside the victim's browser),
+which is the specific threat direct localStorage access enables. This is
+exactly why httpOnly cookies are considered meaningfully safer against
+XSS specifically, while still needing separate CSRF defenses.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely what a JWT's signature does and does not guarantee, (2) the full request/response sequence of the OAuth2 password flow well enough to draw it from memory, and (3) why splitting tokens into short-lived access + longer-lived refresh is a genuine security improvement rather than just added complexity? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — jwt &amp; oauth2.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: JWT DECODER */
+(function(){
+  const headerObj = {"alg":"HS256","typ":"JWT"};
+  const payloadObj = {"sub":"user_4821","name":"Ada Lovelace","role":"admin","iat":1755500000,"exp":1755503600};
+
+  function b64urlEncode(obj){
+    const json = JSON.stringify(obj);
+    let b64 = btoa(unescape(encodeURIComponent(json)));
+    return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+
+  const headerPart = b64urlEncode(headerObj);
+  const payloadPart = b64urlEncode(payloadObj);
+  const signaturePart = "s3cr3t_HMAC_signature_over_header_and_payload_abc123XYZ";
+
+  const stringEl = document.getElementById('jwt-string');
+  stringEl.innerHTML = `<span class="jwt-seg h" id="seg-h">${headerPart}</span><span class="jwt-dot">.</span><span class="jwt-seg p" id="seg-p">${payloadPart}</span><span class="jwt-dot">.</span><span class="jwt-seg s" id="seg-s">${signaturePart}</span>`;
+
+  const segH = document.getElementById('seg-h');
+  const segP = document.getElementById('seg-p');
+  const segS = document.getElementById('seg-s');
+  const panelH = document.getElementById('panel-h');
+  const panelP = document.getElementById('panel-p');
+  const panelS = document.getElementById('panel-s');
+
+  segH.addEventListener('click', ()=>{
+    segH.classList.add('open');
+    panelH.classList.add('shown');
+    document.getElementById('panel-h-content').textContent = JSON.stringify(headerObj, null, 2);
+  });
+  segP.addEventListener('click', ()=>{
+    segP.classList.add('open');
+    panelP.classList.add('shown');
+    document.getElementById('panel-p-content').textContent = JSON.stringify(payloadObj, null, 2) + "\n\n(anyone can decode this -- it is NOT encrypted)";
+  });
+  segS.addEventListener('click', ()=>{
+    segS.classList.add('open');
+    panelS.classList.add('shown');
+    document.getElementById('panel-s-content').textContent = "HMACSHA256(\n  base64url(header) + \".\" + base64url(payload),\n  server_secret_key\n)\n\nThis is NOT decodable -- it's a one-way signature used only to VERIFY the header+payload haven't changed.";
+  });
+})();
+
+/* SECTION 2: OAUTH2 SEQUENCE PLAYER */
+(function(){
+  const runBtn = document.getElementById('seq-run');
+  const resetBtn = document.getElementById('seq-reset');
+  const steps = document.querySelectorAll('.seq-step');
+  let running = false;
+
+  function reset(){
+    steps.forEach(s=>s.classList.remove('active'));
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    reset();
+    let i = 0;
+    function step(){
+      if(i >= steps.length){ running = false; return; }
+      steps[i].classList.add('active');
+      i++;
+      setTimeout(step, 750);
+    }
+    step();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    running = false;
+    reset();
+  });
+})();
+</script>
+</body>
+</html>

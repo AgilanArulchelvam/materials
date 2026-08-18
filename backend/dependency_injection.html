@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Dependency Injection</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dep-c:#f2c14e; --cache-c:#7fd8a0; --db-c:#6ea8fe; --auth-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .dep-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.7rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .dh-box{padding:0.55rem 0.95rem; border-radius:8px; border:1.5px solid var(--dep-c); color:var(--dep-c); background:rgba(242,193,78,0.08);}
+  .dh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#e9e6dd;} .code .c-dec{color:#f2c14e;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* dependency resolution tree */
+  .dep-tree{position:relative; min-height:280px; margin:1.4rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .dep-node{position:absolute; padding:0.65rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; transition:all .4s ease; opacity:0.3; min-width:150px;}
+  .dep-node.active{opacity:1; box-shadow:0 0 16px currentColor; transform:scale(1.04);}
+  .dep-node.resolved{opacity:1; border-color:var(--cache-c); color:var(--cache-c);}
+  .dep-node.cached{opacity:1; border-color:var(--auth-c); color:var(--auth-c); background:rgba(199,146,234,0.1);}
+  .dep-line{position:absolute; background:var(--rule); transition:background .3s;}
+  .dep-line.lit{background:var(--dep-c);}
+  .dep-sub{font-size:0.65rem; color:var(--ink-dim); display:block; margin-top:0.2rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--db-c);} .dc-col.a h4{color:var(--db-c);}
+  .dc-col.b{border-color:var(--cache-c);} .dc-col.b h4{color:var(--cache-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--dep-c); background:rgba(242,193,78,0.06);} .callout.def b{color:var(--dep-c);}
+  .callout.info{border-left-color:var(--cache-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--cache-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · DEPENDENCY INJECTION</div>
+  <h1>A dependency is resolved <em>once per request</em>, no matter how many times it's asked for.</h1>
+  <p class="lede">FastAPI's <code class="inline">Depends()</code> system lets a route declare "before you run me, first go get me this thing" — a database session, the current authenticated user, a config object — without the route itself knowing how that thing is constructed. This lab traces exactly how a dependency chain resolves, in what order, and why a dependency used by two different parts of the same request is only ever computed once.</p>
+
+  <div class="dep-hero">
+    <div class="dh-box">route needs get_current_user</div>
+    <div class="dh-arrow">→ which needs →</div>
+    <div class="dh-box">get_db</div>
+    <div class="dh-arrow">→ resolved once, shared</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="mechanics">1 · Depends() Mechanics</a>
+  <a data-target="chains">2 · Resolution Order &amp; Per-Request Caching</a>
+  <a data-target="sharing">3 · Sharing a DB Session or Config</a>
+  <a data-target="testing">4 · Overriding Dependencies for Testing</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: MECHANICS ============ -->
+<section id="mechanics">
+  <div class="kicker">01 — What Depends() actually does</div>
+  <h2>Depends() mechanics</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a restaurant kitchen ticket that says "needs: chopped onions." The cook doesn't personally grow, harvest, and chop the onions from scratch every single time — there's a prep station upstream whose entire job is producing "chopped onions," and the cook just declares that dependency and receives the finished result. If two different dishes on the same ticket both need chopped onions, the prep station doesn't chop two separate batches — it made one batch for this ticket, and both dishes draw from it.</p>
+
+  <p>A FastAPI dependency is just a regular function (often called a "provider") that FastAPI calls FOR you before your route runs, then passes its return value into your route as an argument. You declare this by giving a route parameter a default value of <code class="inline">Depends(some_function)</code>. Crucially, dependencies can themselves depend on OTHER dependencies — <code class="inline">Depends()</code> chains arbitrarily deep, and FastAPI resolves the whole tree automatically.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> Depends, FastAPI
+
+app = FastAPI()
+
+<span class="c-kw">def</span> <span class="c-fn">get_db</span>():
+    db = DBSession()
+    <span class="c-kw">try</span>:
+        <span class="c-kw">yield</span> db   <span class="c-cmt"># hands the session to the route</span>
+    <span class="c-kw">finally</span>:
+        db.close()      <span class="c-cmt"># runs AFTER the response is sent</span>
+
+<span class="c-kw">def</span> <span class="c-fn">get_current_user</span>(db = Depends(get_db), token: str = <span class="c-str">""</span>):
+    <span class="c-cmt"># get_current_user itself DEPENDS on get_db -- a dependency chain</span>
+    <span class="c-kw">return</span> db.lookup_user_by_token(token)
+
+<span class="c-dec">@app.get(<span class="c-str">"/profile"</span>)</span>
+<span class="c-kw">async def</span> <span class="c-fn">read_profile</span>(user = Depends(get_current_user), db = Depends(get_db)):
+    <span class="c-cmt"># this route asks for get_current_user AND get_db directly.
+    # get_current_user ALSO needs get_db internally.
+    # FastAPI resolves get_db only ONCE for this whole request -- see next section.</span>
+    <span class="c-kw">return</span> {<span class="c-str">"user"</span>: user.name}
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> <code class="inline">Depends()</code> declares that a route (or another dependency) requires the return value of a given callable, resolved by FastAPI before the dependent function executes. Dependencies can be plain functions (return a value directly) or generator functions (using <code class="inline">yield</code>, splitting into setup code before the yield and teardown code after — teardown runs once the response has been generated). FastAPI builds and resolves the full dependency graph for a request automatically, including dependencies-of-dependencies, without the route needing any knowledge of how a dependency is internally constructed.</div>
+</section>
+
+<!-- ============ SECTION 2: RESOLUTION ORDER & CACHING ============ -->
+<section id="chains">
+  <div class="kicker">02 — Order matters, and repetition doesn't cost anything</div>
+  <h2>Resolution order and per-request caching</h2>
+
+  <p><strong>Start here, before the demo.</strong> Back to the kitchen: if "plated dessert" needs "baked cake," and "baked cake" needs "mixed batter," the kitchen obviously can't bake before mixing, or plate before baking — dependencies must be resolved from the deepest, most upstream one outward, working toward whatever actually asked for them. And if the SAME prep item is needed by two different steps on one ticket, a well-run kitchen makes it once and shares it — it does not duplicate the work for each consumer.</p>
+
+  <p>FastAPI works the same way: for a single incoming request, it resolves dependencies depth-first — a dependency's own dependencies are resolved before the dependency itself runs — and it <strong>caches the result of each unique dependency callable for the lifetime of that one request</strong>. If <code class="inline">get_db</code> is required both directly by a route AND indirectly through <code class="inline">get_current_user</code>, FastAPI calls <code class="inline">get_db</code> exactly once and reuses that same return value everywhere it's needed in that request — this is the single most common point of confusion for people new to FastAPI's DI system.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH ONE REQUEST RESOLVE ITS DEPENDENCY TREE</span>
+      <div><button class="btn secondary" id="dep-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Route <code class="inline">GET /profile</code> declares <code class="inline">Depends(get_current_user)</code> AND <code class="inline">Depends(get_db)</code> directly. <code class="inline">get_current_user</code> ALSO depends on <code class="inline">get_db</code> internally. Watch what happens to get_db.</p>
+    <div class="dep-tree" id="dep-tree">
+      <div class="dep-node" id="node-route" style="left:50%; top:0px; transform:translateX(-50%); border-color:var(--accent); color:var(--accent);">GET /profile<span class="dep-sub">the route handler</span></div>
+      <div class="dep-node" id="node-user" style="left:20%; top:100px;">get_current_user()<span class="dep-sub">needs get_db + token</span></div>
+      <div class="dep-node" id="node-db1" style="left:75%; top:100px;">get_db()<span class="dep-sub">requested directly by route</span></div>
+      <div class="dep-node" id="node-db2" style="left:20%; top:200px;">get_db()<span class="dep-sub">requested by get_current_user</span></div>
+    </div>
+    <button class="btn" id="dep-run">Send request ▸</button>
+    <div class="log" id="dep-log"><span class="line">Click "Send request" to watch resolution order and caching happen step by step.</span></div>
+  </div>
+
+  <div class="callout info"><b>The core rule of thumb:</b> within a single request, each unique dependency callable is resolved AT MOST ONCE, no matter how many routes or other dependencies ask for it. This is what makes it safe to have both a route and several nested dependencies all declare <code class="inline">Depends(get_db)</code> — you get one shared database session for the whole request, not one per declaration, which matters enormously for correctness (all reads/writes in that request see a consistent session) and performance.</div>
+</section>
+
+<!-- ============ SECTION 3: SHARING STATE ============ -->
+<section id="sharing">
+  <div class="kicker">03 — What per-request caching is actually for</div>
+  <h2>Sharing a DB session or config object via DI</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine if every function that touched a shopping cart got its own SEPARATE, disconnected copy of the cart — one function adds an item, but the next function's copy never sees it. That's obviously broken; you need everyone touching "this request's cart" to be looking at the SAME cart. A per-request-cached dependency is exactly how FastAPI guarantees that: every part of handling one request that asks for <code class="inline">get_db</code> gets the identical session object, so a row inserted by one dependency is visible to a route handler that runs afterward in the same request.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Database session</h4>
+      <p>One <code class="inline">Session</code> per request, shared across every dependency and the route handler, then closed (and often committed/rolled-back) automatically after the response is built — via a <code class="inline">yield</code>-based dependency's teardown code.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Config / settings object</h4>
+      <p>A <code class="inline">Settings</code> object (env vars, API keys, feature flags) is often built ONCE at app startup and reused across every request via a cached dependency — the same underlying pattern, applied to app-lifetime state instead of per-request state.</p>
+    </div>
+  </div>
+
+  <div class="code">
+<span class="c-kw">from</span> functools <span class="c-kw">import</span> lru_cache
+
+<span class="c-kw">class</span> <span class="c-fn">Settings</span>(BaseModel):
+    database_url: str
+    debug: bool = <span class="c-kw">False</span>
+
+<span class="c-dec">@lru_cache</span>  <span class="c-cmt"># cached across the WHOLE APP lifetime, not just one request</span>
+<span class="c-kw">def</span> <span class="c-fn">get_settings</span>() -> Settings:
+    <span class="c-kw">return</span> Settings(database_url=os.environ[<span class="c-str">"DATABASE_URL"</span>])
+
+<span class="c-dec">@app.get(<span class="c-str">"/health"</span>)</span>
+<span class="c-kw">async def</span> <span class="c-fn">health</span>(settings: Settings = Depends(get_settings)):
+    <span class="c-kw">return</span> {<span class="c-str">"debug"</span>: settings.debug}
+  </div>
+
+  <div class="callout warn"><b>A subtle distinction:</b> FastAPI's built-in dependency caching is PER-REQUEST by default — it does not persist across different requests. <code class="inline">@lru_cache</code> above is a separate, deliberate choice to cache <code class="inline">get_settings</code>'s result across the entire application's lifetime, appropriate because config genuinely doesn't change between requests. Using <code class="inline">@lru_cache</code> on something like <code class="inline">get_db</code> would be a serious bug — it would hand out the SAME database session to every request forever, defeating per-request isolation entirely.</div>
+</section>
+
+<!-- ============ SECTION 4: TESTING OVERRIDES ============ -->
+<section id="testing">
+  <div class="kicker">04 — Swapping real dependencies for fakes</div>
+  <h2>Overriding dependencies for testing</h2>
+
+  <p><strong>Start here, before any code.</strong> A flight simulator doesn't fly a real plane — it swaps out the real engines, real weather, and real air traffic control for controlled, predictable stand-ins, while the pilot's controls and training experience stay identical. Testing a FastAPI app works the same way: you don't want a test hitting a real production database or calling a real external API — you want to swap those dependencies for fast, predictable fakes, while the route code under test doesn't change at all.</p>
+
+  <p>Because dependencies are just callables referenced by <code class="inline">Depends()</code>, FastAPI's test client lets you replace any dependency function with a different one via <code class="inline">app.dependency_overrides</code> — a dictionary mapping the original callable to a replacement, active for the lifetime of the override (commonly the whole test session).</p>
+
+  <div class="code">
+<span class="c-kw">from</span> fastapi.testclient <span class="c-kw">import</span> TestClient
+
+<span class="c-kw">def</span> <span class="c-fn">override_get_db</span>():
+    db = FakeInMemoryDB()  <span class="c-cmt"># no real database connection at all</span>
+    <span class="c-kw">try</span>:
+        <span class="c-kw">yield</span> db
+    <span class="c-kw">finally</span>:
+        <span class="c-kw">pass</span>
+
+app.dependency_overrides[get_db] = override_get_db  <span class="c-cmt"># swap it in</span>
+
+client = TestClient(app)
+response = client.get(<span class="c-str">"/profile"</span>)  <span class="c-cmt"># uses FakeInMemoryDB, never touches real DB</span>
+
+<span class="c-cmt"># cleanup after the test:</span>
+app.dependency_overrides.clear()
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> <code class="inline">app.dependency_overrides</code> is a dictionary FastAPI checks before resolving any dependency — if the original dependency callable is a key in this dictionary, FastAPI calls the override callable instead, anywhere in the dependency graph that original would have been used. This lets tests substitute fakes/mocks (an in-memory database, a stubbed authentication check) for real infrastructure without modifying a single line of route or dependency code, because the route only ever declared a dependency on "get_db," not on any specific implementation of it.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Caching within one request</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A route depends on both <code class="inline">get_current_user</code> and <code class="inline">get_db</code> directly, and <code class="inline">get_current_user</code> itself depends on <code class="inline">get_db</code>. How many times does <code class="inline">get_db</code> actually execute for one incoming request, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Exactly once. FastAPI caches the result of each unique dependency callable
+for the duration of a single request -- the first time get_db is needed
+(whichever consumer asks for it first in resolution order), FastAPI calls
+it and stores the result. Every subsequent place in that same request's
+dependency graph that also declares Depends(get_db) receives the ALREADY-
+COMPUTED result rather than triggering a second call. This is deliberate:
+it's what guarantees the route handler and get_current_user share the
+exact same database session/connection for that request.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Resolution order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given the chain route → get_current_user → get_db, in what order do these three actually execute, and why can't it be any other order?</p>
+    <details><summary>Show solution</summary><div class="solution">get_db executes first, then get_current_user, then the route handler
+itself. This is forced by data dependency: get_current_user's own code
+needs the database session as an argument to do its job (looking up a user
+by token), so get_db MUST have already produced a value before
+get_current_user can even be called. Likewise the route handler needs
+get_current_user's return value as an argument, so get_current_user must
+finish first. FastAPI resolves dependency trees depth-first, from the most
+upstream (fewest unmet dependencies) outward to the thing that ultimately
+requested them.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · lru_cache vs per-request caching</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Why would putting @lru_cache directly on get_db (instead of just relying on FastAPI's normal per-request dependency caching) be a serious bug?</p>
+    <details><summary>Show solution</summary><div class="solution">@lru_cache caches across the ENTIRE application's lifetime, not per
+request -- the first request to call get_db would create one database
+session, and @lru_cache would then hand that exact same session object to
+EVERY future request forever, since the function's arguments (none) never
+change. This breaks per-request isolation completely: concurrent requests
+would all share one session (a serious correctness and thread-safety
+problem for most database drivers), and the yield-based teardown (closing
+the session) would only ever run once, if at all, rather than once per
+request as intended. FastAPI's built-in dependency caching is deliberately
+scoped to a single request specifically to avoid this failure mode; @lru_cache
+is only appropriate for things that are genuinely safe to share for the
+whole app's lifetime, like static configuration.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Testing without touching the real database</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain, mechanically, how app.dependency_overrides lets a test avoid connecting to a real database, without changing any route code.</p>
+    <details><summary>Show solution</summary><div class="solution">Route code never references a specific database implementation directly
+-- it only declares Depends(get_db), a reference to a callable. FastAPI
+resolves that callable at request time by looking it up (checking
+dependency_overrides first). When a test sets
+app.dependency_overrides[get_db] = override_get_db, every future request
+made through that app (including ones nested many dependencies deep) will
+have FastAPI substitute override_get_db wherever get_db would have been
+called, without the route or any intermediate dependency knowing or caring
+that a substitution happened. Since override_get_db can yield a fake
+in-memory object instead of a real connection, the real database is never
+touched, and no route source code needed to change.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Generator dependency teardown timing</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A get_db dependency uses `yield` and closes the session in a finally block after the yield. If the route handler raises an unhandled exception, does the finally block still run? What does this guarantee for resource cleanup?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, the finally block still runs. FastAPI drives yield-based dependencies
+using the same exception-propagation semantics as a normal Python
+try/finally -- if an exception occurs anywhere downstream of the yield
+(inside the route handler, or in another dependency that ran after this
+one), that exception propagates back through the generator at the yield
+point, and Python guarantees the finally block executes regardless of
+whether the code after yield succeeded or raised. This is precisely why
+yield-based dependencies are the standard way to manage resources like
+database sessions or file handles in FastAPI: cleanup (closing the
+connection, releasing a lock) is guaranteed to happen exactly once per
+request, success or failure, without every route needing its own manual
+try/finally.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely what "resolved once, cached per request" means and why it matters for correctness, (2) why config/settings caching with @lru_cache is a fundamentally different scope than FastAPI's built-in per-request dependency caching, and (3) how dependency_overrides lets tests swap infrastructure without touching route code? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — dependency injection.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: DEPENDENCY RESOLUTION DEMO */
+(function(){
+  const runBtn = document.getElementById('dep-run');
+  const resetBtn = document.getElementById('dep-reset');
+  const logEl = document.getElementById('dep-log');
+  const nodeRoute = document.getElementById('node-route');
+  const nodeUser = document.getElementById('node-user');
+  const nodeDb1 = document.getElementById('node-db1');
+  const nodeDb2 = document.getElementById('node-db2');
+  let running = false;
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetNodes(){
+    [nodeRoute, nodeUser, nodeDb1, nodeDb2].forEach(n=>{
+      n.classList.remove('active','resolved','cached');
+    });
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    resetNodes();
+    logEl.innerHTML = '';
+    log('<b>Request arrives:</b> GET /profile. FastAPI inspects the route\'s dependency graph: needs get_current_user (which needs get_db) AND get_db directly.');
+
+    setTimeout(()=>{
+      nodeDb2.classList.add('active');
+      log('<b>Step 1:</b> Resolving depth-first — get_db is needed by get_current_user, and nothing else is resolved yet. Calling get_db() for the FIRST time this request.');
+    }, 600);
+
+    setTimeout(()=>{
+      nodeDb2.classList.remove('active'); nodeDb2.classList.add('resolved');
+      log('get_db() returned a Session object. <b>FastAPI caches this result</b> for the rest of this request.');
+    }, 1400);
+
+    setTimeout(()=>{
+      nodeUser.classList.add('active');
+      log('<b>Step 2:</b> get_current_user() now runs, using the cached Session from Step 1.');
+    }, 2100);
+
+    setTimeout(()=>{
+      nodeUser.classList.remove('active'); nodeUser.classList.add('resolved');
+      log('get_current_user() returned a User object.');
+    }, 2900);
+
+    setTimeout(()=>{
+      nodeDb1.classList.add('cached');
+      log('<b>Step 3:</b> The route ALSO directly declared Depends(get_db). FastAPI checks its cache — get_db was already resolved in Step 1 — <b>so it is NOT called again.</b> The same Session object is reused.');
+    }, 3600);
+
+    setTimeout(()=>{
+      nodeRoute.classList.add('active');
+      log('<b>Step 4:</b> All dependencies resolved. The route handler read_profile() runs with user + db, both already computed.');
+    }, 4400);
+
+    setTimeout(()=>{
+      nodeRoute.classList.remove('active'); nodeRoute.classList.add('resolved');
+      log('<b>Done.</b> get_db executed exactly ONCE for this entire request, despite being declared as a dependency in two different places.');
+      running = false;
+    }, 5200);
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    running = false;
+    resetNodes();
+    logEl.innerHTML = '<span class="line">Reset. Click "Send request" to replay the resolution.</span>';
+  });
+})();
+</script>
+</body>
+</html>
