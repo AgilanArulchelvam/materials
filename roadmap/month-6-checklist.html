@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Month 6 :: Capstone & Interview Execution</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg: #0f1715;
+    --bg-raised: #16211e;
+    --bg-card: #1a2622;
+    --line: #2a3934;
+    --line-soft: #223029;
+    --ink: #e8efe9;
+    --ink-dim: #93a89e;
+    --ink-faint: #5e746a;
+    --amber: #e8a355;
+    --amber-dim: #7a5a34;
+    --teal: #5fc9b0;
+    --teal-dim: #2c5147;
+    --done: #5fc9b0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(circle at 1px 1px, rgba(232,239,233,0.035) 1px, transparent 0) 0 0/22px 22px,
+      var(--bg);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:80px;
+  }
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  header{
+    padding:28px 20px 20px;
+    border-bottom:1px solid var(--line);
+    position:sticky; top:0; z-index:20;
+    background:rgba(15,23,21,0.92);
+    backdrop-filter:blur(6px);
+  }
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px; letter-spacing:0.18em; text-transform:uppercase;
+    color:var(--amber); margin-bottom:6px;
+  }
+  h1{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:20px; font-weight:600; margin:0 0 14px; line-height:1.3;
+    color:var(--ink);
+  }
+  .progress-shell{
+    display:flex; align-items:center; gap:12px;
+  }
+  .progress-track{
+    flex:1; height:8px; background:var(--bg-raised);
+    border:1px solid var(--line); border-radius:2px; overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal));
+    width:0%; transition:width 0.4s ease;
+  }
+  .progress-label{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim);
+    white-space:nowrap;
+  }
+
+  main{padding:20px 16px 0; max-width:640px; margin:0 auto;}
+
+  .month-header{
+    margin:28px 0 10px;
+    padding-bottom:8px;
+    border-bottom:1px solid var(--amber-dim);
+    display:flex; align-items:baseline; gap:8px;
+  }
+  main > .month-header:first-child{margin-top:0;}
+  .month-title{
+    font-size:12px; letter-spacing:0.06em; color:var(--amber);
+  }
+
+  .week{
+    margin-bottom:14px;
+    border:1px solid var(--line);
+    background:var(--bg-card);
+    border-radius:3px;
+    overflow:hidden;
+  }
+  .week-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 16px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .week-head:active{background:var(--bg-raised);}
+  .week-head-left{display:flex; align-items:baseline; gap:10px;}
+  .week-num{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);
+    letter-spacing:0.1em;
+  }
+  .week-title{font-size:15px; font-weight:600; color:var(--ink);}
+  .week-meta{
+    display:flex; align-items:center; gap:10px;
+  }
+  .week-count{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
+  }
+  .chevron{
+    width:10px; height:10px;
+    border-right:1.5px solid var(--ink-dim);
+    border-bottom:1.5px solid var(--ink-dim);
+    transform:rotate(45deg);
+    transition:transform 0.25s ease;
+    flex-shrink:0;
+  }
+  .week.open .chevron{transform:rotate(-135deg);}
+  .week-mini-bar{
+    height:3px; background:var(--line-soft);
+  }
+  .week-mini-fill{
+    height:100%; background:var(--teal); width:0%; transition:width 0.4s ease;
+  }
+
+  .week-body{
+    max-height:0;
+    overflow:hidden;
+    transition:max-height 0.35s ease;
+  }
+  .week.open .week-body{max-height:4000px;}
+
+  .topic{
+    border-top:1px solid var(--line-soft);
+    padding:14px 16px 16px;
+  }
+  .topic-head{
+    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  }
+  .topic-title{
+    font-size:13.5px; font-weight:600; color:var(--ink);
+    flex:1;
+  }
+  .topic-tag{
+    font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em;
+    text-transform:uppercase; color:var(--ink-faint);
+    border:1px solid var(--line); border-radius:2px; padding:2px 6px;
+    flex-shrink:0;
+  }
+  .item{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:7px 0;
+    cursor:pointer;
+  }
+  .box{
+    width:16px; height:16px; flex-shrink:0; margin-top:1px;
+    border:1.5px solid var(--ink-faint);
+    border-radius:3px;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.15s ease;
+  }
+  .item.checked .box{
+    background:var(--teal); border-color:var(--teal);
+  }
+  .box svg{width:10px; height:10px; opacity:0; transition:opacity 0.1s;}
+  .item.checked .box svg{opacity:1;}
+  .item-text{
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
+    transition:color 0.15s ease;
+  }
+  .item.checked .item-text{
+    color:var(--ink-faint);
+    text-decoration:line-through;
+    text-decoration-color:var(--line);
+  }
+
+  .checkpoint{
+    margin:6px 16px 14px;
+    padding:14px 16px;
+    background:var(--bg-raised);
+    border:1px dashed var(--amber-dim);
+    border-radius:3px;
+  }
+  .checkpoint-label{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:0.1em;
+    text-transform:uppercase; color:var(--amber); margin-bottom:6px;
+  }
+  .checkpoint-text{font-size:13px; color:var(--ink-dim); line-height:1.5;}
+
+  .reset-row{
+    max-width:640px; margin:24px auto 0; padding:0 16px;
+    display:flex; justify-content:center;
+  }
+  .reset-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
+    background:none; border:1px solid var(--line); border-radius:3px;
+    padding:8px 14px; cursor:pointer;
+  }
+  .reset-btn:active{color:var(--ink); border-color:var(--ink-faint);}
+
+  .sync-badge{
+    margin-top:10px; font-size:10.5px; color:var(--amber); letter-spacing:0.02em;
+  }
+  .loading{
+    text-align:center; padding:60px 20px; color:var(--ink-faint);
+    font-family:'IBM Plex Mono',monospace; font-size:12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">month 6 log</div>
+  <h1>Month 6: Capstone Integration, System Design & Interview Execution</h1>
+  <div class="progress-shell">
+    <div class="progress-track"><div class="progress-fill" id="overallFill"></div></div>
+    <div class="progress-label mono" id="overallLabel">0 / 0</div>
+  </div>
+  <div class="sync-badge mono" id="syncBadge" style="display:none;"></div>
+</header>
+
+<main id="main">
+  <div class="loading">loading progress…</div>
+</main>
+
+<div class="reset-row">
+  <button class="reset-btn" id="resetBtn">reset all progress</button>
+</div>
+
+<script>
+const MONTHS = [
+{ title: "Month 6: Capstone Integration, System Design & Interview Execution", weeks: [
+  { label: "Week 1", title: "System Design Mocks", topics: [
+    { name: "Enterprise MCP agent gateway design", tag: "core", items: [
+      "Full design + capacity estimation",
+      "Write up the design doc"
+    ]},
+    { name: "Distributed telemetry ingester design", tag: "core", items: [
+      "Full design + capacity estimation"
+    ]},
+    { name: "Real-time RAG engine design", tag: "core", items: [
+      "Full design + capacity estimation"
+    ]},
+    { name: "Combined mock: DSA + schema + system design, timed", tag: "thu", items: [
+      "Switch context cleanly across all four areas"
+    ]},
+    { name: "DB Design: capacity estimation practice", tag: "fri", items: [
+      "Estimate storage/throughput for the capstone"
+    ]},
+    { name: "Scaffold capstone", tag: "sat", items: [
+      "FastAPI + MCP servers skeleton"
+    ]}
+  ]},
+  { label: "Week 2", title: "Capstone Build I", topics: [
+    { name: "Multi-agent orchestrator integration", tag: "core", items: [
+      "Wire stateful orchestrator into capstone"
+    ]},
+    { name: "Hybrid vector search integration", tag: "core", items: [
+      "Wire hybrid search into capstone"
+    ]},
+    { name: "Eval/tracing dashboard integration", tag: "core", items: [
+      "Wire the full dashboard into capstone"
+    ]},
+    { name: "Combined mock interview, timed", tag: "thu", items: [
+      "Full timed mock across all 4 areas"
+    ]},
+    { name: "DB Design: finalize capstone schema", tag: "fri", items: [
+      "Indexed & migrated schema, verify indexes"
+    ]},
+    { name: "Integration testing", tag: "sat", items: [
+      "End-to-end testing of the wired-together capstone"
+    ]}
+  ]},
+  { label: "Week 3", title: "Capstone Build II & Polish", topics: [
+    { name: "Fix integration issues", tag: "core", items: [
+      "Resolve bugs found in testing"
+    ]},
+    { name: "Load test capstone", tag: "core", items: [
+      "Identify bottlenecks under load"
+    ]},
+    { name: "Documentation / architecture diagram", tag: "core", items: [
+      "Write up the architecture doc"
+    ]},
+    { name: "Combined mock interview, timed", tag: "thu", items: [
+      "Full timed mock"
+    ]},
+    { name: "DB Design: defend schema cold", tag: "fri", items: [
+      "Explain every schema decision without notes"
+    ]},
+    { name: "Record capstone walkthrough", tag: "sat", items: [
+      "Record yourself explaining the full system"
+    ]}
+  ]},
+  { label: "Week 4", title: "Interview Execution", topics: [
+    { name: "Daily combined mocks (Mon–Sat)", tag: "core", items: [
+      "DSA + schema design + system design + Python fundamentals",
+      "Timed, increasing difficulty each day"
+    ]}
+  ], checkpoint: "Walk someone through the capstone's schema and architecture, cold, in under 10 minutes — including what breaks first at 10x scale and how you'd redesign the schema for it." }
+]}
+];
+
+
+
+let state = {};
+let syncOk = true;
+const STORAGE_KEY = "checked-items-month-6";
+let saveTimer = null;
+
+async function loadState() {
+  try {
+    const res = await window.storage.get(STORAGE_KEY, false);
+    state = res ? JSON.parse(res.value) : {};
+  } catch (e) {
+    state = {};
+  }
+}
+
+async function attemptSave() {
+  try {
+    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    syncOk = true;
+  } catch (e) {
+    try {
+      await new Promise(r => setTimeout(r, 400));
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      syncOk = true;
+    } catch (e2) {
+      syncOk = false;
+    }
+  }
+  updateSyncBadge();
+}
+
+function saveState() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(attemptSave, 300);
+}
+
+function updateSyncBadge() {
+  const badge = document.getElementById('syncBadge');
+  if (!badge) return;
+  badge.textContent = syncOk ? '' : 'saved on this device only — sync unavailable';
+  badge.style.display = syncOk ? 'none' : 'block';
+}
+
+function itemId(mi, wi, ti, ii) { return `m${mi}-w${wi}-t${ti}-i${ii}`; }
+
+function render() {
+  const main = document.getElementById('main');
+  main.innerHTML = '';
+
+  let totalItems = 0, totalChecked = 0;
+
+  MONTHS.forEach((month, mi) => {
+    let monthTotal = 0, monthChecked = 0;
+    month.weeks.forEach((wk) => {
+      wk.topics.forEach((t) => { monthTotal += t.items.length; });
+    });
+
+    const monthHeader = document.createElement('div');
+    monthHeader.className = 'month-header';
+    monthHeader.innerHTML = `<span class="month-title mono">${month.title}</span>`;
+    main.appendChild(monthHeader);
+
+    month.weeks.forEach((wk, wi) => {
+      let weekTotal = 0, weekChecked = 0;
+      wk.topics.forEach((t, ti) => {
+        t.items.forEach((_, ii) => {
+          weekTotal++;
+          if (state[itemId(mi, wi, ti, ii)]) weekChecked++;
+        });
+      });
+      totalItems += weekTotal;
+      totalChecked += weekChecked;
+      monthChecked += weekChecked;
+
+      const weekEl = document.createElement('div');
+      weekEl.className = 'week';
+      weekEl.id = `week-${mi}-${wi}`;
+
+      const head = document.createElement('div');
+      head.className = 'week-head';
+      head.innerHTML = `
+        <div class="week-head-left">
+          <span class="week-num mono">${wk.label}</span>
+          <span class="week-title">${wk.title}</span>
+        </div>
+        <div class="week-meta">
+          <span class="week-count mono">${weekChecked}/${weekTotal}</span>
+          <span class="chevron"></span>
+        </div>
+      `;
+      head.addEventListener('click', () => weekEl.classList.toggle('open'));
+
+      const miniBar = document.createElement('div');
+      miniBar.className = 'week-mini-bar';
+      const miniFill = document.createElement('div');
+      miniFill.className = 'week-mini-fill';
+      miniFill.style.width = weekTotal ? `${(weekChecked/weekTotal)*100}%` : '0%';
+      miniBar.appendChild(miniFill);
+
+      const body = document.createElement('div');
+      body.className = 'week-body';
+
+      wk.topics.forEach((t, ti) => {
+        const topicEl = document.createElement('div');
+        topicEl.className = 'topic';
+        const topicHead = document.createElement('div');
+        topicHead.className = 'topic-head';
+        topicHead.innerHTML = `
+          <span class="topic-title">${t.name}</span>
+          <span class="topic-tag mono">${t.tag}</span>
+        `;
+        topicEl.appendChild(topicHead);
+
+        t.items.forEach((text, ii) => {
+          const id = itemId(mi, wi, ti, ii);
+          const checked = !!state[id];
+          const itemEl = document.createElement('div');
+          itemEl.className = 'item' + (checked ? ' checked' : '');
+          itemEl.innerHTML = `
+            <span class="box"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0f1715" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+            <span class="item-text">${text}</span>
+          `;
+          itemEl.addEventListener('click', () => {
+            state[id] = !state[id];
+            saveState();
+            render();
+            const el = document.getElementById(`week-${mi}-${wi}`);
+            if (el) el.classList.add('open');
+          });
+          topicEl.appendChild(itemEl);
+        });
+
+        body.appendChild(topicEl);
+      });
+
+      weekEl.appendChild(head);
+      weekEl.appendChild(miniBar);
+      weekEl.appendChild(body);
+      main.appendChild(weekEl);
+
+      if (wk.checkpoint) {
+        const cp = document.createElement('div');
+        cp.className = 'checkpoint';
+        cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${month.title.split(':')[0]}, ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
+        main.appendChild(cp);
+      }
+    });
+  });
+
+  const overallFill = document.getElementById('overallFill');
+  const overallLabel = document.getElementById('overallLabel');
+  overallFill.style.width = totalItems ? `${(totalChecked/totalItems)*100}%` : '0%';
+  overallLabel.textContent = `${totalChecked} / ${totalItems}`;
+}
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (!confirm('Reset all progress across all 6 months?')) return;
+  state = {};
+  saveState();
+  render();
+});
+
+(async () => {
+  await loadState();
+  render();
+  const first = document.getElementById('week-0-0');
+  if (first) first.classList.add('open');
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Context Managers</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --enter-c:#7fd8a0; --exit-c:#f2a154; --sup-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--enter-c); color:var(--enter-c); background:rgba(127,216,160,0.08);}
+  .dnode.exit{border-color:var(--exit-c); color:var(--exit-c); background:rgba(242,161,84,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#f2c14e;} .code .c-dec{color:var(--sup-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--bad-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* timeline visualization */
+  .timeline{position:relative; height:120px; margin:1.4rem 0;}
+  .timeline-track{position:absolute; top:60px; left:20px; right:20px; height:2px; background:var(--rule);}
+  .tl-point{position:absolute; top:44px; width:2px; height:32px; background:var(--rule);}
+  .tl-marker{position:absolute; top:36px; width:12px; height:12px; border-radius:50%; background:var(--panel-2); border:2px solid var(--rule); transform:translateX(-50%); transition:all .3s;}
+  .tl-marker.enter{border-color:var(--enter-c); background:var(--enter-c); box-shadow:0 0 10px rgba(127,216,160,0.5);}
+  .tl-marker.exit{border-color:var(--exit-c); background:var(--exit-c); box-shadow:0 0 10px rgba(242,161,84,0.5);}
+  .tl-marker.exc{border-color:var(--bad-c); background:var(--bad-c); box-shadow:0 0 10px rgba(255,107,107,0.5);}
+  .tl-label{position:absolute; top:0; font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); text-align:center; width:120px; transform:translateX(-50%);}
+  .tl-label.active{color:var(--ink);}
+  .tl-sublabel{position:absolute; top:82px; font-family:var(--mono); font-size:0.65rem; color:var(--ink-faint,var(--ink-dim)); text-align:center; width:130px; transform:translateX(-50%);}
+
+  /* exit args table live */
+  .exit-args{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1.2rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .arg-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); min-width:130px; text-align:center; transition:all .3s;}
+  .arg-box .ak{font-size:0.65rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); display:block; margin-bottom:0.3rem;}
+  .arg-box.filled{border-color:var(--bad-c); color:var(--bad-c);}
+  .arg-box.empty{color:var(--enter-c); border-color:var(--enter-c);}
+
+  /* suppress diagram */
+  .suppress-flow{display:flex; align-items:center; justify-content:center; gap:1rem; flex-wrap:wrap; margin:1.4rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .sup-node{padding:0.7rem 1.1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center;}
+  .sup-node.raised{border-color:var(--bad-c); color:var(--bad-c);}
+  .sup-node.result{border-color:var(--sup-c); color:var(--sup-c);}
+  .sup-arrow{color:var(--ink-dim);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.cls{border-color:var(--enter-c);}
+  .dc-col.fn{border-color:var(--sup-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.cls h4{color:var(--enter-c);} .dc-col.fn h4{color:var(--sup-c);}
+
+  /* real use case cards */
+  .use-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin:1.4rem 0;}
+  @media(max-width:760px){.use-grid{grid-template-columns:1fr;}}
+  .use-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; background:var(--panel);}
+  .use-card h4{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem; color:var(--enter-c);}
+  .use-card p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.enter{border-left-color:var(--enter-c); background:rgba(127,216,160,0.06);} .callout.enter b{color:var(--enter-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.sup{border-left-color:var(--sup-c); background:rgba(199,146,234,0.06);} .callout.sup b{color:var(--sup-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · CONTEXT MANAGERS</div>
+  <h1>A context manager is a promise that <em>cleanup always happens</em>, no matter how the block ends.</h1>
+  <p class="lede">Files that don't close, locks that never release, transactions that never roll back — all the same bug, all fixed by the same pattern. The <code class="inline">with</code> statement guarantees a piece of cleanup code runs whether the block finishes normally or blows up with an exception.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">__enter__()</div>
+    <div class="darrow">block runs</div>
+    <div class="dnode exit">__exit__() — always</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="mechanics">1 · with Statement Mechanics</a>
+  <a data-target="exceptions">2 · Exceptions &amp; Suppression</a>
+  <a data-target="contextmanager">3 · @contextmanager Shortcut</a>
+  <a data-target="usecases">4 · Real Use Cases</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: MECHANICS ============ -->
+<section id="mechanics">
+  <div class="kicker">01 — Setup and teardown, guaranteed</div>
+  <h2>with statement mechanics: __enter__ and __exit__</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about borrowing a library book. There's a clear "start" action (check it out — the librarian logs it under your name) and a clear "end" action (return it — the librarian logs it back in). Now imagine that no matter what happens while you have the book — you love it, you hate it, you spill coffee on it, the building catches fire — the return still has to happen, because someone else is waiting for that exact book next. You need a system that guarantees the return step runs, regardless of how the "having the book" part goes.</p>
+
+  <p>That's exactly what Python's <code class="inline">with</code> statement guarantees for code. Some operations have a natural "start" and "must-happen end": opening a file must be followed by closing it, acquiring a lock must be followed by releasing it, starting a database transaction must be followed by committing or rolling it back. A <strong>context manager</strong> is any object that packages up that start/end pair as two methods:</p>
+
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><code class="inline">__enter__</code> — runs at the top of the <code class="inline">with</code> block, before your code. Whatever it returns gets bound to the <code class="inline">as</code> variable.</li>
+    <li><code class="inline">__exit__</code> — runs when the block ends, <strong>no matter how it ends</strong> — whether the code inside finished cleanly or raised an exception halfway through.</li>
+  </ul>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">ManagedFile</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, path):
+        <span class="c-self">self</span>.path = path
+
+    <span class="c-kw">def</span> <span class="c-fn">__enter__</span>(<span class="c-self">self</span>):
+        <span class="c-self">self</span>.file = <span class="c-fn">open</span>(<span class="c-self">self</span>.path, <span class="c-str">"w"</span>)
+        <span class="c-kw">return</span> <span class="c-self">self</span>.file        <span class="c-cmt"># bound to the `as` variable</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">__exit__</span>(<span class="c-self">self</span>, exc_type, exc_val, exc_tb):
+        <span class="c-self">self</span>.file.close()       <span class="c-cmt"># ALWAYS runs, before the exception (if any) propagates</span>
+        <span class="c-kw">return</span> <span class="c-self">False</span>            <span class="c-cmt"># False = don't swallow the exception</span>
+
+<span class="c-kw">with</span> ManagedFile(<span class="c-str">"log.txt"</span>) <span class="c-kw">as</span> f:
+    f.write(<span class="c-str">"hello\n"</span>)
+<span class="c-cmt"># f.close() has already happened by this line — guaranteed, even if
+# something inside the block had raised an exception.</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH __enter__ AND __exit__ FIRE AROUND THE BLOCK</span><button class="btn" id="tl-run">Step through the with block</button></div>
+    <div class="timeline">
+      <div class="timeline-track"></div>
+      <div id="tl-points"></div>
+    </div>
+    <div class="log" id="tl-log"><span class="line">Click to step through `with ManagedFile("log.txt") as f: f.write("hello")` one stage at a time.</span></div>
+  </div>
+
+  <div class="callout enter"><b>In plain terms:</b> <code class="inline">with EXPR as VAR:</code> is Python's shorthand for "call <code class="inline">__enter__</code>, bind its result to VAR, run this block, and no matter what happens in that block, call <code class="inline">__exit__</code> before moving on." It's the exact same guarantee as a <code class="inline">try</code>/<code class="inline">finally</code> — a context manager just packages that guarantee into a reusable object instead of writing <code class="inline">try</code>/<code class="inline">finally</code> by hand every single time you open a file or grab a lock.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> the <strong>context manager protocol</strong> requires an object to implement <code class="inline">__enter__(self)</code> and <code class="inline">__exit__(self, exc_type, exc_val, exc_tb)</code>. <code class="inline">with EXPR as VAR:</code> desugars to: call <code class="inline">EXPR.__enter__()</code>, bind the result to <code class="inline">VAR</code>; run the block; call <code class="inline">EXPR.__exit__(...)</code> when the block exits for any reason (normal completion, <code class="inline">return</code>, <code class="inline">break</code>, or an exception). This is functionally equivalent to a <code class="inline">try</code>/<code class="inline">finally</code>, but reusable as an object rather than rewritten inline every time.</div>
+</section>
+
+<!-- ============ SECTION 2: EXCEPTIONS & SUPPRESSION ============ -->
+<section id="exceptions">
+  <div class="kicker">02 — What __exit__ sees, and the power to silence an exception</div>
+  <h2>What __exit__ receives on exception, and suppressing one</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine the library return desk again, but this time, when you show up to return the book, you're visibly injured — something clearly went wrong while you had it. The librarian doesn't just take the book back silently; she's handed a report on exactly what happened to you, and — this is the interesting part — she actually has the authority to decide "this incident is handled, no need to escalate it further," or to pass your situation up to her manager anyway.</p>
+
+  <p>That's precisely what <code class="inline">__exit__</code>'s three extra parameters are for. If the code inside the <code class="inline">with</code> block raised an exception, Python doesn't just silently run <code class="inline">__exit__</code> and let the exception fly past it — it hands <code class="inline">__exit__</code> full details about what went wrong, as three arguments:</p>
+
+  <div class="exit-args">
+    <div class="arg-box"><span class="ak">exc_type</span>the exception class, e.g. ValueError</div>
+    <div class="arg-box"><span class="ak">exc_val</span>the exception instance itself</div>
+    <div class="arg-box"><span class="ak">exc_tb</span>the traceback object</div>
+  </div>
+
+  <p>If the block completed with no exception, all three arguments are simply <code class="inline">None</code> — there's nothing to report, so <code class="inline">__exit__</code> just does its normal cleanup and moves on.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SEE WHAT __exit__ RECEIVES, BOTH WAYS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-exc="clean">Block completes normally</button>
+      <button class="chip" data-exc="raises">Block raises ValueError</button>
+    </div>
+    <div class="exit-args" id="exit-args-display"></div>
+    <div class="log" id="exit-log"></div>
+  </div>
+
+  <h3>The return value of __exit__ decides whether the exception continues</h3>
+  <p>Here's the part with real teeth: <code class="inline">__exit__</code>'s <strong>return value</strong> controls what happens to that exception next. If <code class="inline">__exit__</code> returns anything <strong>truthy</strong> (like <code class="inline">True</code>), Python treats the exception as <strong>handled</strong> — it's swallowed right there, and execution continues normally after the <code class="inline">with</code> block, as if nothing happened. If <code class="inline">__exit__</code> returns <strong>falsy</strong> (like <code class="inline">False</code>, or nothing at all — functions return <code class="inline">None</code> by default), the exception continues propagating upward exactly as it would have without the context manager.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">IgnoreZeroDivision</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__enter__</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-self">self</span>
+
+    <span class="c-kw">def</span> <span class="c-fn">__exit__</span>(<span class="c-self">self</span>, exc_type, exc_val, exc_tb):
+        <span class="c-kw">if</span> exc_type <span class="c-kw">is</span> ZeroDivisionError:
+            <span class="c-kw">print</span>(<span class="c-str">"Ignored a division by zero."</span>)
+            <span class="c-kw">return</span> <span class="c-self">True</span>     <span class="c-cmt"># TRUTHY -> suppress this exception</span>
+        <span class="c-kw">return</span> <span class="c-self">False</span>        <span class="c-cmt"># any other exception still propagates normally</span>
+
+<span class="c-kw">with</span> IgnoreZeroDivision():
+    <span class="c-kw">print</span>(<span class="c-num">1</span> / <span class="c-num">0</span>)
+<span class="c-kw">print</span>(<span class="c-str">"execution continues here"</span>)
+<span class="c-cmt"># Output:
+# Ignored a division by zero.
+# execution continues here    -- the ZeroDivisionError never escaped the with block</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TOGGLE THE __exit__ RETURN VALUE</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-sup="false">return False</button>
+      <button class="chip" data-sup="true">return True</button>
+    </div>
+    <div class="suppress-flow" id="suppress-flow"></div>
+    <div class="log" id="suppress-log"></div>
+  </div>
+
+  <div class="callout warn"><b>Use this power sparingly:</b> suppressing an exception means the surrounding code has no idea anything went wrong. It's the right tool for narrow, deliberate cases — like <code class="inline">contextlib.suppress(FileNotFoundError)</code> for "this file might not exist, and that's fine" — but returning <code class="inline">True</code> unconditionally from <code class="inline">__exit__</code> silently swallows every kind of exception, including ones you never anticipated and genuinely needed to know about, like a typo causing a <code class="inline">NameError</code>.</div>
+</section>
+
+<!-- ============ SECTION 3: @contextmanager ============ -->
+<section id="contextmanager">
+  <div class="kicker">03 — The shortcut for simple cases</div>
+  <h2>contextlib.contextmanager shortcut</h2>
+
+  <p><strong>Start here, before any code.</strong> Writing a whole class with <code class="inline">__init__</code>, <code class="inline">__enter__</code>, and <code class="inline">__exit__</code> is a lot of ceremony for something that's often conceptually just "do this, then always do that." Python offers a shortcut: write a single generator function (using <code class="inline">yield</code>, the same tool from the previous lab) and decorate it with <code class="inline">@contextlib.contextmanager</code> — Python builds the context manager object for you.</p>
+
+  <p>The rule is simple once you see it: everything <strong>before</strong> the <code class="inline">yield</code> plays the role of <code class="inline">__enter__</code>. The value passed to <code class="inline">yield</code> becomes the <code class="inline">as</code> variable. Everything <strong>after</strong> the <code class="inline">yield</code> plays the role of <code class="inline">__exit__</code> — and it has to sit inside a <code class="inline">finally</code> block, so it still runs even if the code inside the <code class="inline">with</code> block raises.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col cls">
+      <h4>Class-based (Section 1's version)</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">ManagedFile</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, path):
+        <span class="c-self">self</span>.path = path
+
+    <span class="c-kw">def</span> <span class="c-fn">__enter__</span>(<span class="c-self">self</span>):
+        <span class="c-self">self</span>.file = <span class="c-fn">open</span>(<span class="c-self">self</span>.path, <span class="c-str">"w"</span>)
+        <span class="c-kw">return</span> <span class="c-self">self</span>.file
+
+    <span class="c-kw">def</span> <span class="c-fn">__exit__</span>(<span class="c-self">self</span>, *exc):
+        <span class="c-self">self</span>.file.close()
+        <span class="c-kw">return</span> <span class="c-self">False</span>
+      </div>
+    </div>
+    <div class="dc-col fn">
+      <h4>@contextmanager (same behavior)</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">from</span> contextlib <span class="c-kw">import</span> contextmanager
+
+<span class="c-dec">@contextmanager</span>
+<span class="c-kw">def</span> <span class="c-fn">managed_file</span>(path):
+    f = <span class="c-fn">open</span>(path, <span class="c-str">"w"</span>)
+    <span class="c-kw">try</span>:
+        <span class="c-kw">yield</span> f          <span class="c-cmt"># = __enter__, `f` becomes `as f`</span>
+    <span class="c-kw">finally</span>:
+        f.close()         <span class="c-cmt"># = __exit__, always runs</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="code">
+<span class="c-kw">with</span> managed_file(<span class="c-str">"log.txt"</span>) <span class="c-kw">as</span> f:
+    f.write(<span class="c-str">"hello\n"</span>)
+<span class="c-cmt"># identical behavior to the class-based ManagedFile from Section 1</span>
+  </div>
+
+  <div class="callout sup"><b>Interview-ready definition:</b> <code class="inline">@contextlib.contextmanager</code> wraps a <strong>generator function containing exactly one <code class="inline">yield</code></strong> and turns it into a context manager. Code before the <code class="inline">yield</code> executes as <code class="inline">__enter__</code>; the yielded value becomes the <code class="inline">as</code> target; code after the <code class="inline">yield</code> — which must be wrapped in <code class="inline">try</code>/<code class="inline">finally</code> to run reliably — executes as <code class="inline">__exit__</code>. If the block raises, the exception is thrown into the generator at the point of the <code class="inline">yield</code>, which is exactly why the cleanup code needs to sit in a <code class="inline">finally</code> (or an <code class="inline">except</code>) to still execute.</div>
+
+  <h3>The one thing that trips people up: exceptions and try/finally</h3>
+  <p>Forgetting the <code class="inline">try</code>/<code class="inline">finally</code> is the most common mistake with this shortcut — without it, an exception inside the <code class="inline">with</code> block skips the cleanup code entirely, because the exception gets thrown in right at the <code class="inline">yield</code> line and nothing catches it before it propagates out of the generator.</p>
+
+  <div class="code">
+<span class="c-cmt"># WRONG — no try/finally, cleanup gets skipped on exception</span>
+<span class="c-dec">@contextmanager</span>
+<span class="c-kw">def</span> <span class="c-fn">broken_managed_file</span>(path):
+    f = <span class="c-fn">open</span>(path, <span class="c-str">"w"</span>)
+    <span class="c-kw">yield</span> f
+    f.close()   <span class="c-cmt"># never reached if the block raises!</span>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: REAL USE CASES ============ -->
+<section id="usecases">
+  <div class="kicker">04 — Where this pattern actually shows up</div>
+  <h2>Real use cases: file handles, DB transactions, locks</h2>
+
+  <p>Context managers aren't a niche feature — they're the standard tool anywhere code has a "must clean up no matter what" obligation. Three of the most common:</p>
+
+  <div class="use-grid">
+    <div class="use-card">
+      <h4>File handles</h4>
+      <p><code class="inline">with open(path) as f:</code> guarantees the file descriptor is released even if reading or writing raises partway through — leaked file handles eventually exhaust the operating system's limit on how many a process can hold open at once.</p>
+    </div>
+    <div class="use-card">
+      <h4>Database transactions</h4>
+      <p>A transaction context manager commits on success and rolls back on exception, automatically — so a half-finished multi-step database update never gets left in an inconsistent, partially-applied state if step 3 of 5 throws.</p>
+    </div>
+    <div class="use-card">
+      <h4>Locks</h4>
+      <p><code class="inline">with lock:</code> acquires a thread lock on entry and releases it on exit, no matter what. Forgetting to release a lock manually after an exception is a classic way to deadlock an entire program — every other thread waits forever for a lock that will now never be freed.</p>
+    </div>
+  </div>
+
+  <div class="code">
+<span class="c-cmt"># Database transaction example — this shape is genuinely how most</span>
+<span class="c-cmt"># real database libraries implement transaction handling.</span>
+<span class="c-dec">@contextmanager</span>
+<span class="c-kw">def</span> <span class="c-fn">transaction</span>(connection):
+    <span class="c-kw">try</span>:
+        <span class="c-kw">yield</span> connection
+        connection.commit()      <span class="c-cmt"># only reached if the block succeeded</span>
+    <span class="c-kw">except</span> Exception:
+        connection.rollback()    <span class="c-cmt"># undo everything if the block raised</span>
+        <span class="c-kw">raise</span>                  <span class="c-cmt"># then let the caller see the original error</span>
+
+<span class="c-kw">with</span> transaction(db_connection) <span class="c-kw">as</span> conn:
+    conn.execute(<span class="c-str">"UPDATE accounts SET balance = balance - 100 WHERE id = 1"</span>)
+    conn.execute(<span class="c-str">"UPDATE accounts SET balance = balance + 100 WHERE id = 2"</span>)
+<span class="c-cmt"># if the SECOND update fails, the FIRST one is rolled back too --
+# the transaction is all-or-nothing, guaranteed by the context manager.</span>
+  </div>
+
+  <div class="callout enter"><b>Why this matters:</b> notice the shape is always the same across all three use cases — "set something up, guarantee it's torn down, regardless of what happens in between." That's the entire idea of a context manager, applied to whatever resource needs guaranteed cleanup: a file descriptor, a database connection's pending changes, or a lock. Once you recognize that shape in a problem, reaching for <code class="inline">with</code> (or writing your own context manager) is usually the right instinct.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Write real code for each of these — don't just reason about it in your head. Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Trace the exact order</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Trace:
+    def __enter__(self):
+        print("enter")
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        print("exit, exc_type =", exc_type)
+        return False
+
+with Trace():
+    print("inside")
+    raise ValueError("boom")
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Write out exactly what prints, in order, and whether the program crashes.</p>
+    <details><summary>Show solution</summary><div class="solution">enter
+inside
+exit, exc_type = &lt;class 'ValueError'&gt;
+Traceback (most recent call last):
+  ...
+ValueError: boom
+
+__enter__ runs first, prints "enter". The block starts, prints "inside",
+then raises ValueError. Python immediately calls __exit__ with the
+exception info BEFORE the exception is allowed to propagate further --
+that's why "exit, exc_type = ..." still prints. Since __exit__ returns
+False (falsy), the exception is NOT suppressed, so it continues
+propagating after __exit__ finishes, and the program crashes with that
+ValueError's traceback.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Fix the broken @contextmanager</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from contextlib import contextmanager
+
+@contextmanager
+def unsafe_lock(lock):
+    lock.acquire()
+    yield
+    lock.release()
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">This context manager has a real bug. Identify it and rewrite it correctly.</p>
+    <details><summary>Show solution</summary><div class="solution">Bug: if the code inside the `with` block raises an exception, execution
+never reaches `lock.release()` -- the exception is thrown in at the yield
+line and propagates straight out of the generator, skipping every line
+after it. The lock stays held forever, and any other thread waiting on it
+deadlocks permanently.
+
+Fix:
+@contextmanager
+def safe_lock(lock):
+    lock.acquire()
+    try:
+        yield
+    finally:
+        lock.release()
+
+Now lock.release() runs whether the block succeeds or raises -- exactly
+the guarantee a context manager exists to provide.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Predict suppression behavior</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class SuppressType:
+    def __init__(self, *types):
+        self.types = types
+    def __enter__(self):
+        return self
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return exc_type is not None and issubclass(exc_type, self.types)
+
+with SuppressType(KeyError):
+    print("A")
+    raise IndexError("oops")
+    print("B")
+print("C")
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Predict exactly what happens — does "C" print? Does the program crash?</p>
+    <details><summary>Show solution</summary><div class="solution">A
+Traceback (most recent call last):
+  ...
+IndexError: oops
+
+"A" prints, then IndexError is raised, skipping "B" entirely (an exception
+immediately exits the block, it doesn't run remaining lines). __exit__
+checks whether the exception is a KeyError -- it's an IndexError, so
+`issubclass(IndexError, (KeyError,))` is False. __exit__ returns False, so
+the exception is NOT suppressed, and it propagates out, crashing the
+program before "C" ever gets a chance to print. This is exactly how
+contextlib.suppress() works internally -- it only swallows the exact
+exception types you specify, letting everything else through.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Write a timing context manager</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write a context manager (either class-based or with <code class="inline">@contextmanager</code>) called <code class="inline">timer()</code> that prints how long the <code class="inline">with</code> block took to run, even if the block raises an exception partway through.</p>
+    <details><summary>Show solution</summary><div class="solution">import time
+from contextlib import contextmanager
+
+@contextmanager
+def timer():
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        elapsed = time.perf_counter() - start
+        print(f"{elapsed:.4f}s")
+
+with timer():
+    raise ValueError("boom")
+# still prints the elapsed time before the ValueError propagates,
+# because the print is in a finally block, which always runs.
+
+The finally block is what makes this reliable -- without it, a raised
+exception would skip the timing print entirely, defeating the purpose of
+a timer meant to measure blocks that might fail.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Class-based transaction manager</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Rewrite the <code class="inline">transaction()</code> generator-based context manager from Section 4 as a class with <code class="inline">__init__</code>, <code class="inline">__enter__</code>, and <code class="inline">__exit__</code> instead. It should commit on success and roll back on any exception, then let the exception continue propagating either way.</p>
+    <details><summary>Show solution</summary><div class="solution">class Transaction:
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self.connection
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is None:
+            self.connection.commit()
+        else:
+            self.connection.rollback()
+        return False  # never suppress -- let the caller see the error
+
+with Transaction(db_connection) as conn:
+    conn.execute("UPDATE accounts SET balance = balance - 100 WHERE id = 1")
+    conn.execute("UPDATE accounts SET balance = balance + 100 WHERE id = 2")
+
+__exit__ checks exc_type: None means the block finished cleanly, so commit.
+Any other value means something raised, so roll back instead. Returning
+False either way ensures the original exception (if any) is never
+silently swallowed -- only the transaction's own state is handled here.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly when Python calls <code class="inline">__exit__</code> relative to an exception being raised inside the block, (2) what specifically makes <code class="inline">__exit__</code> suppress an exception versus let it propagate, and (3) why forgetting <code class="inline">try</code>/<code class="inline">finally</code> in an <code class="inline">@contextmanager</code> function silently breaks cleanup on the exception path specifically (not the success path)? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — context managers.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: TIMELINE STEP-THROUGH */
+(function(){
+  const btn = document.getElementById('tl-run');
+  const pointsEl = document.getElementById('tl-points');
+  const logEl = document.getElementById('tl-log');
+  const stages = [
+    {pos:15, cls:'enter', label:'__enter__()', sub:'opens the file, returns f', msg:'<b>__enter__ runs first.</b> ManagedFile.__enter__ opens "log.txt" for writing and returns the file object, which gets bound to `f`.'},
+    {pos:50, cls:'', label:'f.write("hello")', sub:'the with-block body runs', msg:'<b>The block body executes.</b> This is ordinary code — it has no special knowledge that it\'s inside a context manager.'},
+    {pos:85, cls:'exit', label:'__exit__()', sub:'closes the file — always', msg:'<b>__exit__ runs automatically</b> the moment the block ends — Python doesn\'t wait to be asked. f.close() executes here, guaranteed, before any code after the with statement runs.'}
+  ];
+  let i = 0;
+  btn.addEventListener('click', ()=>{
+    if(i >= stages.length){ return; }
+    const s = stages[i];
+    const marker = document.createElement('div'); marker.className = `tl-marker ${s.cls} fadein`; marker.style.left = s.pos + '%';
+    const label = document.createElement('div'); label.className = 'tl-label active fadein'; label.style.left = s.pos + '%'; label.textContent = s.label;
+    const sub = document.createElement('div'); sub.className = 'tl-sublabel fadein'; sub.style.left = s.pos + '%'; sub.textContent = s.sub;
+    pointsEl.appendChild(marker); pointsEl.appendChild(label); pointsEl.appendChild(sub);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = s.msg;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+    i++;
+    if(i >= stages.length){ btn.disabled = true; btn.textContent = 'Complete ✓'; }
+  });
+})();
+
+/* SECTION 2a: EXIT ARGS DISPLAY */
+(function(){
+  const chips = document.querySelectorAll('[data-exc]');
+  const displayEl = document.getElementById('exit-args-display');
+  const logEl = document.getElementById('exit-log');
+
+  function renderClean(){
+    displayEl.innerHTML = `
+      <div class="arg-box empty"><span class="ak">exc_type</span>None</div>
+      <div class="arg-box empty"><span class="ak">exc_val</span>None</div>
+      <div class="arg-box empty"><span class="ak">exc_tb</span>None</div>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>Block completed normally:</b> nothing went wrong, so all three arguments are None — __exit__ just does its ordinary cleanup and reports nothing.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  function renderRaises(){
+    displayEl.innerHTML = `
+      <div class="arg-box filled"><span class="ak">exc_type</span>ValueError</div>
+      <div class="arg-box filled"><span class="ak">exc_val</span>ValueError('bad input')</div>
+      <div class="arg-box filled"><span class="ak">exc_tb</span>&lt;traceback object&gt;</div>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>Block raised ValueError("bad input"):</b> __exit__ receives the exact exception class, the exception instance itself, and its traceback — full detail about exactly what went wrong, before deciding what to do about it.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.exc === 'clean') renderClean(); else renderRaises();
+    });
+  });
+  renderClean();
+})();
+
+/* SECTION 2b: SUPPRESSION TOGGLE */
+(function(){
+  const chips = document.querySelectorAll('[data-sup]');
+  const flowEl = document.getElementById('suppress-flow');
+  const logEl = document.getElementById('suppress-log');
+
+  function renderFalse(){
+    flowEl.innerHTML = `
+      <div class="sup-node raised">ZeroDivisionError raised</div>
+      <div class="sup-arrow">→ __exit__ returns False →</div>
+      <div class="sup-node raised">exception continues propagating</div>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>return False (falsy):</b> Python re-raises the original exception right after __exit__ finishes — the with block did NOT handle it, it only observed it.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  function renderTrue(){
+    flowEl.innerHTML = `
+      <div class="sup-node raised">ZeroDivisionError raised</div>
+      <div class="sup-arrow">→ __exit__ returns True →</div>
+      <div class="sup-node result">exception suppressed — code after the block runs normally</div>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>return True (truthy):</b> Python treats the exception as fully handled right here — it never propagates past the with block. Execution just continues on the next line as if nothing happened.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.sup === 'false') renderFalse(); else renderTrue();
+    });
+  });
+  renderFalse();
+})();
+</script>
+
+</body>
+</html>

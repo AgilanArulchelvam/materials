@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Normalization: 1NF &amp; 2NF</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --pk-c:#f2c14e; --fk-c:#6ea8fe; --nf1-c:#7fd8a0; --nf2-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .grid-hero{margin-top:2.8rem; display:inline-grid; grid-template-columns:repeat(3, auto); gap:2px; font-family:var(--mono); font-size:0.75rem; border:1.5px solid var(--rule); border-radius:10px; overflow:hidden;}
+  .grid-hero .gh{padding:0.6rem 1rem; background:var(--panel-2); color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.05em; font-size:0.65rem;}
+  .grid-hero .gc{padding:0.6rem 1rem; background:var(--panel);}
+  .grid-hero .bad{color:var(--bad-c);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--bad-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flashbad{animation:flashbad .6s ease;}
+  @keyframes flashbad{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,107,107,0.35);} 100%{box-shadow:none;}}
+  .flashgood{animation:flashgood .6s ease;}
+  @keyframes flashgood{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(127,216,160,0.35);} 100%{box-shadow:none;}}
+
+  /* db table visualization */
+  .db-table{border:1.5px solid var(--rule); border-radius:10px; overflow:hidden; margin:1rem 0;}
+  .db-table .tname{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; background:var(--panel-2); padding:0.5rem 0.9rem; color:var(--ink-dim); border-bottom:1px solid var(--rule);}
+  .db-table table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.8rem;}
+  .db-table th{background:var(--panel-2); padding:0.5rem 0.8rem; text-align:left; border-bottom:1.5px solid var(--rule); font-weight:600; color:var(--ink-dim); font-size:0.72rem; text-transform:uppercase;}
+  .db-table th.pk-col{color:var(--pk-c);}
+  .db-table td{padding:0.45rem 0.8rem; border-bottom:1px solid var(--rule); color:#cdd0d8; transition:all .3s;}
+  .db-table tr:last-child td{border-bottom:none;}
+  .db-table td.pk-cell{color:var(--pk-c); font-weight:600;}
+  .db-table td.bad-cell{color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .db-table td.dup-cell{color:var(--nf2-c); background:rgba(199,146,234,0.08);}
+  .db-table tr.rejected{animation:rowreject .6s ease forwards;}
+  @keyframes rowreject{0%{background:rgba(255,107,107,0.25);} 100%{background:rgba(255,107,107,0);opacity:0.4;}}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.bad{border-color:var(--bad-c);}
+  .dc-col.good{border-color:var(--nf1-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.bad h4{color:var(--bad-c);} .dc-col.good h4{color:var(--nf1-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* dependency arrows */
+  .dep-diagram{display:flex; flex-direction:column; align-items:center; gap:0.6rem; margin:1.4rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .dep-key{display:flex; gap:0.4rem; align-items:center;}
+  .dep-part{padding:0.5rem 0.9rem; border-radius:8px; border:1.5px solid var(--pk-c); color:var(--pk-c); background:rgba(242,193,78,0.08);}
+  .dep-arrow-set{display:flex; flex-direction:column; align-items:center; gap:0.3rem; margin:0.4rem 0;}
+  .dep-arrow{color:var(--ink-dim); font-size:0.75rem;}
+  .dep-arrow.partial{color:var(--bad-c);}
+  .dep-arrow.full{color:var(--nf1-c);}
+  .dep-target{padding:0.5rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2);}
+
+  /* anomaly cards */
+  .anomaly-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:1rem; margin:1.4rem 0;}
+  @media(max-width:760px){.anomaly-grid{grid-template-columns:1fr;}}
+  .anomaly-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; background:var(--panel);}
+  .anomaly-card h4{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem; color:var(--bad-c);}
+  .anomaly-card p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.nf1{border-left-color:var(--nf1-c); background:rgba(127,216,160,0.06);} .callout.nf1 b{color:var(--nf1-c);}
+  .callout.nf2{border-left-color:var(--nf2-c); background:rgba(199,146,234,0.06);} .callout.nf2 b{color:var(--nf2-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · NORMALIZATION — 1NF &amp; 2NF</div>
+  <h1>Normalization is just <em>giving every fact exactly one home</em>.</h1>
+  <p class="lede">A messy table doesn't look wrong at first glance — it just quietly makes updates dangerous and queries painful. 1NF and 2NF are the first two rules for spotting exactly where a table is disorganized, and exactly how to split it apart so each fact is stored in precisely one place.</p>
+
+  <div class="grid-hero">
+    <div class="gh">student</div><div class="gh">courses</div><div class="gh">teacher</div>
+    <div class="gc bad">Amy</div><div class="gc bad">"Math, Art"</div><div class="gc bad">Ms. Lee</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="foundations">1 · Why Normalize at All</a>
+  <a data-target="1nf">2 · First Normal Form (1NF)</a>
+  <a data-target="2nf">3 · Second Normal Form (2NF)</a>
+  <a data-target="spotting">4 · Spotting Violations</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: FOUNDATIONS ============ -->
+<section id="foundations">
+  <div class="kicker">01 — What problem normalization is even solving</div>
+  <h2>Why normalize a table at all</h2>
+
+  <p><strong>Start here, before any tables.</strong> Imagine a school keeps one single master spreadsheet listing every student, alongside their teacher's name, that teacher's office number, and a comma-separated list of the student's courses, all crammed into one row per student. It works fine for reading — until a teacher moves offices, and now you have to hunt down and edit dozens of rows, one for every student that teacher has, all saying the same thing. Miss even one row, and now your spreadsheet is quietly lying — it says the same teacher has two different office numbers depending on which row you look at.</p>
+
+  <p>That's the entire problem normalization exists to solve: <strong>every fact should be stored in exactly one place.</strong> When "Ms. Lee's office is Room 204" is copy-pasted into fifty different rows instead of stored once, you've created fifty separate opportunities for that fact to become inconsistent with itself. Database designers gave this problem a name and a fix: <strong>normalization</strong> — a series of rules, called <strong>normal forms</strong>, that each catch a specific way a table can end up with duplicated or tangled facts, and each tell you exactly how to split the table to fix it.</p>
+
+  <p>1NF and 2NF are the first two rules in that series — the foundational ones almost every other rule builds on top of. This lab covers exactly those two, deeply, with tables you can watch get restructured.</p>
+
+  <h3>The three anomalies normalization prevents</h3>
+  <p>Before the rules themselves, it helps to know exactly what a badly-organized table costs you in practice. Un-normalized data causes three specific, well-known problems:</p>
+
+  <div class="anomaly-grid">
+    <div class="anomaly-card">
+      <h4>Update anomaly</h4>
+      <p>The same fact is duplicated in multiple rows. Update it in one row but miss another, and the table now contradicts itself — like the teacher's office number example above.</p>
+    </div>
+    <div class="anomaly-card">
+      <h4>Insertion anomaly</h4>
+      <p>You can't record a fact until an unrelated fact also exists. E.g. you can't add a new course to the catalog until at least one student has enrolled in it, because "course" data only exists attached to a student row.</p>
+    </div>
+    <div class="anomaly-card">
+      <h4>Deletion anomaly</h4>
+      <p>Deleting one fact accidentally deletes another, unrelated fact along with it. E.g. the last student drops a course, and the only record that course ever existed disappears too.</p>
+    </div>
+  </div>
+
+  <div class="callout"><b>The throughline:</b> every anomaly above traces back to the same root cause — a fact that should have exactly one home instead has zero, one-of-many, or none at all, depending on unrelated data. Normalization is the systematic fix: identify where a table is mixing together facts that don't actually belong together, and split them into separate tables connected by keys.</div>
+</section>
+
+<!-- ============ SECTION 2: 1NF ============ -->
+<section id="1nf">
+  <div class="kicker">02 — Rule one: one value per cell</div>
+  <h2>First Normal Form (1NF): atomic values, no repeating groups</h2>
+
+  <p><strong>Start here, before any tables.</strong> Picture a single mailbox slot meant to hold exactly one letter. If you try to cram three separate letters into that one slot, the mail carrier can't tell where one letter ends and the next begins, addresses get confused, and eventually something gets lost or misdelivered. A database cell has exactly the same expectation: it's a slot meant to hold <em>one</em> value, not a bundle of several values squeezed together.</p>
+
+  <p><strong>First Normal Form (1NF)</strong> is the rule that enforces this. A table satisfies 1NF when two conditions both hold:</p>
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><strong>Atomic values</strong> — every cell holds exactly one indivisible value, never a list or a combination of several values jammed together (like <code class="inline">"Math, Art, History"</code> in a single "courses" cell).</li>
+    <li><strong>No repeating groups</strong> — there isn't a set of columns that repeats itself to hold a variable number of similar things (like <code class="inline">course1, course2, course3</code> columns, which fall apart the moment a student takes a 4th course).</li>
+  </ul>
+
+  <h3>Spotting the "comma-separated list" violation</h3>
+  <p>Here's a table that violates 1NF — and immediately looks convenient, which is exactly why this mistake is so common:</p>
+
+  <div class="dc-compare">
+    <div class="dc-col bad">
+      <h4>✗ Violates 1NF</h4>
+      <div class="db-table" style="margin:0;">
+        <div class="tname">students (not atomic)</div>
+        <table>
+          <tr><th class="pk-col">id</th><th>name</th><th>courses</th></tr>
+          <tr><td class="pk-cell">1</td><td>Amy</td><td class="bad-cell">"Math, Art"</td></tr>
+          <tr><td class="pk-cell">2</td><td>Ravi</td><td class="bad-cell">"Art, History, Gym"</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="dc-col good">
+      <h4>✓ Satisfies 1NF</h4>
+      <div class="db-table" style="margin:0;">
+        <div class="tname">student_courses (atomic)</div>
+        <table>
+          <tr><th class="pk-col">student_id</th><th>course</th></tr>
+          <tr><td class="pk-cell">1</td><td>Math</td></tr>
+          <tr><td class="pk-cell">1</td><td>Art</td></tr>
+          <tr><td class="pk-cell">2</td><td>Art</td></tr>
+          <tr><td class="pk-cell">2</td><td>History</td></tr>
+          <tr><td class="pk-cell">2</td><td>Gym</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY QUERYING "EVERY STUDENT TAKING ART" BOTH WAYS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-nf1="bad">Non-atomic table</button>
+      <button class="chip" data-nf1="good">1NF-compliant table</button>
+    </div>
+    <div class="code" id="nf1-query" style="margin:0;"></div>
+    <div class="log" id="nf1-log"></div>
+  </div>
+
+  <div class="callout nf1"><b>Why this matters:</b> the non-atomic "courses" column can't be searched, filtered, indexed, or joined by a single course cleanly — the database has no idea "Math, Art" secretly contains two separate facts, so <code class="inline">WHERE courses = 'Art'</code> would need to become a fragile string-matching hack (<code class="inline">LIKE '%Art%'</code>), which also wrongly matches something like "Arts and Crafts." Splitting into one row per (student, course) pair makes every value a single, clean, searchable fact — this is the atomicity 1NF requires.</div>
+
+  <h3>Spotting the "repeating columns" violation</h3>
+  <p>The same underlying problem shows up in a second disguise — instead of comma-separating values into one cell, some designs add numbered columns instead:</p>
+
+  <div class="db-table">
+    <div class="tname">students (repeating group)</div>
+    <table>
+      <tr><th class="pk-col">id</th><th>name</th><th class="bad-cell" style="color:var(--bad-c);">course_1</th><th class="bad-cell" style="color:var(--bad-c);">course_2</th><th class="bad-cell" style="color:var(--bad-c);">course_3</th></tr>
+      <tr><td class="pk-cell">1</td><td>Amy</td><td>Math</td><td>Art</td><td></td></tr>
+      <tr><td class="pk-cell">2</td><td>Ravi</td><td>Art</td><td>History</td><td>Gym</td></tr>
+    </table>
+  </div>
+
+  <div class="callout warn"><b>Why this is just as bad:</b> this table technically has one value per cell — but <code class="inline">course_1</code>, <code class="inline">course_2</code>, <code class="inline">course_3</code> is a <strong>repeating group</strong>: the same kind of fact ("a course this student takes") spread sideways across multiple columns instead of down multiple rows. It breaks the moment a student takes a 4th course — you'd need to alter the table's structure itself to add a <code class="inline">course_4</code> column, and any query asking "does this student take X" has to check three separate columns instead of one. The 1NF-compliant fix is identical to before: one row per (student, course) pair.</div>
+</section>
+
+<!-- ============ SECTION 3: 2NF ============ -->
+<section id="2nf">
+  <div class="kicker">03 — Rule two: every non-key column depends on the WHOLE key</div>
+  <h2>Second Normal Form (2NF): no partial dependency on part of a composite key</h2>
+
+  <p><strong>Start here, before any tables.</strong> Imagine a hotel's guest ledger where each row is identified by the pair (room number, guest name) — because the same room hosts different guests over time. Now suppose you also store "hotel's swimming pool hours" in that same table. The pool hours have nothing to do with which guest is in the room — they only depend on the room's floor, or really, they don't depend on the room or guest at all. Storing them in a table keyed by (room, guest) means the exact same pool hours get copied into every single guest row, and if the pool hours change, you have to update every row that ever mentioned them.</p>
+
+  <p>That's exactly the shape of problem <strong>Second Normal Form (2NF)</strong> catches. But first, 2NF only applies to tables with a <strong>composite key</strong> — a primary key made of <em>more than one</em> column together (like our (room, guest) pair). If a table's primary key is a single column, it automatically satisfies 2NF as long as it's already in 1NF — there's no "part of the key" to depend on partially.</p>
+
+  <p>2NF's actual rule: <strong>every non-key column must depend on the entire composite key — not just part of it.</strong> A column that only needs <em>part</em> of the composite key to determine its value has what's called a <strong>partial dependency</strong>, and that's the violation.</p>
+
+  <h3>A worked example: student enrollments</h3>
+  <p>Here's a table tracking which students are enrolled in which courses, with a composite key of <code class="inline">(student_id, course_id)</code> — because a single student can take many courses, and a single course has many students, so neither column alone is unique:</p>
+
+  <div class="db-table">
+    <div class="tname">enrollments — composite key: (student_id, course_id)</div>
+    <table>
+      <tr><th class="pk-col">student_id</th><th class="pk-col">course_id</th><th>grade</th><th class="bad-cell" style="color:var(--bad-c);">student_name</th><th class="bad-cell" style="color:var(--bad-c);">course_title</th></tr>
+      <tr><td class="pk-cell">1</td><td class="pk-cell">101</td><td>A</td><td>Amy</td><td>Math</td></tr>
+      <tr><td class="pk-cell">1</td><td class="pk-cell">102</td><td>B</td><td>Amy</td><td>Art</td></tr>
+      <tr><td class="pk-cell">2</td><td class="pk-cell">102</td><td>A-</td><td>Ravi</td><td>Art</td></tr>
+    </table>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHICH PART OF THE KEY DOES EACH COLUMN ACTUALLY DEPEND ON?</span><button class="btn" id="dep-run">Check next column</button></div>
+    <div class="dep-diagram" id="dep-diagram">
+      <div class="dep-key">
+        <div class="dep-part">student_id</div>
+        <span style="color:var(--ink-dim);">+</span>
+        <div class="dep-part">course_id</div>
+      </div>
+    </div>
+    <div class="log" id="dep-log"><span class="line">Click through each non-key column to see whether it needs the whole composite key, or just half of it, to determine its value.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Column</th><th>Actually depends on</th><th>Verdict</th></tr>
+    <tr><td><code>grade</code></td><td><code>student_id</code> AND <code>course_id</code> together — a grade only makes sense for a specific student in a specific course</td><td style="color:var(--nf1-c);">Full dependency — OK</td></tr>
+    <tr><td><code>student_name</code></td><td><code>student_id</code> alone — the same student's name is identical on every row they appear in, regardless of which course</td><td style="color:var(--bad-c);">Partial dependency — 2NF violation</td></tr>
+    <tr><td><code>course_title</code></td><td><code>course_id</code> alone — the same course's title is identical on every row, regardless of which student</td><td style="color:var(--bad-c);">Partial dependency — 2NF violation</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why this specifically breaks things:</b> because <code class="inline">course_title</code> only depends on <code class="inline">course_id</code>, "Math" is now copy-pasted into every single row where <code class="inline">course_id = 101</code> appears — the exact update anomaly from Section 1. Rename "Math" to "Mathematics" and you must find and update every enrollment row for that course, or the table starts contradicting itself.</div>
+
+  <h3>The fix: split off the partially-dependent columns</h3>
+  <p>The repair mirrors the diagnosis exactly: any column depending on only part of the key gets moved into its own table, keyed by just that part.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col good">
+      <h4>students — keyed by student_id alone</h4>
+      <div class="db-table" style="margin:0;">
+        <table>
+          <tr><th class="pk-col">student_id</th><th>student_name</th></tr>
+          <tr><td class="pk-cell">1</td><td>Amy</td></tr>
+          <tr><td class="pk-cell">2</td><td>Ravi</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="dc-col good">
+      <h4>courses — keyed by course_id alone</h4>
+      <div class="db-table" style="margin:0;">
+        <table>
+          <tr><th class="pk-col">course_id</th><th>course_title</th></tr>
+          <tr><td class="pk-cell">101</td><td>Math</td></tr>
+          <tr><td class="pk-cell">102</td><td>Art</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="db-table">
+    <div class="tname">enrollments — only what truly depends on BOTH keys remains</div>
+    <table>
+      <tr><th class="pk-col">student_id</th><th class="pk-col">course_id</th><th>grade</th></tr>
+      <tr><td class="pk-cell">1</td><td class="pk-cell">101</td><td>A</td></tr>
+      <tr><td class="pk-cell">1</td><td class="pk-cell">102</td><td>B</td></tr>
+      <tr><td class="pk-cell">2</td><td class="pk-cell">102</td><td>A-</td></tr>
+    </table>
+  </div>
+
+  <div class="callout nf2"><b>Interview-ready definition:</b> a <strong>partial dependency</strong> exists when a non-key attribute depends on only a subset of a composite primary key, rather than the whole key. <strong>2NF</strong> requires a table to already be in 1NF, and additionally requires every non-key attribute to be <strong>fully functionally dependent</strong> on the entire primary key. The fix is always the same shape: move each partially-dependent attribute, together with the part of the key it actually depends on, into its own separate table.</div>
+</section>
+
+<!-- ============ SECTION 4: SPOTTING VIOLATIONS ============ -->
+<section id="spotting">
+  <div class="kicker">04 — Diagnosing a table you're handed cold</div>
+  <h2>Spotting a 1NF / 2NF violation in a sample table</h2>
+
+  <p><strong>Start here, before the checklist.</strong> When you're handed an unfamiliar table — in an interview, a legacy codebase, or a real migration — you need a repeatable process, not a vague gut feeling of "this looks messy." Here's the exact two-question sequence to run through, in order:</p>
+
+  <ol style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><strong>1NF check:</strong> does any single cell hold more than one value (comma-separated, or otherwise combined)? Is there a set of numbered columns standing in for a variable-length list? If yes to either, it's not in 1NF — fix that first, since 2NF assumes 1NF already holds.</li>
+    <li><strong>2NF check:</strong> does the table have a composite primary key (more than one column)? If not, it's automatically in 2NF. If so, look at every non-key column and ask: "to know this value, do I need the WHOLE key, or would part of the key already tell me?" Any column answerable from just part of the key is a 2NF violation.</li>
+  </ol>
+
+  <div class="lab">
+    <div class="lab-title"><span>DIAGNOSE THIS TABLE</span></div>
+    <div class="db-table" style="margin:0 0 1rem;">
+      <div class="tname">orders</div>
+      <table>
+        <tr><th class="pk-col">order_id</th><th class="pk-col">product_id</th><th>quantity</th><th>product_name</th><th>customer_email</th><th>tags</th></tr>
+        <tr><td class="pk-cell">5001</td><td class="pk-cell">A1</td><td>2</td><td>Notebook</td><td>amy@mail.com</td><td>"stationery, paper"</td></tr>
+        <tr><td class="pk-cell">5001</td><td class="pk-cell">B2</td><td>1</td><td>Stapler</td><td>amy@mail.com</td><td>"office, metal"</td></tr>
+        <tr><td class="pk-cell">5002</td><td class="pk-cell">A1</td><td>5</td><td>Notebook</td><td>ravi@mail.com</td><td>"stationery, paper"</td></tr>
+      </table>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip" data-diag="tags">Check: tags</button>
+      <button class="chip" data-diag="quantity">Check: quantity</button>
+      <button class="chip" data-diag="product_name">Check: product_name</button>
+      <button class="chip" data-diag="customer_email">Check: customer_email</button>
+    </div>
+    <div class="log" id="diag-log"><span class="line">This table's composite key is (order_id, product_id) — a row exists per product within an order. Click a column above to diagnose it.</span></div>
+  </div>
+
+  <div class="callout"><b>Notice something:</b> this single table actually has BOTH kinds of violations at once — a 1NF violation (<code class="inline">tags</code> isn't atomic) and two separate 2NF violations (<code class="inline">product_name</code> and <code class="inline">customer_email</code> are each partial dependencies, on different halves of the key). Real tables are rarely clean single-issue examples — always run the full checklist, don't stop at the first problem you spot.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution — try sketching the fixed table structure on paper first.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spot the 1NF violation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A <code class="inline">recipes</code> table has columns <code class="inline">(recipe_id, name, ingredients)</code> where <code class="inline">ingredients</code> stores a value like <code class="inline">"flour, sugar, eggs"</code>. Explain the violation and redesign it into 1NF-compliant tables.</p>
+    <details><summary>Show solution</summary><div class="solution">Violation: `ingredients` is not atomic -- it packs multiple separate facts
+(each individual ingredient) into one cell as a comma-separated string.
+
+Fix: split into two tables --
+
+recipes(recipe_id, name)
+recipe_ingredients(recipe_id, ingredient)
+
+Now each row of recipe_ingredients holds exactly one (recipe, ingredient)
+pair, and "does this recipe contain flour" becomes a simple, indexable
+equality check instead of a fragile string search.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Full key or partial key?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A table <code class="inline">order_items(order_id, item_id, quantity, item_price, warehouse_location)</code> has composite key <code class="inline">(order_id, item_id)</code>. <code class="inline">item_price</code> is the price of that specific item (same regardless of which order it's in). <code class="inline">warehouse_location</code> is which warehouse the item ships from (also fixed per item, regardless of order). Which columns violate 2NF, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">quantity: depends on BOTH order_id and item_id (how many of this item
+were ordered, in this specific order) -- full dependency, OK.
+
+item_price: depends on item_id ALONE -- the price doesn't change based on
+which order it appears in. Partial dependency -- 2NF violation.
+
+warehouse_location: depends on item_id ALONE, same reasoning. Partial
+dependency -- 2NF violation.
+
+Both item_price and warehouse_location should move into a separate
+items(item_id, item_price, warehouse_location) table, leaving
+order_items(order_id, item_id, quantity) holding only what truly needs
+both halves of the key.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Does 2NF even apply here?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A table <code class="inline">users(user_id, email, signup_country)</code> has a single-column primary key, <code class="inline">user_id</code>. A teammate claims this table might have a 2NF violation because <code class="inline">signup_country</code> "doesn't really depend on the whole thing." Are they right?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- 2NF violations are specifically about PARTIAL dependency on a
+COMPOSITE key. This table's primary key is a single column (user_id), so
+there is no "part of the key" for a column to depend on partially -- every
+non-key column either depends on the full key (the only option available)
+or it doesn't belong in this table at all (which would be a different
+issue, not a 2NF violation). Any table whose primary key is a single
+column automatically satisfies 2NF, as long as it's already in 1NF.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnose and fully redesign</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're handed <code class="inline">bookings(booking_id, guest_id, guest_phone, room_number, room_type, nights_booked)</code> with composite key <code class="inline">(booking_id, room_number)</code> — one row per room booked within a booking, since a single booking can include several rooms. Diagnose every 1NF and 2NF issue, then write out the corrected set of tables.</p>
+    <details><summary>Show solution</summary><div class="solution">1NF: no violation here -- every cell already holds a single atomic value,
+and there's no repeating group. (This one only has a 2NF problem.)
+
+2NF check, column by column:
+- nights_booked: depends on BOTH booking_id and room_number (a booking
+  might book room 101 for 2 nights and room 102 for 4 nights) -- full
+  dependency, OK.
+- guest_phone: depends on booking_id ALONE, since a booking has one
+  associated guest, and the phone number doesn't change per room --
+  partial dependency, VIOLATION. (guest_id itself is fine to keep in this
+  table, since it's the other half of describing "whose booking is this,"
+  but guest_phone is a fact ABOUT the guest, not about the booking-room
+  pair.)
+- room_type: depends on room_number ALONE, since a given room's type
+  doesn't change depending on which booking it's part of -- partial
+  dependency, VIOLATION.
+
+Corrected tables:
+bookings(booking_id, guest_id)
+guests(guest_id, guest_phone)
+rooms(room_number, room_type)
+booking_rooms(booking_id, room_number, nights_booked)
+
+Each fact -- guest phone, room type, nights for this specific
+booking+room -- now lives in exactly one place.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why a comma-separated list inside one cell is fundamentally a 1NF problem and not a 2NF problem, (2) why a table with a single-column primary key can never violate 2NF, and (3) what specifically goes wrong operationally — not just "it's messy" — when a partial dependency is left unfixed? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — normalization: 1NF &amp; 2NF.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: 1NF QUERY COMPARISON */
+(function(){
+  const chips = document.querySelectorAll('[data-nf1]');
+  const queryEl = document.getElementById('nf1-query');
+  const logEl = document.getElementById('nf1-log');
+
+  function renderBad(){
+    queryEl.innerHTML = `SELECT name FROM students
+<span class="c-kw">WHERE</span> courses <span class="c-kw">LIKE</span> <span class="c-str">'%Art%'</span><span class="c-cmt">;   -- fragile string search</span>
+<span class="c-out">→ Works here, but ALSO matches a course literally
+   named "Arts and Crafts" -- a false positive this
+   query has no way to avoid, because "courses" was
+   never actually a list the database understood.</span>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>Non-atomic:</b> the database sees "Math, Art" as one opaque string, not two facts. Any search has to fall back to fuzzy text matching, which can silently return wrong results.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  function renderGood(){
+    queryEl.innerHTML = `SELECT s.name FROM students s
+<span class="c-kw">JOIN</span> student_courses sc <span class="c-kw">ON</span> s.id = sc.student_id
+<span class="c-kw">WHERE</span> sc.course = <span class="c-str">'Art'</span><span class="c-cmt">;   -- exact match</span>
+<span class="c-out">→ Amy, Ravi
+   Exact equality, no false positives, and this
+   column can be indexed for fast lookups.</span>`;
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>Atomic:</b> "Art" is stored as its own row, so equality comparison works exactly as expected — no fuzzy matching needed.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.nf1 === 'bad') renderBad(); else renderGood();
+    });
+  });
+  renderBad();
+})();
+
+/* SECTION 3: DEPENDENCY WALKTHROUGH */
+(function(){
+  const btn = document.getElementById('dep-run');
+  const diagramEl = document.getElementById('dep-diagram');
+  const logEl = document.getElementById('dep-log');
+  const cols = [
+    {name:'grade', needs:'both', msg:'<b>grade</b> depends on BOTH student_id and course_id — a grade only makes sense as "this student\'s grade in this course." Full dependency — this column is fine where it is.'},
+    {name:'student_name', needs:'student_id', msg:'<b>student_name</b> depends on student_id ALONE — knowing just the student tells you their name, regardless of which course row you\'re looking at. This is a partial dependency — a 2NF violation.'},
+    {name:'course_title', needs:'course_id', msg:'<b>course_title</b> depends on course_id ALONE — knowing just the course tells you its title, regardless of which student row you\'re looking at. This is also a partial dependency — a 2NF violation.'}
+  ];
+  let i = 0;
+  btn.addEventListener('click', ()=>{
+    if(i >= cols.length){ return; }
+    const c = cols[i];
+    const arrowClass = c.needs === 'both' ? 'full' : 'partial';
+    const arrowLabel = c.needs === 'both' ? 'full dependency ✓' : `partial dependency — needs only ${c.needs} ✗`;
+    const wrap = document.createElement('div'); wrap.className = 'dep-arrow-set fadein';
+    wrap.innerHTML = `<div class="dep-arrow ${arrowClass}">↓ ${arrowLabel}</div><div class="dep-target">${c.name}</div>`;
+    diagramEl.appendChild(wrap);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = c.msg;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+    i++;
+    if(i >= cols.length){ btn.disabled = true; btn.textContent = 'All columns checked ✓'; }
+  });
+})();
+
+/* SECTION 4: DIAGNOSE TABLE */
+(function(){
+  const chips = document.querySelectorAll('[data-diag]');
+  const logEl = document.getElementById('diag-log');
+  const diagnoses = {
+    tags: '<span class="err"><b>1NF violation.</b></span> "stationery, paper" packs two separate tag values into one cell — not atomic. This has nothing to do with the composite key at all; it would be a problem even in a table with a single-column key.',
+    quantity: '<span style="color:var(--nf1-c);"><b>No violation.</b></span> quantity depends on BOTH order_id and product_id together — how many of this product were ordered, specifically within this order. Full dependency.',
+    product_name: '<span class="err"><b>2NF violation — partial dependency.</b></span> product_name depends on product_id ALONE (notice "Notebook" is identical on every row with product_id = A1, regardless of which order). It belongs in a separate products(product_id, product_name) table.',
+    customer_email: '<span class="err"><b>2NF violation — partial dependency.</b></span> customer_email depends on order_id ALONE (the customer is fixed per order, not per product within the order — notice it repeats across both product rows for order 5001). It belongs in a separate orders(order_id, customer_email) table.'
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      const p = document.createElement('div'); p.className = 'fadein';
+      p.innerHTML = diagnoses[c.dataset.diag];
+      logEl.innerHTML = ''; logEl.appendChild(p);
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

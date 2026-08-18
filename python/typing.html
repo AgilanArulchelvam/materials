@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Type Hints &amp; mypy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --hint-c:#7fd8a0; --generic-c:#f2c14e; --proto-c:#c792ea; --mypy-c:#ff6b6b; --accent:#6ea8fe;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(110,168,254,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .type-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.5rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .thop{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--hint-c); color:var(--hint-c); background:rgba(127,216,160,0.08);}
+  .tharrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(110,168,254,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-dec{color:var(--generic-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+  .code .c-err{color:var(--mypy-c);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#0d1117; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--mypy-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* mypy terminal */
+  .mypy-term{font-family:var(--mono); font-size:0.8rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:1rem 0; white-space:pre-wrap; line-height:1.7;}
+  .mypy-term .ok{color:var(--hint-c);}
+  .mypy-term .bad{color:var(--mypy-c);}
+  .mypy-term .file{color:var(--ink-dim);}
+
+  /* generics box viz */
+  .box-viz{display:flex; gap:1rem; flex-wrap:wrap; margin:1.2rem 0;}
+  .tbox{border:2px dashed var(--generic-c); border-radius:10px; padding:0.9rem 1.2rem; font-family:var(--mono); font-size:0.82rem; color:var(--generic-c); background:rgba(242,193,78,0.06); min-width:130px; text-align:center;}
+  .tbox .slot{display:block; margin-top:0.4rem; color:var(--ink); font-size:0.9rem;}
+
+  /* protocol comparison */
+  .proto-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:640px){.proto-compare{grid-template-columns:1fr;}}
+  .proto-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; font-family:var(--mono); font-size:0.8rem;}
+  .proto-col.nom{border-color:var(--accent);}
+  .proto-col.struct{border-color:var(--proto-c);}
+  .proto-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .proto-col.nom h4{color:var(--accent);} .proto-col.struct h4{color:var(--proto-c);}
+
+  /* optional/union state machine */
+  .opt-stage{display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin:1.2rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .opt-box{padding:0.8rem 1.2rem; border-radius:10px; border:2px solid var(--rule); text-align:center; transition:all .3s;}
+  .opt-box.active{border-color:var(--mypy-c); background:rgba(255,107,107,0.08); color:var(--mypy-c);}
+  .opt-box.safe{border-color:var(--hint-c); background:rgba(127,216,160,0.08); color:var(--hint-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#0d1117; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(110,168,254,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--mypy-c); background:rgba(255,107,107,0.06);}
+  .callout.warn b{color:var(--mypy-c);}
+  .callout.proto{border-left-color:var(--proto-c); background:rgba(199,146,234,0.06);}
+  .callout.proto b{color:var(--proto-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · TYPE HINTS &amp; MYPY</div>
+  <h1>Type hints are <em>documentation Python never checks</em> — mypy is the tool that actually checks it.</h1>
+  <p class="lede">Python never enforces <code class="inline">def f(x: int) -> str:</code> at runtime — you can still pass a list and nothing will stop you. Type hints are static annotations read by external tools. Once that split is clear, generics, <code class="inline">Protocol</code>, <code class="inline">Optional</code>, and mypy's error messages all become one consistent skill: reading what the type checker inferred versus what you meant.</p>
+
+  <div class="type-hero">
+    <div class="thop">def greet(name: str) -&gt; str:</div>
+    <div class="tharrow">Python runtime ⟶ ignores the hint entirely</div>
+    <div class="thop">mypy greet.py ⟶ actually checks it</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="basics">1 · Basic Type Hints</a>
+  <a data-target="generics">2 · Generics</a>
+  <a data-target="protocol">3 · Protocol (Structural Typing)</a>
+  <a data-target="mypy">4 · Running mypy</a>
+  <a data-target="optional">5 · Optional / Union &amp; None</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: BASICS ============ -->
+<section id="basics">
+  <div class="kicker">01 — Annotating what's already true</div>
+  <h2>Basic type hints: variables, signatures, return types</h2>
+
+  <p><strong>Start here, before any code.</strong> A type hint is like a label on a storage bin — it doesn't stop you from throwing in the wrong item, but it tells everyone (including future-you) what's <em>supposed</em> to go there, and a separate inspector can walk around checking every bin against its label without you having to remember the rule yourself.</p>
+
+  <p>A hint after a variable or parameter name (<code class="inline">x: int</code>) states the intended type; an arrow before the function body (<code class="inline">-> str</code>) states the intended return type. None of this is enforced when the code actually runs — Python's runtime behavior is completely unaffected by hints. They exist purely for static analysis tools, IDEs, and human readers.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">greet</span>(name: <span class="c-fn">str</span>, times: <span class="c-fn">int</span> = <span class="c-num">1</span>) -&gt; <span class="c-fn">str</span>:
+    <span class="c-kw">return</span> (f<span class="c-str">"Hi, {name}! "</span> * times).strip()
+
+age: <span class="c-fn">int</span> = <span class="c-num">30</span>
+name: <span class="c-fn">str</span> = <span class="c-str">"Ada"</span>
+
+<span class="c-cmt"># Python happily runs this even though it violates the hint:</span>
+<span class="c-fn">greet</span>(<span class="c-num">123</span>, <span class="c-str">"two"</span>)     <span class="c-out">→ crashes at runtime (str * str is invalid) — NOT because of the hint,
+                    the hint was never checked; it crashed for its own normal reasons</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHO ACTUALLY ENFORCES THE HINT?</span><button class="btn" id="basic-run">greet(123, "two")</button></div>
+    <div class="log" id="basic-log"><span class="line">Click to see what actually happens when hints are "violated" at runtime.</span></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a type hint (PEP 484) is a static annotation — stored in <code class="inline">__annotations__</code>, readable via introspection — that declares the intended type of a variable, parameter, or return value. It is <strong>not enforced by the Python interpreter at runtime</strong>; enforcement is the job of an external static type checker such as mypy, pyright, or an IDE's inline analysis.</div>
+</section>
+
+<!-- ============ SECTION 2: GENERICS ============ -->
+<section id="generics">
+  <div class="kicker">02 — Containers that remember what's inside</div>
+  <h2>Generics: list[int], dict[str, int], TypeVar</h2>
+
+  <p><strong>Start here, before any code.</strong> A plain box just says "box." A labeled box says "box of screws" — now you know what to expect without opening it, and if someone tries to drop in a nail, the label makes that visibly wrong even before you look inside. Generics are labeled containers: <code class="inline">list[int]</code> isn't just "a list," it's "a list, specifically of integers."</p>
+
+  <p><code class="inline">list[int]</code>, <code class="inline">dict[str, int]</code>, and similar bracket syntax (built into the language since Python 3.9, no import needed) tell a type checker what's inside a container, not just its outer shape. <code class="inline">TypeVar</code> goes one step further — it lets a function's input and output types stay <em>linked</em> without committing to one specific type up front.</p>
+
+  <div class="code">
+scores: <span class="c-fn">dict</span>[<span class="c-fn">str</span>, <span class="c-fn">int</span>] = {<span class="c-str">"Ada"</span>: <span class="c-num">95</span>, <span class="c-str">"Grace"</span>: <span class="c-num">98</span>}
+names: <span class="c-fn">list</span>[<span class="c-fn">str</span>] = [<span class="c-str">"Ada"</span>, <span class="c-str">"Grace"</span>]
+
+<span class="c-kw">from</span> typing <span class="c-kw">import</span> TypeVar
+
+T = TypeVar(<span class="c-str">"T"</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">first</span>(items: <span class="c-fn">list</span>[T]) -&gt; T:      <span class="c-cmt"># whatever T is going IN is what comes OUT</span>
+    <span class="c-kw">return</span> items[<span class="c-num">0</span>]
+
+<span class="c-fn">first</span>([<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>])        <span class="c-cmt"># T = int here  → mypy infers return type int</span>
+<span class="c-fn">first</span>([<span class="c-str">"a"</span>, <span class="c-str">"b"</span>])       <span class="c-cmt"># T = str here  → mypy infers return type str</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH TypeVar LINK INPUT TYPE TO OUTPUT TYPE</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-tv="int">first([1, 2, 3])</button>
+      <button class="chip" data-tv="str">first(["a", "b"])</button>
+      <button class="chip" data-tv="float">first([1.5, 2.5])</button>
+    </div>
+    <div class="box-viz">
+      <div class="tbox">T (bound this call)<span class="slot" id="tv-t">int</span></div>
+      <div class="tbox">items: list[T]<span class="slot" id="tv-in">list[int]</span></div>
+      <div class="tbox">return type<span class="slot" id="tv-out">int</span></div>
+    </div>
+    <div class="log" id="tv-log"></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a generic type parameterizes a container or function over another type, letting a checker verify contents (<code class="inline">list[int]</code> vs. <code class="inline">list[str]</code>) rather than just outer shape. <code class="inline">TypeVar</code> declares a placeholder type that mypy solves per call-site, preserving the relationship between a function's input type and its output type without hardcoding either — this is what lets one generic function be correctly type-checked across many different concrete types.</div>
+</section>
+
+<!-- ============ SECTION 3: PROTOCOL ============ -->
+<section id="protocol">
+  <div class="kicker">03 — "If it walks like a duck..." made type-safe</div>
+  <h2>Protocol: structural typing</h2>
+
+  <p><strong>Start here, before any code.</strong> Two job applicants might have completely different resumes — different schools, different past titles — but if both can genuinely do the job being interviewed for, a good hiring manager cares about what they can DO, not what family of resume template they used. <code class="inline">Protocol</code> lets you require "can do this," not "is officially descended from this class."</p>
+
+  <p>Normal type hints check <strong>nominal</strong> typing — <code class="inline">isinstance(x, Duck)</code> cares about the declared class hierarchy. <code class="inline">Protocol</code> (from <code class="inline">typing</code>) instead checks <strong>structural</strong> typing — "does this object have the right methods/attributes with the right signatures?" — regardless of what class it claims to inherit from. This matches Python's long-standing duck-typing culture, but makes it statically checkable.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> typing <span class="c-kw">import</span> Protocol
+
+<span class="c-kw">class</span> <span class="c-fn">Quacks</span>(Protocol):
+    <span class="c-kw">def</span> <span class="c-fn">quack</span>(<span class="c-self">self</span>) -&gt; <span class="c-fn">str</span>: ...
+
+<span class="c-kw">class</span> <span class="c-fn">Duck</span>:                        <span class="c-cmt"># doesn't inherit from Quacks at all</span>
+    <span class="c-kw">def</span> <span class="c-fn">quack</span>(<span class="c-self">self</span>) -&gt; <span class="c-fn">str</span>:
+        <span class="c-kw">return</span> <span class="c-str">"Quack!"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">RubberDuckToy</span>:              <span class="c-cmt"># also doesn't inherit from Quacks</span>
+    <span class="c-kw">def</span> <span class="c-fn">quack</span>(<span class="c-self">self</span>) -&gt; <span class="c-fn">str</span>:
+        <span class="c-kw">return</span> <span class="c-str">"Squeak (pretending)"</span>
+
+<span class="c-kw">def</span> <span class="c-fn">make_it_quack</span>(thing: Quacks) -&gt; <span class="c-fn">None</span>:
+    <span class="c-kw">print</span>(thing.quack())
+
+<span class="c-fn">make_it_quack</span>(Duck())            <span class="c-out">✓ mypy OK — has a matching quack() method</span>
+<span class="c-fn">make_it_quack</span>(RubberDuckToy())   <span class="c-out">✓ mypy OK — ALSO has a matching quack() method, no inheritance needed</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>NOMINAL vs. STRUCTURAL — WHICH TYPES ARE ACCEPTED?</span></div>
+    <div class="proto-compare">
+      <div class="proto-col nom">
+        <h4>Nominal (isinstance / inheritance)</h4>
+        def make_it_quack(thing: Duck):<br>&nbsp;&nbsp;...<br><br>
+        Only accepts objects that ARE-A Duck (inherit from it). RubberDuckToy would be REJECTED, even with an identical quack() method, because it doesn't inherit from Duck.
+      </div>
+      <div class="proto-col struct">
+        <h4>Structural (Protocol)</h4>
+        def make_it_quack(thing: Quacks):<br>&nbsp;&nbsp;...<br><br>
+        Accepts ANY object with a matching quack() method — Duck, RubberDuckToy, or anything else you write later. No shared base class required.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout proto"><b>Interview-ready definition:</b> <code class="inline">typing.Protocol</code> defines a structural type — a set of method/attribute signatures an object must satisfy to be considered compatible, checked by shape rather than declared ancestry. It formalizes duck typing for static analysis: a class needs no explicit inheritance relationship to the Protocol to satisfy it, only matching members. This is Python's version of what Go calls interfaces and TypeScript calls structural interfaces.</div>
+</section>
+
+<!-- ============ SECTION 4: RUNNING MYPY ============ -->
+<section id="mypy">
+  <div class="kicker">04 — Reading the checker's output</div>
+  <h2>Running mypy and reading its errors</h2>
+
+  <p><strong>Start here, before any code.</strong> A spell-checker doesn't stop you from typing nonsense — it runs after the fact and underlines what it thinks is wrong, with a specific line number and reason, and you decide whether to fix it. Running <code class="inline">mypy</code> is exactly that pass over your code, except for types instead of spelling.</p>
+
+  <p><code class="inline">mypy filename.py</code> reads every type hint in the file (and any it can infer), cross-checks every assignment, call, and return against those hints, and prints one line per mismatch: file, line number, the mismatch, and an error code in brackets you can search for.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">add</span>(a: <span class="c-fn">int</span>, b: <span class="c-fn">int</span>) -&gt; <span class="c-fn">int</span>:
+    <span class="c-kw">return</span> a + b
+
+<span class="c-fn">result</span> = <span class="c-fn">add</span>(<span class="c-num">5</span>, <span class="c-str">"3"</span>)   <span class="c-cmt"># passing a str where int is expected</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>RUN mypy ON THE FILE ABOVE</span><button class="btn" id="mypy-run">$ mypy example.py</button></div>
+    <div class="mypy-term" id="mypy-out"><span class="file">Click the button to run mypy.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Part of the error</th><th>Meaning</th></tr>
+    <tr><td><code>example.py:4</code></td><td>File and line number of the mismatch</td></tr>
+    <tr><td><code>error: Argument 2 to "add" has incompatible type "str"; expected "int"</code></td><td>Plain-English description of exactly what didn't match</td></tr>
+    <tr><td><code>[arg-type]</code></td><td>Error code — searchable, and can be selectively silenced with <code>[arg-type]</code>-specific ignores if truly a false positive</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Common trap:</b> mypy only checks what it can see. A function with no annotations at all is checked loosely by default (depending on config strictness), so an unannotated helper function can hide real bugs from mypy entirely. <code class="inline">--strict</code> mode (or <code class="inline">disallow_untyped_defs</code>) forces every function to be annotated, which is what most production codebases eventually turn on.</div>
+</section>
+
+<!-- ============ SECTION 5: OPTIONAL / UNION ============ -->
+<section id="optional">
+  <div class="kicker">05 — Naming "might not be there"</div>
+  <h2>Optional / Union and None handling</h2>
+
+  <p><strong>Start here, before any code.</strong> A locker that's sometimes empty needs a sign that says "may be empty" — not just "contains a backpack" — so nobody reaches in expecting something and gets surprised. <code class="inline">Optional[str]</code> is that sign: it tells both mypy and the next reader "this might be <code class="inline">None</code>, check before you use it."</p>
+
+  <p><code class="inline">Optional[X]</code> is shorthand for <code class="inline">Union[X, None]</code> — "either an X, or None." <code class="inline">Union[A, B]</code> more generally means "either an A or a B." Modern Python (3.10+) allows the shorter <code class="inline">X | None</code> and <code class="inline">A | B</code> syntax instead of importing from <code class="inline">typing</code>. Critically, mypy will not let you call a method on an <code class="inline">Optional</code> value without first narrowing it — proving to the checker that the <code class="inline">None</code> case has been ruled out.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">find_user</span>(user_id: <span class="c-fn">int</span>) -&gt; <span class="c-fn">str</span> | <span class="c-fn">None</span>:
+    <span class="c-kw">return</span> DB.get(user_id)   <span class="c-cmt"># might legitimately not be found</span>
+
+user = <span class="c-fn">find_user</span>(<span class="c-num">42</span>)
+<span class="c-fn">print</span>(user.upper())      <span class="c-out">✗ mypy error: Item "None" of "str | None" has no attribute "upper"</span>
+
+<span class="c-kw">if</span> user <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-fn">None</span>:       <span class="c-cmt"># narrowing: mypy now KNOWS user is str inside this block</span>
+    <span class="c-fn">print</span>(user.upper())  <span class="c-out">✓ mypy OK — None case has been eliminated</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>NARROW THE TYPE BEFORE USING IT</span><button class="btn" id="opt-run">user.upper() — try it</button></div>
+    <div class="opt-stage">
+      <div class="opt-box" id="opt-box1">user: str | None</div>
+      <div class="opt-box" id="opt-box2">if user is not None:</div>
+      <div class="opt-box" id="opt-box3">user: str (narrowed)</div>
+    </div>
+    <div class="log" id="opt-log"></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <code class="inline">Optional[X]</code> (equivalently <code class="inline">X | None</code>) is <code class="inline">Union[X, None]</code> — a type that may hold either a value of type X or the sentinel <code class="inline">None</code>. Static checkers require <strong>narrowing</strong> (an explicit <code class="inline">is None</code>/<code class="inline">is not None</code> check, an <code class="inline">assert</code>, or equivalent control flow) before permitting operations valid only on X, preventing an entire class of <code class="inline">AttributeError: 'NoneType' object has no attribute ...</code> bugs before the code ever runs.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Hints don't stop execution</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def double(n: int) -> int:
+    return n * 2
+
+print(double("ab"))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">abab
+
+Python's runtime never checks the hint "n: int" — it just runs `n * 2`, and
+str * int is valid Python (string repetition), so it executes fine and
+prints "abab". mypy WOULD flag this call as a type error (passing str where
+int is expected), but nothing about running the plain interpreter enforces
+that — only a separate static-analysis pass would catch it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Generic container mismatch</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def total(numbers: list[int]) -> int:
+    return sum(numbers)
+
+total([1, 2, "3"])
+    </div>
+    <details><summary>Show solution</summary><div class="solution">mypy reports an error at the call site: List item 2 has incompatible type
+"str"; expected "int" — because list[int] means EVERY element should be
+int, and "3" (a string) breaks that.
+
+At runtime, this actually crashes too: sum() would raise
+TypeError: unsupported operand type(s) for +: 'int' and 'str'
+So here mypy would have caught a real bug before ever running the code —
+this is the case type hints are specifically good for.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · TypeVar identity</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from typing import TypeVar
+
+T = TypeVar("T")
+
+def last(items: list[T]) -> T:
+    return items[-1]
+
+x = last([1, 2, 3])
+y = last(["a", "b"])
+    </div>
+    <details><summary>Show solution</summary><div class="solution">mypy infers x: int and y: str.
+
+TypeVar binds T independently for each call: in `last([1,2,3])`, the
+argument is list[int], so T=int for that call, making the return type int.
+In `last(["a","b"])`, T=str for that call. Without TypeVar, the signature
+would have to be `def last(items: list) -> object` (or Any), losing the
+precise return type — the caller would then have to manually re-cast the
+result to use it as a str or int.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Protocol satisfaction without inheritance</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from typing import Protocol
+
+class Sized(Protocol):
+    def __len__(self) -> int: ...
+
+def describe(thing: Sized) -> str:
+    return f"has {len(thing)} items"
+
+describe([1, 2, 3])
+describe("hello")
+describe({"a": 1})
+    </div>
+    <details><summary>Show solution</summary><div class="solution">All three calls type-check successfully under mypy, and all three print
+correctly at runtime: "has 3 items", "has 5 items", "has 1 items".
+
+list, str, and dict none of them inherit from a class called "Sized" you
+wrote — they satisfy the Protocol purely structurally, because each
+implements __len__(self) -> int. This is exactly why built-in types can
+satisfy Protocols you define yourself: Protocol checks shape, not declared
+ancestry.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Optional narrowing</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+from typing import Optional
+
+def get_nickname(name: str) -> Optional[str]:
+    nicknames = {"Robert": "Bob", "William": "Bill"}
+    return nicknames.get(name)
+
+def shout(name: str) -> str:
+    nick = get_nickname(name)
+    return nick.upper()
+    </div>
+    <details><summary>Show solution</summary><div class="solution">mypy error on `return nick.upper()`:
+Item "None" of "Optional[str]" has no attribute "upper"
+
+get_nickname returns Optional[str] — dict.get() returns None when the key
+isn't found (e.g. get_nickname("Ada") has no entry). Calling .upper()
+directly on nick, without first checking `if nick is not None:` (or
+providing a default via nicknames.get(name, name)), is exactly the bug
+Optional exists to catch: at runtime, shout("Ada") would raise
+AttributeError: 'NoneType' object has no attribute 'upper' — mypy catches
+it before that ever happens.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why Python's runtime never raises an error just because a type hint was violated, (2) how <code class="inline">Protocol</code> differs from a normal base class for typing purposes, and (3) why mypy forces you to narrow an <code class="inline">Optional</code> value before calling a method on it? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — type hints &amp; mypy, python internals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: RUNTIME IGNORES HINTS */
+(function(){
+  const btn = document.getElementById('basic-run');
+  const logEl = document.getElementById('basic-log');
+  btn.addEventListener('click', ()=>{
+    logEl.innerHTML = '';
+    const steps = [
+      "Python calls greet(123, \"two\") — the interpreter does NOT check the \"name: str\" or \"times: int\" hints. It just runs the body.",
+      "Inside: (f\"Hi, {name}! \" * times) becomes f\"Hi, 123! \" * \"two\" — multiplying a string by a string, not a string by an int.",
+      "This raises TypeError: can't multiply sequence by non-int of type 'str' — a completely normal runtime error, unrelated to the type hints. mypy would have flagged the wrong argument TYPES before ever running this, but nothing here is \"hint enforcement\" at runtime."
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = (i===2 ? '<span class="err">' : '') + `<b>Step ${i+1}:</b> ${s}` + (i===2 ? '</span>' : '');
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i*700);
+    });
+  });
+})();
+
+/* SECTION 2: TYPEVAR */
+(function(){
+  const chips = document.querySelectorAll('#generics .chip');
+  const tEl = document.getElementById('tv-t');
+  const inEl = document.getElementById('tv-in');
+  const outEl = document.getElementById('tv-out');
+  const logEl = document.getElementById('tv-log');
+  const data = {
+    int: {t:'int', list:'list[int]', out:'int', example:'first([1, 2, 3])'},
+    str: {t:'str', list:'list[str]', out:'str', example:'first(["a", "b"])'},
+    float: {t:'float', list:'list[float]', out:'float', example:'first([1.5, 2.5])'}
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      const d = data[c.dataset.tv];
+      tEl.textContent = d.t;
+      inEl.textContent = d.list;
+      outEl.textContent = d.out;
+      logEl.innerHTML = `<div class="line fadein"><b>${d.example}</b> binds T=${d.t} for this call only — the next call can bind T to a completely different type without any conflict.</div>`;
+    });
+  });
+})();
+
+/* SECTION 4: MYPY TERMINAL */
+(function(){
+  const btn = document.getElementById('mypy-run');
+  const outEl = document.getElementById('mypy-out');
+  btn.addEventListener('click', ()=>{
+    outEl.innerHTML = '<span class="file">Running mypy...</span>';
+    setTimeout(()=>{
+      outEl.innerHTML =
+        '<span class="file">example.py:4:</span> <span class="bad">error:</span> Argument 2 to "add" has incompatible type "str"; expected "int"  <span class="file">[arg-type]</span>\n' +
+        '<span class="file">Found 1 error in 1 file (checked 1 source file)</span>';
+    }, 500);
+  });
+})();
+
+/* SECTION 5: OPTIONAL NARROWING */
+(function(){
+  const btn = document.getElementById('opt-run');
+  const box1 = document.getElementById('opt-box1');
+  const box2 = document.getElementById('opt-box2');
+  const box3 = document.getElementById('opt-box3');
+  const logEl = document.getElementById('opt-log');
+  btn.addEventListener('click', ()=>{
+    [box1,box2,box3].forEach(b=>b.classList.remove('active','safe'));
+    logEl.innerHTML = '';
+    box1.classList.add('active');
+    const p1 = document.createElement('div'); p1.className='line fadein';
+    p1.innerHTML = "<b>Without narrowing:</b> calling user.upper() directly on a \"str | None\" value — mypy REJECTS this: \"Item 'None' of 'str | None' has no attribute 'upper'\".";
+    logEl.appendChild(p1);
+    setTimeout(()=>{
+      box1.classList.remove('active');
+      box2.classList.add('active');
+      const p2 = document.createElement('div'); p2.className='line fadein';
+      p2.innerHTML = '<b>Add:</b> if user is not None: — this is a narrowing check mypy specifically recognizes.';
+      logEl.appendChild(p2); logEl.scrollTop = logEl.scrollHeight;
+    }, 700);
+    setTimeout(()=>{
+      box2.classList.remove('active');
+      box3.classList.add('active','safe');
+      const p3 = document.createElement('div'); p3.className='line fadein';
+      p3.innerHTML = '<b>Inside that block:</b> mypy narrows the type to plain "str" for the rest of the branch — user.upper() now type-checks cleanly.';
+      logEl.appendChild(p3); logEl.scrollTop = logEl.scrollHeight;
+    }, 1400);
+  });
+})();
+</script>
+</body>
+</html>

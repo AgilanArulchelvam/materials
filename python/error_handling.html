@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Exceptions &amp; Error Handling</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --exc-c:#ff6b6b; --custom-c:#f2c14e; --flow-c:#7fd8a0; --chain-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,107,107,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .exc-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.5rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .ehop{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--exc-c); color:var(--exc-c); background:rgba(255,107,107,0.08);}
+  .eharrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#e9c46a;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--exc-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* exception hierarchy tree */
+  .hier-tree{font-family:var(--mono); font-size:0.82rem; margin:1.2rem 0;}
+  .hnode{border:1.5px solid var(--rule); border-radius:8px; padding:0.5rem 0.9rem; margin:0.25rem 0; display:inline-block; cursor:pointer; transition:all .2s; background:var(--panel-2);}
+  .hnode:hover{border-color:var(--exc-c);}
+  .hnode.selected{border-color:var(--exc-c); background:rgba(255,107,107,0.12); color:var(--exc-c);}
+  .hrow{display:flex; align-items:center; gap:0.6rem; margin:0.15rem 0;}
+  .hrow.l1{padding-left:0;} .hrow.l2{padding-left:2rem;} .hrow.l3{padding-left:4rem;}
+  .hconn{color:var(--ink-dim); font-size:0.8rem;}
+
+  /* try/except/else/finally flow */
+  .flow-stage{display:flex; flex-direction:column; gap:0; margin:1.2rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .fblock{border:2px solid; border-radius:10px; padding:0.9rem 1.2rem; margin-bottom:-2px; opacity:0.3; transition:all .35s;}
+  .fblock.active{opacity:1; transform:scale(1.01);}
+  .fblock.try{border-color:var(--flow-c); color:var(--flow-c);}
+  .fblock.except{border-color:var(--exc-c); color:var(--exc-c);}
+  .fblock.else{border-color:var(--custom-c); color:var(--custom-c);}
+  .fblock.finally{border-color:var(--chain-c); color:var(--chain-c);}
+  .fblock .flbl{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; opacity:0.75; display:block; margin-bottom:0.3rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--exc-c); background:rgba(255,107,107,0.06);}
+  .callout.warn b{color:var(--exc-c);}
+  .callout.chain{border-left-color:var(--chain-c); background:rgba(199,146,234,0.06);}
+  .callout.chain b{color:var(--chain-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · EXCEPTIONS &amp; ERROR HANDLING</div>
+  <h1>Every exception is a <em>class instance</em>, and catching it is just matching that instance against a type.</h1>
+  <p class="lede">There's no separate "error system" bolted onto Python — <code class="inline">raise ValueError("bad")</code> creates an ordinary object and throws it up the call stack; <code class="inline">except ValueError:</code> catches it because <code class="inline">isinstance()</code> says yes. Once that's concrete, the exception hierarchy, custom exceptions, try/except/else/finally, and <code class="inline">raise X from Y</code> all click into one coherent system.</p>
+
+  <div class="exc-hero">
+    <div class="ehop">raise ValueError("bad")</div>
+    <div class="eharrow">is really just ⟶</div>
+    <div class="ehop">raise an object, walk up the stack, isinstance() match</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="hierarchy">1 · Exception Hierarchy</a>
+  <a data-target="custom">2 · Custom Exceptions</a>
+  <a data-target="tryflow">3 · try/except/else/finally</a>
+  <a data-target="specific">4 · Specific vs Bare except</a>
+  <a data-target="chaining">5 · raise X from Y</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: HIERARCHY ============ -->
+<section id="hierarchy">
+  <div class="kicker">01 — Every error is a class, and classes have parents</div>
+  <h2>The exception hierarchy: Exception → ValueError, KeyError, etc.</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a company's org chart for handling complaints: a generic "Customer Complaint" role sits above more specific roles like "Billing Complaint" and "Shipping Complaint." If you're willing to handle ANY complaint, you register for the generic role; if you only care about billing issues specifically, you register narrower. Catching exceptions works the same way — <code class="inline">except Exception</code> catches everything below it in the tree, while <code class="inline">except ValueError</code> only catches that branch.</p>
+
+  <p>Every built-in exception inherits from <code class="inline">BaseException</code>, and almost everything you'd ever want to catch inherits specifically from <code class="inline">Exception</code> (a narrower branch — <code class="inline">SystemExit</code> and <code class="inline">KeyboardInterrupt</code> deliberately sit outside it so a broad <code class="inline">except Exception</code> doesn't accidentally swallow a deliberate program exit). <code class="inline">except SomeType:</code> catches that type AND every subclass of it, because it's implemented as an <code class="inline">isinstance()</code> check.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLICK A NODE — SEE WHICH except CLAUSES WOULD CATCH IT</span></div>
+    <div class="hier-tree">
+      <div class="hrow l1"><div class="hnode" data-node="BaseException">BaseException</div></div>
+      <div class="hrow l2"><span class="hconn">├─</span><div class="hnode" data-node="Exception">Exception</div></div>
+      <div class="hrow l3"><span class="hconn">│  ├─</span><div class="hnode" data-node="ValueError">ValueError</div></div>
+      <div class="hrow l3"><span class="hconn">│  ├─</span><div class="hnode" data-node="LookupError">LookupError</div></div>
+      <div class="hrow l3" style="padding-left:6rem;"><span class="hconn">│  │  ├─</span><div class="hnode" data-node="KeyError">KeyError</div></div>
+      <div class="hrow l3" style="padding-left:6rem;"><span class="hconn">│  │  └─</span><div class="hnode" data-node="IndexError">IndexError</div></div>
+      <div class="hrow l3"><span class="hconn">│  ├─</span><div class="hnode" data-node="TypeError">TypeError</div></div>
+      <div class="hrow l3"><span class="hconn">│  └─</span><div class="hnode" data-node="OSError">OSError</div></div>
+      <div class="hrow l2"><span class="hconn">├─</span><div class="hnode" data-node="SystemExit">SystemExit</div></div>
+      <div class="hrow l2"><span class="hconn">└─</span><div class="hnode" data-node="KeyboardInterrupt">KeyboardInterrupt</div></div>
+    </div>
+    <div class="log" id="hier-log"><span class="line">Click any exception name to see the full chain of except clauses that would catch it.</span></div>
+  </div>
+
+  <div class="callout warn"><b>Why SystemExit and KeyboardInterrupt are special:</b> they inherit directly from <code class="inline">BaseException</code>, not <code class="inline">Exception</code> — deliberately, so that a broad <code class="inline">except Exception:</code> (a very common pattern for "catch anything that went wrong") does NOT accidentally intercept a user pressing Ctrl+C or a deliberate <code class="inline">sys.exit()</code> call. Only a bare <code class="inline">except:</code> (catching literally everything) would swallow those too — one of several reasons bare <code class="inline">except:</code> is considered dangerous.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> Python's exception hierarchy is a class inheritance tree rooted at <code class="inline">BaseException</code>, with <code class="inline">Exception</code> as the branch covering ordinary error conditions. <code class="inline">except SomeExceptionType:</code> catches any raised instance for which <code class="inline">isinstance(instance, SomeExceptionType)</code> is true — meaning it catches that exact type and every subclass beneath it in the tree, which is exactly why catching a broader ancestor type (like <code class="inline">Exception</code>) is a strictly wider net than catching one specific leaf type (like <code class="inline">KeyError</code>).</div>
+</section>
+
+<!-- ============ SECTION 2: CUSTOM EXCEPTIONS ============ -->
+<section id="custom">
+  <div class="kicker">02 — When the built-ins aren't specific enough</div>
+  <h2>Defining custom exceptions and when it's warranted</h2>
+
+  <p><strong>Start here, before any code.</strong> A generic "something went wrong" sticky note is useless to whoever finds it later — "insufficient funds, account #4471, tried to withdraw $200 with $50 available" is something they can actually act on. Custom exceptions are that specific sticky note: a named, purpose-built signal that carries exactly the information a caller needs to respond correctly.</p>
+
+  <p>Defining a custom exception is just subclassing <code class="inline">Exception</code> (or a more specific built-in, if your error genuinely IS a specialization of one). It's warranted when: (1) callers need to distinguish YOUR specific failure mode from generic <code class="inline">ValueError</code>s elsewhere in a large codebase, (2) you want to attach structured data (an account ID, a validation field name) to the error object itself, or (3) you're building a library and want callers to be able to catch "any error from this library" via one common base class.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">InsufficientFundsError</span>(Exception):
+    <span class="c-str">"""Raised when a withdrawal exceeds the available balance."""</span>
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, balance: <span class="c-fn">float</span>, requested: <span class="c-fn">float</span>):
+        <span class="c-self">self</span>.balance = balance
+        <span class="c-self">self</span>.requested = requested
+        <span class="c-kw">super</span>().__init__(
+            f<span class="c-str">"Cannot withdraw ${requested}: only ${balance} available"</span>
+        )
+
+<span class="c-kw">def</span> <span class="c-fn">withdraw</span>(balance, amount):
+    <span class="c-kw">if</span> amount &gt; balance:
+        <span class="c-kw">raise</span> InsufficientFundsError(balance, amount)
+    <span class="c-kw">return</span> balance - amount
+
+<span class="c-kw">try</span>:
+    <span class="c-fn">withdraw</span>(<span class="c-num">50</span>, <span class="c-num">200</span>)
+<span class="c-kw">except</span> InsufficientFundsError <span class="c-kw">as</span> e:
+    <span class="c-kw">print</span>(f<span class="c-str">"Blocked: needed ${e.requested}, had ${e.balance}"</span>)  <span class="c-cmt"># structured data, not just a string</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SHOULD THIS BE A CUSTOM EXCEPTION?</span></div>
+    <div class="lookup-controls">
+      <button class="chip" data-case="1">A payment failed due to a declined card</button>
+      <button class="chip" data-case="2">A function got a negative number where positive was expected</button>
+      <button class="chip" data-case="3">A library needs callers to catch "any error from us"</button>
+    </div>
+    <div class="log" id="custom-log"><span class="line">Click a scenario to see the reasoning.</span></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a custom exception is a user-defined subclass of <code class="inline">Exception</code> (or an appropriate built-in) that names a specific, meaningful failure mode and can carry structured contextual data via its own attributes. It is warranted when generic built-in exception types can't be reliably distinguished by callers, when callers need programmatic access to failure details beyond a message string, or when establishing a shared base exception class for an entire module or library's error surface.</div>
+</section>
+
+<!-- ============ SECTION 3: TRY/EXCEPT/ELSE/FINALLY ============ -->
+<section id="tryflow">
+  <div class="kicker">03 — Four blocks, four distinct jobs</div>
+  <h2>try/except/else/finally semantics</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of cooking a recipe: you attempt the dish (<code class="inline">try</code>), have a backup plan if something burns (<code class="inline">except</code>), only plate it nicely if nothing went wrong (<code class="inline">else</code>), and clean the kitchen no matter what happened either way (<code class="inline">finally</code>). Each block runs under a different, precise condition.</p>
+
+  <div class="code">
+<span class="c-kw">try</span>:
+    result = risky_call()        <span class="c-cmt"># the code that MIGHT raise</span>
+<span class="c-kw">except</span> ValueError <span class="c-kw">as</span> e:
+    handle_error(e)              <span class="c-cmt"># runs ONLY if a ValueError was raised in try</span>
+<span class="c-kw">else</span>:
+    use_result(result)           <span class="c-cmt"># runs ONLY if try raised NOTHING at all</span>
+<span class="c-kw">finally</span>:
+    cleanup()                    <span class="c-cmt"># ALWAYS runs — success, caught error, or uncaught error</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>PICK A SCENARIO — WATCH WHICH BLOCKS RUN</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-scenario="success">No exception raised</button>
+      <button class="chip" data-scenario="caught">ValueError raised, caught</button>
+      <button class="chip" data-scenario="uncaught">TypeError raised, NOT caught</button>
+    </div>
+    <div class="flow-stage" id="flow-stage">
+      <div class="fblock try" id="fb-try"><span class="flbl">try</span>result = risky_call()</div>
+      <div class="fblock except" id="fb-except"><span class="flbl">except ValueError</span>handle_error(e)</div>
+      <div class="fblock else" id="fb-else"><span class="flbl">else</span>use_result(result)</div>
+      <div class="fblock finally" id="fb-finally"><span class="flbl">finally</span>cleanup()</div>
+    </div>
+    <div class="log" id="flow-log"></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <code class="inline">try</code> delimits code that may raise; a matching <code class="inline">except</code> clause runs exactly when a raised exception is an instance of its declared type; <code class="inline">else</code> runs exactly when the <code class="inline">try</code> block completes with no exception raised at all (making it the right place for code that should NOT be wrapped in the same try, to avoid accidentally catching its own errors); <code class="inline">finally</code> runs unconditionally — after success, after a caught exception, or even after an uncaught exception propagates further up the stack — making it the correct place for guaranteed cleanup like closing a file or releasing a lock.</div>
+</section>
+
+<!-- ============ SECTION 4: SPECIFIC VS BARE ============ -->
+<section id="specific">
+  <div class="kicker">04 — Precision vs. a wide, dangerous net</div>
+  <h2>Catching specific exceptions vs. bare except</h2>
+
+  <p><strong>Start here, before any code.</strong> A smoke detector that only reacts to actual smoke is useful. One so sensitive it also goes off for steam from a shower, sunlight, and dust just trains everyone to ignore every alarm — including the real fire. A bare <code class="inline">except:</code> is that oversensitive detector: it catches everything, including bugs you'd actually want to know about, and silently hides them.</p>
+
+  <div class="code">
+<span class="c-cmt"># BAD: bare except — catches EVERYTHING, including typos and Ctrl+C</span>
+<span class="c-kw">try</span>:
+    process(data)
+<span class="c-kw">except</span>:
+    <span class="c-kw">pass</span>   <span class="c-cmt"># a NameError from a typo now silently vanishes too</span>
+
+<span class="c-cmt"># BETTER: catch the specific thing you know how to handle</span>
+<span class="c-kw">try</span>:
+    process(data)
+<span class="c-kw">except</span> ValueError <span class="c-kw">as</span> e:
+    log.warning(f<span class="c-str">"Skipping malformed record: {e}"</span>)
+    <span class="c-cmt"># anything else (a real bug) still propagates and gets noticed</span>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>except SpecificError:</th><th>bare except: (or except Exception:)</th></tr>
+    <tr><td>Catches</td><td>Only that type (and subclasses)</td><td>Everything (bare) or nearly everything (Exception)</td></tr>
+    <tr><td>Hides real bugs?</td><td>No — an unrelated bug still propagates and crashes loudly</td><td>Yes — typos, logic errors, and genuine bugs get silently swallowed too</td></tr>
+    <tr><td>Catches Ctrl+C / sys.exit()?</td><td>No</td><td>Bare <code>except:</code> does; <code>except Exception:</code> does not</td></tr>
+    <tr><td>When it's fine</td><td>Almost always the right default</td><td>Only at a true top-level boundary (e.g. logging a crash before exiting) — and even then, re-raise or log the full traceback</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The real cost of bare except:</b> it doesn't just risk missing bugs — it actively destroys the evidence needed to find them. A <code class="inline">NameError</code> from a typo, silently caught and ignored, means the program keeps running in some half-broken state with no error message pointing at the actual mistake, often surfacing as a much more confusing failure much later.</div>
+</section>
+
+<!-- ============ SECTION 5: RAISE X FROM Y ============ -->
+<section id="chaining">
+  <div class="kicker">05 — Preserving the original cause</div>
+  <h2>Raising with context: raise X from Y</h2>
+
+  <p><strong>Start here, before any code.</strong> If a translator mistranslates a sentence, the useful bug report says both "the translation was wrong" AND "here's the original sentence that caused the confusion" — not just the garbled output on its own. <code class="inline">raise X from Y</code> keeps both: the new, more meaningful exception, and a visible link back to the low-level exception that actually caused it.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">load_config</span>(path):
+    <span class="c-kw">try</span>:
+        <span class="c-kw">with</span> <span class="c-kw">open</span>(path) <span class="c-kw">as</span> f:
+            <span class="c-kw">return</span> json.load(f)
+    <span class="c-kw">except</span> FileNotFoundError <span class="c-kw">as</span> e:
+        <span class="c-kw">raise</span> ConfigError(f<span class="c-str">"Missing config at {path}"</span>) <span class="c-kw">from</span> e
+        <span class="c-cmt"># the traceback shows BOTH: ConfigError, AND
+        # "The above exception was the direct cause of" FileNotFoundError</span>
+  </div>
+
+  <p>Compare this to plain <code class="inline">raise ConfigError(...)</code> written inside an <code class="inline">except</code> block without <code class="inline">from e</code> — Python still shows the original exception (as "during handling of the above exception, another exception occurred"), but <code class="inline">from e</code> makes the causal relationship explicit and intentional rather than incidental. <code class="inline">raise ConfigError(...) from None</code> deliberately suppresses the chain entirely, when the original is genuinely irrelevant noise.</p>
+
+  <table class="cmp">
+    <tr><th>Form</th><th>Traceback shows</th></tr>
+    <tr><td><code>raise NewErr(...)</code> (no except active)</td><td>Just NewErr, clean</td></tr>
+    <tr><td><code>raise NewErr(...)</code> (inside except, no "from")</td><td>Both, linked as "during handling of the above exception, another exception occurred" (implicit context)</td></tr>
+    <tr><td><code>raise NewErr(...) from original</code></td><td>Both, linked as "the above exception was the direct cause of" (explicit, intentional cause)</td></tr>
+    <tr><td><code>raise NewErr(...) from None</code></td><td>Only NewErr — original is deliberately suppressed</td></tr>
+  </table>
+
+  <div class="callout chain"><b>Interview-ready definition:</b> <code class="inline">raise X from Y</code> sets the new exception's <code class="inline">__cause__</code> attribute to <code class="inline">Y</code>, producing an explicit exception chain that Python's default traceback formatter renders as "the above exception was the direct cause of." This preserves the original low-level failure for debugging while letting code raise a higher-level, more meaningful exception at each layer of abstraction — a common pattern when translating a library's internal errors into a caller-facing error type.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Hierarchy matching</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+try:
+    d = {"a": 1}
+    print(d["b"])
+except LookupError:
+    print("caught it")
+    </div>
+    <details><summary>Show solution</summary><div class="solution">caught it
+
+d["b"] raises KeyError. KeyError is a SUBCLASS of LookupError (both
+KeyError and IndexError inherit from it), so "except LookupError:" catches
+it via the same isinstance() logic that lets any ancestor type in the
+hierarchy catch its descendants. Catching the parent class is intentional
+here if you want to handle "any kind of lookup failure" the same way.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Custom exception with data</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class ValidationError(Exception):
+    def __init__(self, field, reason):
+        self.field = field
+        self.reason = reason
+        super().__init__(f"{field}: {reason}")
+
+try:
+    raise ValidationError("email", "missing @ symbol")
+except ValidationError as e:
+    print(e.field)
+    print(str(e))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">email
+email: missing @ symbol
+
+e.field accesses the structured attribute directly (useful for programmatic
+handling — e.g. highlighting the specific form field). str(e) returns
+whatever was passed to super().__init__(...), which is the formatted
+message. This dual access — structured data AND a readable message — is
+exactly why custom exceptions beat raising a plain string-only ValueError
+when a caller needs to act on WHICH field failed, not just read a message.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · else vs finally</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def process(n):
+    try:
+        result = 10 / n
+    except ZeroDivisionError:
+        print("cannot divide by zero")
+        return None
+    else:
+        print(f"got {result}")
+        return result
+    finally:
+        print("done processing")
+
+process(2)
+print("---")
+process(0)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">got 5.0
+done processing
+---
+cannot divide by zero
+done processing
+
+process(2): try succeeds (no exception) → else runs, printing "got 5.0" and
+returning 5.0 → finally STILL runs before the function actually returns,
+printing "done processing".
+
+process(0): try raises ZeroDivisionError → except catches it, prints
+"cannot divide by zero", returns None → else is SKIPPED entirely (it only
+runs when try raises nothing) → finally still runs regardless, printing
+"done processing" before the None actually returns to the caller.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Bare except hides a real bug</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def get_discount(price, user):
+    try:
+        return price * user.discount_rate
+    except:
+        return price
+
+get_discount(100, None)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">Returns 100 — silently, with no error or warning anywhere.
+
+user is None, so user.discount_rate raises AttributeError: 'NoneType'
+object has no attribute 'discount_rate' — a genuine bug (probably a missing
+user lookup upstream). The bare except: swallows it completely and falls
+back to price, masking the real problem. If this had instead been
+`except (ZeroDivisionError, TypeError):` scoped to whatever the function
+actually anticipates, the AttributeError would propagate and get noticed
+immediately instead of silently returning a wrong-but-plausible-looking
+value.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Exception chaining</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class OrderError(Exception):
+    pass
+
+def charge_card(order):
+    try:
+        return payment_gateway.charge(order.total)
+    except ConnectionError as e:
+        raise OrderError(f"Could not process order {order.id}") from e
+
+charge_card(some_order)
+    </div>
+    <details><summary>Show solution</summary><div class="solution">If payment_gateway.charge() raises ConnectionError, the resulting traceback
+shows OrderError as the exception that propagates out of charge_card, with
+__cause__ set to the original ConnectionError — printed as "The above
+exception was the direct cause of the following exception."
+
+This lets calling code catch just OrderError (a clean, meaningful,
+order-level abstraction) without needing to know or care that the
+underlying transport used ConnectionError specifically — while a developer
+reading the full traceback during debugging still sees exactly which
+low-level network failure triggered it, instead of that detail being lost.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why catching a parent class in the hierarchy also catches every subclass beneath it, (2) the precise condition under which <code class="inline">else</code> runs versus <code class="inline">except</code>, and (3) what specifically <code class="inline">raise X from Y</code> preserves that a plain <code class="inline">raise X</code> inside an except block does not make explicit? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — exceptions &amp; error handling, python internals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: HIERARCHY */
+(function(){
+  const nodes = document.querySelectorAll('.hnode');
+  const logEl = document.getElementById('hier-log');
+  const chains = {
+    BaseException: ['BaseException'],
+    Exception: ['Exception', 'BaseException'],
+    ValueError: ['ValueError', 'Exception', 'BaseException'],
+    LookupError: ['LookupError', 'Exception', 'BaseException'],
+    KeyError: ['KeyError', 'LookupError', 'Exception', 'BaseException'],
+    IndexError: ['IndexError', 'LookupError', 'Exception', 'BaseException'],
+    TypeError: ['TypeError', 'Exception', 'BaseException'],
+    OSError: ['OSError', 'Exception', 'BaseException'],
+    SystemExit: ['SystemExit', 'BaseException'],
+    KeyboardInterrupt: ['KeyboardInterrupt', 'BaseException']
+  };
+  nodes.forEach(n=>{
+    n.addEventListener('click', ()=>{
+      nodes.forEach(x=>x.classList.remove('selected'));
+      n.classList.add('selected');
+      const name = n.dataset.node;
+      const chain = chains[name];
+      const clauses = chain.map(c => `except ${c}:`).join(' ,  ');
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>${name}</b> would be caught by any of: ${clauses}`;
+      logEl.innerHTML = '';
+      logEl.appendChild(p);
+    });
+  });
+})();
+
+/* SECTION 2: CUSTOM EXCEPTION SCENARIOS */
+(function(){
+  const chips = document.querySelectorAll('#custom .chip');
+  const logEl = document.getElementById('custom-log');
+  const info = {
+    '1': 'Good candidate for a custom exception (e.g. PaymentDeclinedError) — callers likely want to distinguish "card declined" from other failure modes (network timeout, invalid amount) and may want structured data like a decline_reason code attached to the exception itself.',
+    '2': 'Usually NOT warranted — this is exactly what the built-in ValueError already means ("right type, inappropriate value"). Reach for a custom exception only if callers specifically need to distinguish THIS validation failure from other ValueErrors elsewhere in a large codebase.',
+    '3': 'Good candidate — define a base MyLibraryError(Exception), then have every specific exception in the library inherit from it. Callers who just want "catch anything that went wrong in this library" can write one except MyLibraryError clause instead of listing every specific type.'
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      logEl.innerHTML = `<div class="line fadein">${info[c.dataset.case]}</div>`;
+    });
+  });
+})();
+
+/* SECTION 3: TRY/EXCEPT/ELSE/FINALLY FLOW */
+(function(){
+  const chips = document.querySelectorAll('#tryflow .chip');
+  const logEl = document.getElementById('flow-log');
+  const fbTry = document.getElementById('fb-try');
+  const fbExcept = document.getElementById('fb-except');
+  const fbElse = document.getElementById('fb-else');
+  const fbFinally = document.getElementById('fb-finally');
+  const all = [fbTry, fbExcept, fbElse, fbFinally];
+
+  const scenarios = {
+    success: [
+      {el: fbTry, text: 'try block runs risky_call() — completes with no exception.'},
+      {el: fbElse, text: 'No exception was raised, so except is SKIPPED. else runs: use_result(result).'},
+      {el: fbFinally, text: 'finally ALWAYS runs: cleanup().'}
+    ],
+    caught: [
+      {el: fbTry, text: 'try block runs risky_call() — it raises ValueError partway through.'},
+      {el: fbExcept, text: 'except ValueError matches — handle_error(e) runs. else is SKIPPED (try did not complete cleanly).'},
+      {el: fbFinally, text: 'finally ALWAYS runs: cleanup().'}
+    ],
+    uncaught: [
+      {el: fbTry, text: 'try block runs risky_call() — it raises TypeError.'},
+      {el: fbExcept, text: 'except ValueError does NOT match TypeError — this clause is skipped, exception keeps propagating.'},
+      {el: fbFinally, text: 'finally STILL runs (cleanup()) even though the exception is about to propagate further up uncaught — then the TypeError continues upward past this try block entirely.'}
+    ]
+  };
+
+  function run(name){
+    all.forEach(f=>f.classList.remove('active'));
+    logEl.innerHTML = '';
+    const steps = scenarios[name];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        all.forEach(f=>f.classList.remove('active'));
+        s.el.classList.add('active');
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s.text}`;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i*750);
+    });
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      run(c.dataset.scenario);
+    });
+  });
+  run('success');
+})();
+</script>
+</body>
+</html>

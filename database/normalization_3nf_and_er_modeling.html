@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — 3NF &amp; ER Modeling</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --pk-c:#f2c14e; --fk-c:#6ea8fe; --row-c:#7fd8a0; --join-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .grid-hero{margin-top:2.8rem; display:inline-grid; grid-template-columns:repeat(3, auto); gap:2px; font-family:var(--mono); font-size:0.75rem; border:1.5px solid var(--rule); border-radius:10px; overflow:hidden;}
+  .grid-hero .gh{padding:0.6rem 1rem; background:var(--panel-2); color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.05em; font-size:0.65rem;}
+  .grid-hero .gc{padding:0.6rem 1rem; background:var(--panel);}
+  .grid-hero .pk{color:var(--pk-c);}
+  .grid-hero .bad{color:var(--bad-c);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--bad-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flashbad{animation:flashbad .6s ease;}
+  @keyframes flashbad{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,107,107,0.35);} 100%{box-shadow:none;}}
+  .flashgood{animation:flashgood .6s ease;}
+  @keyframes flashgood{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(127,216,160,0.35);} 100%{box-shadow:none;}}
+
+  /* db table visualization (matches predecessor lab) */
+  .db-table{border:1.5px solid var(--rule); border-radius:10px; overflow:hidden; margin:1rem 0;}
+  .db-table .tname{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; background:var(--panel-2); padding:0.5rem 0.9rem; color:var(--ink-dim); border-bottom:1px solid var(--rule);}
+  .db-table table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.8rem;}
+  .db-table th{background:var(--panel-2); padding:0.5rem 0.8rem; text-align:left; border-bottom:1.5px solid var(--rule); font-weight:600; color:var(--ink-dim); font-size:0.72rem; text-transform:uppercase;}
+  .db-table th.pk-col{color:var(--pk-c);}
+  .db-table th.fk-col{color:var(--fk-c);}
+  .db-table th.bad-col{color:var(--bad-c);}
+  .db-table td{padding:0.45rem 0.8rem; border-bottom:1px solid var(--rule); color:#cdd0d8; transition:all .3s;}
+  .db-table tr:last-child td{border-bottom:none;}
+  .db-table td.pk-cell{color:var(--pk-c); font-weight:600;}
+  .db-table td.fk-cell{color:var(--fk-c);}
+  .db-table td.bad-cell{color:var(--bad-c);}
+  .db-table tr.new-row{animation:rowin .4s ease;}
+  @keyframes rowin{from{opacity:0; background:rgba(127,216,160,0.15);} to{opacity:1; background:transparent;}}
+
+  .input-row{display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:0.8rem;}
+  .input-row input{font-family:var(--mono); font-size:0.8rem; background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); border-radius:6px; padding:0.4rem 0.7rem; width:110px;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  /* ER diagram */
+  .er-diagram{display:flex; align-items:center; justify-content:center; gap:2rem; flex-wrap:wrap; padding:1.5rem 0; position:relative;}
+  .er-entity{border:1.5px solid var(--row-c); border-radius:10px; padding:0.9rem 1.3rem; font-family:var(--mono); font-size:0.82rem; color:var(--row-c); background:rgba(127,216,160,0.06); text-align:center;}
+  .er-entity .etitle{font-weight:700; display:block; margin-bottom:0.4rem; font-size:0.9rem;}
+  .er-entity .eattr{color:var(--ink-dim); font-size:0.72rem; display:block;}
+  .er-rel{font-family:var(--mono); font-size:0.75rem; color:var(--join-c); text-align:center; padding:0.5rem 1rem; border:1.5px dashed var(--join-c); border-radius:8px; background:rgba(199,146,234,0.06);}
+  .er-card{font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.pk{border-left-color:var(--pk-c); background:rgba(242,193,78,0.06);} .callout.pk b{color:var(--pk-c);}
+  .callout.fk{border-left-color:var(--fk-c); background:rgba(110,168,254,0.06);} .callout.fk b{color:var(--fk-c);}
+  .callout.checkpoint{border-left-color:var(--join-c); background:rgba(199,146,234,0.08); border-width:3px;}
+  .callout.checkpoint b{color:var(--join-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · 3NF &amp; ER MODELING</div>
+  <h1>3NF asks one more question than 2NF: does a non-key column depend on <em>another non-key column</em> instead of the key?</h1>
+  <p class="lede">In the previous lab we covered 1NF (atomic values) and 2NF (no partial dependency on part of a composite key). This lab picks up right where that left off: 3NF closes the last gap — transitive dependencies — then asks when breaking those rules on purpose (denormalization) is the right trade, and finally zooms out to ER modeling, the design step that happens BEFORE any of these rules get applied.</p>
+
+  <div class="grid-hero">
+    <div class="gh">id (PK)</div><div class="gh">dept_id</div><div class="gh">dept_manager</div>
+    <div class="gc pk">1</div><div class="gc">7</div><div class="gc bad">Priya</div>
+    <div class="gc pk">2</div><div class="gc">7</div><div class="gc bad">Priya</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="recap">1 · Quick Recap: 1NF &amp; 2NF</a>
+  <a data-target="thirdnf">2 · Third Normal Form (3NF)</a>
+  <a data-target="denorm">3 · Denormalization as a Trade-off</a>
+  <a data-target="ermodeling">4 · ER Modeling</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: RECAP ============ -->
+<section id="recap">
+  <div class="kicker">01 — Where we left off</div>
+  <h2>Quick recap: 1NF and 2NF</h2>
+
+  <p>Before 3NF makes sense, a 30-second refresher on the two rules before it, in the same everyday-then-technical style as the previous lab:</p>
+
+  <table class="cmp">
+    <tr><th>Form</th><th>Everyday version</th><th>Technical rule</th></tr>
+    <tr><td><strong>1NF</strong></td><td>Every cell holds one thing, not a list crammed into one box.</td><td>Every column holds a single, atomic value — no repeating groups or comma-packed lists in one field.</td></tr>
+    <tr><td><strong>2NF</strong></td><td>If your ID card is actually two numbers glued together, every fact on file has to depend on BOTH, not just one.</td><td>Already in 1NF, and every non-key column depends on the <em>entire</em> primary key — not just part of a composite key.</td></tr>
+  </table>
+
+  <p>Both of those rules are about a column's relationship to <strong>the key</strong>. 3NF asks a different question entirely: is there a non-key column that depends on <em>another non-key column</em>, rather than on the key at all?</p>
+</section>
+
+<!-- ============ SECTION 2: 3NF ============ -->
+<section id="thirdnf">
+  <div class="kicker">02 — The last kind of redundancy</div>
+  <h2>Third Normal Form: no transitive dependency</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a company directory that lists, for every employee: their name, their department ID, AND their department's manager's name. If Priya manages the Engineering department, her name is copied onto the row of every single engineer. Priya gets a new title? You now have to hunt down and edit every engineer's row, not just one record about the Engineering department itself. The manager's name isn't really a fact about the EMPLOYEE — it's a fact about the DEPARTMENT, riding along on the wrong table.</p>
+
+  <p>That's a <strong>transitive dependency</strong>: <code class="inline">employee_id → dept_id → dept_manager</code>. <code class="inline">dept_manager</code> doesn't depend on <code class="inline">employee_id</code> directly — it depends on <code class="inline">dept_id</code>, which itself depends on <code class="inline">employee_id</code>. It's a dependency chained through another non-key column instead of anchored directly to the key. <strong>Third Normal Form</strong> requires a table already be in 2NF, with every non-key column depending on <em>the key, the whole key, and nothing but the key</em> — that last clause is what rules out transitive dependencies specifically.</p>
+
+  <div class="code">
+<span class="c-cmt">-- VIOLATES 3NF: dept_manager depends on dept_id, not on id (the actual key)</span>
+<span class="c-kw">CREATE TABLE</span> employees (
+    id            <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    name          <span class="c-fn">TEXT</span>,
+    dept_id       <span class="c-fn">INTEGER</span>,
+    dept_manager  <span class="c-fn">TEXT</span>    <span class="c-cmt">-- transitive: id → dept_id → dept_manager</span>
+);
+
+<span class="c-cmt">-- FIXED: split off the transitively-dependent fact into its own table</span>
+<span class="c-kw">CREATE TABLE</span> employees (
+    id       <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    name     <span class="c-fn">TEXT</span>,
+    dept_id  <span class="c-fn">INTEGER</span>,
+    <span class="c-kw">FOREIGN KEY</span> (dept_id) <span class="c-kw">REFERENCES</span> departments(id)
+);
+
+<span class="c-kw">CREATE TABLE</span> departments (
+    id       <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    manager  <span class="c-fn">TEXT</span>     <span class="c-cmt">-- now lives exactly once, where it actually belongs</span>
+);
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE ANOMALY, THEN THE FIX</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-tnf="violates">Violates 3NF (one table)</button>
+      <button class="chip" data-tnf="fixed">Fixed (split into two tables)</button>
+    </div>
+    <div id="tnf-view"></div>
+    <div class="input-row" id="tnf-controls">
+      <button class="btn" id="tnf-promote">Promote Priya → new manager name</button>
+    </div>
+    <div class="log" id="tnf-log"></div>
+  </div>
+
+  <div class="callout pk"><b>How to spot it fast:</b> ask of every non-key column, "if I know the PRIMARY KEY value, do I directly know this, or do I only know it because I first look up some OTHER non-key column?" If it's the second case, that column belongs on a different table, keyed by whatever it actually depends on.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a relation is in Third Normal Form if it is already in Second Normal Form and contains no transitive functional dependency of a non-key attribute on another non-key attribute — informally, every non-key column must depend on the key, the whole key, and nothing but the key. Violating 3NF causes update anomalies (a single logical fact, like a department's manager, must be edited in many rows to stay consistent) and insertion/deletion anomalies (you can't record a department's manager until it has an employee, and deleting the last employee in a department loses the manager fact entirely).</div>
+</section>
+
+<!-- ============ SECTION 3: DENORMALIZATION ============ -->
+<section id="denorm">
+  <div class="kicker">03 — Breaking the rules on purpose</div>
+  <h2>Denormalization as a deliberate trade-off</h2>
+
+  <p><strong>Start here, before any code.</strong> A fully-normalized filing system is beautiful for accuracy — one true copy of every fact, filed exactly once. But if you need to answer "how many total orders has this customer placed?" a hundred times a second, recomputing that by walking through every order record every single time is slow. Sometimes it's worth keeping a duplicate, pre-computed answer taped to the customer's folder — accepting that it might occasionally go slightly stale — purely for speed.</p>
+
+  <p><strong>Denormalization</strong> is deliberately reintroducing redundancy that normalization would remove — usually to avoid expensive joins or repeated aggregation on read-heavy paths. It's not "doing normalization wrong"; it's a conscious trade of some write-side complexity (keeping the duplicate in sync) for read-side speed, made only after the normalized design is understood and a real performance need is measured, not guessed at.</p>
+
+  <div class="code">
+<span class="c-cmt">-- normalized: order_count must be computed by counting rows every time</span>
+<span class="c-kw">SELECT</span> COUNT(*) <span class="c-kw">FROM</span> orders <span class="c-kw">WHERE</span> customer_id = <span class="c-num">42</span>;
+
+<span class="c-cmt">-- denormalized: a redundant cached column, updated whenever an order is placed</span>
+<span class="c-kw">CREATE TABLE</span> customers (
+    id            <span class="c-fn">INTEGER</span> <span class="c-kw">PRIMARY KEY</span>,
+    name          <span class="c-fn">TEXT</span>,
+    order_count   <span class="c-fn">INTEGER</span>   <span class="c-cmt">-- redundant: derivable from orders, kept here for speed</span>
+);
+<span class="c-cmt">-- now reading it is instant, but every INSERT into orders must also
+-- remember to run: UPDATE customers SET order_count = order_count + 1 ...</span>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Normalized</th><th>Denormalized</th></tr>
+    <tr><td>Data integrity</td><td>One source of truth — hard to get inconsistent</td><td>Redundant copies can drift out of sync if an update is missed</td></tr>
+    <tr><td>Read performance</td><td>May require joins or aggregation at read time</td><td>Fast — the answer is already sitting there</td></tr>
+    <tr><td>Write complexity</td><td>Simple — write the fact once, in one place</td><td>Every write path touching the source must also update the redundant copy</td></tr>
+    <tr><td>When it's the right call</td><td>Default — start here</td><td>Measured, read-heavy hot path where join/aggregation cost is a proven bottleneck</td></tr>
+  </table>
+
+  <div class="callout fk"><b>Interview-ready definition:</b> denormalization is the deliberate, selective reintroduction of redundant or derived data into a schema that would otherwise satisfy a higher normal form, undertaken to reduce read-time computation (joins, aggregations) at the cost of increased write-path complexity and a risk of data drift if the redundant copy isn't kept transactionally consistent with its source. It is a targeted optimization applied after understanding the fully normalized design — not a substitute for understanding normalization in the first place.</div>
+</section>
+
+<!-- ============ SECTION 4: ER MODELING ============ -->
+<section id="ermodeling">
+  <div class="kicker">04 — Designing before you normalize</div>
+  <h2>ER modeling: entities, attributes, relationships, cardinality</h2>
+
+  <p><strong>Start here, before any code.</strong> Before an architect draws precise blueprints with exact measurements, they sketch a bubble diagram: "here's the kitchen, here's the living room, they connect through this doorway." An Entity-Relationship (ER) diagram is that bubble sketch for a database — a picture of what THINGS exist, what FACTS describe each thing, and how the things connect — drawn before you commit to specific tables and columns.</p>
+
+  <p>An <strong>entity</strong> is a distinct kind of thing worth tracking (Customer, Order, Product) — it becomes a table. An <strong>attribute</strong> is a fact describing one entity (a Customer's email, an Order's date) — it becomes a column. A <strong>relationship</strong> connects two entities (a Customer PLACES an Order) — it becomes a foreign key or a join table. <strong>Cardinality</strong> states how many of one entity can relate to how many of the other (one Customer places MANY Orders; one Order belongs to exactly ONE Customer) — it determines whether you need a simple foreign key or a full join table, exactly as covered in the tables &amp; keys lab.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLICK EACH PART OF THE ER DIAGRAM</span></div>
+    <div class="er-diagram" id="er-diagram">
+      <div class="er-entity" data-part="customer">
+        <span class="etitle">CUSTOMER</span>
+        <span class="eattr">id, name, email</span>
+      </div>
+      <div style="display:flex; flex-direction:column; align-items:center; gap:0.3rem;">
+        <span class="er-card">1</span>
+        <div class="er-rel" data-part="places">PLACES</div>
+        <span class="er-card">many</span>
+      </div>
+      <div class="er-entity" data-part="order">
+        <span class="etitle">ORDER</span>
+        <span class="eattr">id, date, total</span>
+      </div>
+    </div>
+    <div class="log" id="er-log"><span class="line">Click CUSTOMER, PLACES, or ORDER to see what each maps to in the actual schema.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>ER concept</th><th>Becomes, in the schema</th></tr>
+    <tr><td>Entity (Customer, Order)</td><td>A table</td></tr>
+    <tr><td>Attribute (email, order_date)</td><td>A column</td></tr>
+    <tr><td>Relationship (Customer PLACES Order)</td><td>A foreign key (one-to-many) or a join table (many-to-many)</td></tr>
+    <tr><td>Cardinality (1 customer : many orders)</td><td>Determines WHICH of the above — single FK vs. join table</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> Entity-Relationship modeling is a conceptual database design technique that identifies entities (distinct object types to be tracked), their attributes (descriptive properties), the relationships between entities, and each relationship's cardinality (one-to-one, one-to-many, many-to-many) — independent of any specific database engine — as a design step performed before translating the model into normalized relational tables, so that structural decisions (which things are separate entities, how they connect) are made deliberately before implementation details are chosen.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spot the transitive dependency</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+students(student_id PK, name, zip_code, city, state)
+-- city and state are fully determined by zip_code
+    </div>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Is this table in 3NF? If not, what's the transitive dependency, and how would you fix it?</p>
+    <details><summary>Show solution</summary><div class="solution">Not in 3NF. The dependency chain is: student_id → zip_code → city, state.
+city and state depend on zip_code (a non-key column), not directly on
+student_id (the actual key) — that's the transitive dependency.
+
+Fix: split off a zip_codes table.
+students(student_id PK, name, zip_code FK → zip_codes.zip_code)
+zip_codes(zip_code PK, city, state)
+Now city/state are stored exactly once per zip code, not duplicated across
+every student who happens to share one.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Update anomaly from a 3NF violation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the ungrouped students table from Problem 1 (city and state stored directly, not split out), the city of zip code 10001 is renamed in the database. What has to happen for the data to stay consistent, and what could go wrong?</p>
+    <details><summary>Show solution</summary><div class="solution">Every row where zip_code = 10001 needs its city column updated — if even
+one row is missed (a common risk with a manual or partial UPDATE
+statement), the table now contains TWO different city values for the same
+zip code, which is a direct contradiction with no way for the database
+itself to know which one is "right." This is the classic update anomaly
+3NF prevents: after normalizing (Problem 1's fix), the city is stored in
+exactly ONE row of the zip_codes table, so a single UPDATE is guaranteed to
+keep everything consistent.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Justify a denormalization</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A social media app's normalized schema requires joining posts, likes, and users to display "1,204 likes" on every post view, and this page is viewed millions of times per day. Propose a denormalization and name its specific cost.</p>
+    <details><summary>Show solution</summary><div class="solution">Add a redundant like_count INTEGER column directly on the posts table,
+incremented/decremented whenever a like row is inserted/deleted, instead of
+running COUNT(*) on the likes table joined to posts on every single page
+view.
+
+Cost: like_count can drift out of sync with the true count in the likes
+table if an increment/decrement is ever missed (e.g. a failed write, a race
+condition under high concurrency, or a bug that deletes a like row without
+updating the counter) — the system now has two "sources of truth" for the
+same fact that must be kept manually consistent, which is exactly the
+integrity risk normalization exists to eliminate, accepted here deliberately
+for read speed at massive scale.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · ER cardinality to schema</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An ER diagram shows: DOCTOR --- (1 : many) --- APPOINTMENT --- (many : 1) --- PATIENT, plus a separate many-to-many between DOCTOR and SPECIALTY. Sketch the tables this becomes.</p>
+    <details><summary>Show solution</summary><div class="solution">doctors(id PK, name)
+patients(id PK, name)
+appointments(id PK, doctor_id FK → doctors.id, patient_id FK → patients.id,
+             scheduled_at)
+-- one-to-many both directions is handled by two FKs on the "many" side
+-- (appointments), exactly as in the tables & keys lab
+
+specialties(id PK, name)
+doctor_specialties(doctor_id FK → doctors.id, specialty_id FK →
+                    specialties.id, PRIMARY KEY (doctor_id, specialty_id))
+-- many-to-many needs its own join table with a composite key, since
+-- neither doctors nor specialties can hold a single FK to the other</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · 2NF vs 3NF, side by side</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain the difference between a 2NF violation and a 3NF violation in one sentence each, using the phrase "depends on."</p>
+    <details><summary>Show solution</summary><div class="solution">2NF violation: a non-key column depends on only PART of a composite
+primary key, rather than the whole key (e.g. in a composite key
+(student_id, course_id), a column like student_name depends only on
+student_id, not on the pair together).
+
+3NF violation: a non-key column depends on ANOTHER NON-KEY COLUMN, rather
+than depending directly on the primary key (e.g. dept_manager depends on
+dept_id, which depends on the actual key, employee_id — a chain rather than
+a direct link).
+
+Both are about what a column "depends on" — 2NF is about depending on only
+PART of the key; 3NF is about depending on something that ISN'T the key at
+all.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) how a transitive dependency differs from the partial dependency 2NF rules out, (2) a concrete update anomaly a 3NF violation causes, and (3) why denormalization is a deliberate trade-off rather than simply "skipping" normalization? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<!-- ============ WEEK 3 CHECKPOINT ============ -->
+<section id="checkpoint">
+  <div class="kicker">Month 1 · Week 3 Checkpoint</div>
+  <h2>Before moving on: a from-memory checkpoint</h2>
+  <p>This week covered packaging, typing, error handling — plus this normalization and ER modeling lab as the database thread. Before starting Week 4, the roadmap calls for a single checkpoint exercise with no reference material allowed.</p>
+
+  <div class="callout checkpoint">
+    <b>Week 3 Checkpoint — attempt this from memory, no reference material:</b><br><br>
+    "From memory: write a decorator, a context manager, and a generator-based pipeline. No reference material."<br><br>
+    Concretely, that means closing every tab and, from a blank editor, writing: (1) a working decorator — including a version that takes its own arguments (a decorator factory) — that correctly uses <code class="inline">functools.wraps</code>; (2) a context manager — either a class with <code class="inline">__enter__</code>/<code class="inline">__exit__</code>, or a generator-based one using <code class="inline">@contextmanager</code> — that guarantees cleanup even when the body raises; and (3) a generator-based pipeline — several generator functions chained together, each one lazily consuming from the previous and yielding transformed values downstream, processing one item at a time rather than materializing a full list in memory at each stage.
+  </div>
+
+  <p>Don't move on to Week 4 until all three run correctly without looking anything up. If any of the three feels shaky, that's real signal about where to spend another hour before continuing — it's far cheaper to find that gap now than mid-interview.</p>
+</section>
+
+<footer>THE NAMESPACE LAB — 3NF &amp; ER modeling, database fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: 3NF VIOLATION VS FIX */
+(function(){
+  const chips = document.querySelectorAll('#thirdnf .chip');
+  const viewEl = document.getElementById('tnf-view');
+  const logEl = document.getElementById('tnf-log');
+  const promoteBtn = document.getElementById('tnf-promote');
+  let mode = 'violates';
+  let managerName = 'Priya';
+
+  function renderViolates(){
+    viewEl.innerHTML = `
+      <div class="db-table">
+        <div class="tname">employees — VIOLATES 3NF: dept_manager depends on dept_id, not id</div>
+        <table><thead><tr><th class="pk-col">id</th><th>name</th><th>dept_id</th><th class="bad-col">dept_manager</th></tr></thead>
+        <tbody id="tnf-rows">
+          <tr><td class="pk-cell">1</td><td>Alex</td><td>7</td><td class="bad-cell">${managerName}</td></tr>
+          <tr><td class="pk-cell">2</td><td>Sam</td><td>7</td><td class="bad-cell">${managerName}</td></tr>
+          <tr><td class="pk-cell">3</td><td>Jo</td><td>7</td><td class="bad-cell">${managerName}</td></tr>
+        </tbody></table>
+      </div>`;
+  }
+
+  function renderFixed(){
+    viewEl.innerHTML = `
+      <div class="db-table">
+        <div class="tname">employees — dept_manager removed, only dept_id (FK) remains</div>
+        <table><thead><tr><th class="pk-col">id</th><th>name</th><th class="fk-col">dept_id</th></tr></thead>
+        <tbody>
+          <tr><td class="pk-cell">1</td><td>Alex</td><td class="fk-cell">7</td></tr>
+          <tr><td class="pk-cell">2</td><td>Sam</td><td class="fk-cell">7</td></tr>
+          <tr><td class="pk-cell">3</td><td>Jo</td><td class="fk-cell">7</td></tr>
+        </tbody></table>
+      </div>
+      <div class="db-table">
+        <div class="tname">departments — manager stored exactly ONCE, where it belongs</div>
+        <table><thead><tr><th class="pk-col">id</th><th>manager</th></tr></thead>
+        <tbody id="tnf-dept-rows">
+          <tr><td class="pk-cell">7</td><td>${managerName}</td></tr>
+        </tbody></table>
+      </div>`;
+  }
+
+  function render(){
+    if(mode === 'violates') renderViolates(); else renderFixed();
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.tnf;
+      logEl.innerHTML = '';
+      render();
+    });
+  });
+
+  promoteBtn.addEventListener('click', ()=>{
+    managerName = managerName === 'Priya' ? 'Marcus' : 'Priya';
+    render();
+    const p = document.createElement('div'); p.className='line fadein';
+    if(mode === 'violates'){
+      p.innerHTML = `<span class="err"><b>Manager changed to ${managerName}:</b> all 3 rows had to be updated to stay consistent. Miss even one, and the table now claims department 7 has TWO different managers at once — a genuine contradiction the schema itself did nothing to prevent.</span>`;
+      document.querySelectorAll('#tnf-rows .bad-cell').forEach(td=>{
+        td.classList.remove('flashbad'); void td.offsetWidth; td.classList.add('flashbad');
+      });
+    } else {
+      p.innerHTML = `<b>Manager changed to ${managerName}:</b> exactly ONE row in departments was updated. All 3 employees automatically reflect the correct manager on their next lookup via the dept_id foreign key — no chance of inconsistency.`;
+      const deptRow = document.querySelector('#tnf-dept-rows td:last-child');
+      if(deptRow){ deptRow.classList.remove('flashgood'); void deptRow.offsetWidth; deptRow.classList.add('flashgood'); }
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+
+  render();
+})();
+
+/* SECTION 4: ER DIAGRAM */
+(function(){
+  const parts = document.querySelectorAll('#er-diagram [data-part]');
+  const logEl = document.getElementById('er-log');
+  const info = {
+    customer: 'CUSTOMER is an ENTITY — a distinct kind of thing worth tracking. It becomes a table: customers(id, name, email). id, name, email are its ATTRIBUTES — they become columns.',
+    order: 'ORDER is also an ENTITY, becoming its own table: orders(id, date, total, customer_id). Note customer_id gets added here — see "PLACES" for why it lands on THIS table specifically.',
+    places: "PLACES is the RELATIONSHIP between CUSTOMER and ORDER, with CARDINALITY 1-to-many (one customer, many orders). Cardinality determines the mechanics: because it's 1-to-many, a single foreign key (customer_id) goes on the \"many\" side — the orders table — exactly as covered in the tables & keys lab. A many-to-many relationship instead would have required a separate join table."
+  };
+  parts.forEach(p=>{
+    p.addEventListener('click', ()=>{
+      parts.forEach(x=>x.style.outline='none');
+      p.style.outline = '2px solid var(--accent)';
+      logEl.innerHTML = `<div class="line fadein">${info[p.dataset.part]}</div>`;
+    });
+  });
+})();
+</script>
+</body>
+</html>

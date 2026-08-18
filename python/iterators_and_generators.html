@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Iterators &amp; Generators</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --iter-c:#6ea8fe; --gen-c:#7fd8a0; --yield-c:#f2c14e; --sub-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--gen-c); color:var(--gen-c); background:rgba(127,216,160,0.08);}
+  .dnode.iter{border-color:var(--iter-c); color:var(--iter-c); background:rgba(110,168,254,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#f2c14e;} .code .c-dec{color:var(--sub-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flash{animation:flash .6s ease;}
+  @keyframes flash{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,138,101,0.3);} 100%{box-shadow:none;}}
+  .pulse{animation:pulse 1s ease infinite;}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.35;}}
+
+  /* iterator protocol state machine */
+  .state-machine{display:flex; align-items:center; justify-content:center; gap:1rem; flex-wrap:wrap; margin:1.4rem 0;}
+  .state-box{font-family:var(--mono); font-size:0.85rem; padding:0.9rem 1.3rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:140px; transition:all .3s;}
+  .state-box.active{border-color:var(--iter-c); color:var(--iter-c); background:rgba(110,168,254,0.1); box-shadow:0 0 16px rgba(110,168,254,0.25);}
+  .state-box.done{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.1);}
+  .state-arrow{color:var(--ink-dim); font-family:var(--mono); font-size:1.1rem;}
+
+  /* call stack / paused frame visualization */
+  .frame-stack{display:flex; flex-direction:column; gap:0.5rem; margin:1.4rem 0;}
+  .frame{font-family:var(--mono); font-size:0.82rem; padding:0.7rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); display:flex; justify-content:space-between; align-items:center; gap:1rem; transition:all .3s;}
+  .frame.running{border-color:var(--gen-c); color:var(--gen-c); background:rgba(127,216,160,0.1);}
+  .frame.paused{border-color:var(--yield-c); color:var(--yield-c); background:rgba(242,193,78,0.08); opacity:0.85;}
+  .frame .fstate{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; padding:0.2rem 0.6rem; border-radius:12px; background:var(--panel);}
+
+  /* delegation diagram (yield from) */
+  .delegate-diagram{display:flex; align-items:center; justify-content:center; gap:0; flex-wrap:wrap; margin:1.4rem 0;}
+  .deleg-box{font-family:var(--mono); font-size:0.85rem; padding:0.8rem 1.2rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center;}
+  .deleg-box.outer{border-color:var(--sub-c); color:var(--sub-c); background:rgba(199,146,234,0.08);}
+  .deleg-box.inner{border-color:var(--gen-c); color:var(--gen-c); background:rgba(127,216,160,0.08); margin-left:1.4rem;}
+  .deleg-pipe{font-family:var(--mono); color:var(--ink-dim); font-size:0.78rem; text-align:center; padding:0.4rem 0;}
+
+  /* memory comparison bars */
+  .mem-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.4rem 0;}
+  @media(max-width:720px){.mem-compare{grid-template-columns:1fr;}}
+  .mem-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .mem-col.list{border-color:var(--bad-c);}
+  .mem-col.gen{border-color:var(--gen-c);}
+  .mem-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.8rem;}
+  .mem-col.list h4{color:var(--bad-c);} .mem-col.gen h4{color:var(--gen-c);}
+  .mem-bar-track{background:var(--panel-2); border-radius:6px; height:1.6rem; overflow:hidden; margin-bottom:0.6rem; border:1px solid var(--rule);}
+  .mem-bar-fill{height:100%; border-radius:5px; transition:width 1s ease; display:flex; align-items:center; padding-left:0.5rem; font-family:var(--mono); font-size:0.68rem; color:#12141a; font-weight:700; white-space:nowrap;}
+  .mem-bar-fill.list{background:var(--bad-c);}
+  .mem-bar-fill.gen{background:var(--gen-c);}
+  .mem-note{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.iter{border-color:var(--iter-c);}
+  .dc-col.gen{border-color:var(--gen-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.iter h4{color:var(--iter-c);} .dc-col.gen h4{color:var(--gen-c);}
+  .dc-col ul{margin:0.6rem 0 0; padding-left:1.1rem; font-size:0.86rem; color:var(--ink-dim);}
+  .dc-col li{margin-bottom:0.3rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.gen{border-left-color:var(--gen-c); background:rgba(127,216,160,0.06);} .callout.gen b{color:var(--gen-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.sub{border-left-color:var(--sub-c); background:rgba(199,146,234,0.06);} .callout.sub b{color:var(--sub-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · ITERATORS &amp; GENERATORS</div>
+  <h1>A generator is a function that can be <em>paused mid-thought</em> and picked back up later.</h1>
+  <p class="lede">Every <code class="inline">for</code> loop in Python is powered by the same two-method handshake — <code class="inline">__iter__</code> and <code class="inline">__next__</code>. Generators are the easy way to implement that handshake: write ordinary code with <code class="inline">yield</code> instead of <code class="inline">return</code>, and Python builds the pause/resume machinery for you.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode iter">for x in obj:</div>
+    <div class="darrow">desugars to</div>
+    <div class="dnode">it = iter(obj); while True: next(it)</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="protocol">1 · The Iterator Protocol</a>
+  <a data-target="yieldreturn">2 · yield vs return</a>
+  <a data-target="yieldfrom">3 · yield from</a>
+  <a data-target="memory">4 · Generator Exprs vs Lists</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ITERATOR PROTOCOL ============ -->
+<section id="protocol">
+  <div class="kicker">01 — What a for loop actually does</div>
+  <h2>The iterator protocol: __iter__ and __next__</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture a TV remote with a "next channel" button. You don't know how many channels exist, and you don't need to — you just keep pressing "next" and a new channel appears, until eventually pressing it does nothing more (you've hit the end). That's the entire idea behind Python's <code class="inline">for</code> loops. Nothing hands you the whole list of channels up front — something just keeps answering the question <em>"what's next?"</em> until there's no "next" left.</p>
+
+  <p>Python calls that "next channel button" behavior the <strong>iterator protocol</strong>, and it's built from exactly two small, separate jobs:</p>
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><strong>Something that can be looped over</strong> (an <strong>iterable</strong>) — like the TV itself. Its only job is to say "sure, here's a remote you can use." In Python that job is a method called <code class="inline">__iter__</code>.</li>
+    <li><strong>The remote itself</strong> (an <strong>iterator</strong>) — the thing that actually remembers which channel you're on, and knows how to move to the next one. In Python that job is a method called <code class="inline">__next__</code>.</li>
+  </ul>
+  <p>So a <code class="inline">for</code> loop isn't a special language feature bolted onto lists and strings — it's just: ask an object for its "remote" (call <code class="inline">__iter__</code>), then keep pressing "next" (call <code class="inline">__next__</code>) until it tells you there's nothing left. That "nothing left" signal is a small, boring exception called <code class="inline">StopIteration</code> — Python catches it silently and simply ends the loop for you.</p>
+
+  <p>Below is what that looks like written out as two plain Python classes — one class plays the role of "the TV" (iterable), the other plays the role of "the remote" (iterator):</p>
+
+  <div class="dc-compare">
+    <div class="dc-col iter">
+      <h4>Iterable</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">Countdown</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, n):
+        <span class="c-self">self</span>.n = n
+
+    <span class="c-kw">def</span> <span class="c-fn">__iter__</span>(<span class="c-self">self</span>):
+        <span class="c-cmt"># returns an ITERATOR — here, itself</span>
+        <span class="c-kw">return</span> <span class="c-fn">CountdownIterator</span>(<span class="c-self">self</span>.n)
+      </div>
+      <ul>
+        <li>Has <code class="inline">__iter__</code></li>
+        <li>Answers "can I be looped over?"</li>
+        <li>Can be iterated multiple times — <code class="inline">__iter__</code> returns a fresh iterator each time</li>
+      </ul>
+    </div>
+    <div class="dc-col gen">
+      <h4>Iterator</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">CountdownIterator</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, n):
+        <span class="c-self">self</span>.n = n
+
+    <span class="c-kw">def</span> <span class="c-fn">__next__</span>(<span class="c-self">self</span>):
+        <span class="c-kw">if</span> <span class="c-self">self</span>.n &lt;= <span class="c-num">0</span>:
+            <span class="c-kw">raise</span> StopIteration
+        <span class="c-self">self</span>.n -= <span class="c-num">1</span>
+        <span class="c-kw">return</span> <span class="c-self">self</span>.n + <span class="c-num">1</span>
+      </div>
+      <ul>
+        <li>Has <code class="inline">__next__</code> (and usually <code class="inline">__iter__</code> returning <code class="inline">self</code>)</li>
+        <li>Answers "what's the next value?"</li>
+        <li>Remembers where it left off — one-shot, gets exhausted</li>
+      </ul>
+    </div>
+  </div>
+
+  <p>One small housekeeping detail: every iterator (the "remote") is also expected to have an <code class="inline">__iter__</code> method — but for the remote, it just does <code class="inline">return self</code>, meaning "if you ask me for a remote, here I am, I already am one." That's a tiny convenience: it means you can hand a <code class="inline">for</code> loop either the TV <em>or</em> the remote and both work fine.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>STEP THROUGH for x in Countdown(3): PRINT(X)</span><button class="btn" id="proto-run">Call next()</button></div>
+    <div class="state-machine">
+      <div class="state-box" id="sm-iter">iter(obj)<br><span style="color:var(--ink-dim); font-size:0.72rem;">→ new iterator, n=3</span></div>
+      <div class="state-arrow">→</div>
+      <div class="state-box" id="sm-next">next(it)</div>
+      <div class="state-arrow">→</div>
+      <div class="state-box" id="sm-stop">StopIteration</div>
+    </div>
+    <div class="log" id="proto-log"><span class="line">Click to call next() repeatedly on Countdown(3)'s iterator — watch it remember state between calls, then raise StopIteration when exhausted.</span></div>
+  </div>
+
+  <div class="callout"><b>In plain terms:</b> <code class="inline">for x in obj:</code> is just shorthand Python expands for you into "get the remote, then keep pressing next until it stops." Lists, dicts, files, ranges, generators — every single thing you've ever looped over in Python follows this exact same two-step handshake. There's no other magic happening. Once you can hand-write a class that does this yourself, "looping" stops being something Python does for you and becomes something you understand completely.</div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> an object is <strong>iterable</strong> if it implements <code class="inline">__iter__</code>, which must return an <strong>iterator</strong>. An object is an <strong>iterator</strong> if it implements both <code class="inline">__next__</code> (returns the next value or raises <code class="inline">StopIteration</code> when exhausted) and <code class="inline">__iter__</code> (returning <code class="inline">self</code>). The built-in functions <code class="inline">iter(obj)</code> and <code class="inline">next(it)</code> are just direct calls to these two dunder methods — <code class="inline">iter(obj)</code> calls <code class="inline">obj.__iter__()</code>, and <code class="inline">next(it)</code> calls <code class="inline">it.__next__()</code>. This is called the <strong>iterator protocol</strong>, and it's what every <code class="inline">for</code> loop, comprehension, and unpacking assignment in Python relies on under the hood.</div>
+</section>
+
+<!-- ============ SECTION 2: YIELD VS RETURN ============ -->
+<section id="yieldreturn">
+  <div class="kicker">02 — Pausing instead of finishing</div>
+  <h2>yield vs return — pausing and resuming state</h2>
+
+  <p><strong>Start here, before any code.</strong> In the previous section, hand-writing that "remote" class (with <code class="inline">__iter__</code> and <code class="inline">__next__</code>) worked, but notice how much bookkeeping it needed — a whole separate class, plus a variable to manually track "where am I right now." <code class="inline">yield</code> is Python's shortcut that does all of that bookkeeping for you automatically, using code that looks like an ordinary function.</p>
+
+  <p>Think of a function that normally works like a microwave: you press start, it runs start-to-finish, and hands you one result at the end — that's <code class="inline">return</code>. Once it returns, it's done. Ask it again and it starts over completely from scratch, remembering nothing about last time.</p>
+
+  <p><code class="inline">yield</code> works like a video game with a save point instead. The function runs until it hits a <code class="inline">yield</code>, hands you a value right there, and then <strong>freezes in place</strong> — every local variable exactly as it was — instead of ending. The next time you ask it for a value, it doesn't start over; it picks up from that exact save point and keeps going until the next <code class="inline">yield</code> (or until there's nothing left to do).</p>
+
+  <p>The moment a function has <code class="inline">yield</code> anywhere inside it, Python treats it differently: it becomes a <strong>generator function</strong>. Calling it does <em>not</em> run any of your code yet — it just hands you back a "save-point machine" (a generator object) that's ready to go but hasn't started. The body only actually starts running the first time you ask it for a value.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">countdown</span>(n):
+    <span class="c-kw">while</span> n &gt; <span class="c-num">0</span>:
+        <span class="c-kw">yield</span> n       <span class="c-cmt"># pause here, hand back n</span>
+        n -= <span class="c-num">1</span>        <span class="c-cmt"># resumes HERE on the next next() call</span>
+    <span class="c-kw">yield</span> <span class="c-str">"liftoff!"</span>
+
+gen = <span class="c-fn">countdown</span>(<span class="c-num">3</span>)   <span class="c-cmt"># body has NOT run yet — just builds a generator object</span>
+<span class="c-fn">next</span>(gen)   <span class="c-out">→ 3</span>
+<span class="c-fn">next</span>(gen)   <span class="c-out">→ 2</span>
+<span class="c-fn">next</span>(gen)   <span class="c-out">→ 1</span>
+<span class="c-fn">next</span>(gen)   <span class="c-out">→ 'liftoff!'</span>
+<span class="c-fn">next</span>(gen)   <span class="c-out">→ StopIteration   — generator is exhausted, one-shot only</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE GENERATOR PAUSE AND RESUME</span><button class="btn" id="yr-run">next(gen)</button></div>
+    <div class="frame-stack" id="yr-frames">
+      <div class="frame" id="yr-frame"><span>def countdown(n): n=3, at start</span><span class="fstate">idle</span></div>
+    </div>
+    <div class="log" id="yr-log"><span class="line">The function body hasn't executed at all yet — countdown(3) only created the generator object.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th><code>return</code></th><th><code>yield</code></th></tr>
+    <tr><td>Ends the function?</td><td>Yes, permanently</td><td>No — pauses, resumable</td></tr>
+    <tr><td>Local state after call</td><td>Discarded</td><td>Preserved exactly</td></tr>
+    <tr><td>How many values?</td><td>One, then done</td><td>As many as it yields, one at a time</td></tr>
+    <tr><td>What the call produces</td><td>The value itself</td><td>A generator object (lazy)</td></tr>
+  </table>
+
+  <div class="callout gen"><b>In plain terms:</b> because a generator freezes its own local variables between calls, it can represent a sequence that's huge, expensive, or even endless — like reading a massive file line by line, or a live stream of sensor readings — without ever needing to hold the whole thing in memory at once. It gives you the exact same "keep pressing next" behavior as the __iter__/__next__ class from Section 1, but Python writes all the bookkeeping for you, from ordinary loops and if-statements.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a <strong>generator function</strong> is any function containing at least one <code class="inline">yield</code> statement. Calling it does not execute the body — it returns a <strong>generator object</strong>, which automatically satisfies the iterator protocol (it has both <code class="inline">__iter__</code> and <code class="inline">__next__</code> for free — you never write those yourself). Each call to <code class="inline">next()</code> resumes execution immediately after the last <code class="inline">yield</code>, preserving the full local scope, and runs until the next <code class="inline">yield</code>, a <code class="inline">return</code>, or the function falling off the end — either of the latter two raises <code class="inline">StopIteration</code>. A generator is exhausted after this happens once; it cannot be restarted or rewound.</div>
+</section>
+
+<!-- ============ SECTION 3: YIELD FROM ============ -->
+<section id="yieldfrom">
+  <div class="kicker">03 — Delegating to a sub-generator</div>
+  <h2>yield from — delegating to a sub-generator</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine you're a receptionist directing visitors to different rooms. A visitor asks you for "the next item," and rather than fetching it yourself, you point them to Room A and let Room A hand it over directly — you just relay whatever Room A gives back, one thing at a time, until Room A has nothing left, then you move the visitor along to Room B. You're not doing the work; you're delegating it, one whole room at a time.</p>
+
+  <p>That's what <code class="inline">yield from</code> does for generators. Sometimes a generator's whole job is to walk through <em>other</em> iterables (lists, strings, other generators) and pass along everything they produce. You could write that by hand with a nested loop:</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">chain_manual</span>(*iterables):
+    <span class="c-kw">for</span> it <span class="c-kw">in</span> iterables:
+        <span class="c-kw">for</span> item <span class="c-kw">in</span> it:
+            <span class="c-kw">yield</span> item     <span class="c-cmt"># re-yield each value, one nested loop layer deep</span>
+  </div>
+
+  <p>That nested loop works, but it's just typing out "for each thing in here, hand it along" — which is common enough that Python gives it its own keyword. <code class="inline">yield from</code> says exactly that in three words instead of two lines, and it goes a little further: it also transparently forwards a few advanced signals (<code class="inline">send()</code> and <code class="inline">throw()</code>, used in more advanced coroutine-style generators) that the manual loop version would silently get wrong. For now, the mental model "shorthand for the nested loop above" is all you need.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">chain</span>(*iterables):
+    <span class="c-kw">for</span> it <span class="c-kw">in</span> iterables:
+        <span class="c-kw">yield from</span> it     <span class="c-cmt"># delegate entirely to `it` until it's exhausted</span>
+
+<span class="c-kw">list</span>(<span class="c-fn">chain</span>([<span class="c-num">1</span>, <span class="c-num">2</span>], <span class="c-str">"ab"</span>, (<span class="c-num">9</span>,)))   <span class="c-out">→ [1, 2, 'a', 'b', 9]</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>chain([1, 2], "ab") — WATCH THE DELEGATION</span><button class="btn" id="yf-run">yield from next value</button></div>
+    <div class="delegate-diagram">
+      <div class="deleg-box outer" id="yf-outer">chain(...) — outer generator</div>
+    </div>
+    <div class="deleg-pipe">↳ yield from delegates control directly to:</div>
+    <div class="delegate-diagram">
+      <div class="deleg-box inner" id="yf-inner">iter([1, 2]) — active sub-generator</div>
+    </div>
+    <div class="log" id="yf-log"><span class="line">chain() doesn't touch values itself while delegating — it hands control straight to the sub-iterable until that one is exhausted, then moves to the next.</span></div>
+  </div>
+
+  <h3>A recursive use: flattening nested generators</h3>
+  <p>Here's where <code class="inline">yield from</code> gets genuinely useful: it can delegate to another call of the <em>same</em> function. That lets you flatten a list-of-lists-of-lists — no matter how many layers deep — without needing to know the depth in advance. Whenever an item turns out to be a list itself, hand the whole thing off to a fresh call of <code class="inline">flatten</code>, and let that call worry about its own contents:</p>
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">flatten</span>(nested):
+    <span class="c-kw">for</span> item <span class="c-kw">in</span> nested:
+        <span class="c-kw">if</span> <span class="c-fn">isinstance</span>(item, <span class="c-fn">list</span>):
+            <span class="c-kw">yield from</span> <span class="c-fn">flatten</span>(item)   <span class="c-cmt"># delegate to a fresh recursive call</span>
+        <span class="c-kw">else</span>:
+            <span class="c-kw">yield</span> item
+
+<span class="c-kw">list</span>(<span class="c-fn">flatten</span>([<span class="c-num">1</span>, [<span class="c-num">2</span>, [<span class="c-num">3</span>, <span class="c-num">4</span>], <span class="c-num">5</span>], <span class="c-num">6</span>]))   <span class="c-out">→ [1, 2, 3, 4, 5, 6]</span>
+  </div>
+
+  <div class="callout sub"><b>In plain terms:</b> <code class="inline">yield from</code> is a genuine hand-off, like the receptionist pointing you straight into Room A rather than fetching things for you herself. The outer generator gets out of the way completely, so whoever is calling <code class="inline">chain(...)</code> is effectively talking directly to whichever sub-generator is currently "active." That's the whole trick behind the flattening example too — each recursive call becomes its own little room, and control passes seamlessly from room to room until every value has been visited.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <code class="inline">yield from &lt;iterable&gt;</code> delegates iteration to a sub-iterable, yielding each of its values in turn as if the outer generator had yielded them directly. It is equivalent to <code class="inline">for item in iterable: yield item</code>, with two additions the manual loop doesn't give you: (1) it forwards <code class="inline">.send(value)</code> and <code class="inline">.throw(exception)</code> calls made on the outer generator straight through to the currently active sub-generator, and (2) it evaluates to the sub-generator's <code class="inline">return</code> value as an expression, e.g. <code class="inline">result = yield from sub_gen()</code>. These two behaviors are why <code class="inline">yield from</code> is the standard tool for composing generator-based coroutines, not just a syntax shortcut.</div>
+</section>
+
+<!-- ============ SECTION 4: MEMORY ============ -->
+<section id="memory">
+  <div class="kicker">04 — Building everything now vs. building it as asked</div>
+  <h2>Generator expressions vs. list comprehensions</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine ordering food two different ways. Option one: the kitchen cooks your entire week's meals right now and hands you seven containers to store in the fridge — convenient later, but it takes up a lot of fridge space today, whether you eat all seven or not. Option two: the kitchen cooks one meal fresh, exactly when you ask for it, and nothing else exists until you ask again — barely any fridge space used, but you can't glance at "meal #5" without cooking meals 1 through 5 first.</p>
+
+  <p>That's the entire difference between a <strong>list comprehension</strong> and a <strong>generator expression</strong>. They can even look almost identical — square brackets versus round parentheses is the only syntax difference — but they behave completely differently underneath:</p>
+
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><code class="inline">[x*x for x in range(N)]</code> — <strong>square brackets.</strong> Cooks everything right now. Every single value is computed immediately and stored in memory as one big list, whether you end up using all of it or not.</li>
+    <li><code class="inline">(x*x for x in range(N))</code> — <strong>round parentheses.</strong> Cooks nothing yet. It hands you back a generator (exactly like the ones from Section 2) that computes each value only at the moment something actually asks for it.</li>
+  </ul>
+
+  <div class="code">
+squares_list = [x*x <span class="c-kw">for</span> x <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1_000_000</span>)]   <span class="c-cmt"># builds the whole list NOW — ~8MB+ in memory</span>
+squares_gen  = (x*x <span class="c-kw">for</span> x <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1_000_000</span>))   <span class="c-cmt"># builds NOTHING yet — a few hundred bytes</span>
+
+<span class="c-fn">sum</span>(squares_gen)   <span class="c-cmt"># computes one square at a time as sum() asks for it, then discards it</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>MEMORY FOOTPRINT — range(1,000,000) SQUARED</span>
+      <div><button class="btn secondary" id="mem-list">Build as list</button> <button class="btn" id="mem-gen">Build as generator</button></div>
+    </div>
+    <div class="mem-compare">
+      <div class="mem-col list">
+        <h4>[x*x for x in range(N)]</h4>
+        <div class="mem-bar-track"><div class="mem-bar-fill list" id="mem-list-bar" style="width:0%;"></div></div>
+        <div class="mem-note" id="mem-list-note">not built yet</div>
+      </div>
+      <div class="mem-col gen">
+        <h4>(x*x for x in range(N))</h4>
+        <div class="mem-bar-track"><div class="mem-bar-fill gen" id="mem-gen-bar" style="width:0%;"></div></div>
+        <div class="mem-note" id="mem-gen-note">not built yet</div>
+      </div>
+    </div>
+    <div class="log" id="mem-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>List comprehension</th><th>Generator expression</th></tr>
+    <tr><td>When elements are computed</td><td>All at once, immediately</td><td>Lazily, one at a time, on demand</td></tr>
+    <tr><td>Memory used</td><td>O(n) — proportional to length</td><td>O(1) — constant, regardless of length</td></tr>
+    <tr><td>Can index with <code>[i]</code>?</td><td>Yes</td><td>No — must consume sequentially</td></tr>
+    <tr><td>Can iterate more than once?</td><td>Yes, freely</td><td>No — exhausted after one pass</td></tr>
+    <tr><td>Good for</td><td>Small/medium data, random access, multiple passes</td><td>Huge/infinite streams, one-pass pipelines</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The catch to remember:</b> going back to the meal-prep analogy — once you've eaten this week's fresh-cooked meal, it's gone. A generator expression works the same way: once you've consumed it (passed it to <code class="inline">sum()</code>, looped over it, anything), it's empty. Asking for its values a second time silently gives you nothing at all — no error, just an empty result, which is exactly the kind of bug that's easy to miss. If you need to look at the same data twice, or need to know how many items there are ahead of time, or want to grab item <code class="inline">[5]</code> directly, you need an actual list. If you only ever plan to walk through the data once, front to back, a generator expression does the identical job using a tiny fraction of the memory.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a list comprehension is <strong>eager</strong> (values computed and stored immediately, memory usage <strong>O(n)</strong> in the number of elements); a generator expression is <strong>lazy</strong> (values computed on demand, one at a time, memory usage <strong>O(1)</strong> — constant regardless of how many elements it will eventually produce). A generator expression is a single-use iterator: once fully consumed it stays exhausted, and re-iterating it yields nothing rather than raising an error. This eager-vs-lazy distinction generalizes beyond comprehensions — it's the same trade-off behind <code class="inline">range()</code> (lazy) vs. building a list of integers by hand (eager), and behind any generator-based data pipeline vs. a fully materialized one.</div>
+
+  <h3>The same trade-off shows up everywhere</h3>
+  <p>This isn't unique to comprehensions — it's the same "cook it now vs. cook it when asked" choice that shows up throughout Python itself:</p>
+  <div class="code">
+<span class="c-fn">range</span>(<span class="c-num">10**12</span>)          <span class="c-cmt"># doesn't build a trillion-element list — computes each number on demand</span>
+<span class="c-fn">dict</span>.keys()             <span class="c-cmt"># a view, not a fresh list — stays in sync with the dict lazily</span>
+
+<span class="c-kw">def</span> <span class="c-fn">read_lines</span>(path):
+    <span class="c-kw">for</span> line <span class="c-kw">in</span> <span class="c-fn">open</span>(path):
+        <span class="c-kw">yield</span> line.strip()   <span class="c-cmt"># processes a file far larger than RAM — one line in memory at a time</span>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Write real code for each of these — don't just reason about it in your head. Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Hand-write the iterator protocol</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write a class <code class="inline">Evens</code> that is iterable and yields even numbers from 0 up to (but not including) <code class="inline">n</code>, using <code class="inline">__iter__</code> and <code class="inline">__next__</code> by hand — no generator function. Confirm <code class="inline">list(Evens(10))</code> gives <code class="inline">[0, 2, 4, 6, 8]</code>.</p>
+    <details><summary>Show solution</summary><div class="solution">class Evens:
+    def __init__(self, n):
+        self.n = n
+
+    def __iter__(self):
+        self.current = 0
+        return self
+
+    def __next__(self):
+        if self.current >= self.n:
+            raise StopIteration
+        value = self.current
+        self.current += 2
+        return value
+
+list(Evens(10))  # [0, 2, 4, 6, 8]
+
+__iter__ resets and returns self, so Evens(10) can be iterated more than
+once (each `for` loop calls __iter__ fresh). __next__ raises StopIteration
+the moment current reaches n — that's the only signal a for loop needs to
+stop.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Predict the pause points</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def trace():
+    print("A")
+    yield 1
+    print("B")
+    yield 2
+    print("C")
+
+gen = trace()
+print("created")
+next(gen)
+print("---")
+next(gen)
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Write out the exact order every line prints in, including where each <code class="inline">next()</code> call starts and stops executing the function body.</p>
+    <details><summary>Show solution</summary><div class="solution">created
+A
+---
+B
+
+trace() itself prints nothing -- it only builds a generator object, the
+body hasn't run. The first next(gen) runs the body from the top until the
+first yield: it prints "A", then pauses at `yield 1` (the returned 1 is
+just discarded here since print() isn't called on it). The second next(gen)
+resumes right after that yield, prints "B", and pauses again at `yield 2`.
+"C" never prints in this trace -- a third next(gen) would be needed to
+reach it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Rewrite with yield from</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def paginate(pages):
+    for page in pages:
+        for row in page:
+            yield row
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Rewrite <code class="inline">paginate</code> using <code class="inline">yield from</code> instead of the nested loop. Then write a second generator, <code class="inline">flatten_deep</code>, that recursively flattens a list that can nest to any depth (lists inside lists inside lists) using <code class="inline">yield from</code>.</p>
+    <details><summary>Show solution</summary><div class="solution">def paginate(pages):
+    for page in pages:
+        yield from page
+
+def flatten_deep(nested):
+    for item in nested:
+        if isinstance(item, list):
+            yield from flatten_deep(item)
+        else:
+            yield item
+
+list(flatten_deep([1, [2, [3, [4, 5]], 6]]))  # [1, 2, 3, 4, 5, 6]
+
+yield from collapses the inner "for row in page: yield row" into one
+statement that delegates directly to page. flatten_deep uses the same idea
+recursively -- each nested list gets its own flatten_deep() call, and
+yield from forwards everything that call produces straight up the chain,
+regardless of how deep the nesting goes.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · The generator-exhaustion trap</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+squares = (x * x for x in range(5))
+total_a = sum(squares)
+total_b = sum(squares)
+print(total_a, total_b)
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Predict the output, then explain why it's not symmetrical, and rewrite the code so both totals are correct.</p>
+    <details><summary>Show solution</summary><div class="solution">30 0
+
+The first sum(squares) fully consumes the generator expression -- draining
+it to produce 0+1+4+9+16=30. A generator expression is a one-shot iterator:
+once exhausted, it stays exhausted, it does not reset. The second
+sum(squares) then iterates an empty generator and gets 0.
+
+Fix -- rebuild it for the second pass, or use a list if you need to reuse
+the values:
+
+squares = (x * x for x in range(5))
+total_a = sum(squares)
+squares2 = (x * x for x in range(5))
+total_b = sum(squares2)
+
+# or, if reuse is the common case, just use a list comprehension instead:
+squares = [x * x for x in range(5)]
+total_a = sum(squares)
+total_b = sum(squares)  # works fine, squares is still there</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · An infinite generator, consumed lazily</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write a generator function <code class="inline">fibonacci()</code> with no upper bound — it must be able to produce numbers forever without ever looping infinitely inside a list comprehension. Then use <code class="inline">itertools.islice</code> to pull just the first 10 values.</p>
+    <details><summary>Show solution</summary><div class="solution">def fibonacci():
+    a, b = 0, 1
+    while True:
+        yield a
+        a, b = b, a + b
+
+from itertools import islice
+list(islice(fibonacci(), 10))
+# [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+
+The while True loop never actually completes -- but that's fine, because
+nothing forces it to run to completion. Each next() call (which islice
+calls exactly 10 times here) only advances the loop one yield at a time.
+Trying [x for x in fibonacci()] would hang forever; islice is what lets you
+take a bounded slice of an unbounded lazy sequence.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why calling a generator function doesn't run any of its code, (2) what specifically <code class="inline">yield from</code> does that a plain nested <code class="inline">for</code> loop with <code class="inline">yield</code> doesn't, and (3) why a generator expression can be iterated exactly once while a list comprehension can be iterated any number of times? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — iterators &amp; generators.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: ITERATOR PROTOCOL STATE MACHINE */
+(function(){
+  const btn = document.getElementById('proto-run');
+  const logEl = document.getElementById('proto-log');
+  const smIter = document.getElementById('sm-iter');
+  const smNext = document.getElementById('sm-next');
+  const smStop = document.getElementById('sm-stop');
+  let n = 3;
+  let started = false;
+
+  btn.addEventListener('click', ()=>{
+    [smIter, smNext, smStop].forEach(el=>el.classList.remove('active','done'));
+    if(!started){
+      started = true;
+      smIter.classList.add('active');
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = '<b>iter(Countdown(3)):</b> builds a fresh CountdownIterator with n=3. The countdown object itself holds no position — only the iterator does.';
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+      return;
+    }
+    if(n > 0){
+      smNext.classList.add('active');
+      const returned = n;
+      n -= 1;
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>next(it):</b> n was ${returned}, so it returns ${returned} and decrements its stored n to ${n}. The iterator remembers this between calls — that's its whole job.`;
+      logEl.appendChild(p);
+    } else {
+      smStop.classList.add('done');
+      btn.disabled = true; btn.textContent = 'Exhausted ✓';
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = '<b>next(it):</b> n is now 0, so __next__ raises StopIteration. This is exactly the signal a for loop is listening for to stop looping — it catches this exception silently.';
+      logEl.appendChild(p);
+    }
+    logEl.scrollTop = logEl.scrollHeight;
+  });
+})();
+
+/* SECTION 2: YIELD / RETURN FRAME */
+(function(){
+  const btn = document.getElementById('yr-run');
+  const frame = document.getElementById('yr-frame');
+  const logEl = document.getElementById('yr-log');
+  const steps = [
+    {label:'def countdown(n): n=3, paused before "while n &gt; 0"', state:'running', msg:'<b>next(gen) #1:</b> body starts executing for the first time. Runs until the first `yield n` — pauses there with n still 3, hands back 3.'},
+    {label:'paused at "yield n" — n=3, about to hand back 3', state:'paused', msg:'Paused. Local variable n=3 is frozen exactly here, waiting for the next next() call.'},
+    {label:'resumed → n -= 1 → n=2 → loop → paused at "yield n"', state:'paused', msg:'<b>next(gen) #2:</b> resumes right after the yield, runs `n -= 1`, loops back, hits `yield n` again with n=2. Hands back 2.'},
+    {label:'resumed → n -= 1 → n=1 → loop → paused at "yield n"', state:'paused', msg:'<b>next(gen) #3:</b> same resume-and-pause cycle. n=1, hands back 1.'},
+    {label:'resumed → n -= 1 → n=0 → while exits → yield "liftoff!"', state:'paused', msg:'<b>next(gen) #4:</b> n becomes 0, the while loop exits, falls through to `yield "liftoff!"`. Hands back the string.'},
+    {label:'resumed → function body ends', state:'running', msg:'<b>next(gen) #5:</b> nothing left to run — function falls off the end, which raises StopIteration, exactly like reaching the end of __next__.'}
+  ];
+  let i = 0;
+  btn.addEventListener('click', ()=>{
+    if(i >= steps.length){ return; }
+    const s = steps[i];
+    frame.className = 'frame fadein ' + s.state;
+    frame.innerHTML = `<span>${s.label}</span><span class="fstate">${s.state}</span>`;
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = s.msg;
+    logEl.innerHTML = '';
+    logEl.appendChild(p);
+    i++;
+    if(i >= steps.length){ btn.disabled = true; btn.textContent = 'Exhausted ✓'; }
+  });
+})();
+
+/* SECTION 3: YIELD FROM DELEGATION */
+(function(){
+  const btn = document.getElementById('yf-run');
+  const inner = document.getElementById('yf-inner');
+  const outer = document.getElementById('yf-outer');
+  const logEl = document.getElementById('yf-log');
+  const steps = [
+    {inner:'iter([1, 2]) — active sub-generator', msg:'<b>yield from [1, 2]:</b> chain() hands control directly to the list\'s iterator. The first next() call on chain() returns 1 straight from it — chain() itself does no work.'},
+    {inner:'iter([1, 2]) — still active, one item left', msg:'Next value: 2. Still delegating fully to the same sub-iterable — chain()\'s own for-loop hasn\'t advanced yet.'},
+    {inner:'iter([1, 2]) exhausted — chain() for-loop advances', msg:'The list [1, 2] is exhausted. chain()\'s own for-loop now moves to the next iterable, "ab", and yield from starts delegating to THAT one instead.'},
+    {inner:'iter("ab") — new active sub-generator', msg:'<b>yield from "ab":</b> control now passes to the string\'s iterator. Next value: \'a\'.'}
+  ];
+  let i = 0;
+  btn.addEventListener('click', ()=>{
+    if(i >= steps.length){ return; }
+    const s = steps[i];
+    inner.textContent = s.inner;
+    inner.classList.add('flash');
+    setTimeout(()=>inner.classList.remove('flash'), 600);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = s.msg;
+    logEl.innerHTML = '';
+    logEl.appendChild(p);
+    i++;
+    if(i >= steps.length){ btn.disabled = true; btn.textContent = 'Done ✓'; }
+  });
+})();
+
+/* SECTION 4: MEMORY COMPARISON */
+(function(){
+  const listBtn = document.getElementById('mem-list');
+  const genBtn = document.getElementById('mem-gen');
+  const listBar = document.getElementById('mem-list-bar');
+  const genBar = document.getElementById('mem-gen-bar');
+  const listNote = document.getElementById('mem-list-note');
+  const genNote = document.getElementById('mem-gen-note');
+  const logEl = document.getElementById('mem-log');
+
+  listBtn.addEventListener('click', ()=>{
+    listBar.style.width = '92%';
+    listBar.textContent = '~8 MB allocated';
+    listNote.textContent = 'all 1,000,000 ints exist in memory right now, at once';
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>[x*x for x in range(1_000_000)]:</b> Python evaluates the whole expression immediately and stores every result in a list object before the line even finishes.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  });
+
+  genBtn.addEventListener('click', ()=>{
+    genBar.style.width = '4%';
+    genBar.textContent = '~200 bytes';
+    genNote.textContent = 'only the generator object itself exists — no elements computed yet';
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = '<b>(x*x for x in range(1_000_000)):</b> this line allocates a generator object holding just its code and current position — x=x*x for each element is computed one at a time, only when next() is called, then thrown away.';
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  });
+})();
+</script>
+
+</body>
+</html>

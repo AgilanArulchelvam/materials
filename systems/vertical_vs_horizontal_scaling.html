@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Vertical vs Horizontal Scaling</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --vert-c:#7fd8a0; --horiz-c:#f2c14e; --spof-c:#ff6b6b; --lb-c:#4fc3f7; --part-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid; }
+  .pipe-label.vert{border-color:var(--vert-c); color:var(--vert-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.horiz{border-color:var(--horiz-c); color:var(--horiz-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .shake{animation:shake .4s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-4px);} 75%{transform:translateX(4px);}}
+
+  /* SPOF diagram */
+  .spof-diagram{display:flex; flex-direction:column; align-items:center; gap:1rem; margin:1.4rem 0;}
+  .spof-row{display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; align-items:center;}
+  .node-box{font-family:var(--mono); font-size:0.82rem; padding:0.8rem 1.1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; transition:all .35s;}
+  .node-box.server{border-color:var(--vert-c); color:var(--vert-c);}
+  .node-box.dead{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.12); opacity:0.6; text-decoration:line-through;}
+  .node-box.client{border-color:var(--ink-dim); color:var(--ink-dim);}
+  .spof-arrow{color:var(--ink-dim); font-family:var(--mono); font-size:1rem;}
+  .outage-banner{font-family:var(--mono); font-size:0.85rem; padding:0.7rem 1.2rem; border-radius:8px; text-align:center; margin-top:0.4rem; transition:all .3s;}
+  .outage-banner.up{color:var(--vert-c); background:rgba(127,216,160,0.08); border:1px solid var(--vert-c);}
+  .outage-banner.down{color:var(--bad-c); background:rgba(255,107,107,0.1); border:1px solid var(--bad-c);}
+
+  /* hardware ceiling bar */
+  .ceiling-track{position:relative; height:60px; background:var(--panel-2); border:1.5px solid var(--rule); border-radius:12px; margin:1.2rem 0; overflow:hidden;}
+  .ceiling-fill{height:100%; background:linear-gradient(90deg, var(--vert-c), var(--horiz-c)); transition:width 0.8s cubic-bezier(.2,.8,.3,1); display:flex; align-items:center; justify-content:flex-end; padding-right:0.8rem;}
+  .ceiling-fill span{font-family:var(--mono); font-size:0.72rem; color:#14100c; font-weight:700; white-space:nowrap;}
+  .ceiling-cap{position:absolute; top:0; bottom:0; right:0; width:3px; background:var(--bad-c);}
+  .ceiling-cap-lbl{position:absolute; top:-1.4rem; right:0; font-family:var(--mono); font-size:0.65rem; color:var(--bad-c);}
+
+  /* stateless vs stateful diagram */
+  .req-flow{display:flex; align-items:center; justify-content:center; gap:0.8rem; flex-wrap:wrap; margin:1.2rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .req-badge{padding:0.5rem 0.9rem; border-radius:20px; border:1.5px solid var(--rule); background:var(--panel-2);}
+  .req-badge.a{border-color:var(--lb-c); color:var(--lb-c);}
+  .server-cluster{display:flex; gap:0.8rem; justify-content:center; flex-wrap:wrap; margin:1rem 0;}
+  .mini-server{font-family:var(--mono); font-size:0.75rem; padding:0.7rem 1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:90px; transition:all .3s;}
+  .mini-server.has-session{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .mini-server.stateless{border-color:var(--vert-c); color:var(--vert-c); background:rgba(127,216,160,0.08);}
+  .mini-server.picked{box-shadow:0 0 14px currentColor;}
+
+  /* load balancer algorithm viz */
+  .lb-diagram{display:flex; align-items:center; justify-content:center; gap:2rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .lb-box{font-family:var(--mono); font-size:0.85rem; padding:0.9rem 1.3rem; border-radius:10px; border:1.5px solid var(--lb-c); color:var(--lb-c); background:rgba(79,195,247,0.08);}
+  .lb-targets{display:flex; flex-direction:column; gap:0.6rem;}
+  .lb-target{font-family:var(--mono); font-size:0.78rem; padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); display:flex; justify-content:space-between; gap:1rem; min-width:190px; transition:all .3s;}
+  .lb-target .load-bar-track{flex:1; height:8px; background:var(--panel); border-radius:4px; overflow:hidden; align-self:center;}
+  .lb-target .load-bar-fill{height:100%; background:var(--lb-c); border-radius:4px; transition:width .4s ease;}
+  .lb-target.chosen{border-color:var(--accent); box-shadow:0 0 12px rgba(255,138,101,0.3);}
+
+  /* partitioning diagram */
+  .shard-row{display:flex; gap:0.8rem; justify-content:center; flex-wrap:wrap; margin:1.2rem 0;}
+  .shard-box{font-family:var(--mono); font-size:0.78rem; border:1.5px solid var(--part-c); border-radius:10px; padding:0.9rem 1rem; background:rgba(199,146,234,0.06); min-width:130px;}
+  .shard-box .shard-title{color:var(--part-c); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem;}
+  .shard-box .shard-keys{color:var(--ink-dim); font-size:0.72rem; line-height:1.5;}
+  .key-chip{display:inline-block; padding:0.15rem 0.45rem; border-radius:5px; background:var(--panel-2); margin:0.1rem; border:1px solid var(--rule);}
+  .key-chip.landed{animation:landchip .5s ease;}
+  @keyframes landchip{from{transform:scale(1.4); opacity:0;} to{transform:scale(1); opacity:1;}}
+
+  /* cost curve */
+  .cost-chart{position:relative; height:180px; background:var(--panel-2); border:1.5px solid var(--rule); border-radius:12px; margin:1.2rem 0; padding:1rem;}
+  .cost-svg{width:100%; height:100%;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.vert{border-color:var(--vert-c);}
+  .dc-col.horiz{border-color:var(--horiz-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.vert h4{color:var(--vert-c);} .dc-col.horiz h4{color:var(--horiz-c);}
+  .dc-col ul{margin:0.6rem 0 0; padding-left:1.1rem; font-size:0.86rem; color:var(--ink-dim);}
+  .dc-col li{margin-bottom:0.3rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.vert{border-left-color:var(--vert-c); background:rgba(127,216,160,0.06);} .callout.vert b{color:var(--vert-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.info{border-left-color:var(--lb-c); background:rgba(79,195,247,0.06);} .callout.info b{color:var(--lb-c);}
+  .callout.part{border-left-color:var(--part-c); background:rgba(199,146,234,0.06);} .callout.part b{color:var(--part-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS FUNDAMENTALS LAB · VERTICAL VS HORIZONTAL SCALING</div>
+  <h1>Growing a system is a choice between <em>one bigger machine</em> and <em>more machines that share the work</em>.</h1>
+  <p class="lede">Both directions add capacity. Only one of them removes your single point of failure — and that safety isn't free. This lab walks through why vertical scaling hits a wall, what horizontal scaling actually demands from your application (statelessness, load balancing, partitioning), and the concrete cost and complexity price you pay for each.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label vert">1 bigger server</div>
+    <span style="color:var(--ink-dim);">vs</span>
+    <div class="pipe-label horiz">5 smaller servers, sharing load</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="foundations">1 · The Core Idea</a>
+  <a data-target="vertical">2 · Vertical Limits: SPOF &amp; Ceiling</a>
+  <a data-target="horizontal">3 · Horizontal Requirements</a>
+  <a data-target="tradeoffs">4 · Cost, Complexity &amp; Failure Modes</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: FOUNDATIONS ============ -->
+<section id="foundations">
+  <div class="kicker">01 — Two directions, one goal</div>
+  <h2>The core idea: growing without breaking</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a small bakery that's outgrown its kitchen. There are two ways to fix that: knock down a wall and build a much bigger kitchen in the same spot, or open a second bakery location across town and split the customers between both. Both solve "we can't keep up with demand" — but they behave completely differently when a health inspector shuts one kitchen down, or when rent goes up, or when you need a third location next year.</p>
+
+  <p>That's the entire idea behind <strong>vertical</strong> and <strong>horizontal</strong> scaling:</p>
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><strong>Vertical scaling ("scale up")</strong> — the bigger-kitchen approach. Give <em>one</em> machine more resources: more CPU cores, more RAM, a faster disk. The system is still fundamentally one thing, just a beefier version of itself.</li>
+    <li><strong>Horizontal scaling ("scale out")</strong> — the second-location approach. Add <em>more</em> machines, all doing the same job, and spread the incoming work across them. The system becomes a team instead of an individual.</li>
+  </ul>
+  <p>Both directions genuinely add capacity — more requests handled per second. But they diverge sharply once you ask two follow-up questions that this lab is built around: <strong>"what happens when one part breaks?"</strong> and <strong>"how far can this actually grow?"</strong> Vertical and horizontal answer both questions completely differently, and that difference is what the rest of this lab digs into.</p>
+</section>
+
+<!-- ============ SECTION 2: VERTICAL LIMITS ============ -->
+<section id="vertical">
+  <div class="kicker">02 — Why "just get a bigger server" runs out of road</div>
+  <h2>Vertical scaling limits: single point of failure &amp; hardware ceiling</h2>
+
+  <p><strong>Start here, before any code.</strong> If your entire bakery is one building, and that one building floods, you have zero bakeries — not "a smaller bakery," <em>zero</em>. That's the first problem with vertical scaling, and it has nothing to do with how big or powerful that one building is. The second problem shows up later: even if the building never floods, there's only so big a single kitchen can physically get before you literally run out of things to buy that make it bigger.</p>
+
+  <h3>Single point of failure (SPOF)</h3>
+  <p>A <strong>single point of failure</strong> is any one component whose failure takes down the <em>entire</em> system — not just part of it. When you scale vertically, your one powerful server <em>is</em> a single point of failure, no matter how much RAM or how many CPU cores you give it. Bigger doesn't mean less fragile; it just means the same one point of failure can now do more work before it goes down.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE SERVER, ONE HARDWARE FAULT</span><button class="btn" id="spof-run">Simulate a hardware fault</button></div>
+    <div class="spof-diagram">
+      <div class="spof-row">
+        <div class="node-box client">client A</div>
+        <div class="node-box client">client B</div>
+        <div class="node-box client">client C</div>
+      </div>
+      <div class="spof-arrow">↓ ↓ ↓</div>
+      <div class="spof-row">
+        <div class="node-box server" id="spof-server">the one server<br><span style="font-size:0.68rem; opacity:0.7;">16 vCPU · 128GB RAM</span></div>
+      </div>
+      <div class="outage-banner up" id="spof-banner">All requests served normally.</div>
+    </div>
+    <div class="log" id="spof-log"><span class="line">This one machine handles every single request — clients A, B, and C all depend on it existing and working.</span></div>
+  </div>
+
+  <div class="callout warn"><b>The mechanism, precisely:</b> it doesn't matter that the server has 128GB of RAM or 16 CPU cores — a power supply failure, a disk failure, a kernel panic, or even a routine reboot for a security patch takes the <em>entire</em> service down, for every single client, at the same moment. Vertical scaling makes the server more capable; it does nothing to make it less singular. The only way to remove a single point of failure is to stop having only one of that thing — which is a fundamentally horizontal move (redundant, interchangeable copies), not a vertical one.</div>
+
+  <h3>The hardware ceiling</h3>
+  <p>Even setting failure aside, vertical scaling runs into a second, harder wall: there is a biggest machine you can currently buy. CPUs have a maximum number of cores before manufacturing gets exotic and absurdly expensive. RAM has a maximum a single motherboard can address. Network cards have a maximum throughput. At some point "buy a bigger one" isn't a budget question anymore — it's a "no such product exists yet" question.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>KEEP UPGRADING THE SAME SERVER</span><button class="btn" id="ceiling-run">Upgrade hardware ▸</button></div>
+    <div class="ceiling-track">
+      <div class="ceiling-fill" id="ceiling-fill" style="width:8%;"><span id="ceiling-label">2 vCPU</span></div>
+      <div class="ceiling-cap"></div>
+      <div class="ceiling-cap-lbl">largest available machine</div>
+    </div>
+    <div class="log" id="ceiling-log"><span class="line">Click to keep upgrading a single machine's specs — watch what happens as it approaches the biggest instance size that actually exists to buy.</span></div>
+  </div>
+
+  <div class="callout"><b>Why this matters:</b> the hardware ceiling means vertical scaling is a strategy with a built-in expiration date — it can absolutely be the right first move (it's simple, and there's nothing to coordinate), but it cannot be the long-term plan for a system that needs to keep growing indefinitely. Horizontal scaling doesn't have this ceiling in the same way: instead of needing one impossible machine, you need <em>N</em> ordinary, easy-to-buy machines, and N can keep growing.</div>
+</section>
+
+<!-- ============ SECTION 3: HORIZONTAL REQUIREMENTS ============ -->
+<section id="horizontal">
+  <div class="kicker">03 — What "just add more machines" actually demands</div>
+  <h2>Horizontal scaling requirements: statelessness, load balancing, partitioning</h2>
+
+  <p><strong>Start here, before any code.</strong> Opening a second bakery location sounds simple until you actually try it: a customer who ordered a custom cake at Location A can't just walk into Location B and expect them to know about it, unless you've written that order down somewhere both locations can see. Someone also has to decide which customers go to which location so neither one gets overwhelmed while the other sits empty. And if you're storing a million customer records, you probably don't want every location keeping a full copy of all of them.</p>
+
+  <p>Those three problems — "remembering things across locations," "deciding who goes where," and "splitting up what each location is responsible for" — map exactly onto the three things horizontal scaling requires from a real system: <strong>statelessness</strong>, <strong>load balancing</strong>, and <strong>partitioning</strong>.</p>
+
+  <h3>Requirement 1 — Statelessness</h3>
+  <p>If server A remembers "this customer is mid-checkout" only in its own local memory, and the customer's very next request happens to land on server B instead, server B has no idea any of that happened. For horizontal scaling to work, any given request must be answerable by <em>any</em> server in the group — which means servers can't keep request-specific memory (like login sessions or shopping carts) sitting locally in their own process. That per-request memory has to live somewhere every server can reach — typically a shared database or cache like Redis — not inside any one server.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>A LOGIN SESSION, ROUTED TO A DIFFERENT SERVER EACH TIME</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-arch="stateful">Stateful (session in server memory)</button>
+      <button class="chip" data-arch="stateless">Stateless (session in shared store)</button>
+    </div>
+    <div class="req-flow">
+      <div class="req-badge a">request 1: login</div>
+      <div class="req-badge a">request 2: view cart</div>
+    </div>
+    <div class="server-cluster" id="state-servers"></div>
+    <div class="log" id="state-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The failure mode, precisely:</b> a stateful server behind a load balancer works fine right up until a request that depends on earlier state gets routed to a server that never saw that earlier request — then it looks like the user was randomly logged out or their cart emptied, and the bug is maddening to reproduce because it depends entirely on which server the load balancer happened to pick. This is why "make the app stateless" is usually the very first real engineering work required before horizontal scaling can work at all — it's not a nice-to-have, it's a precondition.</div>
+
+  <h3>Requirement 2 — Load balancing</h3>
+  <p>Once you have multiple interchangeable servers, something has to decide which server handles each incoming request. That's a <strong>load balancer</strong> — it sits in front of the server pool and picks a target using some algorithm. A few common ones:</p>
+
+  <table class="cmp">
+    <tr><th>Algorithm</th><th>How it picks</th><th>Weakness</th></tr>
+    <tr><td><strong>Round robin</strong></td><td>Cycles through servers in order: 1, 2, 3, 1, 2, 3…</td><td>Ignores how busy each server actually is right now</td></tr>
+    <tr><td><strong>Least connections</strong></td><td>Sends the request to whichever server currently has the fewest active connections</td><td>"Fewest connections" isn't always "least loaded" — one slow request can hide behind a low count</td></tr>
+    <tr><td><strong>Weighted</strong></td><td>Like round robin, but bigger/faster servers get proportionally more requests</td><td>Weights have to be set and maintained by hand as hardware changes</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH LEAST-CONNECTIONS ROUTE FIVE REQUESTS</span><button class="btn" id="lb-run">Send next request</button></div>
+    <div class="lb-diagram">
+      <div class="lb-box">load balancer</div>
+      <div class="lb-targets" id="lb-targets"></div>
+    </div>
+    <div class="log" id="lb-log"><span class="line">Click to send requests one at a time — the load balancer always picks whichever server currently has the fewest active connections.</span></div>
+  </div>
+
+  <h3>Requirement 3 — Partitioning (sharding)</h3>
+  <p>Load balancing splits up <em>requests</em>. <strong>Partitioning</strong> (also called <strong>sharding</strong>) splits up <em>data</em>. If your dataset is too large for one database server to hold — or too much write traffic for one server to handle — you split the data itself across multiple database servers, each owning a slice, usually decided by something like <code class="inline">hash(user_id) % number_of_shards</code>.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PARTITION USERS ACROSS 3 SHARDS BY hash(user_id) % 3</span><button class="btn" id="shard-run">Route next user</button></div>
+    <div class="shard-row" id="shard-boxes"></div>
+    <div class="log" id="shard-log"><span class="line">Each user id is hashed and routed to exactly one shard — that shard is the only one that ever needs to be asked about that user.</span></div>
+  </div>
+
+  <div class="callout part"><b>Why this matters:</b> partitioning is what lets horizontal scaling apply to data, not just to compute — without it, every server in your horizontally-scaled fleet would still need to talk to the same single, ever-growing database, which becomes its own single point of failure and its own hardware ceiling. The trade-off: once data is partitioned, a query that needs data from <em>multiple</em> shards (like "find all orders across all users this week") becomes genuinely harder — it has to gather results from several shards and combine them, instead of asking one database one question.</div>
+</section>
+
+<!-- ============ SECTION 4: TRADE-OFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">04 — There is no free direction</div>
+  <h2>Cost, complexity, and failure-mode trade-offs</h2>
+
+  <p><strong>Start here, before the numbers.</strong> The bigger-kitchen approach is simple to reason about — there's only one kitchen, one set of keys, one thing that can go wrong. The multi-location approach is safer against any single disaster, but now someone has to manage staffing across locations, keep their inventories in sync, and figure out which location a delivery driver should go to. Neither approach is just "better" — they trade different kinds of risk and effort for each other.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col vert">
+      <h4>Vertical scaling</h4>
+      <ul>
+        <li><strong>Complexity:</strong> low — it's still one system, nothing to coordinate</li>
+        <li><strong>Cost curve:</strong> cheap at first, then rises steeply — the biggest instances cost far more than proportionally more capacity</li>
+        <li><strong>Failure mode:</strong> total outage — one fault takes down 100% of traffic</li>
+        <li><strong>Ceiling:</strong> hard — bounded by the biggest machine that exists to buy</li>
+      </ul>
+    </div>
+    <div class="dc-col horiz">
+      <h4>Horizontal scaling</h4>
+      <ul>
+        <li><strong>Complexity:</strong> higher — needs statelessness, a load balancer, often partitioning, and monitoring across many machines</li>
+        <li><strong>Cost curve:</strong> roughly linear — 2x the machines is close to 2x the cost, all the way up</li>
+        <li><strong>Failure mode:</strong> partial degradation — losing one of ten machines costs ~10% capacity, not the whole system</li>
+        <li><strong>Ceiling:</strong> soft — bounded mainly by budget and coordination overhead, not by hardware limits</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>COST TO DOUBLE CAPACITY — SAME WORKLOAD, TWO STRATEGIES</span>
+      <div class="lookup-controls" style="margin:0;">
+        <button class="chip active" data-cost="vertical">Vertical</button>
+        <button class="chip" data-cost="horizontal">Horizontal</button>
+      </div>
+    </div>
+    <div class="cost-chart">
+      <svg class="cost-svg" viewBox="0 0 600 160" id="cost-svg-el"></svg>
+    </div>
+    <div class="log" id="cost-log"></div>
+  </div>
+
+  <div class="callout"><b>Why this matters:</b> the vertical cost curve bends upward because CPU/RAM pricing isn't linear at the high end — the jump from a 32-core to a 64-core instance costs much more than double, since fewer manufacturers can even build that chip. The horizontal cost curve stays close to a straight line because each additional machine is an identical, mass-produced unit — but that flatter cost line is bought with the ongoing complexity cost of running a distributed system: coordination, monitoring, and the statelessness/load-balancing/partitioning work from Section 3.</div>
+
+  <h3>Choosing between them isn't binary in practice</h3>
+  <p>Most real systems don't pick one direction forever — they scale vertically first (it's cheap and simple while traffic is small), and switch to horizontal once either the hardware ceiling gets close, or the single point of failure becomes an unacceptable business risk. Many systems end up doing both: a horizontally-scaled fleet of moderately-sized (not maximally huge, not minimally small) machines, because the sweet spot for cost-per-unit-of-capacity is rarely at either extreme.</p>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spotting the single point of failure</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A company runs their entire checkout flow on one very large database server, but has 20 identical, load-balanced web servers in front of it. Is this system horizontally scaled? What's the single point of failure, if any?</p>
+    <details><summary>Show solution</summary><div class="solution">The web tier is horizontally scaled -- 20 interchangeable servers behind a
+load balancer means losing one costs about 5% of capacity, not an outage.
+But the database is a single, unreplicated server, so it IS a single point
+of failure: if that one database goes down, all 20 web servers become
+useless, since none of them can complete a checkout without it. Horizontal
+scaling has to be applied to every layer that matters -- scaling only the
+web tier doesn't remove the SPOF sitting one layer below it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Why this specific bug appears</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team adds a second web server and a load balancer in front of both. Users start reporting that they get logged out randomly, seemingly at random times, only some of the time. What's the most likely cause, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">Almost certainly a statefulness bug: login sessions are being stored in
+each web server's local memory. When a user's login request lands on
+server A, server A remembers them -- but if their NEXT request gets routed
+by the load balancer to server B, server B has never seen that session and
+treats them as logged out. It looks "random" because it depends entirely
+on which server the load balancer happens to route to each time.
+
+Fix: move session storage out of each server's local memory into a shared
+store both servers can read from -- a shared database or a cache like
+Redis -- so any server can answer "is this user logged in?" identically.
+This is exactly the statelessness requirement from Section 3.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing a load balancing algorithm</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two servers sit behind a load balancer. Server A mostly handles quick, sub-10ms requests. Server B occasionally receives requests that take 4 seconds to process (a slow report-generation endpoint). Would round robin or least-connections distribute load more fairly here? Why?</p>
+    <details><summary>Show solution</summary><div class="solution">Least-connections is the better fit. Round robin would keep sending every
+other request to server B regardless of how backed up it already is, since
+round robin has no idea how busy a server currently is -- it just cycles
+in order. Least-connections actively avoids sending new requests to a
+server that's already tied up with a long-running request, since that
+server's active-connection count stays elevated for the whole 4 seconds.
+That said, least-connections isn't perfect either: it only sees connection
+COUNT, not how expensive each connection actually is, so it can still be
+fooled by, say, one connection that's unusually slow but the server has
+few others.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Partitioning trade-off</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A social app partitions its user data across 8 database shards by <code class="inline">hash(user_id) % 8</code>. A new feature needs to show "the 10 most recent posts from anyone in the world," sorted by time, across all users. Why is this query harder now than it would be with a single, unpartitioned database?</p>
+    <details><summary>Show solution</summary><div class="solution">Because "anyone in the world" spans all 8 shards, and no single shard has
+enough information to answer the question alone -- each shard only knows
+about the posts from the slice of users hashed onto it. The application
+now has to query all 8 shards for their own top 10 recent posts, then
+merge and re-sort those 80 results down to the true global top 10 in
+application code (this pattern is called a "scatter-gather" query). A
+single unpartitioned database could have answered this with one ORDER BY
+... LIMIT 10 query. This is the direct cost of partitioning: queries that
+only ever touch one shard's data (like "get user X's own posts") stay
+fast and simple, but queries that need a global view get meaningfully
+more expensive and complex.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Vertical first, or horizontal first?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A brand-new startup with 200 total users is deciding how to run their backend. Would you recommend they start with vertical or horizontal scaling? What would make you change that recommendation later?</p>
+    <details><summary>Show solution</summary><div class="solution">Start vertical: at 200 users, the complexity cost of statelessness, load
+balancing, and partitioning almost certainly isn't worth paying yet -- a
+single reasonably-sized server is simpler to build, deploy, and debug, and
+is very unlikely to hit a hardware ceiling at that scale. Vertical scaling
+is also easy to reverse or upgrade incrementally as traffic grows.
+
+Reasons to revisit that decision later: (1) approaching the practical
+hardware ceiling (traffic growth suggests they'll need a machine bigger
+than what's available soon), (2) the business risk of a single point of
+failure becomes unacceptable (e.g. paying customers, an SLA, real revenue
+at stake during downtime), or (3) cost -- if they're paying for a huge
+vertical instance sized for peak traffic that mostly sits idle, several
+smaller horizontally-scaled machines that can be added or removed with
+demand may end up cheaper.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why making a server bigger never removes it as a single point of failure, (2) what specifically breaks when a stateful server is put behind a load balancer, and (3) why a query spanning multiple shards is fundamentally more expensive than one that only touches a single shard? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — vertical vs horizontal scaling.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2a: SPOF SIMULATION */
+(function(){
+  const btn = document.getElementById('spof-run');
+  const server = document.getElementById('spof-server');
+  const banner = document.getElementById('spof-banner');
+  const logEl = document.getElementById('spof-log');
+  let failed = false;
+  btn.addEventListener('click', ()=>{
+    if(failed){ return; }
+    failed = true;
+    server.classList.add('dead');
+    banner.className = 'outage-banner down';
+    banner.textContent = 'Total outage — clients A, B, and C are all down. There is no other server to fail over to.';
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = '<b>Hardware fault on the one server:</b> it doesn\'t matter that this machine had 128GB of RAM — every client depended on this exact machine existing, so all three go down at the same instant. More RAM or more CPU cores would not have prevented this.';
+    logEl.appendChild(p);
+    btn.disabled = true; btn.textContent = 'Outage in progress';
+  });
+})();
+
+/* SECTION 2b: HARDWARE CEILING */
+(function(){
+  const btn = document.getElementById('ceiling-run');
+  const fill = document.getElementById('ceiling-fill');
+  const label = document.getElementById('ceiling-label');
+  const logEl = document.getElementById('ceiling-log');
+  const steps = [
+    {pct:8, txt:'2 vCPU', msg:'Small instance. Plenty of headroom to grow — this is the easy, cheap part of vertical scaling.'},
+    {pct:22, txt:'8 vCPU', msg:'Still comfortably available from every cloud provider, at a proportional price increase.'},
+    {pct:45, txt:'32 vCPU', msg:'Price per core is starting to climb faster than linearly — fewer instance types exist at this tier.'},
+    {pct:68, txt:'96 vCPU', msg:'Now in "specialized hardware" territory — far fewer providers offer this, and pricing reflects it heavily.'},
+    {pct:90, txt:'448 vCPU', msg:'Near the largest instance types that exist anywhere today (extreme high-memory/high-core cloud SKUs).'},
+    {pct:100, txt:'Ceiling reached', msg:'<b>This is the biggest machine you can currently buy.</b> There is no bigger single instance to upgrade to — vertical scaling has run out of road, regardless of budget.'}
+  ];
+  let i = 0;
+  btn.addEventListener('click', ()=>{
+    if(i >= steps.length){ return; }
+    const s = steps[i];
+    fill.style.width = s.pct + '%';
+    label.textContent = s.txt;
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = s.msg;
+    logEl.innerHTML = '';
+    logEl.appendChild(p);
+    i++;
+    if(i >= steps.length){ btn.disabled = true; btn.textContent = 'Ceiling reached'; }
+  });
+})();
+
+/* SECTION 3a: STATELESS VS STATEFUL */
+(function(){
+  const chips = document.querySelectorAll('[data-arch]');
+  const serversEl = document.getElementById('state-servers');
+  const logEl = document.getElementById('state-log');
+
+  function renderStateful(){
+    serversEl.innerHTML = `
+      <div class="mini-server has-session" id="srv-a">Server A<br><span style="font-size:0.65rem;">session: user42 ✓</span></div>
+      <div class="mini-server" id="srv-b">Server B<br><span style="font-size:0.65rem; opacity:0.6;">no session data</span></div>`;
+    const p1 = document.createElement('div'); p1.className='line fadein';
+    p1.innerHTML = '<b>Request 1 (login)</b> is routed to Server A, which stores the session in ITS OWN memory.';
+    const p2 = document.createElement('div'); p2.className='line fadein';
+    p2.innerHTML = '<b>Request 2 (view cart)</b> gets routed by the load balancer to Server B instead — which has never heard of this session. Result: the user appears logged out. This is the bug.';
+    logEl.innerHTML = ''; logEl.appendChild(p1); logEl.appendChild(p2);
+  }
+
+  function renderStateless(){
+    serversEl.innerHTML = `
+      <div class="mini-server stateless">Server A<br><span style="font-size:0.65rem; opacity:0.8;">no local session</span></div>
+      <div class="mini-server stateless">Server B<br><span style="font-size:0.65rem; opacity:0.8;">no local session</span></div>
+      <div class="node-box" style="border-color:var(--lb-c); color:var(--lb-c); margin-top:0.4rem;">shared session store<br><span style="font-size:0.65rem;">(Redis / DB): user42 ✓</span></div>`;
+    const p1 = document.createElement('div'); p1.className='line fadein';
+    p1.innerHTML = '<b>Request 1 (login)</b> is routed to Server A, which writes the session to the SHARED store, not its own memory.';
+    const p2 = document.createElement('div'); p2.className='line fadein';
+    p2.innerHTML = '<b>Request 2 (view cart)</b> is routed to Server B — which simply reads the same shared store and finds the session, same as Server A would have. No bug, regardless of which server handles which request.';
+    logEl.innerHTML = ''; logEl.appendChild(p1); logEl.appendChild(p2);
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      if(c.dataset.arch === 'stateful') renderStateful(); else renderStateless();
+    });
+  });
+  renderStateful();
+})();
+
+/* SECTION 3b: LOAD BALANCER LEAST-CONNECTIONS */
+(function(){
+  const btn = document.getElementById('lb-run');
+  const targetsEl = document.getElementById('lb-targets');
+  const logEl = document.getElementById('lb-log');
+  const servers = [
+    {name:'Server 1', conns:0},
+    {name:'Server 2', conns:0},
+    {name:'Server 3', conns:0}
+  ];
+  let reqNum = 0;
+  const maxConns = 5;
+
+  function render(chosenIdx){
+    targetsEl.innerHTML = servers.map((s,i)=>`
+      <div class="lb-target ${i===chosenIdx?'chosen':''}">
+        <span>${s.name}</span>
+        <div class="load-bar-track"><div class="load-bar-fill" style="width:${(s.conns/maxConns)*100}%;"></div></div>
+        <span>${s.conns} conn</span>
+      </div>`).join('');
+  }
+  render(-1);
+
+  btn.addEventListener('click', ()=>{
+    if(reqNum >= 5){ return; }
+    let minIdx = 0;
+    for(let i=1;i<servers.length;i++){ if(servers[i].conns < servers[minIdx].conns) minIdx = i; }
+    servers[minIdx].conns++;
+    reqNum++;
+    render(minIdx);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = `<b>Request ${reqNum}:</b> ${servers[minIdx].name} currently has the fewest active connections, so the load balancer routes here. New count: ${servers[minIdx].conns}.`;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+    if(reqNum >= 5){ btn.disabled = true; btn.textContent = 'Done ✓'; }
+  });
+})();
+
+/* SECTION 3c: PARTITIONING / SHARDING */
+(function(){
+  const btn = document.getElementById('shard-run');
+  const boxesEl = document.getElementById('shard-boxes');
+  const logEl = document.getElementById('shard-log');
+  const users = [17, 42, 8, 91, 33, 5];
+  const shards = [[], [], []];
+  let idx = 0;
+
+  function render(landedShard){
+    boxesEl.innerHTML = shards.map((keys,i)=>`
+      <div class="shard-box">
+        <div class="shard-title">Shard ${i} — user_id % 3 == ${i}</div>
+        <div class="shard-keys">${keys.map((k,j)=>`<span class="key-chip ${i===landedShard && j===keys.length-1 ? 'landed':''}">user ${k}</span>`).join(' ') || '<span style="opacity:0.5;">empty</span>'}</div>
+      </div>`).join('');
+  }
+  render(-1);
+
+  btn.addEventListener('click', ()=>{
+    if(idx >= users.length){ return; }
+    const uid = users[idx];
+    const shardIdx = uid % 3;
+    shards[shardIdx].push(uid);
+    render(shardIdx);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = `<b>user_id = ${uid}:</b> hash(${uid}) % 3 = ${shardIdx} → routed to Shard ${shardIdx}. Only Shard ${shardIdx} will ever be asked about this user again.`;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+    idx++;
+    if(idx >= users.length){ btn.disabled = true; btn.textContent = 'Done ✓'; }
+  });
+})();
+
+/* SECTION 4: COST CURVE SVG */
+(function(){
+  const svg = document.getElementById('cost-svg-el');
+  const chips = document.querySelectorAll('[data-cost]');
+  const logEl = document.getElementById('cost-log');
+  const W = 600, H = 160, PAD = 30;
+
+  function pathFor(mode){
+    const pts = [];
+    const n = 12;
+    for(let i=0;i<=n;i++){
+      const t = i/n;
+      const x = PAD + t*(W-2*PAD);
+      let y;
+      if(mode === 'vertical'){
+        y = (H-PAD) - Math.pow(t, 2.6) * (H-2*PAD);
+      } else {
+        y = (H-PAD) - t * (H-2*PAD) * 0.62;
+      }
+      pts.push([x,y]);
+    }
+    return pts.map((p,i)=> (i===0?'M':'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  }
+
+  function render(mode){
+    const color = mode === 'vertical' ? 'var(--vert-c)' : 'var(--horiz-c)';
+    const d = pathFor(mode);
+    svg.innerHTML = `
+      <line x1="${PAD}" y1="${H-PAD}" x2="${W-PAD}" y2="${H-PAD}" stroke="var(--rule)" stroke-width="1.5"/>
+      <line x1="${PAD}" y1="${PAD}" x2="${PAD}" y2="${H-PAD}" stroke="var(--rule)" stroke-width="1.5"/>
+      <text x="${PAD}" y="${H-PAD+16}" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-dim)">1x capacity</text>
+      <text x="${W-PAD-60}" y="${H-PAD+16}" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-dim)">16x capacity</text>
+      <text x="${PAD-24}" y="${PAD+4}" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-dim)">$$$</text>
+      <text x="${PAD-24}" y="${H-PAD}" font-family="JetBrains Mono, monospace" font-size="10" fill="var(--ink-dim)">$</text>
+      <path d="${d}" fill="none" stroke="${color}" stroke-width="2.5"/>
+    `;
+    const msg = mode === 'vertical'
+      ? '<b>Vertical:</b> the curve bends sharply upward — doubling capacity near the top of the range costs far more than double, because fewer, more exotic (and expensive) machines exist at that tier.'
+      : '<b>Horizontal:</b> the curve stays close to a straight line — each additional machine is an identical, mass-produced unit, so 2x the machines costs close to 2x the price all the way up.';
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.cost);
+    });
+  });
+  render('vertical');
+})();
+</script>
+
+</body>
+</html>

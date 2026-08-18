@@ -1,0 +1,701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Composition, Inheritance &amp; Contracts</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --comp-c:#7fd8a0; --inh-c:#f2a154; --prop-c:#6ea8fe; --abc-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--comp-c); color:var(--comp-c); background:rgba(127,216,160,0.08);}
+  .dnode.inh{border-color:var(--inh-c); color:var(--inh-c); background:rgba(242,161,84,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#f2c14e;} .code .c-dec{color:var(--abc-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flash{animation:flash .6s ease;}
+  @keyframes flash{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,138,101,0.3);} 100%{box-shadow:none;}}
+
+  /* composition vs inheritance compare */
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; }
+  .dc-col.inh{border-color:var(--inh-c);}
+  .dc-col.comp{border-color:var(--comp-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.inh h4{color:var(--inh-c);} .dc-col.comp h4{color:var(--comp-c);}
+  .dc-col ul{margin:0.6rem 0 0; padding-left:1.1rem; font-size:0.86rem; color:var(--ink-dim);}
+  .dc-col li{margin-bottom:0.3rem;}
+
+  /* MRO diagram */
+  .mro-tree{display:flex; flex-direction:column; align-items:center; gap:0.6rem; margin:1.4rem 0;}
+  .mro-row{display:flex; gap:1.6rem; justify-content:center; flex-wrap:wrap;}
+  .mro-node{font-family:var(--mono); font-size:0.85rem; padding:0.6rem 1.1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .3s; position:relative;}
+  .mro-node.hit{border-color:var(--comp-c); color:var(--comp-c); background:rgba(127,216,160,0.1); box-shadow:0 0 16px rgba(127,216,160,0.25);}
+  .mro-node.searched{border-color:var(--ink-dim); opacity:0.55;}
+  .mro-node.pending{opacity:0.35;}
+  .mro-chain{display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap; justify-content:center; margin-top:1rem;}
+  .mro-chain .arrow{color:var(--ink-dim); font-family:var(--mono);}
+
+  /* property flow */
+  .flow{display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; margin:1.4rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .flow-node{padding:0.65rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center;}
+  .flow-node.setter{border-color:var(--prop-c); color:var(--prop-c); background:rgba(110,168,254,0.08);}
+  .flow-node.ok{border-color:var(--comp-c); color:var(--comp-c); background:rgba(127,216,160,0.08);}
+  .flow-node.err{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .flow-arrow{color:var(--ink-dim);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.comp{border-left-color:var(--comp-c); background:rgba(127,216,160,0.06);} .callout.comp b{color:var(--comp-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.abc{border-left-color:var(--abc-c); background:rgba(199,146,234,0.06);} .callout.abc b{color:var(--abc-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · COMPOSITION, INHERITANCE &amp; CONTRACTS</div>
+  <h1>Every class relationship is really an answer to <em>who's responsible for what</em>.</h1>
+  <p class="lede">Inheritance shares behavior through a family tree. Composition shares behavior by holding a reference and delegating. Properties decide what "touching an attribute" is allowed to do. Abstract base classes make a promise enforceable. Same question, four different tools.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode inh">Duck(Animal)</div>
+    <div class="darrow">is-a — vs —</div>
+    <div class="dnode">Car(engine=Engine())</div>
+    <div class="darrow">has-a</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="compvsinh">1 · Composition vs Inheritance</a>
+  <a data-target="mro">2 · Multiple Inheritance &amp; MRO</a>
+  <a data-target="property">3 · @property &amp; Setters</a>
+  <a data-target="abc">4 · Abstract Base Classes</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: COMPOSITION VS INHERITANCE ============ -->
+<section id="compvsinh">
+  <div class="kicker">01 — "has-a" vs "is-a"</div>
+  <h2>Composition vs. inheritance</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about how you'd describe a person. You might say "a manager <em>is an</em> employee" — a manager is fundamentally a kind of employee, just with extra responsibilities. But you'd never say "a manager <em>is a</em> laptop" — a manager just <em>has</em> a laptop, uses it, and could swap it for a different one tomorrow without stopping being a manager. Those are two completely different kinds of relationship, and object-oriented code has a name and a tool for each one.</p>
+
+  <p>The test is simple: does the relationship describe <strong>what the object fundamentally is</strong>, or <strong>what the object merely has, and uses</strong>?</p>
+  <ul style="color:#cdd0d8; max-width:68ch; margin-bottom:1.2rem;">
+    <li><strong>"is-a" → inheritance.</strong> A <code class="inline">Duck</code> <em>is an</em> <code class="inline">Animal</code>. In Python, <code class="inline">class Duck(Animal):</code> — the parentheses after the class name mean "Duck inherits from Animal."</li>
+    <li><strong>"has-a" → composition.</strong> A <code class="inline">Car</code> <em>has an</em> <code class="inline">Engine</code>. In Python, <code class="inline">Car</code> simply stores an <code class="inline">Engine</code> object as one of its own attributes, the same way you'd store any other value.</li>
+  </ul>
+  <p>Mixing these two up — reaching for inheritance when you really just mean "has a" — is one of the most common design mistakes in object-oriented code, and a question interviewers like to probe specifically because it reveals whether you're modeling relationships deliberately or just copying a pattern you've seen before.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col inh">
+      <h4>is-a — Inheritance</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">Animal</span>:
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"..."</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Duck</span>(Animal):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"quack"</span>
+
+<span class="c-cmt"># Duck IS an Animal — usable
+# anywhere an Animal is expected.</span>
+      </div>
+      <ul>
+        <li>Shares code through a class hierarchy</li>
+        <li>Tight coupling to the parent's internals</li>
+        <li>Fixed at class-definition time</li>
+      </ul>
+    </div>
+    <div class="dc-col comp">
+      <h4>has-a — Composition</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">class</span> <span class="c-fn">Engine</span>:
+    <span class="c-kw">def</span> <span class="c-fn">start</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"vroom"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Car</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>):
+        <span class="c-self">self</span>.engine = <span class="c-fn">Engine</span>()
+
+    <span class="c-kw">def</span> <span class="c-fn">start</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-self">self</span>.engine.start()
+      </div>
+      <ul>
+        <li>Assembles behavior from independent parts</li>
+        <li>Loose coupling — swap parts via their interface</li>
+        <li>Can change which part is held at runtime</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SWAP THE ENGINE AT RUNTIME — INHERITANCE CAN'T DO THIS</span><button class="btn" id="comp-run">car.engine = Engine(1000)</button></div>
+    <div class="code" id="comp-code" style="margin:0;">
+car = <span class="c-fn">Car</span>(<span class="c-num">300</span>)
+<span id="comp-call-line">car.start()<span class="c-out">→ 'Engine roars to life (300 hp)'</span></span>
+    </div>
+    <div class="log" id="comp-log"><span class="line">Car doesn't inherit from Engine — it just holds one. Click the button to swap the part it delegates to.</span></div>
+  </div>
+
+  <div class="callout comp"><b>Why this matters:</b> imagine adding an <code class="inline">ElectricCar</code>. If <code class="inline">Car</code> inherited from <code class="inline">GasEngine</code>, you'd either duplicate the whole class or contort the hierarchy. With composition, <code class="inline">ElectricCar</code> just holds a different <code class="inline">engine</code> object that implements the same <code class="inline">start()</code> — no hierarchy redesign. This is the practical meaning of "favor composition over inheritance": reach for inheritance only for genuine taxonomies where you need to share a big, stable interface; reach for composition whenever you're assembling capabilities.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <strong>inheritance</strong> models an <strong>is-a</strong> relationship — a subclass automatically gains its parent's interface and implementation, and can be used anywhere the parent is expected (this substitutability is formalized as the <strong>Liskov Substitution Principle</strong>). It creates tight coupling: subclasses depend on their parent's internal implementation details, and that dependency is fixed at class-definition time. <strong>Composition</strong> models a <strong>has-a</strong> relationship — an object holds a reference to another object and delegates work to it through that object's public interface. This is loose coupling: the held object can be swapped for any other object satisfying the same interface, including at runtime. The standard industry guidance, "favor composition over inheritance," means: default to composition for flexibility, and reserve inheritance for genuine, stable taxonomies.</div>
+</section>
+
+<!-- ============ SECTION 2: MRO ============ -->
+<section id="mro">
+  <div class="kicker">02 — How Python resolves the diamond</div>
+  <h2>Multiple inheritance and MRO</h2>
+
+  <p><strong>Start here, before any code.</strong> Suppose you inherited character traits from both of your parents, and both of them happen to be excellent cooks — but they cook completely differently. If someone asks "how do you cook pasta?", whose method do you use? You need <em>some</em> consistent rule for which side of the family "wins" when there's a conflict, or the question has no sensible answer.</p>
+
+  <p>Python has exactly this problem when a class inherits from more than one parent class at once — this is called <strong>multiple inheritance</strong>. If two parent classes both define a method with the same name, Python needs a fixed, predictable rule for which one gets used. That rule is called the <strong>Method Resolution Order</strong>, or <strong>MRO</strong> for short: it's simply the exact order Python checks classes in, from most specific to least specific, when looking for a method.</p>
+
+  <p>The rule Python actually uses to build that order is an algorithm called <strong>C3 linearization</strong> — you will almost never need to compute it by hand, but knowing the name matters for interviews, since it's the standard term for "how Python decides the search order." The everyday intuition behind it is simple, though: <strong>a class is always checked before its parents, and if a class has multiple parents, they're checked left-to-right in the exact order they were written in the class definition.</strong></p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Animal</span>:
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"..."</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Swimmer</span>(Animal):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"blub"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Flyer</span>(Animal):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"screech"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Duck</span>(Swimmer, Flyer):   <span class="c-cmt"># note the order: Swimmer listed first</span>
+    <span class="c-kw">pass</span>
+
+Duck().speak()   <span class="c-out">→ 'blub'   — Swimmer wins, not Flyer or Animal</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WALK THE MRO SEARCH FOR Duck().speak()</span><button class="btn" id="mro-run">Duck().speak()</button></div>
+    <div class="mro-tree">
+      <div class="mro-row">
+        <div class="mro-node" id="mro-animal">Animal</div>
+      </div>
+      <div class="mro-row">
+        <div class="mro-node" id="mro-swimmer">Swimmer</div>
+        <div class="mro-node" id="mro-flyer">Flyer</div>
+      </div>
+      <div class="mro-row">
+        <div class="mro-node" id="mro-duck">Duck</div>
+      </div>
+    </div>
+    <div class="log" id="mro-log"><span class="line">Click the button to step through Duck.__mro__ in search order: Duck → Swimmer → Flyer → Animal → object.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Step</th><th>Class checked</th><th>Result</th></tr>
+    <tr><td>1</td><td><code>Duck</code></td><td>no <code>speak</code> defined here</td></tr>
+    <tr><td>2</td><td><code>Swimmer</code></td><td><strong style="color:var(--comp-c)">defines speak — match, search stops</strong></td></tr>
+    <tr><td>3</td><td><code>Flyer</code></td><td>never reached</td></tr>
+    <tr><td>4</td><td><code>Animal</code></td><td>never reached</td></tr>
+    <tr><td>5</td><td><code>object</code></td><td>root of every class, never reached</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> the <strong>MRO</strong> is the linear order Python searches through a class's ancestors when resolving an attribute or method lookup — accessible directly as <code class="inline">ClassName.__mro__</code> or <code class="inline">ClassName.mro()</code>. It is computed once, when the class is defined, using the <strong>C3 linearization</strong> algorithm, which guarantees two properties: a subclass always precedes its parents in the order (<strong>local precedence</strong>), and the relative order of parents as listed in the class definition is preserved (<strong>monotonicity</strong>). If no ordering can satisfy both properties simultaneously — a genuine contradiction in the hierarchy — Python raises <code class="inline">TypeError</code> at class-definition time rather than silently picking one.</div>
+
+  <h3>super() follows the MRO, not "the parent"</h3>
+  <p>Here's the part almost everyone gets wrong the first time: it's tempting to assume <code class="inline">super().__init__()</code> means "go call my parent's <code class="inline">__init__</code>." That's true in simple, single-parent inheritance — but with multiple inheritance, it's not quite right. <code class="inline">super()</code> doesn't mean "my parent." It means <strong>"whoever comes next in the MRO"</strong> — and in a multi-parent hierarchy, that "next" class can actually be a sibling class, not an ancestor at all.</p>
+
+  <p>This matters because it's exactly what makes multi-parent hierarchies work correctly: if every class in the chain calls <code class="inline">super()</code> instead of naming a specific parent, Python can walk through the entire MRO and make sure each class's code runs exactly once, in the right order — even in a "diamond" shape where two different paths both eventually lead back to the same shared ancestor.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Swimmer</span>(Animal):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"blub + "</span> + <span class="c-kw">super</span>().speak()
+
+<span class="c-kw">class</span> <span class="c-fn">Flyer</span>(Animal):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"screech + "</span> + <span class="c-kw">super</span>().speak()
+
+<span class="c-kw">class</span> <span class="c-fn">Duck</span>(Swimmer, Flyer):
+    <span class="c-kw">def</span> <span class="c-fn">speak</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-str">"quack + "</span> + <span class="c-kw">super</span>().speak()
+
+Duck().speak()
+<span class="c-out">→ 'quack + blub + screech + ...'
+   Duck.speak calls super() → Swimmer.speak (NOT Animal — the next MRO slot)
+   Swimmer.speak calls super() → Flyer.speak
+   Flyer.speak calls super() → Animal.speak</span>
+  </div>
+
+  <div class="callout"><b>Core foundation:</b> <code class="inline">super()</code> means "the next stop on this instance's MRO," not "my parent." That's the only way a diamond hierarchy guarantees <code class="inline">Animal.__init__</code> runs exactly once even though two subclasses both lead to it. Design mixins so every one calls <code class="inline">super().__init__(**kwargs)</code>, and let the MRO handle the chaining.</div>
+</section>
+
+<!-- ============ SECTION 3: PROPERTY ============ -->
+<section id="property">
+  <div class="kicker">03 — Attributes that run code</div>
+  <h2>@property and @x.setter</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a thermostat display. You just look at the number on the screen and set a new target temperature by turning a dial — you never open the thermostat up and directly rewire its internal sensor. Behind that simple dial, though, the thermostat is quietly checking your requested temperature is actually reasonable (not -900 degrees) before it accepts it. From the outside, it looks like you're just "setting a number." Underneath, real logic is running.</p>
+
+  <p>A Python <strong>property</strong> lets a class attribute work exactly like that thermostat dial. You write <code class="inline">obj.value</code> and <code class="inline">obj.value = 25</code> — completely ordinary-looking attribute syntax — but underneath, a method is quietly running every time, checking or computing things before anything actually happens. This is Python's approach to <strong>encapsulation</strong>: instead of forcing every class to expose ugly <code class="inline">get_value()</code> / <code class="inline">set_value()</code> methods everywhere (as some other languages do), you write plain attribute access, and the class itself decides — invisibly — whether that access should validate the value, compute it fresh, or log it.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Temperature</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, celsius):
+        <span class="c-self">self</span>._celsius = celsius   <span class="c-cmt"># real storage, "private" by convention</span>
+
+    <span class="c-dec">@property</span>
+    <span class="c-kw">def</span> <span class="c-fn">celsius</span>(<span class="c-self">self</span>):
+        <span class="c-kw">return</span> <span class="c-self">self</span>._celsius
+
+    <span class="c-dec">@celsius.setter</span>
+    <span class="c-kw">def</span> <span class="c-fn">celsius</span>(<span class="c-self">self</span>, value):
+        <span class="c-kw">if</span> value &lt; -<span class="c-num">273.15</span>:
+            <span class="c-kw">raise</span> ValueError(<span class="c-str">"Below absolute zero"</span>)
+        <span class="c-self">self</span>._celsius = value
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY AN ASSIGNMENT AND WATCH THE SETTER RUN</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-tval="25">t.celsius = 25</button>
+      <button class="chip" data-tval="-300">t.celsius = -300</button>
+      <button class="chip" data-tval="-273.15">t.celsius = -273.15</button>
+    </div>
+    <div class="flow" id="prop-flow">
+      <div class="flow-node" id="pf-call">t.celsius = ?</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node setter" id="pf-setter">@celsius.setter<br>if value &lt; -273.15: raise</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-node" id="pf-result">result</div>
+    </div>
+    <div class="log" id="prop-log"><span class="line">Assignment syntax hides a method call — the setter validates before anything reaches storage.</span></div>
+  </div>
+
+  <div class="callout"><b>Why this matters:</b> you can ship a class with a plain public attribute (<code class="inline">self.celsius = 25</code>) and later convert it into a property without breaking any caller — <code class="inline">obj.celsius</code> and <code class="inline">obj.celsius = x</code> still work syntactically the same. Python doesn't need <code class="inline">getFoo()</code>/<code class="inline">setFoo()</code> conventions the way Java does: add validation only when you actually need it, with zero API changes for callers.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <code class="inline">@property</code> is a built-in <strong>descriptor</strong> — an object implementing <code class="inline">__get__</code>, and optionally <code class="inline">__set__</code>/<code class="inline">__delete__</code> — that Python's attribute-lookup machinery checks before falling back to an instance's own <code class="inline">__dict__</code>. Decorating a method with <code class="inline">@property</code> turns attribute <em>reads</em> (<code class="inline">obj.x</code>) into calls to that method. <code class="inline">@x.setter</code> registers a second method to handle attribute <em>writes</em> (<code class="inline">obj.x = value</code>) on the same property name. If no setter is defined, the property is read-only and assignment raises <code class="inline">AttributeError</code>. This is the standard mechanism behind Python encapsulation: it achieves the same goal as explicit getters/setters without changing the calling syntax.</div>
+
+  <h3>Computed and read-only properties</h3>
+  <p>A property with no setter is read-only from outside the class — assigning to it raises <code class="inline">AttributeError</code>. This is the idiomatic way to expose a derived value without letting callers overwrite it directly.</p>
+  <div class="code">
+<span class="c-dec">@property</span>
+<span class="c-kw">def</span> <span class="c-fn">fahrenheit</span>(<span class="c-self">self</span>):
+    <span class="c-kw">return</span> <span class="c-self">self</span>._celsius * <span class="c-num">9</span>/<span class="c-num">5</span> + <span class="c-num">32</span>
+<span class="c-cmt"># no @fahrenheit.setter defined here → t.fahrenheit = 100 raises AttributeError</span>
+
+<span class="c-dec">@property</span>
+<span class="c-kw">def</span> <span class="c-fn">area</span>(<span class="c-self">self</span>):
+    <span class="c-kw">return</span> <span class="c-self">self</span>.width * <span class="c-self">self</span>.height
+<span class="c-cmt"># computed fresh every access — no separate storage to keep in sync</span>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: ABC ============ -->
+<section id="abc">
+  <div class="kicker">04 — Making a promise enforceable</div>
+  <h2>Abstract base classes: abc.ABC, @abstractmethod</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a job application form that says "all fields marked required must be filled in." If that's just a note at the top written in plain English, nothing stops someone from submitting the form with a required field left blank — the mistake only gets caught later, by whoever processes the form, possibly much too late. Now imagine the form is a website that simply refuses to submit until every required field has something in it. Same rule, but now it's actually enforced, automatically, the moment it matters.</p>
+
+  <p>An <strong>abstract base class</strong> is Python's version of that enforced form. It lets you define a set of methods that say <strong>"every subclass of me is required to provide this,"</strong> and — unlike a comment or a docstring saying the same thing — Python actually checks the promise and refuses to let you create a broken object at all.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> abc <span class="c-kw">import</span> ABC, abstractmethod
+
+<span class="c-kw">class</span> <span class="c-fn">Shape</span>(ABC):
+    <span class="c-dec">@abstractmethod</span>
+    <span class="c-kw">def</span> <span class="c-fn">area</span>(<span class="c-self">self</span>): ...
+
+    <span class="c-dec">@abstractmethod</span>
+    <span class="c-kw">def</span> <span class="c-fn">perimeter</span>(<span class="c-self">self</span>): ...
+
+    <span class="c-kw">def</span> <span class="c-fn">describe</span>(<span class="c-self">self</span>):
+        <span class="c-cmt"># concrete methods CAN live on an ABC — they can call the abstract ones</span>
+        <span class="c-kw">return</span> f<span class="c-str">"area={self.area():.2f}, perimeter={self.perimeter():.2f}"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Circle</span>(Shape):
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, radius): <span class="c-self">self</span>.radius = radius
+    <span class="c-kw">def</span> <span class="c-fn">area</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-num">3.14159</span> * <span class="c-self">self</span>.radius ** <span class="c-num">2</span>
+    <span class="c-kw">def</span> <span class="c-fn">perimeter</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-num">2</span> * <span class="c-num">3.14159</span> * <span class="c-self">self</span>.radius
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY INSTANTIATING EACH CLASS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-abc="shape">Shape()</button>
+      <button class="chip" data-abc="circle">Circle(4)</button>
+      <button class="chip" data-abc="broken">class Square(Shape): def area(self): ...</button>
+    </div>
+    <div class="log" id="abc-log" style="min-height:2.4em;"></div>
+  </div>
+
+  <div class="callout abc"><b>Why this matters:</b> without <code class="inline">ABC</code>, "every Shape must implement area()" is just a comment — nothing stops a subclass from forgetting it, and the bug surfaces at the worst time, deep inside a call to <code class="inline">.area()</code> on a shape you didn't write. With <code class="inline">abc.ABC</code>, the bug surfaces the moment the broken subclass is <em>instantiated</em>, naming exactly which methods are missing. This is fail-fast applied to interface design: the promise is enforced by the language, not by discipline.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> <code class="inline">abc.ABC</code> is a base class (built on the metaclass <code class="inline">ABCMeta</code>) that enables abstract method enforcement. Marking a method with <code class="inline">@abstractmethod</code> registers it as required; Python then refuses to instantiate <em>any</em> class — the ABC itself, or any subclass — that hasn't overridden every abstract method, raising <code class="inline">TypeError</code> at the moment of instantiation and naming the specific missing methods. Concrete (non-abstract) methods are allowed on an ABC and may freely call the abstract ones, since by the time any instance exists, those abstract methods are guaranteed to be implemented. This pattern — defining a contract once, enforced everywhere — is what allows client code (like a function that calls <code class="inline">.area()</code> on "any Shape") to safely stay agnostic about which concrete subclass it's actually holding, a technique known as <strong>polymorphism</strong>.</div>
+
+  <h3>Composition + ABC + property, together</h3>
+  <p>Real code usually combines all three tools. <code class="inline">Order</code> never needs to know <em>which</em> payment method it holds — only that it satisfies the interface. The ABC guarantees the shape of the contract; composition lets the concrete implementation vary freely; the property validates state before it's used.</p>
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">PaymentMethod</span>(ABC):
+    <span class="c-dec">@abstractmethod</span>
+    <span class="c-kw">def</span> <span class="c-fn">charge</span>(<span class="c-self">self</span>, amount): ...
+
+<span class="c-kw">class</span> <span class="c-fn">PayPal</span>(PaymentMethod):
+    <span class="c-kw">def</span> <span class="c-fn">charge</span>(<span class="c-self">self</span>, amount): <span class="c-kw">return</span> f<span class="c-str">"Charged ${amount:.2f} via PayPal"</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Order</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, method: PaymentMethod):
+        <span class="c-self">self</span>._method = method     <span class="c-cmt"># composition: Order HAS-A PaymentMethod</span>
+        <span class="c-self">self</span>._total = <span class="c-num">0.0</span>
+
+    <span class="c-dec">@property</span>
+    <span class="c-kw">def</span> <span class="c-fn">total</span>(<span class="c-self">self</span>): <span class="c-kw">return</span> <span class="c-self">self</span>._total
+
+    <span class="c-dec">@total.setter</span>
+    <span class="c-kw">def</span> <span class="c-fn">total</span>(<span class="c-self">self</span>, value):
+        <span class="c-kw">if</span> value &lt; <span class="c-num">0</span>: <span class="c-kw">raise</span> ValueError(<span class="c-str">"Total can't be negative"</span>)
+        <span class="c-self">self</span>._total = value
+
+    <span class="c-kw">def</span> <span class="c-fn">checkout</span>(<span class="c-self">self</span>):
+        <span class="c-kw">return</span> <span class="c-self">self</span>._method.charge(<span class="c-self">self</span>.total)   <span class="c-cmt"># delegate to the swappable part</span>
+
+order = <span class="c-fn">Order</span>(PayPal()); order.total = <span class="c-num">49.99</span>
+order.checkout()   <span class="c-out">→ 'Charged $49.99 via PayPal'</span>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Write real code for each of these — don't just reason about it in your head. Predict the output before expanding each solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Composition refactor</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're given <code class="inline">class FlyingCar(Car, Airplane)</code>. It's grown unmanageable — <code class="inline">Car</code> and <code class="inline">Airplane</code> both define <code class="inline">fuel_level</code> and conflict. Rewrite it using composition: <code class="inline">FlyingCar</code> should hold a <code class="inline">drive_mode</code> and a <code class="inline">fly_mode</code> object, each with its own <code class="inline">move()</code>, and pick which to delegate to based on a <code class="inline">mode</code> attribute.</p>
+    <details><summary>Show solution</summary><div class="solution">class DriveMode:
+    def move(self): return "driving"
+
+class FlyMode:
+    def move(self): return "flying"
+
+class FlyingCar:
+    def __init__(self):
+        self.drive_mode = DriveMode()
+        self.fly_mode = FlyMode()
+        self.mode = "drive"
+
+    def move(self):
+        if self.mode == "drive":
+            return self.drive_mode.move()
+        return self.fly_mode.move()
+
+No inheritance from Car/Airplane at all — FlyingCar HAS a DriveMode and a
+FlyMode, and simply forwards to whichever is active. Adding a third mode
+means adding a third held object, not restructuring a hierarchy.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Trace an MRO by hand</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class A: pass
+class B(A): pass
+class C(A): pass
+class D(B, C): pass
+
+print(D.__mro__)
+    </div>
+    <p style="margin:0.6rem 0 0; font-size:0.9rem;">Then explain in one sentence why <code class="inline">class D(C, B): pass</code> would produce a different order.</p>
+    <details><summary>Show solution</summary><div class="solution">(D, B, C, A, object)
+
+C3 linearization keeps each parent's own MRO intact and merges left-to-right
+by the order bases were listed, so D, B, C, A, object. Swapping the base
+list to D(C, B) swaps B and C in the result: D, C, B, A, object — the
+search order always mirrors the order the parent classes were listed in.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · A validated property</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write a <code class="inline">BankAccount</code> class with a <code class="inline">balance</code> property. The setter should reject negative values with <code class="inline">ValueError</code>. Add a read-only <code class="inline">is_overdrawn</code> property (no setter) computed from the stored balance.</p>
+    <details><summary>Show solution</summary><div class="solution">class BankAccount:
+    def __init__(self, balance=0):
+        self.balance = balance   # goes through the setter immediately
+
+    @property
+    def balance(self):
+        return self._balance
+
+    @balance.setter
+    def balance(self, value):
+        if value < 0:
+            raise ValueError("Balance can't be negative")
+        self._balance = value
+
+    @property
+    def is_overdrawn(self):
+        return self._balance < 0
+
+Because the setter always rejects negatives, is_overdrawn will always read
+False here — which is itself the point: it demonstrates that a read-only
+property can safely expose a derived fact without ever risking a caller
+setting it directly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Design an abstract interface</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Define an abstract <code class="inline">Notifier(ABC)</code> with an abstract <code class="inline">send(message)</code>. Implement <code class="inline">EmailNotifier</code> and <code class="inline">SMSNotifier</code>. Write <code class="inline">notify_all(notifiers, message)</code> that calls <code class="inline">.send()</code> on each without caring which concrete class any of them are. What happens if you try <code class="inline">Notifier()</code> directly?</p>
+    <details><summary>Show solution</summary><div class="solution">from abc import ABC, abstractmethod
+
+class Notifier(ABC):
+    @abstractmethod
+    def send(self, message): ...
+
+class EmailNotifier(Notifier):
+    def send(self, message): return f"Email: {message}"
+
+class SMSNotifier(Notifier):
+    def send(self, message): return f"SMS: {message}"
+
+def notify_all(notifiers, message):
+    for n in notifiers:
+        print(n.send(message))
+
+Notifier()
+# TypeError: Can't instantiate abstract class Notifier with abstract method send
+
+notify_all loops and calls .send() polymorphically — it never checks which
+concrete class it has. That safety is guaranteed by the ABC contract, not
+by convention.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Combine everything</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Build a small <code class="inline">ConnectionPool</code>: an abstract <code class="inline">Connection(ABC)</code> with <code class="inline">execute(query)</code>, two concrete implementations, a <code class="inline">Pool</code> that <strong>composes</strong> a list of connections and exposes a validated <code class="inline">max_size</code> property. What ABC guarantee lets <code class="inline">Pool</code> stay agnostic about which concrete connection type it holds?</p>
+    <details><summary>Show solution</summary><div class="solution">from abc import ABC, abstractmethod
+
+class Connection(ABC):
+    @abstractmethod
+    def execute(self, query): ...
+
+class PostgresConnection(Connection):
+    def execute(self, query): return f"[postgres] {query}"
+
+class SQLiteConnection(Connection):
+    def execute(self, query): return f"[sqlite] {query}"
+
+class Pool:
+    def __init__(self, max_size):
+        self.connections = []      # composition: Pool HAS-A list of Connection
+        self.max_size = max_size   # goes through the validated setter
+
+    @property
+    def max_size(self):
+        return self._max_size
+
+    @max_size.setter
+    def max_size(self, value):
+        if value <= 0:
+            raise ValueError("max_size must be positive")
+        self._max_size = value
+
+    def add(self, conn: Connection):
+        if len(self.connections) >= self.max_size:
+            raise RuntimeError("Pool is full")
+        self.connections.append(conn)
+
+Because every Connection subclass is guaranteed (by ABC) to implement
+execute(), Pool.add() and any code that later calls conn.execute() never
+needs an isinstance check or a branch per database type — the abstract
+contract is what makes the composition safe to leave generic.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why <code class="inline">super()</code> calls "the next MRO slot" rather than "the parent," (2) why a mutable class attribute problem and a property-validation problem are really the same kind of bug about who controls state, and (3) what actually happens in memory the instant you write <code class="inline">Shape()</code> for an ABC with unimplemented abstract methods? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — composition, inheritance &amp; contracts.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: COMPOSITION SWAP */
+(function(){
+  const btn = document.getElementById('comp-run');
+  const line = document.getElementById('comp-call-line');
+  const logEl = document.getElementById('comp-log');
+  let swapped = false;
+  btn.addEventListener('click', ()=>{
+    if(swapped){ return; }
+    swapped = true;
+    line.innerHTML = 'car.engine = Engine(1000)<span class="c-out">   # swap the part, no class redefinition</span>\ncar.start()<span class="c-out">→ \'Engine roars to life (1000 hp)\'</span>';
+    line.classList.add('flash');
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = '<b>car.engine = Engine(1000):</b> Car never inherited from Engine, so there is no hierarchy to touch — reassigning the held reference is enough. Inheritance could never do this without redefining the class.';
+    logEl.appendChild(p);
+    btn.disabled = true; btn.textContent = 'Swapped ✓';
+  });
+})();
+
+/* SECTION 2: MRO WALK */
+(function(){
+  const btn = document.getElementById('mro-run');
+  const logEl = document.getElementById('mro-log');
+  const order = ['mro-duck','mro-swimmer','mro-flyer','mro-animal'];
+  const labels = {'mro-duck':'Duck','mro-swimmer':'Swimmer','mro-flyer':'Flyer','mro-animal':'Animal'};
+  let step = 0;
+  btn.addEventListener('click', ()=>{
+    if(step >= order.length){ return; }
+    const id = order[step];
+    const el = document.getElementById(id);
+    if(labels[id] === 'Swimmer'){
+      el.classList.add('hit');
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>Step ${step+1} — ${labels[id]}:</b> defines speak() → MATCH. Search stops here; Flyer and Animal are never checked.`;
+      logEl.appendChild(p);
+      document.getElementById('mro-flyer').classList.add('pending');
+      document.getElementById('mro-animal').classList.add('pending');
+      btn.disabled = true; btn.textContent = 'Resolved: Swimmer ✓';
+    } else {
+      el.classList.add('searched');
+      const p = document.createElement('div'); p.className='line fadein';
+      p.innerHTML = `<b>Step ${step+1} — ${labels[id]}:</b> no speak() defined here, keep searching.`;
+      logEl.appendChild(p);
+    }
+    logEl.scrollTop = logEl.scrollHeight;
+    step++;
+  });
+})();
+
+/* SECTION 3: PROPERTY SETTER FLOW */
+(function(){
+  const chips = document.querySelectorAll('[data-tval]');
+  const call = document.getElementById('pf-call');
+  const result = document.getElementById('pf-result');
+  const logEl = document.getElementById('prop-log');
+  function run(val){
+    call.textContent = `t.celsius = ${val}`;
+    const num = parseFloat(val);
+    result.classList.remove('ok','err');
+    let msg;
+    if(num < -273.15){
+      result.textContent = 'ValueError';
+      result.classList.add('err');
+      msg = `<b>t.celsius = ${val}:</b> the setter checks value &lt; -273.15 — true, so it raises ValueError before self._celsius is ever touched. Storage is untouched.`;
+    } else {
+      result.textContent = `_celsius = ${val}`;
+      result.classList.add('ok');
+      msg = `<b>t.celsius = ${val}:</b> passes the check, so self._celsius = ${val} runs. Plain attribute syntax, validated method underneath.`;
+    }
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.innerHTML = '';
+    logEl.appendChild(p);
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      run(c.dataset.tval);
+    });
+  });
+})();
+
+/* SECTION 4: ABC INSTANTIATION */
+(function(){
+  const chips = document.querySelectorAll('[data-abc]');
+  const logEl = document.getElementById('abc-log');
+  const outputs = {
+    shape: '<span class="line" style="color:var(--bad-c)"><b>TypeError:</b> Can\'t instantiate abstract class Shape with abstract methods area, perimeter</span>',
+    circle: '<span class="line" style="color:var(--comp-c)"><b>OK →</b> Circle(4).describe() → \'area=50.27, perimeter=25.13\' — every abstract method is implemented, so instantiation succeeds.</span>',
+    broken: '<span class="line" style="color:var(--bad-c)"><b>TypeError:</b> Can\'t instantiate abstract class Square with abstract method perimeter — area() alone isn\'t enough; ALL abstract methods must be overridden.</span>'
+  };
+  function run(key){
+    logEl.innerHTML = '';
+    const p = document.createElement('div'); p.className = 'fadein';
+    p.innerHTML = outputs[key];
+    logEl.appendChild(p);
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      run(c.dataset.abc);
+    });
+  });
+  run('shape');
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Stateless vs Stateful Services</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --stateless-c:#7fd8a0; --stateful-c:#ff8a65; --store-c:#6ea8fe; --sticky-c:#c792ea; --accent:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,138,101,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .state-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.5rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .shop{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid; }
+  .shop.less{border-color:var(--stateless-c); color:var(--stateless-c); background:rgba(127,216,160,0.08);}
+  .shop.ful{border-color:var(--stateful-c); color:var(--stateful-c); background:rgba(255,138,101,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--stateful-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* request routing viz */
+  .route-stage{display:flex; align-items:center; gap:1.5rem; margin:1.4rem 0; flex-wrap:wrap; justify-content:center;}
+  .lb-box{border:2px solid var(--sticky-c); border-radius:10px; padding:0.9rem 1.3rem; font-family:var(--mono); font-size:0.8rem; color:var(--sticky-c); background:rgba(199,146,234,0.08); text-align:center;}
+  .server-node{border:2px solid var(--rule); border-radius:10px; padding:0.9rem 1.1rem; font-family:var(--mono); font-size:0.78rem; text-align:center; min-width:100px; transition:all .3s;}
+  .server-node.serving{border-color:var(--stateless-c); background:rgba(127,216,160,0.12); transform:scale(1.05);}
+  .server-node.down{opacity:0.25; border-color:#ff6b6b; text-decoration:line-through;}
+  .server-arrow{font-family:var(--mono); color:var(--ink-dim); font-size:1.1rem;}
+
+  /* state-location diagram */
+  .loc-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.2rem 0;}
+  @media(max-width:720px){.loc-grid{grid-template-columns:1fr;}}
+  .loc-card{border:1.5px solid var(--store-c); border-radius:12px; padding:1.1rem; background:rgba(110,168,254,0.06); font-family:var(--mono); font-size:0.8rem;}
+  .loc-card h4{margin:0 0 0.6rem; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--store-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.good{border-left-color:var(--stateless-c); background:rgba(127,216,160,0.06);}
+  .callout.good b{color:var(--stateless-c);}
+  .callout.warn{border-left-color:var(--stateful-c); background:rgba(255,138,101,0.06);}
+  .callout.warn b{color:var(--stateful-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS FUNDAMENTALS LAB · STATELESS VS STATEFUL SERVICES</div>
+  <h1>A stateless service could <em>forget you existed</em> between two requests and nothing would break.</h1>
+  <p class="lede">The <a href="latency_and_throughput.html" style="color:inherit;">latency &amp; scaling lab</a> mentioned statelessness as one requirement for horizontal scaling to work cleanly — this lab goes deep on that idea specifically: what "state" actually means for a service, why forgetting everything between requests is a feature rather than a bug, and where that memory has to live instead.</p>
+
+  <div class="state-hero">
+    <div class="shop less">stateless: any server can answer any request</div>
+    <div class="shop ful">stateful: request 2 must land on the same server as request 1</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="whatisstate">1 · What "State" Means</a>
+  <a data-target="whyscale">2 · Why Stateless Scales Horizontally</a>
+  <a data-target="wherelives">3 · Where State Has to Live Instead</a>
+  <a data-target="statefulcases">4 · When Stateful Is Unavoidable</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHAT IS STATE ============ -->
+<section id="whatisstate">
+  <div class="kicker">01 — Memory that outlives a single request</div>
+  <h2>What "state" means for a service</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture a coat-check counter versus a self-serve locker room. At a coat-check counter, the same attendant who took your coat has to be the one who gives it back — they're holding your ticket number in their head. In a self-serve locker room, you get a key; ANY employee walking by could let you into locker #14 because the information ("locker 14 is yours") lives on the key itself, not in any one employee's memory.</p>
+
+  <p><strong>State</strong>, for a service, is any data from a previous request that a later request depends on — and that isn't included in the later request itself. A <strong>stateless</strong> service keeps no such memory between requests: every request arrives with everything the server needs to fully handle it, and the server retains nothing about it afterward. A <strong>stateful</strong> service keeps memory in the process itself — an in-memory session, a cached computation tied to one specific connection, a variable that changes based on request history.</p>
+
+  <div class="code">
+<span class="c-cmt"># STATEFUL — server remembers who's logged in, in its own memory</span>
+logged_in_users = {}   <span class="c-cmt"># lives in THIS process's RAM</span>
+
+<span class="c-kw">def</span> <span class="c-fn">handle_login</span>(session_id, user):
+    logged_in_users[session_id] = user   <span class="c-cmt"># stored HERE, on this one server</span>
+
+<span class="c-kw">def</span> <span class="c-fn">handle_request</span>(session_id):
+    user = logged_in_users.get(session_id)   <span class="c-cmt"># only works if THIS server saw the login</span>
+
+<span class="c-cmt"># STATELESS — every request carries its own proof of identity</span>
+<span class="c-kw">def</span> <span class="c-fn">handle_request</span>(request):
+    user = verify_jwt(request.headers[<span class="c-str">"Authorization"</span>])  <span class="c-cmt"># self-contained, any server can do this</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME TWO REQUESTS, TWO ARCHITECTURES</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-arch="stateful">Stateful (in-memory session)</button>
+      <button class="chip" data-arch="stateless">Stateless (token in every request)</button>
+    </div>
+    <div class="log" id="state-log"></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> state, in a service context, is any information persisted across requests inside the service's own process or local storage such that a later request's correct handling depends on it. Statelessness means no such server-local persistence exists between requests — each request is self-describing and independently satisfiable — while statefulness means at least one required piece of context is held in server-local memory or storage instead of arriving fresh with each request.</div>
+</section>
+
+<!-- ============ SECTION 2: WHY IT SCALES ============ -->
+<section id="whyscale">
+  <div class="kicker">02 — The direct mechanism, not just a rule of thumb</div>
+  <h2>Why stateless services scale horizontally more easily</h2>
+
+  <p><strong>Start here, before any code.</strong> A self-serve locker room can add more staff on a busy day instantly — any new employee can help any customer, because nobody needs to "remember" anything, the locker key already has everything encoded. A coat-check counter can't do that as cleanly: a new attendant who just started their shift has no idea which coat belongs to ticket #42, because that memory lives in the PREVIOUS attendant's head, not on the ticket.</p>
+
+  <p>Horizontal scaling (from the <a href="latency_and_throughput.html" style="color:var(--stateless-c);">latency &amp; scaling lab</a>) means adding more identical server instances and spreading traffic across them with a load balancer. That only works cleanly if <strong>any</strong> instance can correctly handle <strong>any</strong> request — which is exactly what statelessness guarantees. If a server holds session data in its own memory, the load balancer either has to force every request from a given user onto that SAME server forever (called "sticky sessions" or "session affinity") — which caps scaling and means one server crashing wipes out every session pinned to it — or requests get routed unpredictably and users get logged out or lose data mid-flow.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ADD/REMOVE SERVERS — WATCH REQUEST ROUTING</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="stateless">Stateless (any server, any request)</button>
+      <button class="chip" data-mode="stateful">Stateful (sticky sessions required)</button>
+    </div>
+    <div class="route-stage" id="route-stage"></div>
+    <button class="btn" id="route-fail" style="margin-top:0.8rem;">Server 1 crashes ▸</button>
+    <div class="log" id="route-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Stateless</th><th>Stateful (in-process session)</th></tr>
+    <tr><td>Load balancing</td><td>Simple round-robin — any server works</td><td>Needs sticky sessions — a request must revisit its original server</td></tr>
+    <tr><td>Adding a new server mid-traffic</td><td>Immediately usable for any request</td><td>Can only take NEW sessions — existing ones stay pinned elsewhere</td></tr>
+    <tr><td>One server crashes</td><td>Its in-flight requests simply retry elsewhere — no data lost</td><td>Every session pinned to it is lost or must be painfully reconstructed</td></tr>
+    <tr><td>Autoscaling behavior</td><td>Scale up/down freely based on load</td><td>Scaling down risks evicting active sessions</td></tr>
+  </table>
+
+  <div class="callout good"><b>Interview-ready definition:</b> stateless services scale horizontally more easily because request-to-server assignment becomes a pure load-balancing problem with no correctness constraint — any healthy instance can serve any request, so instances can be added, removed, or replaced at any time without coordinating which one "remembers" what. Statefulness introduces an affinity requirement (sticky sessions) that couples specific requests to specific instances, which directly undermines the flexibility horizontal scaling depends on and turns instance failure into data loss instead of a routing non-event.</div>
+</section>
+
+<!-- ============ SECTION 3: WHERE STATE LIVES ============ -->
+<section id="wherelives">
+  <div class="kicker">03 — Statelessness doesn't mean the data vanishes</div>
+  <h2>Where state has to live if the service is stateless</h2>
+
+  <p><strong>Start here, before any code.</strong> A stateless coffee shop cashier doesn't personally remember your loyalty points — but the points still exist, tracked on a card system anyone at the register can look up. Making the CASHIER stateless didn't delete the loyalty program; it just moved that memory somewhere shared and lookup-able by any cashier.</p>
+
+  <p>A service being stateless never means the application has no state at all — user sessions, shopping carts, and business data are real and must persist somewhere. It means that memory is pushed <strong>out of the application server's own process</strong> and into a system built specifically to hold shared state, which every server instance can reach identically.</p>
+
+  <div class="loc-grid">
+    <div class="loc-card">
+      <h4>External session store</h4>
+      Redis / Memcached holding session data by session ID — any app server reads/writes the same shared store, so no server needs its own memory of who's logged in.
+    </div>
+    <div class="loc-card">
+      <h4>Database</h4>
+      Durable business data (orders, user profiles, cart contents) — the actual system of record, queried fresh on every request that needs it.
+    </div>
+    <div class="loc-card">
+      <h4>The client itself</h4>
+      A signed JWT or encrypted cookie carries identity/claims directly in the request — no server-side lookup needed at all for that piece of state.
+    </div>
+  </div>
+
+  <div class="code">
+<span class="c-cmt"># the app server itself holds nothing between requests —</span>
+<span class="c-cmt"># it's a stateless computation layer over externally-stored state</span>
+
+<span class="c-kw">def</span> <span class="c-fn">handle_add_to_cart</span>(request):
+    user_id = verify_jwt(request.headers[<span class="c-str">"Authorization"</span>])  <span class="c-cmt"># state lives in the token</span>
+    redis.rpush(f<span class="c-str">"cart:{user_id}"</span>, request.json[<span class="c-str">"item_id"</span>])   <span class="c-cmt"># state lives in Redis</span>
+    <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"ok"</span>}
+    <span class="c-cmt"># nothing about this request is remembered by THIS process once it returns</span>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> in a stateless architecture, application state is externalized to purpose-built shared stores — a distributed cache or session store (e.g. Redis) for ephemeral session data, a database for durable business data, or the client's own request payload (tokens, cookies) for identity claims — so that every stateless compute instance reads and writes the same shared source of truth rather than keeping any of it in local process memory.</div>
+</section>
+
+<!-- ============ SECTION 4: WHEN STATEFUL IS UNAVOIDABLE ============ -->
+<section id="statefulcases">
+  <div class="kicker">04 — Not every system can be stateless</div>
+  <h2>When stateful is unavoidable — and how it's handled anyway</h2>
+
+  <p><strong>Start here, before any code.</strong> A live phone call can't be "reconnected to any operator" mid-sentence without someone catching up on the conversation first — the connection itself carries irreplaceable in-flight context. Some systems are like that: the state IS the ongoing interaction, not just a record you can look up.</p>
+
+  <p>Databases, WebSocket connections, long-running streaming sessions, and some real-time multiplayer or collaborative-editing systems are inherently stateful — the state can't be trivially externalized without losing what makes them fast or even meaningful. The common mitigations: databases embrace statefulness deliberately and add replication/failover instead of trying to be stateless; WebSocket-based systems often use sticky routing plus a fast recovery/reconnect path; and some systems minimize the surface area of what's stateful, keeping only the truly connection-bound piece in memory while pushing everything else (auth, profile data, history) to stateless externalized stores.</p>
+
+  <table class="cmp">
+    <tr><th>System</th><th>Why it's stateful</th><th>Typical mitigation</th></tr>
+    <tr><td>Relational database</td><td>Is the system of record — its entire job is durable, consistent memory</td><td>Replication, leader/follower failover, not "made stateless"</td></tr>
+    <tr><td>WebSocket / live connection server</td><td>The open TCP connection itself is tied to one process</td><td>Sticky routing at the load balancer + fast client reconnect logic</td></tr>
+    <tr><td>In-memory game/collab session</td><td>Real-time state changes faster than a shared store could keep up</td><td>Shard by session/room, keep session data as the ONLY stateful piece, externalize everything else</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Interview framing that matters:</b> the goal is rarely "make literally everything stateless" — it's minimizing what's stateful to the smallest necessary surface, and being deliberate about it. A well-designed system is explicit about exactly which component holds state and why, rather than accidentally accumulating in-memory state in what was supposed to be a disposable, horizontally-scaled compute layer.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spot the state</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An API server stores "requests remaining this minute" per API key in a local Python dictionary to implement rate limiting. Is this service stateless or stateful? What breaks if you add a second server instance behind a load balancer?</p>
+    <details><summary>Show solution</summary><div class="solution">Stateful — the rate-limit counters live in that one process's local memory,
+not anywhere externally shared.
+
+With two instances behind a load balancer, each server tracks its OWN
+counter independently. A client could get routed to server A for 50
+requests (fine, under the limit there) and server B for another 50 (also
+fine THERE), totaling 100 requests despite a supposed limit of, say, 60 —
+the rate limit is silently ~2x too permissive because neither server knows
+what the other has counted. The fix is externalizing the counter to a
+shared store like Redis (often using INCR with a TTL) so every instance
+reads and writes the same count.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Sticky sessions tradeoff</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team enables sticky sessions (session affinity) on their load balancer instead of externalizing session storage. Traffic is uneven: 80% of active users happen to be pinned to Server 3. What operational problem does this cause that a stateless design wouldn't have?</p>
+    <details><summary>Show solution</summary><div class="solution">Uneven load distribution that the load balancer CAN'T fix by shifting
+traffic — sticky sessions force those users to keep hitting Server 3
+specifically, regardless of how overloaded it gets, because that's where
+their session data lives. A stateless design has no such constraint: the
+load balancer could freely redirect any of those users to a less-loaded
+server on their very next request, since any server can serve any request
+identically. Sticky sessions trade scaling flexibility for the convenience
+of not externalizing session state.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Where does state go?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're converting a stateful "shopping cart in server memory" design to a stateless one. List two different valid places the cart data could live instead, and one tradeoff of each.</p>
+    <details><summary>Show solution</summary><div class="solution">Option 1 — External store (e.g. Redis, keyed by user_id or cart_id):
+fast, shared across all servers, but adds an external dependency and
+network hop; if Redis is unavailable, cart operations fail even though the
+app servers themselves are healthy.
+
+Option 2 — Client-side (encoded in a signed cookie or local storage,
+synced to the server on checkout): removes the server-side dependency
+entirely for browsing, but has size limits, is harder to update
+transactionally across multiple tabs/devices, and needs careful signing to
+prevent tampering with prices or item IDs.
+
+Option 3 — Database directly: durable and simple to reason about, but
+higher latency per cart mutation than an in-memory cache, since it's
+usually not optimized for the same access pattern.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Identify the mitigation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A collaborative document-editing service keeps the live, actively-edited document state in the memory of whichever server process is hosting that document's editing session, for speed. What's the risk if that server crashes, and name one mitigation from this lab.</p>
+    <details><summary>Show solution</summary><div class="solution">Risk: any edits not yet persisted to durable storage are lost when that
+process crashes, and every client connected to that session gets
+disconnected simultaneously since the in-memory session state (and likely
+the live connections themselves) died with the process.
+
+Mitigation: this is a case where full statelessness isn't practical (the
+lab's Section 4) — the realistic approach is minimizing what's stateful
+(keep only the live edit buffer in memory, periodically flush/checkpoint it
+to a durable store) plus fast reconnect logic on the client so a crash
+means "reconnect and replay from the last checkpoint," not permanent data
+loss. Sharding sessions across servers also limits the blast radius of any
+single crash to just the sessions hosted on that one instance.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Stateless vs stateful in an interview scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An interviewer asks: "Is a database server stateless or stateful, and does that mean databases can't scale horizontally?" Answer both parts precisely.</p>
+    <details><summary>Show solution</summary><div class="solution">A database server is inherently stateful — its entire purpose is durable
+memory of data across requests, which is the opposite of statelessness by
+definition.
+
+This does NOT mean databases can't scale horizontally — it means they scale
+horizontally using different techniques suited to stateful systems:
+read replicas (multiple copies serving reads, one primary handling writes),
+sharding (partitioning data across multiple database instances by key), and
+consensus/replication protocols to keep copies consistent. It's harder and
+has more failure modes than scaling a stateless compute layer (no simple
+"any instance handles any request"), but "stateful" and "can't scale
+horizontally" are not the same claim — they just require fundamentally
+different scaling strategies.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely what makes a piece of data "state" versus just a normal function input, (2) the specific mechanism by which statelessness enables simple load balancing, and (3) at least two different places externalized state can legitimately live? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — stateless vs stateful services, systems fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: STATEFUL VS STATELESS EXPLANATION */
+(function(){
+  const chips = document.querySelectorAll('#whatisstate .chip');
+  const logEl = document.getElementById('state-log');
+  const info = {
+    stateful: "Request 1 (login) stores the user in server A's own in-memory dictionary, keyed by session_id. Request 2 (view profile) carries only a session_id — if the load balancer routes it to server B, B has NEVER SEEN this session_id in its own memory, and the request fails or the user appears logged out, even though nothing was actually wrong with their session.",
+    stateless: "Request 1 (login) returns a signed JWT containing the user's identity, sent back to the client. Request 2 (view profile) carries that JWT directly in its Authorization header. ANY server — A, B, or a brand-new server C that just started — can verify the JWT's signature and extract the user identity without ever having seen Request 1."
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      logEl.innerHTML = `<div class="line fadein">${info[c.dataset.arch]}</div>`;
+    });
+  });
+  logEl.innerHTML = `<div class="line fadein">${info.stateful}</div>`;
+})();
+
+/* SECTION 2: ROUTING VIZ */
+(function(){
+  const chips = document.querySelectorAll('#whyscale .chip');
+  const stageEl = document.getElementById('route-stage');
+  const failBtn = document.getElementById('route-fail');
+  const logEl = document.getElementById('route-log');
+  let mode = 'stateless';
+  let server1Down = false;
+
+  function render(){
+    stageEl.innerHTML = '';
+    const lb = document.createElement('div');
+    lb.className = 'lb-box';
+    lb.textContent = 'Load Balancer';
+    stageEl.appendChild(lb);
+    const arrow = document.createElement('div');
+    arrow.className = 'server-arrow';
+    arrow.textContent = '→';
+    stageEl.appendChild(arrow);
+    for(let i=1;i<=3;i++){
+      const box = document.createElement('div');
+      box.className = 'server-node';
+      if(i===1 && server1Down){
+        box.classList.add('down');
+        box.innerHTML = `Server ${i}<br><span style="font-size:0.68rem;">CRASHED</span>`;
+      } else {
+        box.classList.add('serving');
+        const tag = mode === 'stateful' && i !== 1 ? '(no session data for user X)' : mode === 'stateful' ? '(has session data)' : '(stateless — any request OK)';
+        box.innerHTML = `Server ${i}<br><span style="font-size:0.65rem; opacity:0.8;">${tag}</span>`;
+      }
+      stageEl.appendChild(box);
+    }
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.mode;
+      server1Down = false;
+      render();
+      logEl.innerHTML = mode === 'stateless'
+        ? '<div class="line fadein">Any of the 3 servers can handle the next request identically — the load balancer is free to pick based on current load alone.</div>'
+        : '<div class="line fadein">User X’s session data lives only on Server 1 (sticky). The load balancer MUST keep routing User X there, even if Server 1 is the most loaded of the three.</div>';
+    });
+  });
+
+  failBtn.addEventListener('click', ()=>{
+    server1Down = true;
+    render();
+    const p = document.createElement('div'); p.className = 'line fadein';
+    if(mode === 'stateless'){
+      p.innerHTML = '<b>Server 1 crashes:</b> its in-flight requests simply get retried on Server 2 or 3 — no data was uniquely stored there, so nothing is lost. Capacity drops by 1/3, that’s the only effect.';
+    } else {
+      p.innerHTML = '<span class="err"><b>Server 1 crashes:</b> every user session pinned to Server 1 is now gone. Those users appear logged out or lose in-progress data, since that state existed ONLY in Server 1’s now-dead memory.</span>';
+    }
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

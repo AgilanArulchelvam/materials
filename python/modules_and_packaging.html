@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Modules &amp; Packaging</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --path-c:#7fd8a0; --pkg-c:#f2c14e; --venv-c:#6ea8fe; --rel-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .path-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.5rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .phop{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--path-c); color:var(--path-c); background:rgba(127,216,160,0.08);}
+  .parrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-dec{color:var(--pkg-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:#ff6b6b;}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* sys.path search visualization */
+  .search-list{display:flex; flex-direction:column; gap:0.5rem; margin:1.2rem 0; font-family:var(--mono); font-size:0.82rem;}
+  .search-entry{border:1.5px solid var(--rule); border-radius:9px; padding:0.7rem 1rem; background:var(--panel-2); opacity:0.4; transition:all .3s;}
+  .search-entry.checking{opacity:1; border-color:var(--pkg-c); background:rgba(242,193,78,0.08);}
+  .search-entry.found{opacity:1; border-color:var(--path-c); background:rgba(127,216,160,0.12);}
+  .search-entry.miss{opacity:0.55; border-color:#ff6b6b;}
+  .search-entry .sidx{color:var(--ink-dim); margin-right:0.6rem;}
+
+  /* file tree */
+  .tree{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.3rem; margin:1.2rem 0; line-height:1.9;}
+  .tree .dir{color:var(--venv-c);}
+  .tree .init{color:var(--pkg-c);}
+  .tree .py{color:var(--path-c);}
+  .tree .indent1{padding-left:1.4rem;}
+  .tree .indent2{padding-left:2.8rem;}
+  .tree .indent3{padding-left:4.2rem;}
+
+  /* import mode toggle */
+  .imp-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:640px){.imp-compare{grid-template-columns:1fr;}}
+  .imp-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; font-family:var(--mono); font-size:0.8rem;}
+  .imp-col.abs{border-color:var(--path-c);}
+  .imp-col.rel{border-color:var(--rel-c);}
+  .imp-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .imp-col.abs h4{color:var(--path-c);} .imp-col.rel h4{color:var(--rel-c);}
+
+  /* venv isolation viz */
+  .venv-stage{display:flex; gap:1.4rem; flex-wrap:wrap; margin:1.2rem 0;}
+  .venv-box{flex:1; min-width:220px; border:1.5px solid var(--venv-c); border-radius:12px; padding:1.1rem; background:rgba(110,168,254,0.06);}
+  .venv-box h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--venv-c); margin:0 0 0.7rem;}
+  .venv-box ul{margin:0; padding-left:1.2rem; font-family:var(--mono); font-size:0.78rem; color:#cdd0d8;}
+  .venv-box ul li{margin:0.3rem 0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.info{border-left-color:var(--venv-c); background:rgba(110,168,254,0.06);}
+  .callout.info b{color:var(--venv-c);}
+  .callout.pkg{border-left-color:var(--pkg-c); background:rgba(242,193,78,0.06);}
+  .callout.pkg b{color:var(--pkg-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · MODULES &amp; PACKAGING</div>
+  <h1>An import is just Python <em>searching a list of folders</em> until it finds a match.</h1>
+  <p class="lede">There's no magic lookup table — <code class="inline">import foo</code> walks <code class="inline">sys.path</code>, a plain list of directory strings, checking each one in order until it finds something named <code class="inline">foo</code>. Once that's concrete, absolute vs. relative imports, <code class="inline">__init__.py</code>, <code class="inline">pyproject.toml</code>, and virtual environments all stop being folklore and become one consistent mental model.</p>
+
+  <div class="path-hero">
+    <div class="phop">import foo</div>
+    <div class="parrow">searches ⟶</div>
+    <div class="phop">sys.path[0], sys.path[1], sys.path[2]...</div>
+    <div class="parrow">⟶ first match wins</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="syspath">1 · Module Search Path</a>
+  <a data-target="initpy">2 · Packages &amp; __init__.py</a>
+  <a data-target="imports">3 · Absolute vs Relative Imports</a>
+  <a data-target="pyproject">4 · pyproject.toml Basics</a>
+  <a data-target="venv">5 · Virtual Environments</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SYS.PATH ============ -->
+<section id="syspath">
+  <div class="kicker">01 — Where Python actually looks</div>
+  <h2>The module search path: sys.path</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine you ask a friend to find your keys. They don't magically know where keys live — they check your pocket, then the counter, then the drawer by the door, in that specific order, and stop as soon as they find a set. If two rooms both have keys, the first room checked wins, even if the "real" set is in the second room.</p>
+
+  <p>That's exactly what <code class="inline">import foo</code> does. Python doesn't have some global registry of every module on your machine. It holds a plain Python list, <code class="inline">sys.path</code>, and walks it in order: the directory of the script being run, then <code class="inline">PYTHONPATH</code> entries, then the standard library location, then <code class="inline">site-packages</code> (where installed packages live). The first directory containing a matching <code class="inline">foo.py</code> or <code class="inline">foo/</code> package wins — checking stops immediately.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> sys
+<span class="c-kw">print</span>(sys.path)
+<span class="c-out">['/home/user/myproject',                 # 1. script's own directory
+ '/usr/lib/python3.11',                   # 2. standard library
+ '/usr/lib/python3.11/lib-dynload',
+ '/home/user/myproject/.venv/lib/python3.11/site-packages']  # 3. installed packages</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH import requests SEARCH sys.path</span><button class="btn" id="sp-run">import requests</button></div>
+    <div class="search-list" id="sp-list">
+      <div class="search-entry" id="sp-0"><span class="sidx">[0]</span> /home/user/myproject  <span style="color:var(--ink-dim);">(script's own directory)</span></div>
+      <div class="search-entry" id="sp-1"><span class="sidx">[1]</span> /usr/lib/python3.11  <span style="color:var(--ink-dim);">(standard library)</span></div>
+      <div class="search-entry" id="sp-2"><span class="sidx">[2]</span> /usr/lib/python3.11/lib-dynload</div>
+      <div class="search-entry" id="sp-3"><span class="sidx">[3]</span> .venv/lib/python3.11/site-packages  <span style="color:var(--ink-dim);">(installed packages — requests lives here)</span></div>
+    </div>
+    <div class="log" id="sp-log"></div>
+  </div>
+
+  <div class="callout"><b>Why "no module named X" sometimes lies to you:</b> if you have a local file named <code class="inline">requests.py</code> in your own project directory, it sits at <code class="inline">sys.path[0]</code> — before site-packages — so <code class="inline">import requests</code> silently imports YOUR file instead of the real library, and then fails with confusing errors about missing attributes. This is the single most common "why is my import broken" bug: never name a file the same as a package you depend on.</div>
+
+  <div class="callout info"><b>Interview-ready definition:</b> the module search path is the ordered list <code class="inline">sys.path</code> — script directory, then <code class="inline">PYTHONPATH</code>, then standard library, then <code class="inline">site-packages</code> — that Python's import system walks left to right, returning the first module or package matching the requested name and caching the result in <code class="inline">sys.modules</code> so subsequent imports of the same name are free.</div>
+</section>
+
+<!-- ============ SECTION 2: __init__.py ============ -->
+<section id="initpy">
+  <div class="kicker">02 — Turning a folder into a package</div>
+  <h2>Packages and __init__.py</h2>
+
+  <p><strong>Start here, before any code.</strong> A folder full of loose papers isn't a "file" — but put them in a labeled binder with a cover page, and now it's one thing you can hand someone as a unit. <code class="inline">__init__.py</code> is that cover page: it's what tells Python "treat this directory as one importable package," and its code runs once, automatically, the moment anything imports the package.</p>
+
+  <p>A directory containing an <code class="inline">__init__.py</code> file is a <strong>package</strong> — a namespace that can contain modules (<code class="inline">.py</code> files) and sub-packages (more directories with their own <code class="inline">__init__.py</code>). The file can be completely empty; its mere presence is the signal. It can also actively re-export names to shape the package's public API.</p>
+
+  <div class="tree">
+<span class="dir">myapp/</span>
+<span class="indent1 init">__init__.py</span>          <span style="color:var(--ink-dim);"># can be empty, or re-export things</span>
+<span class="indent1 dir">models/</span>
+<span class="indent2 init">__init__.py</span>
+<span class="indent2 py">user.py</span>
+<span class="indent2 py">order.py</span>
+<span class="indent1 dir">utils/</span>
+<span class="indent2 init">__init__.py</span>
+<span class="indent2 py">formatting.py</span>
+  </div>
+
+  <div class="code">
+<span class="c-cmt"># myapp/__init__.py — re-exporting for a cleaner public API</span>
+<span class="c-kw">from</span> .models.user <span class="c-kw">import</span> User
+<span class="c-kw">from</span> .models.order <span class="c-kw">import</span> Order
+
+<span class="c-cmt"># now callers can do the short form instead of the deep path:</span>
+<span class="c-kw">from</span> myapp <span class="c-kw">import</span> User          <span class="c-cmt"># works, because __init__.py re-exported it</span>
+<span class="c-cmt"># instead of forcing:</span>
+<span class="c-kw">from</span> myapp.models.user <span class="c-kw">import</span> User
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>BUILD THE PACKAGE — CLICK EACH FOLDER</span></div>
+    <div class="lookup-controls">
+      <button class="chip" data-node="myapp">myapp/</button>
+      <button class="chip" data-node="models">myapp/models/</button>
+      <button class="chip" data-node="utils">myapp/utils/</button>
+    </div>
+    <div class="log" id="init-log"><span class="line">Click a folder to see whether Python treats it as an importable package.</span></div>
+  </div>
+
+  <div class="callout pkg"><b>Namespace packages (the exception):</b> since Python 3.3, a directory <em>without</em> <code class="inline">__init__.py</code> can still be imported as a "namespace package" if nothing else claims that name — but it behaves subtly differently (no single <code class="inline">__init__.py</code> to run setup code, contents can be spread across multiple directories). In interviews and in practice, assume you need an explicit <code class="inline">__init__.py</code> unless you have a specific reason for the namespace-package behavior.</div>
+</section>
+
+<!-- ============ SECTION 3: ABSOLUTE VS RELATIVE ============ -->
+<section id="imports">
+  <div class="kicker">03 — Two ways to name a neighbor</div>
+  <h2>Absolute vs. relative imports</h2>
+
+  <p><strong>Start here, before any code.</strong> Giving someone directions, you can say "123 Main Street, Springfield" (works from anywhere, same words every time) or "the house two doors down" (only makes sense if you're already standing at a specific spot). Absolute imports are the full address; relative imports are "two doors down from here."</p>
+
+  <p><strong>Absolute imports</strong> spell out the full path from the top of the package: <code class="inline">from myapp.models.user import User</code>. They work identically no matter which file writes them. <strong>Relative imports</strong> use dots to mean "relative to my own location": <code class="inline">from .user import User</code> (same directory) or <code class="inline">from ..utils import formatting</code> (up one level, then into utils). Relative imports only work <em>inside</em> a package — never in a top-level script run directly.</p>
+
+  <div class="imp-compare">
+    <div class="imp-col abs">
+      <h4>Absolute</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">from</span> myapp.models.order <span class="c-kw">import</span> Order
+<span class="c-kw">from</span> myapp.utils.formatting <span class="c-kw">import</span> money
+      </div>
+    </div>
+    <div class="imp-col rel">
+      <h4>Relative</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">from</span> .order <span class="c-kw">import</span> Order          <span class="c-cmt"># same dir</span>
+<span class="c-kw">from</span> ..utils.formatting <span class="c-kw">import</span> money  <span class="c-cmt"># up 1, then in</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>PICK THE IMPORT STYLE FROM myapp/models/user.py</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-imp="abs">Absolute</button>
+      <button class="chip" data-imp="rel">Relative</button>
+    </div>
+    <div class="log" id="imp-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Absolute</th><th>Relative</th></tr>
+    <tr><td>Readability</td><td>Unambiguous — full path visible at a glance</td><td>Can get noisy with many <code>..</code> for deeply nested moves</td></tr>
+    <tr><td>Refactor-safety</td><td>Breaks if you move the importing file to a new package path (has to be rewritten manually)</td><td>Survives moving the whole package to a new location or renaming it, since paths are relative to structure, not a fixed name</td></tr>
+    <tr><td>Works in a script run directly</td><td>Yes</td><td>No — relative imports require the module to be part of a package, not run as <code>__main__</code></td></tr>
+    <tr><td>Common guidance</td><td>Default choice; most style guides (incl. Google's) prefer this for clarity</td><td>Fine and common within a tightly-coupled package's own internals</td></tr>
+  </table>
+
+  <div class="callout info"><b>Interview-ready definition:</b> an absolute import names a module by its full dotted path from a top-level entry on <code class="inline">sys.path</code>; a relative import (<code class="inline">from . import x</code> / <code class="inline">from .. import y</code>) names a module by its position relative to the importing module's own package, resolved via that module's <code class="inline">__name__</code> and <code class="inline">__package__</code> — which is exactly why relative imports fail when a file is executed directly as a script rather than imported as part of a package.</div>
+</section>
+
+<!-- ============ SECTION 4: PYPROJECT.TOML ============ -->
+<section id="pyproject">
+  <div class="kicker">04 — The project's single source of truth</div>
+  <h2>pyproject.toml basics</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a shipping label on a package: it states what's inside, who it's from, and what carrier should handle it — all in one standard place, so anyone in the chain can read it the same way. <code class="inline">pyproject.toml</code> is that label for a Python project: one file, one standard format (TOML), that any tool — pip, build backends, linters — can read to understand the project.</p>
+
+  <p>It replaced a scattered mess of <code class="inline">setup.py</code>, <code class="inline">setup.cfg</code>, and tool-specific config files with one standardized file split into a few key tables (TOML sections).</p>
+
+  <div class="code">
+<span class="c-cmt"># pyproject.toml</span>
+
+[build-system]                              <span class="c-cmt"># what tool builds this into a distributable package</span>
+requires = [<span class="c-str">"setuptools>=68"</span>]
+build-backend = <span class="c-str">"setuptools.build_meta"</span>
+
+[project]                                   <span class="c-cmt"># the metadata label itself</span>
+name = <span class="c-str">"myapp"</span>
+version = <span class="c-str">"0.1.0"</span>
+description = <span class="c-str">"A demo application"</span>
+requires-python = <span class="c-str">">=3.10"</span>
+dependencies = [
+    <span class="c-str">"requests>=2.31"</span>,               <span class="c-cmt"># what myapp needs to RUN</span>
+    <span class="c-str">"pydantic>=2.0"</span>,
+]
+
+[project.optional-dependencies]
+dev = [<span class="c-str">"pytest>=7.0"</span>, <span class="c-str">"mypy>=1.5"</span>]      <span class="c-cmt"># only needed for development/testing</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLICK EACH SECTION TO SEE WHAT IT'S FOR</span></div>
+    <div class="lookup-controls">
+      <button class="chip" data-sec="build-system">[build-system]</button>
+      <button class="chip" data-sec="project">[project]</button>
+      <button class="chip" data-sec="deps">dependencies</button>
+      <button class="chip" data-sec="optional">[project.optional-dependencies]</button>
+    </div>
+    <div class="log" id="toml-log"><span class="line">Click a section above to see its purpose explained.</span></div>
+  </div>
+
+  <div class="callout pkg"><b>Interview-ready definition:</b> <code class="inline">pyproject.toml</code> is the PEP 518/PEP 621 standardized project descriptor — it declares the build backend needed to package the project (<code class="inline">[build-system]</code>), the project's own metadata and runtime dependencies (<code class="inline">[project]</code>), and optionally tool-specific configuration (e.g. <code class="inline">[tool.mypy]</code>, <code class="inline">[tool.pytest.ini_options]</code>) — all in one file any PEP-517-compliant tool can parse identically, replacing the older <code class="inline">setup.py</code>/<code class="inline">setup.cfg</code> split.</div>
+</section>
+
+<!-- ============ SECTION 5: VIRTUAL ENVIRONMENTS ============ -->
+<section id="venv">
+  <div class="kicker">05 — Why every project gets its own sandbox</div>
+  <h2>Virtual environments and why isolation matters</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine two roommates sharing one closet, and both need "the black jacket" — but they need different sizes. There's no way to hang two things with the same label in the same closet without one shadowing the other. A virtual environment gives each project its own closet: same package name, independently chosen version, no collision.</p>
+
+  <p>A <strong>virtual environment</strong> is an isolated Python installation — its own <code class="inline">site-packages</code> directory and its own copy of (or link to) the interpreter — separate from the system Python and from every other project's environment. Activating one changes <code class="inline">sys.path</code> so installs and imports resolve inside that isolated directory instead of globally.</p>
+
+  <div class="code">
+<span class="c-kw">python</span> -m venv .venv              <span class="c-cmt"># create an isolated environment in ./.venv</span>
+<span class="c-kw">source</span> .venv/bin/activate         <span class="c-cmt"># (Linux/Mac) — now `pip install` writes HERE, not globally</span>
+.venv\Scripts\activate            <span class="c-cmt"># (Windows)</span>
+<span class="c-kw">pip</span> install requests==2.28       <span class="c-cmt"># this project's copy — other projects are untouched</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TWO PROJECTS, TWO ISOLATED ENVIRONMENTS</span></div>
+    <div class="venv-stage">
+      <div class="venv-box">
+        <h4>Project A — .venv</h4>
+        <ul><li>python 3.10</li><li>requests==2.28</li><li>django==4.1</li></ul>
+      </div>
+      <div class="venv-box">
+        <h4>Project B — .venv</h4>
+        <ul><li>python 3.12</li><li>requests==2.31</li><li>fastapi==0.110</li></ul>
+      </div>
+    </div>
+    <div class="log"><span class="line">Both projects depend on <b>requests</b>, but at different pinned versions — and both are satisfied simultaneously because each environment's site-packages is a completely separate directory. Without isolation, installing Project B's requests would silently upgrade (or break) Project A's.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Without isolation</th><th>With a virtual environment per project</th></tr>
+    <tr><td>One global site-packages shared by every project on the machine</td><td>Each project gets its own site-packages directory</td></tr>
+    <tr><td>Upgrading a package for Project B can silently break Project A</td><td>Upgrades are scoped to the environment you activated</td></tr>
+    <tr><td>"Works on my machine" — undocumented global state</td><td>Dependencies are explicit, reproducible, and listed in pyproject.toml</td></tr>
+    <tr><td>Can't easily run two Python versions side by side</td><td>Each venv can target a different interpreter version</td></tr>
+  </table>
+
+  <div class="callout info"><b>Interview-ready definition:</b> a virtual environment is a self-contained directory holding an interpreter reference and an isolated <code class="inline">site-packages</code>, created so that per-project dependencies (and their exact versions) don't collide with the system interpreter's packages or with another project's requirements — enabling reproducible, conflict-free dependency management across multiple projects on one machine.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Shadowing the standard library</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A developer creates a file named <code class="inline">json.py</code> in their project's root directory to experiment with JSON parsing. Afterward, every <code class="inline">import json</code> anywhere in the project starts failing with <code class="inline">AttributeError: module 'json' has no attribute 'loads'</code>. Why?</p>
+    <details><summary>Show solution</summary><div class="solution">Their own json.py sits in the script's own directory, which is sys.path[0]
+— checked BEFORE the standard library entry. So `import json` finds their
+empty/experimental file first and stops searching (first match wins), never
+reaching the real standard library json module. The fix is simply renaming
+the file to something that doesn't collide, like json_experiment.py.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Package or not?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A directory <code class="inline">helpers/</code> contains <code class="inline">math_utils.py</code> and <code class="inline">string_utils.py</code>, but no <code class="inline">__init__.py</code>. On Python 3.11, will <code class="inline">from helpers.math_utils import square</code> work?</p>
+    <details><summary>Show solution</summary><div class="solution">Likely yes, via "implicit namespace packages" (PEP 420, since Python 3.3)
+— a directory without __init__.py can still be treated as an importable
+namespace package as long as no __init__.py-based package of the same name
+exists elsewhere on sys.path first. However, it behaves slightly
+differently (no package-level __init__.py code runs, and namespace packages
+can be split oddly across multiple directories). In a real project, adding
+an explicit __init__.py is the safer, more predictable choice and is what
+almost every style guide recommends.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Relative import failure</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+# myapp/models/user.py
+from .order import Order
+
+# run directly:
+python myapp/models/user.py
+    </div>
+    <details><summary>Show solution</summary><div class="solution">This raises: ImportError: attempted relative import with no known parent
+package.
+
+Running a file directly makes its __name__ equal to "__main__", with no
+__package__ context — Python has no idea what "." is relative TO, because
+the file isn't being imported as part of a package, it's the entry point
+itself. Relative imports only work when the module is imported (e.g. via
+`python -m myapp.models.user` or from another module doing `from
+myapp.models import user`), not when run as a standalone script.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reading pyproject.toml</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+[project]
+name = "reportgen"
+version = "1.2.0"
+dependencies = ["pandas>=2.0", "click>=8.0"]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy"]
+    </div>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate runs plain <code class="inline">pip install reportgen</code>. Will pytest and mypy get installed? What command would install them too?</p>
+    <details><summary>Show solution</summary><div class="solution">No — plain `pip install reportgen` only installs the required dependencies
+(pandas, click), not the optional "dev" extra. To also get pytest and mypy,
+they'd run: pip install "reportgen[dev]" — the bracket syntax explicitly
+requests the named optional-dependencies group. This split exists so end
+users installing the tool don't pull in testing tools they'll never use.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Diagnosing a dependency conflict</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two projects on the same laptop, both installed with plain <code class="inline">pip install</code> directly into the system Python (no virtual environments). Project A needs <code class="inline">requests==2.20</code> for a legacy API quirk; Project B needs <code class="inline">requests>=2.31</code> for a security fix. What breaks, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">There's only ONE site-packages directory (the system one), so only one
+version of requests can be installed at a time — installing 2.31 for
+Project B silently uninstalls/overwrites 2.20, breaking Project A's legacy
+API quirk (or vice versa, whichever was installed last "wins").
+
+Fix: give each project its own virtual environment (python -m venv .venv
+inside each project directory, then pip install its own pinned requests
+version there). Each venv's site-packages is independent, so both pinned
+versions can coexist on the same machine without conflict.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why <code class="inline">sys.path</code> order determines which module "wins" when names collide, (2) why relative imports break when a file is run directly as a script, and (3) what specifically a virtual environment isolates that a plain global Python install doesn't? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — modules &amp; packaging, python internals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: SYS.PATH SEARCH */
+(function(){
+  const btn = document.getElementById('sp-run');
+  const logEl = document.getElementById('sp-log');
+  const entries = [
+    document.getElementById('sp-0'),
+    document.getElementById('sp-1'),
+    document.getElementById('sp-2'),
+    document.getElementById('sp-3')
+  ];
+  btn.addEventListener('click', ()=>{
+    entries.forEach(e=>e.classList.remove('checking','found','miss'));
+    logEl.innerHTML = '';
+    const steps = [
+      {idx:0, result:'miss', text:'Check sys.path[0] (script directory) — no requests.py here. Miss.'},
+      {idx:1, result:'miss', text:'Check sys.path[1] (standard library) — requests is not part of the stdlib. Miss.'},
+      {idx:2, result:'miss', text:'Check sys.path[2] (lib-dynload) — C extension modules only, not it. Miss.'},
+      {idx:3, result:'found', text:'Check sys.path[3] (site-packages) — found requests/ installed here. MATCH — search stops, module is loaded and cached in sys.modules.'}
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        entries.forEach(e=>e.classList.remove('checking'));
+        entries[s.idx].classList.add('checking');
+        setTimeout(()=>{
+          entries[s.idx].classList.remove('checking');
+          entries[s.idx].classList.add(s.result === 'found' ? 'found' : 'miss');
+        }, 350);
+        const p = document.createElement('div'); p.className='line fadein';
+        p.innerHTML = `<b>Step ${i+1}:</b> ${s.text}`;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i*750);
+    });
+  });
+})();
+
+/* SECTION 2: __init__.py */
+(function(){
+  const chips = document.querySelectorAll('#initpy .chip');
+  const logEl = document.getElementById('init-log');
+  const info = {
+    myapp: 'myapp/__init__.py exists — this makes "myapp" itself an importable package name. Its code runs once, the first time anything does "import myapp" or "from myapp import ...".',
+    models: 'myapp/models/__init__.py exists — models is a SUB-package. "from myapp.models.user import User" walks: enter myapp package, enter models sub-package, then find user.py inside it.',
+    utils: 'myapp/utils/__init__.py exists — same pattern as models. If this file were MISSING, "import myapp.utils" would fail (pre-3.3 style) or fall back to slightly different namespace-package behavior (3.3+).'
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      logEl.innerHTML = `<div class="line fadein"><b>${c.dataset.node}:</b> ${info[c.dataset.node]}</div>`;
+    });
+  });
+})();
+
+/* SECTION 3: ABSOLUTE VS RELATIVE */
+(function(){
+  const chips = document.querySelectorAll('#imports .chip');
+  const logEl = document.getElementById('imp-log');
+  const info = {
+    abs: 'from myapp.models.order import Order — spells out the full path from the top-level package name. Works the same no matter which file writes it, and works even if the file is later run directly as __main__.',
+    rel: 'from .order import Order — "." means "this same directory" (myapp/models/), so it finds order.py right next to user.py. Only valid because user.py is being imported AS PART OF the myapp.models package — it would break if user.py were executed directly as a script.'
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      logEl.innerHTML = `<div class="line fadein">${info[c.dataset.imp]}</div>`;
+    });
+  });
+  logEl.innerHTML = `<div class="line fadein">${info.abs}</div>`;
+})();
+
+/* SECTION 4: PYPROJECT.TOML SECTIONS */
+(function(){
+  const chips = document.querySelectorAll('#pyproject .chip');
+  const logEl = document.getElementById('toml-log');
+  const info = {
+    'build-system': '[build-system] tells pip/build tools WHICH tool to use to turn your source into an installable package (e.g. setuptools, hatchling, poetry-core) — this section is read before anything else, even before [project], because it determines how the rest gets processed.',
+    'project': '[project] holds the PEP 621 standard metadata: name, version, description, author, license, and requires-python (the minimum interpreter version). This is what shows up on PyPI if you publish the package.',
+    'deps': 'dependencies = [...] lists packages required simply to RUN the project — installed automatically by "pip install ." or "pip install reportgen". Every entry can be version-pinned or range-constrained.',
+    'optional': '[project.optional-dependencies] defines named EXTRA groups (commonly "dev", "test", "docs") that are only installed if explicitly requested, e.g. "pip install .[dev]" — keeping the default install lean for end users.'
+  };
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      logEl.innerHTML = `<div class="line fadein"><b>${c.dataset.sec}:</b> ${info[c.dataset.sec]}</div>`;
+    });
+  });
+})();
+</script>
+</body>
+</html>
