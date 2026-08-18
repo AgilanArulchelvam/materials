@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Tree Rotations &amp; Balancing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --node-c:#6ea8fe; --left-c:#7fd8a0; --right-c:#f2c14e; --bad-c:#ff6b6b; --pivot-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--pivot-c); color:var(--pivot-c); background:rgba(199,146,234,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--right-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* tree canvas — shared positioning engine */
+  .tree-wrap{position:relative; width:100%; min-height:300px; margin:1.2rem 0; overflow-x:auto;}
+  .tree-canvas{position:relative; min-width:560px; height:300px;}
+  .tnode{position:absolute; width:48px; height:48px; border-radius:50%; border:2.5px solid var(--node-c); background:var(--panel-2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:0.85rem; transform:translate(-50%,-50%); transition:left .8s cubic-bezier(.4,0,.2,1), top .8s cubic-bezier(.4,0,.2,1), border-color .3s, box-shadow .3s, background .3s; z-index:3;}
+  .tnode .bf{font-size:0.55rem; font-weight:400; color:var(--ink-dim); margin-top:-1px;}
+  .tnode.pivot{border-color:var(--pivot-c); box-shadow:0 0 0 4px rgba(199,146,234,0.28); background:rgba(199,146,234,0.14);}
+  .tnode.newroot{border-color:var(--left-c); box-shadow:0 0 0 4px rgba(127,216,160,0.28); background:rgba(127,216,160,0.14);}
+  .tnode.unbalanced{border-color:var(--bad-c); box-shadow:0 0 0 4px rgba(255,107,107,0.28);}
+  .tnode.orphaned{border-style:dashed; opacity:0.55;}
+  .tedge{position:absolute; height:2.5px; background:var(--rule); transform-origin:left center; z-index:1; transition:left .8s cubic-bezier(.4,0,.2,1), top .8s cubic-bezier(.4,0,.2,1), width .8s cubic-bezier(.4,0,.2,1), transform .8s cubic-bezier(.4,0,.2,1), background .3s, opacity .3s;}
+  .tedge.moved{background:var(--pivot-c);}
+  .tedge.detach{opacity:0; }
+
+  .steps-list{font-family:var(--mono); font-size:0.76rem; color:var(--ink-dim); margin-top:1rem;}
+  .steps-list ol{margin:0.4rem 0 0; padding-left:1.3rem;}
+  .steps-list li{margin:0.3rem 0;}
+  .steps-list li.active{color:var(--accent); font-weight:600;}
+  .steps-list li b{color:var(--ink);}
+
+  .rot-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;}
+
+  /* static before/after case diagrams */
+  .case-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin:1.4rem 0;}
+  @media(max-width:720px){.case-grid{grid-template-columns:1fr;}}
+  .case-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel);}
+  .case-card h4{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem; color:var(--pivot-c);}
+  .mini-tree{position:relative; height:170px;}
+  .mini-node{position:absolute; width:38px; height:38px; border-radius:50%; border:2px solid var(--node-c); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:0.72rem; transform:translate(-50%,-50%); z-index:2;}
+  .mini-node.hi{border-color:var(--pivot-c); background:rgba(199,146,234,0.14);}
+  .mini-edge{position:absolute; height:2px; background:var(--rule); transform-origin:left center; z-index:1;}
+  .case-arrow-row{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin:0.4rem 0; font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim);}
+  .before-after{display:flex; gap:0.8rem; align-items:center;}
+  .before-after .mini-tree{flex:1;}
+  .ba-arrow{font-size:1.3rem; color:var(--accent);}
+
+  .op-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;}
+  input.numin{font-family:var(--mono); background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); border-radius:7px; padding:0.5rem 0.7rem; width:5rem; font-size:0.85rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .rb-legend{display:flex; gap:1rem; flex-wrap:wrap; margin:0.8rem 0; font-family:var(--mono); font-size:0.75rem;}
+  .rb-legend span{display:flex; align-items:center; gap:0.4rem;}
+  .rb-swatch{width:14px; height:14px; border-radius:50%; display:inline-block;}
+  .rb-swatch.red{background:var(--bad-c);} .rb-swatch.black{background:#454b58; border:1.5px solid var(--ink-dim);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--pivot-c); background:rgba(199,146,234,0.06);} .callout.self b{color:var(--pivot-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATA STRUCTURES &amp; ALGORITHMS LAB · TREE ROTATIONS &amp; BALANCING</div>
+  <h1>A rotation doesn't move data — it <em>re-parents three pointers</em> and the whole subtree follows.</h1>
+  <p class="lede">The previous lab ended on a cliffhanger: an unbalanced BST degrades to O(n). Rotations are the fix — a local, O(1) restructuring move that changes which node is "on top" of a small piece of the tree without breaking the BST property anywhere. This lab animates an actual rotation frame by frame, node positions moving in real time, then walks all four AVL imbalance cases and the Red-Black invariant that gives the same O(log n) guarantee a different way.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">heavy on one side</div>
+    <div class="darrow">→ rotate →</div>
+    <div class="dnode">weight redistributed, height drops by 1</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="rightrotation">1 · Right Rotation, Step by Step</a>
+  <a data-target="leftrotation">2 · Left Rotation</a>
+  <a data-target="balancefactor">3 · Balance Factor &amp; AVL</a>
+  <a data-target="fourcases">4 · LL / RR / LR / RL Cases</a>
+  <a data-target="redblack">5 · Red-Black Trees</a>
+  <a data-target="whylogn">6 · Why Balancing Guarantees O(log n)</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: RIGHT ROTATION STEP-THROUGH ============ -->
+<section id="rightrotation">
+  <div class="kicker">01 — Watch three pointers change, live</div>
+  <h2>Right rotation, step by step</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a company org chart where a manager (call them P for "parent") has one direct report (L for "left child") who is completely overloaded because half the team reports through them instead of directly to P. A "right rotation" is a reorg: L becomes the new manager, P becomes L's direct report instead, and the sub-team L used to manage on their right side (people who were "too big" for P to hold alongside L) get reassigned to P, who now has room for them. Nobody's data changed — only who reports to whom.</p>
+
+  <p>Concretely, for a right rotation around a node <code class="inline">P</code> with left child <code class="inline">L</code>: <code class="inline">L</code> becomes the new subtree root, <code class="inline">P</code> becomes <code class="inline">L</code>'s right child, and <code class="inline">L</code>'s ORIGINAL right subtree (call it <code class="inline">T2</code>) — which holds values between <code class="inline">L</code> and <code class="inline">P</code> — gets reattached as <code class="inline">P</code>'s new left child, since those values are still correctly positioned as greater than <code class="inline">L</code> and less than <code class="inline">P</code>.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RIGHT ROTATION — FULL ANIMATED STEP-THROUGH</span>
+      <div><button class="btn" id="rr-step">Next step ▸</button> <button class="btn secondary" id="rr-reset">Restart</button></div>
+    </div>
+    <div class="tree-wrap"><div class="tree-canvas" id="rr-canvas"></div></div>
+    <div class="steps-list" id="rr-steps"></div>
+  </div>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">rotate_right</span>(P):
+    L = P.left                  <span class="c-cmt"># L will become the new subtree root</span>
+    T2 = L.right                <span class="c-cmt"># L's right subtree — values between L and P</span>
+
+    L.right = P                 <span class="c-cmt"># P becomes L's right child</span>
+    P.left = T2                 <span class="c-cmt"># T2 reattaches as P's left child (still valid: L &lt; T2 &lt; P)</span>
+
+    <span class="c-kw">return</span> L                    <span class="c-cmt"># L is the new root of this subtree — caller must</span>
+                                 <span class="c-cmt"># re-link L into P's OLD parent</span>
+  </div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a right rotation around node P promotes P's left child L to P's former position, demotes P to L's right child, and reparents L's original right subtree as P's new left child — a constant-time (O(1)) pointer rewiring of exactly three references that preserves the BST property while decreasing the height of the left-heavy side by one and increasing the height of the (now L's) right side by one.</div>
+</section>
+
+<!-- ============ SECTION 2: LEFT ROTATION ============ -->
+<section id="leftrotation">
+  <div class="kicker">02 — The mirror image</div>
+  <h2>Left rotation</h2>
+
+  <p>A left rotation is the exact mirror: applied around a node <code class="inline">P</code> with right child <code class="inline">R</code>, <code class="inline">R</code> becomes the new subtree root, <code class="inline">P</code> becomes <code class="inline">R</code>'s left child, and <code class="inline">R</code>'s original left subtree reattaches as <code class="inline">P</code>'s new right child.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>LEFT ROTATION — FULL ANIMATED STEP-THROUGH</span>
+      <div><button class="btn" id="lr-step">Next step ▸</button> <button class="btn secondary" id="lr-reset">Restart</button></div>
+    </div>
+    <div class="tree-wrap"><div class="tree-canvas" id="lr-canvas"></div></div>
+    <div class="steps-list" id="lr-steps"></div>
+  </div>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">rotate_left</span>(P):
+    R = P.right                 <span class="c-cmt"># R will become the new subtree root</span>
+    T2 = R.left                 <span class="c-cmt"># R's left subtree — values between P and R</span>
+
+    R.left = P                  <span class="c-cmt"># P becomes R's left child</span>
+    P.right = T2                <span class="c-cmt"># T2 reattaches as P's right child (still valid: P &lt; T2 &lt; R)</span>
+
+    <span class="c-kw">return</span> R                    <span class="c-cmt"># R is the new root of this subtree</span>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: BALANCE FACTOR & AVL ============ -->
+<section id="balancefactor">
+  <div class="kicker">03 — The number that triggers a rotation</div>
+  <h2>Balance factor and when AVL trees rotate</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of the balance factor as a carpenter's level for each node: it tells you whether that node's "load" is leaning left, leaning right, or sitting flat. An AVL tree checks this level after every insert or delete, and the moment any node tips too far, it performs a rotation right there to level it back out — before the imbalance can compound further up the tree.</p>
+
+  <p>Formally: <strong>balance factor(node) = height(node.left) − height(node.right)</strong>. An empty subtree has height −1 (or some conventions use 0 for a leaf's children; the important part is the relative comparison). AVL trees maintain the invariant that every node's balance factor is in <code class="inline">{-1, 0, 1}</code> — if an insert or delete pushes any node's balance factor to <code class="inline">-2</code> or <code class="inline">+2</code>, a rotation (or pair of rotations) is triggered at that node to restore the invariant.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>COMPUTE THE BALANCE FACTOR — CLICK A NODE</span></div>
+    <div class="tree-wrap"><div class="tree-canvas" id="bf-canvas"></div></div>
+    <div class="log" id="bf-log"><span class="line">Click any node above to see its balance factor computed from its subtree heights.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Balance factor</th><th>Meaning</th><th>AVL action</th></tr>
+    <tr><td>-1, 0, +1</td><td>Node is acceptably balanced</td><td>None — invariant holds</td></tr>
+    <tr><td>+2</td><td>Left-heavy (left subtree 2 taller than right)</td><td>Rotate — specifically LL or LR case (section 4)</td></tr>
+    <tr><td>-2</td><td>Right-heavy (right subtree 2 taller than left)</td><td>Rotate — specifically RR or RL case (section 4)</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why check after every single insert/delete, not periodically:</b> imbalance compounds. A node at +2 today can push an ancestor to +3 tomorrow if left unaddressed, and by then a single rotation may no longer be enough to fix it (multiple rotations, or a completely different rebalancing point, might be needed). Checking and correcting immediately after each modification means at most one node is ever off-balance at a time, and it's always fixable with 1-2 rotations.</div>
+</section>
+
+<!-- ============ SECTION 4: FOUR CASES ============ -->
+<section id="fourcases">
+  <div class="kicker">04 — Diagnosing which fix applies</div>
+  <h2>LL, RR, LR, RL rotation cases</h2>
+
+  <p>When a node's balance factor hits ±2, which rotation(s) fix it depends on the SHAPE of the imbalance, not just its direction. The naming describes the path from the unbalanced node down to where the extra height actually lives: "LL" means the imbalance is in the left child's left subtree, "LR" means it's in the left child's right subtree, and so on.</p>
+
+  <div class="case-grid">
+    <div class="case-card">
+      <h4>LL case — left-left, single RIGHT rotation</h4>
+      <div class="before-after">
+        <div class="mini-tree" id="case-ll-before"></div>
+        <span class="ba-arrow">→</span>
+        <div class="mini-tree" id="case-ll-after"></div>
+      </div>
+      <p style="font-size:0.82rem; margin-top:0.5rem;">Extra height is in the left child's LEFT subtree. One right rotation around the unbalanced node fixes it directly.</p>
+    </div>
+    <div class="case-card">
+      <h4>RR case — right-right, single LEFT rotation</h4>
+      <div class="before-after">
+        <div class="mini-tree" id="case-rr-before"></div>
+        <span class="ba-arrow">→</span>
+        <div class="mini-tree" id="case-rr-after"></div>
+      </div>
+      <p style="font-size:0.82rem; margin-top:0.5rem;">Mirror of LL. Extra height is in the right child's RIGHT subtree. One left rotation fixes it.</p>
+    </div>
+    <div class="case-card">
+      <h4>LR case — left-right, LEFT then RIGHT rotation</h4>
+      <div class="before-after">
+        <div class="mini-tree" id="case-lr-before"></div>
+        <span class="ba-arrow">→</span>
+        <div class="mini-tree" id="case-lr-after"></div>
+      </div>
+      <p style="font-size:0.82rem; margin-top:0.5rem;">Extra height is in the left child's RIGHT subtree — a single right rotation alone would NOT fix this (the zigzag shape defeats it). First left-rotate the left child to convert this into an LL shape, then right-rotate the top node.</p>
+    </div>
+    <div class="case-card">
+      <h4>RL case — right-left, RIGHT then LEFT rotation</h4>
+      <div class="before-after">
+        <div class="mini-tree" id="case-rl-before"></div>
+        <span class="ba-arrow">→</span>
+        <div class="mini-tree" id="case-rl-after"></div>
+      </div>
+      <p style="font-size:0.82rem; margin-top:0.5rem;">Mirror of LR. First right-rotate the right child to convert this into an RR shape, then left-rotate the top node.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>The single most common mistake:</b> applying only one rotation to an LR or RL case. Because the extra weight zigzags (left-then-right, or right-then-left) instead of running straight down one side, a single rotation at the top node just relocates the imbalance instead of fixing it — the inner rotation is required first to straighten the zigzag into a straight line, THEN the outer rotation resolves it.</div>
+</section>
+
+<!-- ============ SECTION 5: RED-BLACK TREES ============ -->
+<section id="redblack">
+  <div class="kicker">05 — A looser invariant, same guarantee</div>
+  <h2>Red-Black trees — the invariant, conceptually</h2>
+
+  <p><strong>Start here, before any code.</strong> AVL trees are like a strict fire code that requires every room's exits to be within one step of perfectly even — very safe, but you're re-checking and adjusting constantly. A Red-Black tree is a looser building code: it doesn't require every path to be nearly equal, just that no path is ever more than <strong>twice as long</strong> as any other path from the same point. That looser bar means fewer rotations are needed on average, at the cost of the tree being allowed to be somewhat less tightly balanced than an AVL tree.</p>
+
+  <p>Every node is colored red or black, and the tree maintains these rules:</p>
+  <div class="rb-legend">
+    <span><span class="rb-swatch red"></span> Red node</span>
+    <span><span class="rb-swatch black"></span> Black node</span>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Rule</th><th>What it prevents</th></tr>
+    <tr><td>Root is always black</td><td>Simplifies edge-case handling at the top</td></tr>
+    <tr><td>Red node's children are always black (no two reds in a row)</td><td>Prevents a path from being dominated by red nodes and getting arbitrarily "loose"</td></tr>
+    <tr><td>Every path from a node to its descendant None leaves passes through the same number of BLACK nodes ("black-height")</td><td>This is the core invariant — it caps how much longer one path can be than another</td></tr>
+  </table>
+
+  <p>The "no red-red in a row" rule plus "equal black-height on every path" together guarantee that the longest possible path (alternating red-black-red-black...) is at most <strong>twice</strong> the length of the shortest possible path (all black). That factor-of-2 cap is enough to guarantee height stays O(log n), even though individual paths can differ in length — unlike AVL's much tighter requirement that heights differ by at most 1 at every node.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>A VALID RED-BLACK TREE — INSPECT THE INVARIANT</span></div>
+    <div class="tree-wrap"><div class="tree-canvas" id="rb-canvas"></div></div>
+    <div class="log" id="rb-log"><span class="line">Every root-to-None path in this tree passes through exactly 2 black nodes, even though the paths have different total lengths (some pass through more red nodes than others).</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>AVL tree</th><th>Red-Black tree</th></tr>
+    <tr><td>Balance strictness</td><td>Tighter — balance factor ∈ {-1,0,1} everywhere</td><td>Looser — longest path ≤ 2× shortest path</td></tr>
+    <tr><td>Rotations per insert/delete</td><td>More frequent, but tree stays more tightly balanced</td><td>Fewer on average — cheaper writes</td></tr>
+    <tr><td>Lookup speed</td><td>Slightly faster (tighter balance → shorter average path)</td><td>Slightly slower (looser balance → marginally longer average path)</td></tr>
+    <tr><td>Typical use</td><td>Read-heavy workloads</td><td>Write-heavy workloads (e.g. most language standard library ordered maps/sets)</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 6: WHY O(log n) ============ -->
+<section id="whylogn">
+  <div class="kicker">06 — Tying it back to Big-O</div>
+  <h2>Why balancing guarantees O(log n) operations</h2>
+
+  <p>Recall from the previous lab: BST operations cost O(h), where h is the tree's height — and an unconstrained BST can degrade to h = n. Both AVL and Red-Black trees add a rule that mathematically bounds h in terms of n:</p>
+
+  <ul style="color:#cdd0d8;">
+    <li><strong>AVL:</strong> the balance-factor invariant guarantees h ≤ ~1.44 × log₂(n) — provably logarithmic, with a small constant factor.</li>
+    <li><strong>Red-Black:</strong> the black-height invariant guarantees h ≤ 2 × log₂(n+1) — also logarithmic, with a slightly larger (but still constant) factor.</li>
+  </ul>
+
+  <p>Because a rotation is O(1) (three pointer writes) and at most O(log n) rotations are ever needed to fully rebalance after a single insert or delete (rebalancing only needs to walk back up the path you just inserted/deleted along, which has length h = O(log n)), the total cost of a self-balancing insert or delete is O(log n) for the descent, plus O(log n) for the rebalancing check, plus O(1) per rotation actually performed — all of which is O(log n) overall.</p>
+
+  <div class="callout self"><b>Interview-ready definition:</b> self-balancing trees (AVL, Red-Black) guarantee O(log n) search, insert, and delete by maintaining an invariant — checked and restored after every modification via O(1) rotations — that bounds the tree's height to O(log n) regardless of insertion order, in contrast to a plain BST where height (and therefore per-operation cost) is a function of insertion order and can degrade to O(n) in the worst case.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Trace a right rotation by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Node P=30 has left child L=20. L has a right child T2=25 and a left child 10. Perform rotate_right(P) by hand: what is the new subtree root, and what are the final left/right children of each of P, L, and T2?</p>
+    <details><summary>Show solution</summary><div class="solution">New subtree root: L (20)
+
+Before:        30(P)
+              /
+            20(L)
+           /    \
+         10      25(T2)
+
+rotate_right(P=30):
+  L = P.left = 20
+  T2 = L.right = 25
+  L.right = P        → 20's right child becomes 30
+  P.left = T2         → 30's left child becomes 25 (T2)
+  return L             → 20 is the new subtree root
+
+After:         20(L)
+              /    \
+            10      30(P)
+                    /
+                  25(T2)
+
+Final state: L(20)'s left child is still 10 (untouched), L(20)'s right
+child is P(30). P(30)'s left child is T2(25), P(30)'s right child is
+whatever it was before (unchanged, not involved in this rotation).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Compute balance factors</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A node X has a left subtree of height 3 and a right subtree of height 1. Compute X's balance factor. Is X AVL-valid? If not, is this an LL-family or RR-family imbalance, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">balance_factor(X) = height(left) - height(right) = 3 - 1 = +2
+
++2 is outside the valid AVL range of {-1, 0, 1} — X is NOT AVL-valid, it
+needs rebalancing.
+
++2 (positive, left-heavy) means the imbalance is on the LEFT side — this is
+in the "LL-family" (could be pure LL or LR depending on whether the extra
+height within that left subtree leans further left or right — you'd need
+to check the left child's OWN balance factor to determine which of LL or LR
+applies, and therefore whether one rotation or two is needed).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Identify the case and the fix</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Inserting 30, then 20, then 10 (in that order) into an empty BST with no rebalancing would produce a straight line leaning left. At the moment 10 is inserted, node 30 becomes unbalanced. Is this LL, RR, LR, or RL? What single fix resolves it?</p>
+    <details><summary>Show solution</summary><div class="solution">LL case. The tree right before rebalancing:
+        30
+       /
+      20
+     /
+    10
+
+The extra height is in 30's left child (20)'s LEFT subtree (10) — a
+straight line down the left-left path. This is the textbook LL shape.
+
+Fix: a single right rotation around 30. Result:
+      20
+     /  \
+    10   30
+Now balanced (each node's balance factor is 0).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Why LR needs two rotations</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Node P=30 is left-heavy with left child L=10, and L's right child is 20 (a "zigzag" — LR shape). Explain concretely why a single right rotation around P does NOT fix the imbalance, then describe the two-rotation fix.</p>
+    <details><summary>Show solution</summary><div class="solution">Before:      30(P)
+            /
+          10(L)
+            \
+             20
+
+A single right rotation around P promotes L (10) to the top:
+             10
+               \
+                30
+               /
+             20
+This is now RIGHT-heavy at 10 (its right subtree has height 2, left has
+height 0) — the imbalance didn't get fixed, it just flipped which side is
+heavy and moved to a different node. Still broken.
+
+Correct two-step fix:
+Step 1 — left-rotate L (10) first: this promotes 20 to be P's new left
+child, with 10 becoming 20's left child. Now the shape is:
+        30(P)
+       /
+     20
+    /
+  10
+This is now a clean LL shape.
+
+Step 2 — right-rotate P (30) as in the LL case: 20 becomes the new subtree
+root, with 10 as its left child and 30 as its right child:
+      20
+     /  \
+   10    30
+Balanced. The inner rotation was necessary specifically to straighten the
+zigzag into a single direction before the outer rotation could resolve it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Red-Black black-height reasoning</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A Red-Black tree path has 4 black nodes and 0 red nodes (length 4). Another path in the same tree has 4 black nodes and 3 red nodes alternating with them (length 7). Are both paths valid under the Red-Black invariants? What is the maximum possible length of any path in this tree, given a shortest path of 4?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, both are valid — the invariant requires equal BLACK-height (both have
+exactly 4 black nodes), not equal total length. Red nodes are allowed to
+appear as long as no two reds are adjacent, so length can vary based on how
+many reds are woven in.
+
+Maximum possible length: since no two red nodes can be adjacent, red nodes
+can appear at most every other position, meaning a path can have at most as
+many red nodes as black nodes. With black-height 4, the longest possible
+path alternates black-red-black-red-black-red-black-red = 4 black + 4 red =
+8... but more precisely the bound given is "at most 2x the shortest path":
+shortest = 4 (all black), so longest ≤ 2 × 4 = 8. This factor-of-2 cap
+(not exact equality) is what still guarantees O(log n) height even without
+AVL's tighter per-node balance requirement.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Full worked example: insert causing an RL case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Starting with a balanced AVL subtree rooted at 10 with right child 30, insert 20. Show the resulting shape before rebalancing, identify the case, and perform the fix.</p>
+    <details><summary>Show solution</summary><div class="solution">Before insert:    10
+                     \
+                      30
+
+Insert 20: 20 < 30, so it becomes 30's left child (BST insert rule):
+                  10
+                    \
+                     30
+                    /
+                  20
+
+Check balance factor of 10: height(left)=−1(empty), height(right)=1(the
+30-20 subtree) → balance factor = −1 − 1 = −2. Unbalanced, right-heavy.
+
+Shape of the imbalance: right child (30)'s LEFT subtree (20) has the extra
+height — this is the RL case (right-left zigzag).
+
+Fix, step 1 — right-rotate 30 (the right child) first: promotes 20 above
+30 on that side:
+                  10
+                    \
+                     20
+                       \
+                        30
+Now a clean RR shape.
+
+Fix, step 2 — left-rotate 10 (the original unbalanced node):
+                  20
+                 /  \
+               10    30
+Balanced — every node's balance factor is 0.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly which three pointers change during a single rotation and why the BST property survives it, (2) how to tell an LL case from an LR case by looking at where the extra height actually sits, and (3) why a Red-Black tree's "longest path ≤ 2× shortest path" invariant is still enough to guarantee O(log n) height even though it's looser than AVL's? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — tree rotations &amp; balancing.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+function wait(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+/* generic absolute-position node/edge renderer for a fixed layout map */
+function renderLayout(canvasEl, layout, edgeList, opts){
+  opts = opts || {};
+  canvasEl.innerHTML = '';
+  // edges first
+  edgeList.forEach(e=>{
+    const p1 = layout[e.from], p2 = layout[e.to];
+    if(!p1 || !p2) return;
+    const dx = p2.x - p1.x, dy = p2.y - p1.y;
+    const len = Math.sqrt(dx*dx + dy*dy);
+    const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    const edge = document.createElement('div');
+    edge.className = 'tedge' + (e.moved ? ' moved' : '');
+    edge.style.left = p1.x + 'px';
+    edge.style.top = p1.y + 'px';
+    edge.style.width = len + 'px';
+    edge.style.transform = `rotate(${angle}deg)`;
+    canvasEl.appendChild(edge);
+  });
+  Object.keys(layout).forEach(id=>{
+    const p = layout[id];
+    const div = document.createElement('div');
+    div.className = 'tnode';
+    if(opts.pivot && opts.pivot.has(id)) div.classList.add('pivot');
+    if(opts.newroot && opts.newroot.has(id)) div.classList.add('newroot');
+    if(opts.unbalanced && opts.unbalanced.has(id)) div.classList.add('unbalanced');
+    if(opts.orphaned && opts.orphaned.has(id)) div.classList.add('orphaned');
+    div.style.left = p.x + 'px';
+    div.style.top = p.y + 'px';
+    div.innerHTML = `${p.label}${p.bf !== undefined ? `<span class="bf">bf ${p.bf}</span>` : ''}`;
+    canvasEl.appendChild(div);
+  });
+}
+
+/* ===== SECTION 1: RIGHT ROTATION FULL STEP-THROUGH ===== */
+(function(){
+  const canvas = document.getElementById('rr-canvas');
+  const stepsEl = document.getElementById('rr-steps');
+  const btn = document.getElementById('rr-step');
+  const resetBtn = document.getElementById('rr-reset');
+
+  // Frames: each frame is a layout (id -> {x,y,label}) + edge list + which nodes/edges are highlighted
+  const W = 520;
+  const frames = [
+    { // 0: initial state P=30 with L=20 (T2=25 hanging under 20's right), 10 under 20's left
+      layout: {
+        P: {x: W*0.55, y: 45, label:'30'},
+        L: {x: W*0.30, y: 130, label:'20'},
+        C10:{x: W*0.15, y: 215, label:'10'},
+        T2: {x: W*0.45, y: 215, label:'25'}
+      },
+      edges: [ {from:'P',to:'L'}, {from:'L',to:'C10'}, {from:'L',to:'T2'} ],
+      pivot: [], newroot: [],
+      caption: 'Starting shape. P=30 is unbalanced left-heavy; L=20 is its left child; T2=25 is L\'s right subtree (values between 20 and 30); 10 is L\'s left subtree.'
+    },
+    { // 1: highlight P and L as the rotation participants
+      layout: {
+        P: {x: W*0.55, y: 45, label:'30'},
+        L: {x: W*0.30, y: 130, label:'20'},
+        C10:{x: W*0.15, y: 215, label:'10'},
+        T2: {x: W*0.45, y: 215, label:'25'}
+      },
+      edges: [ {from:'P',to:'L'}, {from:'L',to:'C10'}, {from:'L',to:'T2'} ],
+      pivot: ['P','L'], newroot: [],
+      caption: 'rotate_right(P): identify L = P.left (20) and T2 = L.right (25). These are the only two pointers besides P itself that will change.'
+    },
+    { // 2: detach T2 from L, detach L from P (conceptually) — show edge P-L fading, T2 edge fading
+      layout: {
+        P: {x: W*0.55, y: 45, label:'30'},
+        L: {x: W*0.30, y: 130, label:'20'},
+        C10:{x: W*0.15, y: 215, label:'10'},
+        T2: {x: W*0.45, y: 215, label:'25'}
+      },
+      edges: [ {from:'L',to:'C10'} ], // P-L and L-T2 edges removed to show detachment
+      pivot: ['P','L'], newroot: [], orphaned: ['T2'],
+      caption: 'Detach: the P→L link and the L→T2 link are both about to be rewritten. T2 is temporarily unattached (dashed) — it will be re-homed under P.'
+    },
+    { // 3: move L to top position, P moves down-right, T2 moves under P as left child
+      layout: {
+        L: {x: W*0.40, y: 45, label:'20'},
+        C10:{x: W*0.20, y: 130, label:'10'},
+        P: {x: W*0.65, y: 130, label:'30'},
+        T2: {x: W*0.55, y: 215, label:'25'}
+      },
+      edges: [ {from:'L',to:'C10'}, {from:'L',to:'P', moved:true}, {from:'P',to:'T2', moved:true} ],
+      pivot: [], newroot: ['L'],
+      caption: 'Reattach: L.right = P (P demoted to L\'s right child) and P.left = T2 (T2 promoted into P\'s old left slot). Watch the nodes physically move to these new positions.'
+    },
+    { // 4: final settled state
+      layout: {
+        L: {x: W*0.40, y: 45, label:'20'},
+        C10:{x: W*0.20, y: 130, label:'10'},
+        P: {x: W*0.65, y: 130, label:'30'},
+        T2: {x: W*0.55, y: 215, label:'25'}
+      },
+      edges: [ {from:'L',to:'C10'}, {from:'L',to:'P'}, {from:'P',to:'T2'} ],
+      pivot: [], newroot: ['L'],
+      caption: 'Done. L (20) is the new subtree root. BST property holds throughout: 10 < 20 < 25 < 30. The whole operation touched exactly 3 pointers — O(1) — regardless of how large T2 or P\'s other subtrees are.'
+    }
+  ];
+
+  const stepDescriptions = [
+    'Frame 0 — starting shape: P=30 (unbalanced), L=20 is its left child.',
+    'Frame 1 — identify L = P.left and T2 = L.right; these are the only players.',
+    'Frame 2 — detach: sever P→L and L→T2 conceptually (about to be rewritten).',
+    'Frame 3 — reattach: L.right = P, P.left = T2 — nodes animate to new (x,y) positions.',
+    'Frame 4 — settled: L is the new subtree root, BST property intact, O(1) total work.'
+  ];
+
+  let frameIdx = 0;
+
+  function renderFrame(i){
+    const f = frames[i];
+    renderLayout(canvas, f.layout, f.edges, { pivot: new Set(f.pivot||[]), newroot: new Set(f.newroot||[]), orphaned: new Set(f.orphaned||[]) });
+    stepsEl.innerHTML = `<b style="color:var(--ink);">${f.caption}</b><ol>${stepDescriptions.map((s,idx)=>`<li${idx===i?' class="active"':''}>${s}</li>`).join('')}</ol>`;
+    btn.textContent = i >= frames.length-1 ? 'Restart from top ▸' : 'Next step ▸';
+  }
+
+  btn.addEventListener('click', ()=>{
+    if(frameIdx >= frames.length-1){ frameIdx = 0; } else { frameIdx++; }
+    renderFrame(frameIdx);
+  });
+  resetBtn.addEventListener('click', ()=>{ frameIdx = 0; renderFrame(0); });
+
+  renderFrame(0);
+})();
+
+/* ===== SECTION 2: LEFT ROTATION FULL STEP-THROUGH ===== */
+(function(){
+  const canvas = document.getElementById('lr-canvas');
+  const stepsEl = document.getElementById('lr-steps');
+  const btn = document.getElementById('lr-step');
+  const resetBtn = document.getElementById('lr-reset');
+
+  const W = 520;
+  const frames = [
+    {
+      layout: {
+        P: {x: W*0.40, y: 45, label:'10'},
+        R: {x: W*0.65, y: 130, label:'30'},
+        T2:{x: W*0.55, y: 215, label:'20'},
+        C40:{x: W*0.80, y: 215, label:'40'}
+      },
+      edges: [ {from:'P',to:'R'}, {from:'R',to:'T2'}, {from:'R',to:'C40'} ],
+      pivot: [], newroot: [],
+      caption: 'Starting shape. P=10 is unbalanced right-heavy; R=30 is its right child; T2=20 is R\'s left subtree (values between 10 and 30); 40 is R\'s right subtree.'
+    },
+    {
+      layout: {
+        P: {x: W*0.40, y: 45, label:'10'},
+        R: {x: W*0.65, y: 130, label:'30'},
+        T2:{x: W*0.55, y: 215, label:'20'},
+        C40:{x: W*0.80, y: 215, label:'40'}
+      },
+      edges: [ {from:'P',to:'R'}, {from:'R',to:'T2'}, {from:'R',to:'C40'} ],
+      pivot: ['P','R'], newroot: [],
+      caption: 'rotate_left(P): identify R = P.right (30) and T2 = R.left (20). Only these pointers change.'
+    },
+    {
+      layout: {
+        P: {x: W*0.40, y: 45, label:'10'},
+        R: {x: W*0.65, y: 130, label:'30'},
+        T2:{x: W*0.55, y: 215, label:'20'},
+        C40:{x: W*0.80, y: 215, label:'40'}
+      },
+      edges: [ {from:'R',to:'C40'} ],
+      pivot: ['P','R'], newroot: [], orphaned: ['T2'],
+      caption: 'Detach: the P→R link and the R→T2 link are both about to be rewritten. T2 is temporarily unattached.'
+    },
+    {
+      layout: {
+        R: {x: W*0.55, y: 45, label:'30'},
+        P: {x: W*0.30, y: 130, label:'10'},
+        T2:{x: W*0.40, y: 215, label:'20'},
+        C40:{x: W*0.75, y: 130, label:'40'}
+      },
+      edges: [ {from:'R',to:'P', moved:true}, {from:'P',to:'T2', moved:true}, {from:'R',to:'C40'} ],
+      pivot: [], newroot: ['R'],
+      caption: 'Reattach: R.left = P (P demoted to R\'s left child) and P.right = T2 (T2 promoted into P\'s old right slot).'
+    },
+    {
+      layout: {
+        R: {x: W*0.55, y: 45, label:'30'},
+        P: {x: W*0.30, y: 130, label:'10'},
+        T2:{x: W*0.40, y: 215, label:'20'},
+        C40:{x: W*0.75, y: 130, label:'40'}
+      },
+      edges: [ {from:'R',to:'P'}, {from:'P',to:'T2'}, {from:'R',to:'C40'} ],
+      pivot: [], newroot: ['R'],
+      caption: 'Done. R (30) is the new subtree root. BST property holds: 10 < 20 < 30 < 40. Mirror image of the right rotation, same O(1) cost.'
+    }
+  ];
+
+  const stepDescriptions = [
+    'Frame 0 — starting shape: P=10 (unbalanced), R=30 is its right child.',
+    'Frame 1 — identify R = P.right and T2 = R.left; these are the only players.',
+    'Frame 2 — detach: sever P→R and R→T2 conceptually.',
+    'Frame 3 — reattach: R.left = P, P.right = T2 — nodes animate to new positions.',
+    'Frame 4 — settled: R is the new subtree root, BST property intact.'
+  ];
+
+  let frameIdx = 0;
+  function renderFrame(i){
+    const f = frames[i];
+    renderLayout(canvas, f.layout, f.edges, { pivot: new Set(f.pivot||[]), newroot: new Set(f.newroot||[]), orphaned: new Set(f.orphaned||[]) });
+    stepsEl.innerHTML = `<b style="color:var(--ink);">${f.caption}</b><ol>${stepDescriptions.map((s,idx)=>`<li${idx===i?' class="active"':''}>${s}</li>`).join('')}</ol>`;
+    btn.textContent = i >= frames.length-1 ? 'Restart from top ▸' : 'Next step ▸';
+  }
+  btn.addEventListener('click', ()=>{
+    if(frameIdx >= frames.length-1){ frameIdx = 0; } else { frameIdx++; }
+    renderFrame(frameIdx);
+  });
+  resetBtn.addEventListener('click', ()=>{ frameIdx = 0; renderFrame(0); });
+  renderFrame(0);
+})();
+
+/* ===== SECTION 3: BALANCE FACTOR CLICKABLE TREE ===== */
+(function(){
+  const canvas = document.getElementById('bf-canvas');
+  const logEl = document.getElementById('bf-log');
+  const W = 560;
+  // static tree: 40 root; left 20 (children 10,30); right 60 (only child 70, which has child 65)
+  const layout = {
+    n40:{x:W*0.5,y:40,label:'40'},
+    n20:{x:W*0.28,y:120,label:'20'},
+    n60:{x:W*0.72,y:120,label:'60'},
+    n10:{x:W*0.15,y:200,label:'10'},
+    n30:{x:W*0.38,y:200,label:'30'},
+    n70:{x:W*0.85,y:200,label:'70'},
+    n65:{x:W*0.78,y:280,label:'65'}
+  };
+  const edges = [
+    {from:'n40',to:'n20'},{from:'n40',to:'n60'},
+    {from:'n20',to:'n10'},{from:'n20',to:'n30'},
+    {from:'n60',to:'n70'},{from:'n70',to:'n65'}
+  ];
+  // heights (leaf=0), computed manually to match this fixed static tree
+  const heightsL = { n10: -1, n30: -1, n65: -1 }; // no children
+  const info = {
+    n40: { left:'n20', right:'n60', hl:1, hr:2, desc:'left subtree (20,10,30) height 1, right subtree (60,70,65) height 2' },
+    n20: { left:'n10', right:'n30', hl:0, hr:0, desc:'left child 10 is a leaf (height 0), right child 30 is a leaf (height 0)' },
+    n60: { left:null, right:'n70', hl:-1, hr:1, desc:'no left child (height -1), right subtree (70,65) height 1' },
+    n10: { left:null, right:null, hl:-1, hr:-1, desc:'leaf node, no children' },
+    n30: { left:null, right:null, hl:-1, hr:-1, desc:'leaf node, no children' },
+    n70: { left:'n65', right:null, hl:0, hr:-1, desc:'left child 65 is a leaf (height 0), no right child (height -1)' },
+    n65: { left:null, right:null, hl:-1, hr:-1, desc:'leaf node, no children' }
+  };
+
+  function render(highlightId){
+    renderLayout(canvas, layout, edges, { pivot: highlightId ? new Set([highlightId]) : new Set() });
+    Object.keys(layout).forEach(id=>{
+      const el = canvas.querySelector(`.tnode[style*="left: ${layout[id].x}px"]`);
+    });
+    // attach click handlers after render (nodes recreated each time)
+    const nodeEls = canvas.querySelectorAll('.tnode');
+    let i = 0;
+    Object.keys(layout).forEach((id)=>{
+      const el = Array.from(nodeEls).find(e => parseFloat(e.style.left) === layout[id].x && parseFloat(e.style.top) === layout[id].y);
+      if(el){
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', ()=>{
+          const inf = info[id];
+          const bf = inf.hl - inf.hr;
+          const valid = bf >= -1 && bf <= 1;
+          render(id);
+          const p = document.createElement('div'); p.className = 'line fadein';
+          p.innerHTML = `<b>Node ${layout[id].label}:</b> ${inf.desc}. balance factor = height(left) − height(right) = ${inf.hl} − (${inf.hr}) = <b>${bf}</b> → ${valid ? 'within {-1,0,1}, AVL-valid.' : (bf>1 ? 'left-heavy (+2 or more) — needs rebalancing.' : 'right-heavy (-2 or less) — needs rebalancing.')}`;
+          logEl.innerHTML = '';
+          logEl.appendChild(p);
+        });
+      }
+    });
+  }
+
+  render(null);
+})();
+
+/* ===== SECTION 4: STATIC 4-CASE MINI DIAGRAMS ===== */
+(function(){
+  function renderMini(el, nodes, edges){
+    el.innerHTML = '';
+    edges.forEach(e=>{
+      const p1 = nodes[e.from], p2 = nodes[e.to];
+      const dx = p2.x-p1.x, dy = p2.y-p1.y;
+      const len = Math.sqrt(dx*dx+dy*dy);
+      const angle = Math.atan2(dy,dx)*180/Math.PI;
+      const edge = document.createElement('div');
+      edge.className = 'mini-edge';
+      edge.style.left = p1.x+'px'; edge.style.top = p1.y+'px';
+      edge.style.width = len+'px'; edge.style.transform = `rotate(${angle}deg)`;
+      el.appendChild(edge);
+    });
+    Object.keys(nodes).forEach(id=>{
+      const n = nodes[id];
+      const div = document.createElement('div');
+      div.className = 'mini-node' + (n.hi ? ' hi' : '');
+      div.style.left = n.x+'px'; div.style.top = n.y+'px';
+      div.textContent = n.label;
+      el.appendChild(div);
+    });
+  }
+
+  // LL case
+  renderMini(document.getElementById('case-ll-before'), {
+    a:{x:90,y:20,label:'30',hi:true}, b:{x:55,y:80,label:'20'}, c:{x:25,y:140,label:'10'}
+  }, [{from:'a',to:'b'},{from:'b',to:'c'}]);
+  renderMini(document.getElementById('case-ll-after'), {
+    b:{x:55,y:30,label:'20'}, c:{x:25,y:90,label:'10'}, a:{x:90,y:90,label:'30'}
+  }, [{from:'b',to:'c'},{from:'b',to:'a'}]);
+
+  // RR case
+  renderMini(document.getElementById('case-rr-before'), {
+    a:{x:25,y:20,label:'10',hi:true}, b:{x:65,y:80,label:'20'}, c:{x:100,y:140,label:'30'}
+  }, [{from:'a',to:'b'},{from:'b',to:'c'}]);
+  renderMini(document.getElementById('case-rr-after'), {
+    b:{x:65,y:30,label:'20'}, a:{x:25,y:90,label:'10'}, c:{x:100,y:90,label:'30'}
+  }, [{from:'b',to:'a'},{from:'b',to:'c'}]);
+
+  // LR case
+  renderMini(document.getElementById('case-lr-before'), {
+    a:{x:90,y:20,label:'30',hi:true}, b:{x:45,y:80,label:'10'}, c:{x:75,y:140,label:'20'}
+  }, [{from:'a',to:'b'},{from:'b',to:'c'}]);
+  renderMini(document.getElementById('case-lr-after'), {
+    c:{x:60,y:30,label:'20'}, b:{x:25,y:90,label:'10'}, a:{x:100,y:90,label:'30'}
+  }, [{from:'c',to:'b'},{from:'c',to:'a'}]);
+
+  // RL case
+  renderMini(document.getElementById('case-rl-before'), {
+    a:{x:25,y:20,label:'10',hi:true}, b:{x:75,y:80,label:'30'}, c:{x:45,y:140,label:'20'}
+  }, [{from:'a',to:'b'},{from:'b',to:'c'}]);
+  renderMini(document.getElementById('case-rl-after'), {
+    c:{x:60,y:30,label:'20'}, a:{x:25,y:90,label:'10'}, b:{x:100,y:90,label:'30'}
+  }, [{from:'c',to:'a'},{from:'c',to:'b'}]);
+})();
+
+/* ===== SECTION 5: RED-BLACK STATIC TREE ===== */
+(function(){
+  const canvas = document.getElementById('rb-canvas');
+  const W = 560;
+  const layout = {
+    n1:{x:W*0.5,y:40,label:'10'},
+    n2:{x:W*0.28,y:120,label:'5'},
+    n3:{x:W*0.72,y:120,label:'20'},
+    n4:{x:W*0.15,y:200,label:'2'},
+    n5:{x:W*0.60,y:200,label:'15'},
+    n6:{x:W*0.85,y:200,label:'30'},
+    n7:{x:W*0.92,y:280,label:'35'}
+  };
+  const edges = [
+    {from:'n1',to:'n2'},{from:'n1',to:'n3'},
+    {from:'n2',to:'n4'},
+    {from:'n3',to:'n5'},{from:'n3',to:'n6'},
+    {from:'n6',to:'n7'}
+  ];
+  const colors = { n1:'black', n2:'black', n3:'black', n4:'red', n5:'red', n6:'red', n7:'black' };
+  canvas.innerHTML = '';
+  edges.forEach(e=>{
+    const p1 = layout[e.from], p2 = layout[e.to];
+    const dx=p2.x-p1.x, dy=p2.y-p1.y, len=Math.sqrt(dx*dx+dy*dy), angle=Math.atan2(dy,dx)*180/Math.PI;
+    const edge = document.createElement('div');
+    edge.className = 'tedge';
+    edge.style.left=p1.x+'px'; edge.style.top=p1.y+'px'; edge.style.width=len+'px'; edge.style.transform=`rotate(${angle}deg)`;
+    canvas.appendChild(edge);
+  });
+  Object.keys(layout).forEach(id=>{
+    const n = layout[id];
+    const div = document.createElement('div');
+    div.className = 'tnode';
+    div.style.left = n.x+'px'; div.style.top = n.y+'px';
+    const isRed = colors[id]==='red';
+    div.style.borderColor = isRed ? 'var(--bad-c)' : '#6b7280';
+    div.style.background = isRed ? 'rgba(255,107,107,0.14)' : 'rgba(69,75,88,0.4)';
+    div.textContent = n.label;
+    canvas.appendChild(div);
+  });
+})();
+</script>
+</body>
+</html>

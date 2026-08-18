@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Big-O &amp; Linked Lists</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --node-c:#6ea8fe; --ptr-c:#f2c14e; --array-c:#7fd8a0; --bad-c:#ff6b6b; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--ptr-c); color:var(--ptr-c); background:rgba(242,193,78,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--ptr-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+  .flash{animation:flash .6s ease;}
+  @keyframes flash{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,138,101,0.3);} 100%{box-shadow:none;}}
+
+  /* linked list visualization */
+  .ll-track{display:flex; align-items:center; gap:0; min-height:110px; flex-wrap:wrap; margin:1.2rem 0; padding:1rem 0.5rem;}
+  .ll-node{display:flex; border:2px solid var(--node-c); border-radius:8px; overflow:hidden; background:rgba(110,168,254,0.06); transition:all .4s ease; position:relative;}
+  .ll-node.dll{border-color:var(--array-c);}
+  .ll-node .data{padding:0.7rem 1rem; font-family:var(--mono); font-weight:700; color:var(--ink); border-right:1px solid var(--rule); min-width:2.2rem; text-align:center;}
+  .ll-node .ptrs{display:flex; flex-direction:column;}
+  .ll-node .ptr{padding:0.15rem 0.6rem; font-family:var(--mono); font-size:0.62rem; color:var(--ptr-c); white-space:nowrap;}
+  .ll-node.dll .ptr.prev{color:var(--array-c);}
+  .ll-node.head-mark::before{content:"HEAD"; position:absolute; top:-1.4rem; left:0; font-family:var(--mono); font-size:0.6rem; color:var(--accent); letter-spacing:0.05em;}
+  .ll-node.tail-mark::after{content:"TAIL"; position:absolute; top:-1.4rem; right:0; font-family:var(--mono); font-size:0.6rem; color:var(--accent); letter-spacing:0.05em;}
+  .ll-arrow{width:34px; height:2px; background:var(--ptr-c); position:relative; flex-shrink:0; transform-origin:left center; transition:opacity .35s ease, transform .35s ease, background .35s ease;}
+  .ll-arrow::after{content:""; position:absolute; right:0; top:-4px; border:5px solid transparent; border-left-color:var(--ptr-c); border-right:none; transition:border-color .35s ease;}
+  .ll-arrow.new{animation:arrowgrow .5s ease;}
+  @keyframes arrowgrow{from{opacity:0; transform:scaleX(0);} to{opacity:1; transform:scaleX(1);}}
+  .ll-arrow.detaching{animation:arrowdetach .45s ease forwards;}
+  @keyframes arrowdetach{0%{opacity:1; transform:scaleX(1); background:var(--ptr-c);} 60%{opacity:0.5; background:var(--bad-c);} 100%{opacity:0; transform:scaleX(0.2) translateY(-6px); background:var(--bad-c);}}
+  .ll-arrow.detaching::after{border-left-color:var(--bad-c);}
+  .ll-null{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); padding:0 0.6rem;}
+  .ll-node.highlight{box-shadow:0 0 0 3px rgba(255,138,101,0.4); border-color:var(--accent);}
+  .ll-node.removing{animation:ll-remove .5s ease forwards;}
+  @keyframes ll-remove{to{opacity:0; transform:scale(0.6) translateY(-14px);}}
+  .ll-node.entering{animation:ll-enter .45s ease;}
+  @keyframes ll-enter{from{opacity:0; transform:scale(0.7);} to{opacity:1; transform:scale(1);}}
+  .ll-node.reversing{animation:ll-flip .5s ease;}
+  @keyframes ll-flip{0%{transform:rotateX(0deg);} 50%{transform:rotateX(90deg); opacity:0.4;} 100%{transform:rotateX(0deg);}}
+  .ll-steps{font-family:var(--mono); font-size:0.74rem; color:var(--ink-dim); margin-top:0.6rem;}
+  .ll-steps ol{margin:0.4rem 0 0; padding-left:1.3rem;}
+  .ll-steps li{margin:0.25rem 0;}
+  .ll-steps li.active{color:var(--accent);}
+  .ll-steps li b{color:var(--ink);}
+
+  .op-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  /* array vs list boxes */
+  .arr-row{display:flex; gap:0.3rem; margin:1rem 0; flex-wrap:wrap;}
+  .arr-cell{width:44px; height:44px; border:2px solid var(--array-c); border-radius:6px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; background:rgba(127,216,160,0.06); transition:all .3s;}
+  .arr-cell.shift{animation:shiftflash .5s ease;}
+  @keyframes shiftflash{0%{background:rgba(255,138,101,0.3);} 100%{background:rgba(127,216,160,0.06);}}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--ptr-c); background:rgba(242,193,78,0.06);} .callout.self b{color:var(--ptr-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · BIG-O &amp; LINKED LISTS</div>
+  <h1>Big-O counts <em>how the work grows</em>, not how fast your machine is today.</h1>
+  <p class="lede">Two data structures can hold the exact same values and answer the exact same questions, yet cost wildly different amounts of work as they grow. This lab derives complexity by literally counting operations, then uses a linked list — built and rewired live, node by node — to make "insert at head is O(1) but insert at tail needs a full walk" a thing you watch happen, not a rule you memorize.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">array.insert(0, x)</div>
+    <div class="darrow">shifts everything → O(n)</div>
+    <div class="dnode">list.insert_head(x)</div>
+    <div class="darrow">rewires one pointer → O(1)</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="bigo">1 · Deriving Big-O by Counting</a>
+  <a data-target="cases">2 · Best / Average / Worst Case</a>
+  <a data-target="arrvslist">3 · Arrays vs Linked Lists</a>
+  <a data-target="operations">4 · Insert, Delete, Search, Reverse</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: DERIVING BIG-O ============ -->
+<section id="bigo">
+  <div class="kicker">01 — Counting, not guessing</div>
+  <h2>Deriving time complexity by counting operations</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine you're looking for a friend's name in a phone book. If the book is in no particular order, you might have to check every single page before you find them (or confirm they're not there) — double the pages, double your worst-case effort. That relationship between "how big the input is" and "how much work you do" is all Big-O measures. It doesn't care if you're a fast reader or a slow reader (that's like CPU speed) — it cares about the <em>shape</em> of how effort scales as the phone book gets bigger.</p>
+
+  <p>To derive Big-O for real: write the operation as code, then count how many times its dominant operation runs as a function of input size <code class="inline">n</code>, then drop constants and lower-order terms — because for large enough <code class="inline">n</code>, only the fastest-growing term matters.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">find_max</span>(items):           <span class="c-cmt"># n = len(items)</span>
+    best = items[<span class="c-num">0</span>]              <span class="c-cmt"># 1 operation</span>
+    <span class="c-kw">for</span> x <span class="c-kw">in</span> items:             <span class="c-cmt"># runs n times</span>
+        <span class="c-kw">if</span> x > best:            <span class="c-cmt"># 1 comparison, EVERY iteration</span>
+            best = x
+    <span class="c-kw">return</span> best
+
+<span class="c-cmt"># total work ≈ 1 + n comparisons → drop the constant → O(n)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE COUNTER SCALE WITH INPUT SIZE</span></div>
+    <div class="slider-row" style="display:flex; align-items:center; gap:1rem; margin:0.5rem 0 1rem; font-family:var(--mono); font-size:0.82rem;">
+      <span>n =</span>
+      <input type="range" min="2" max="40" value="6" id="bigo-slider" style="flex:1; accent-color:var(--accent);">
+      <span id="bigo-n" style="min-width:2ch;">6</span>
+    </div>
+    <div class="op-controls">
+      <button class="chip active" data-op="constant">O(1) — items[0]</button>
+      <button class="chip" data-op="linear">O(n) — find_max</button>
+      <button class="chip" data-op="quadratic">O(n²) — nested compare</button>
+    </div>
+    <div class="log" id="bigo-log"></div>
+  </div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> Big-O notation describes an <strong>asymptotic upper bound</strong> on the growth rate of an algorithm's resource usage (time or space) as input size <code class="inline">n</code> approaches infinity, expressed by keeping only the highest-order term and discarding constant factors and lower-order terms — because those are the terms that dominate the count once <code class="inline">n</code> is large, regardless of hardware.</div>
+</section>
+
+<!-- ============ SECTION 2: BEST/AVG/WORST ============ -->
+<section id="cases">
+  <div class="kicker">02 — Same algorithm, different luck</div>
+  <h2>Best, average, and worst case — and when they diverge</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about searching for your keys in a messy room. Best case: they're right on the table by the door — found instantly. Worst case: they're in the very last drawer you check, in the very last room. Average case: somewhere in the middle, statistically. The algorithm — "check drawers one by one" — never changed; only where the keys happened to be changed how much work you did.</p>
+
+  <p>For linear search specifically: <strong>best case</strong> is O(1) — the target is the first element. <strong>Worst case</strong> is O(n) — the target is last, or absent entirely, so every element gets checked. <strong>Average case</strong> is also O(n) (specifically ~n/2 comparisons for a random position) — the constant factor differs from worst case, but dropping constants means both are described as O(n). These cases diverge most dramatically for algorithms like quicksort: average case O(n log n), but a worst case of O(n²) if the pivot choice is consistently bad (e.g., always picking the first element on already-sorted input).</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>LINEAR SEARCH — PICK WHERE THE TARGET HIDES</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-case="best">Best case (index 0)</button>
+      <button class="chip" data-case="avg">Average case (middle)</button>
+      <button class="chip" data-case="worst">Worst case (not present)</button>
+    </div>
+    <div class="arr-row" id="case-arr"></div>
+    <button class="btn" id="case-run">Run search ▸</button>
+    <div class="log" id="case-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Algorithm</th><th>Best</th><th>Average</th><th>Worst</th><th>Why they diverge</th></tr>
+    <tr><td>Linear search</td><td>O(1)</td><td>O(n)</td><td>O(n)</td><td>Target position varies; only "found immediately" is special</td></tr>
+    <tr><td>Binary search</td><td>O(1)</td><td>O(log n)</td><td>O(log n)</td><td>Sorted input keeps best/avg/worst close together</td></tr>
+    <tr><td>Quicksort</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n²)</td><td>A consistently bad pivot choice (e.g. always-smallest on sorted data) degrades partitioning</td></tr>
+    <tr><td>Hash map lookup</td><td>O(1)</td><td>O(1)</td><td>O(n)</td><td>Worst case only if every key collides into one bucket</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why "average case" isn't just optimism:</b> interviewers care about worst case by default because it's a guarantee — average case describes typical behavior but says nothing about the ceiling. A system that's O(1) on average but O(n) worst case can still have catastrophic tail latency if an adversarial or unlucky input triggers that worst case.</div>
+</section>
+
+<!-- ============ SECTION 3: ARRAYS VS LINKED LISTS ============ -->
+<section id="arrvslist">
+  <div class="kicker">03 — Contiguous memory vs. scattered nodes</div>
+  <h2>Singly vs. doubly linked lists, and the trade-off vs. arrays</h2>
+
+  <p><strong>Start here, before any code.</strong> An array is like a row of numbered parking spaces — to find space #7 you can walk straight there because you know exactly how far #7 is from #0. A linked list is like a scavenger hunt — each clue (node) tells you where to find the next one, but only the next one. You can't jump to the 7th clue without following all six before it.</p>
+
+  <p>An <strong>array</strong> stores elements in contiguous memory, so any index can be computed directly (<code class="inline">base_address + index * element_size</code>) — O(1) random access. But inserting or deleting in the middle requires shifting every subsequent element, O(n). A <strong>singly linked list</strong> stores each value alongside a pointer to the next node — no contiguous memory required, so inserting/deleting at a known position is O(1) once you're there (no shifting), but reaching that position requires walking from the head, O(n), and there's no way to go backward. A <strong>doubly linked list</strong> adds a <code class="inline">prev</code> pointer to each node, enabling O(1) backward traversal and O(1) deletion given only a reference to the node (no need to track its predecessor separately) — at the cost of extra memory per node and more pointers to keep consistent.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Node</span>:                    <span class="c-cmt"># singly linked</span>
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, value):
+        <span class="c-self">self</span>.value = value
+        <span class="c-self">self</span>.next = <span class="c-kw">None</span>
+
+<span class="c-kw">class</span> <span class="c-fn">DNode</span>:                   <span class="c-cmt"># doubly linked</span>
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, value):
+        <span class="c-self">self</span>.value = value
+        <span class="c-self">self</span>.next = <span class="c-kw">None</span>
+        <span class="c-self">self</span>.prev = <span class="c-kw">None</span>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Operation</th><th>Array</th><th>Singly linked list</th><th>Doubly linked list</th></tr>
+    <tr><td>Random access by index</td><td>O(1)</td><td>O(n)</td><td>O(n)</td></tr>
+    <tr><td>Insert/delete at front</td><td>O(n) — shift everything</td><td>O(1)</td><td>O(1)</td></tr>
+    <tr><td>Insert/delete at back (no tail ptr)</td><td>O(1) amortized</td><td>O(n) — must walk to find it</td><td>O(1) with tail pointer</td></tr>
+    <tr><td>Delete a given node (reference in hand)</td><td>O(n) — need index, then shift</td><td>O(n) — must find predecessor</td><td>O(1) — prev is already known</td></tr>
+    <tr><td>Extra memory per element</td><td>None</td><td>1 pointer</td><td>2 pointers</td></tr>
+    <tr><td>Cache locality</td><td>Excellent (contiguous)</td><td>Poor (scattered allocations)</td><td>Poor (scattered allocations)</td></tr>
+  </table>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a linked list trades O(1) random access (which arrays have via direct address computation) for O(1) insertion/deletion at known positions without shifting — because nodes are independently allocated and connected only by pointers, not laid out contiguously. A doubly linked list additionally trades memory (one extra pointer per node) for O(1) deletion given a node reference and bidirectional traversal.</div>
+</section>
+
+<!-- ============ SECTION 4: LIVE OPERATIONS ============ -->
+<section id="operations">
+  <div class="kicker">04 — Watch the pointers actually move</div>
+  <h2>Insert head/tail, delete, search, reverse — live</h2>
+
+  <p>Below is a real singly linked list. Every button performs one operation and rewires the actual pointer arrows on screen — nothing here is pre-rendered narration. Watch which operations need to walk the list (O(n)) versus which touch only the head (O(1)).</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>LIVE SINGLY LINKED LIST — WATCH POINTERS DETACH &amp; REATTACH</span>
+      <div>
+        <button class="btn" id="ll-insert-head">Insert head</button>
+        <button class="btn" id="ll-insert-tail">Insert tail</button>
+        <button class="btn secondary" id="ll-delete-head">Delete head</button>
+        <button class="btn secondary" id="ll-delete-mid">Delete middle node</button>
+        <button class="btn secondary" id="ll-search">Search 30</button>
+        <button class="btn secondary" id="ll-reverse">Reverse</button>
+        <button class="btn secondary" id="ll-reset">Reset</button>
+      </div>
+    </div>
+    <div class="ll-track" id="ll-track"></div>
+    <div class="ll-steps" id="ll-steps"></div>
+    <div class="log" id="ll-log"><span class="line">Starting list: 10 → 20 → 30 → None. Every button rewires REAL pointer arrows — watch an arrow visibly detach (fade + retract) before the new one attaches (grow + fade in).</span></div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>EDGE CASES — REVERSE AT EACH LENGTH</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-edge="0">Length 0 (empty)</button>
+      <button class="chip" data-edge="1">Length 1 (single node)</button>
+      <button class="chip" data-edge="many">Length 4 (many nodes)</button>
+    </div>
+    <div class="ll-track" id="edge-track"></div>
+    <button class="btn" id="edge-reverse">Reverse this list ▸</button>
+    <div class="log" id="edge-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Operation</th><th>Steps</th><th>Complexity</th></tr>
+    <tr><td>Insert at head</td><td>New node's <code>next</code> = old head; head = new node</td><td>O(1)</td></tr>
+    <tr><td>Insert at tail (no tail ptr)</td><td>Walk to the last node, set its <code>next</code></td><td>O(n)</td></tr>
+    <tr><td>Delete head</td><td>head = head.next (old head becomes unreachable, garbage collected)</td><td>O(1)</td></tr>
+    <tr><td>Search by value</td><td>Walk node by node comparing values until found or None</td><td>O(n)</td></tr>
+    <tr><td>Reverse entire list</td><td>Walk once, flipping each node's <code>next</code> to point backward</td><td>O(n)</td></tr>
+  </table>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">reverse</span>(head):
+    prev = <span class="c-kw">None</span>
+    curr = head
+    <span class="c-kw">while</span> curr:
+        nxt = curr.next        <span class="c-cmt"># save before we overwrite it</span>
+        curr.next = prev       <span class="c-cmt"># flip the pointer backward</span>
+        prev = curr
+        curr = nxt
+    <span class="c-kw">return</span> prev             <span class="c-cmt"># prev is now the new head</span>
+  </div>
+
+  <div class="callout warn"><b>The classic reversal bug:</b> if you set <code class="inline">curr.next = prev</code> before saving <code class="inline">nxt = curr.next</code>, you've just overwritten your only path forward — the rest of the list becomes unreachable. Save the forward pointer first, always.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Counting operations</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def has_duplicate(items):
+    for i in range(len(items)):
+        for j in range(i + 1, len(items)):
+            if items[i] == items[j]:
+                return True
+    return False
+    </div>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Derive the Big-O by counting comparisons as a function of n = len(items).</p>
+    <details><summary>Show solution</summary><div class="solution">O(n²)
+
+For i=0, j ranges over n-1 values. For i=1, j ranges over n-2 values. ...
+Total comparisons ≈ (n-1) + (n-2) + ... + 1 = n(n-1)/2 = (n² - n)/2.
+Dropping the constant factor (1/2) and the lower-order term (-n/2) leaves
+the highest-order term: O(n²).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Best vs worst case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A function checks if a list is sorted by comparing each adjacent pair and returning False the moment it finds an out-of-order pair. What's the best case and worst case, and what input triggers each?</p>
+    <details><summary>Show solution</summary><div class="solution">Best case: O(1) — the very first pair (items[0], items[1]) is already out
+of order, so it returns False immediately.
+
+Worst case: O(n) — the list IS fully sorted (or only the very last pair is
+out of order), forcing every adjacent pair to be checked before concluding
+True (or finding the violation at the end).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Array vs linked list choice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're building a browser's back/forward history where you constantly add new pages, occasionally jump back several pages, but never need to jump to an arbitrary numbered position. Would a doubly linked list or an array serve better, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Doubly linked list. The access pattern is purely sequential (forward/back
+one or a few steps at a time via prev/next pointers), never "give me page
+#47 directly" (which is where arrays' O(1) random access would matter).
+Meanwhile, inserting a new page after the current one, or truncating
+forward history when a new page is visited, is O(1) with pointer rewiring
+instead of O(n) array shifting.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reverse a linked list, trace it</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+def reverse(head):
+    prev = None
+    curr = head
+    while curr:
+        nxt = curr.next
+        curr.next = prev
+        prev = curr
+        curr = nxt
+    return prev
+    </div>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Trace this on the list 1 → 2 → 3 → None. What is prev after each loop iteration, and what's the final returned head?</p>
+    <details><summary>Show solution</summary><div class="solution">Iteration 1: nxt=2, node 1's next -> None, prev=1, curr=2. List so far: 1->None
+Iteration 2: nxt=3, node 2's next -> 1, prev=2, curr=3. Chain so far: 2->1->None
+Iteration 3: nxt=None, node 3's next -> 2, prev=3, curr=None. Chain: 3->2->1->None
+
+Loop ends (curr is None). Returns prev = node 3.
+Final list: 3 -> 2 -> 1 -> None — fully reversed, O(n) time, O(1) extra space.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Delete a node given only its reference</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In a SINGLY linked list, you're handed a reference to a node in the middle (not the head, not the tail) — but you have no reference to the list's head and no way to find the predecessor. Can you delete this node in O(1)? If not directly, what could you do instead, and does it work if the node is the last one?</p>
+    <details><summary>Show solution</summary><div class="solution">You cannot truly delete it (unlink it from its predecessor) in O(1) without
+a predecessor reference — singly linked nodes have no "prev" pointer, and
+finding the predecessor requires walking from the head, O(n).
+
+The common trick: copy the NEXT node's value into this node, then point
+this node's `next` to skip over the next node (this.value = this.next.value;
+this.next = this.next.next). This fakes a deletion of "this" node in O(1)
+by actually deleting the node after it.
+
+This does NOT work if the given node is the last node — there's no next
+node to copy from, so the predecessor must be found the normal O(n) way
+(or the structure needs to be a doubly linked list, where prev is already
+known).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Delete a middle node, trace the pointer rewiring</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">List: 10 → 20 → 30 → 40 → None. Delete the node holding 30 (you have a reference to its predecessor, the node holding 20). Write the single line of pointer rewiring, and explain why this is O(1) once the predecessor is known but O(n) to get there from the head in the general case.</p>
+    <details><summary>Show solution</summary><div class="solution">prev.next = prev.next.next        # i.e. node(20).next = node(40)
+
+The node holding 30 is now unreferenced by anything reachable from head
+(node 20 points straight to node 40), so it becomes garbage. This single
+pointer reassignment is O(1) — no shifting, no copying.
+
+BUT: finding "the node holding 20" (the predecessor of the target) required
+walking from head — 10 -> 20 — which is O(k) where k is the position, worst
+case O(n). This is the key nuance: the REWIRE is O(1), the WALK to find the
+predecessor is what makes deletion-by-value O(n) overall in a singly linked
+list. If you already hold a reference to the predecessor (as this problem
+states), the rewiring step itself is O(1).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 7 · Reverse edge cases: empty and single-node</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the reverse(head) function from Problem 4, trace what happens when head = None (empty list), and separately when the list has exactly one node (5 → None). Does the algorithm need special-casing for either?</p>
+    <details><summary>Show solution</summary><div class="solution">Empty list (head = None):
+curr = None immediately, so `while curr:` never executes. The function
+returns prev, which is still None. Correct — an empty list reversed is
+still empty. No special-casing needed.
+
+Single node (5 -> None):
+Iteration 1: nxt = curr.next = None. curr.next = prev (None) -- node 5 now
+points to None (unchanged, it already pointed to None). prev = curr (node
+5). curr = nxt (None). Loop ends. Returns prev = node 5.
+Result: 5 -> None, identical to the input — correct, since reversing a
+single element changes nothing. No special-casing needed either: the
+general while-loop logic handles both edge cases for free, which is a sign
+of a well-designed iterative algorithm.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) how to derive Big-O by literally counting operations rather than recalling a memorized answer, (2) a concrete case where best/average/worst case genuinely diverge, (3) why linked lists trade O(1) random access for O(1) insert/delete at a known position, and (4) why deleting a middle node is "O(1) rewiring" but "O(n) overall" in the general case? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — big-o &amp; linked lists.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: BIG-O COUNTING */
+(function(){
+  const slider = document.getElementById('bigo-slider');
+  const nEl = document.getElementById('bigo-n');
+  const chips = document.querySelectorAll('#bigo .chip');
+  const logEl = document.getElementById('bigo-log');
+  let n = 6;
+  let mode = 'constant';
+
+  function counts(){
+    if(mode === 'constant') return 1;
+    if(mode === 'linear') return n;
+    return n * n;
+  }
+  function render(){
+    const c = counts();
+    const p = document.createElement('div'); p.className = 'line fadein';
+    let label = mode === 'constant' ? 'O(1)' : (mode === 'linear' ? 'O(n)' : 'O(n²)');
+    p.innerHTML = `<b>n = ${n}:</b> operation runs ${c} time(s) &mdash; ${label}. ${mode==='quadratic' ? 'Doubling n roughly quadruples the count.' : (mode==='linear' ? 'Doubling n roughly doubles the count.' : 'Count never changes, no matter how large n gets.')}`;
+    logEl.innerHTML = '';
+    logEl.appendChild(p);
+  }
+  slider.addEventListener('input', ()=>{
+    n = parseInt(slider.value, 10);
+    nEl.textContent = n;
+    render();
+  });
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.op;
+      render();
+    });
+  });
+  render();
+})();
+
+/* SECTION 2: BEST/AVG/WORST CASE SEARCH */
+(function(){
+  const chips = document.querySelectorAll('#cases .chip');
+  const arrEl = document.getElementById('case-arr');
+  const runBtn = document.getElementById('case-run');
+  const logEl = document.getElementById('case-log');
+  const arr = [42, 17, 8, 91, 23, 5, 64, 12];
+  let caseMode = 'best';
+  let target = 42;
+
+  function renderArr(){
+    arrEl.innerHTML = '';
+    arr.forEach((v, i)=>{
+      const c = document.createElement('div');
+      c.className = 'arr-cell';
+      c.id = 'case-cell-' + i;
+      c.textContent = v;
+      arrEl.appendChild(c);
+    });
+  }
+  function setMode(m){
+    caseMode = m;
+    if(m === 'best'){ target = arr[0]; }
+    else if(m === 'avg'){ target = arr[Math.floor(arr.length/2)]; }
+    else { target = 999; }
+    renderArr();
+    logEl.innerHTML = '';
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      setMode(c.dataset.case);
+    });
+  });
+
+  runBtn.addEventListener('click', ()=>{
+    renderArr();
+    logEl.innerHTML = '';
+    let i = 0;
+    let comparisons = 0;
+    function step(){
+      if(i >= arr.length){
+        const p = document.createElement('div'); p.className = 'line fadein';
+        p.innerHTML = `<b>Not found</b> after ${comparisons} comparisons (checked every element) &mdash; this is the worst case, O(n).`;
+        logEl.appendChild(p);
+        return;
+      }
+      const cell = document.getElementById('case-cell-' + i);
+      cell.classList.add('flash');
+      comparisons++;
+      if(arr[i] === target){
+        const p = document.createElement('div'); p.className = 'line fadein';
+        p.innerHTML = `<b>Found ${target} at index ${i}</b> after ${comparisons} comparison(s).`;
+        logEl.appendChild(p);
+        return;
+      }
+      i++;
+      setTimeout(step, 280);
+    }
+    step();
+  });
+
+  setMode('best');
+})();
+
+/* SECTION 4: LIVE LINKED LIST WITH TRUE DETACH/REATTACH ANIMATION */
+(function(){
+  const trackEl = document.getElementById('ll-track');
+  const logEl = document.getElementById('ll-log');
+  const stepsEl = document.getElementById('ll-steps');
+  let list = [10, 20, 30];
+  let nextVal = 40;
+  let busy = false;
+
+  function log(html){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = html;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function showSteps(title, steps){
+    stepsEl.innerHTML = `<b style="color:var(--ink);">${title}</b><ol>${steps.map(s=>`<li>${s}</li>`).join('')}</ol>`;
+  }
+  function activateStep(idx){
+    const items = stepsEl.querySelectorAll('li');
+    items.forEach((li,i)=>li.classList.toggle('active', i===idx));
+  }
+
+  function render(highlightIdx){
+    trackEl.innerHTML = '';
+    if(list.length === 0){
+      trackEl.innerHTML = '<span class="ll-null">head → None (empty list)</span>';
+      return;
+    }
+    list.forEach((v, i)=>{
+      const node = document.createElement('div');
+      node.className = 'll-node entering';
+      node.dataset.idx = i;
+      if(i === 0) node.classList.add('head-mark');
+      if(i === list.length - 1) node.classList.add('tail-mark');
+      if(highlightIdx === i) node.classList.add('highlight');
+      node.innerHTML = `<span class="data">${v}</span><span class="ptrs"><span class="ptr">next →</span></span>`;
+      trackEl.appendChild(node);
+      if(i < list.length - 1){
+        const arrow = document.createElement('div');
+        arrow.className = 'll-arrow new';
+        arrow.dataset.from = i;
+        trackEl.appendChild(arrow);
+      }
+    });
+    const nullLbl = document.createElement('span');
+    nullLbl.className = 'll-null';
+    nullLbl.textContent = '→ None';
+    trackEl.appendChild(nullLbl);
+  }
+
+  function withBusyGuard(fn){
+    return function(){
+      if(busy) return;
+      busy = true;
+      Promise.resolve(fn()).finally(()=>{ busy = false; });
+    };
+  }
+
+  function wait(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+  document.getElementById('ll-insert-head').addEventListener('click', withBusyGuard(async ()=>{
+    const val = nextVal; nextVal += 10;
+    showSteps(`insert_head(${val})`, [
+      `Allocate new node holding ${val}.`,
+      `<b>new_node.next = head</b> — point the new node at the CURRENT head.`,
+      `<b>head = new_node</b> — head now refers to the new node.`
+    ]);
+    activateStep(0);
+    await wait(400);
+    activateStep(1);
+    render(-1); // show current state, no arrow yet from the new node
+    await wait(500);
+    list.unshift(val);
+    render(0);
+    activateStep(2);
+    log(`<b>Insert head(${val}):</b> only two pointer writes happened — no existing node moved or was walked to. O(1).`);
+  }));
+
+  document.getElementById('ll-insert-tail').addEventListener('click', withBusyGuard(async ()=>{
+    const val = nextVal; nextVal += 10;
+    const hops = list.length;
+    showSteps(`insert_tail(${val})`, [
+      `curr = head`,
+      `<b>Walk:</b> while curr.next is not None: curr = curr.next &nbsp;(${hops} hop(s) to reach the last node)`,
+      `<b>curr.next = new_node</b> — attach new node after the old last node.`
+    ]);
+    activateStep(0);
+    await wait(300);
+    activateStep(1);
+    for(let i=0;i<list.length;i++){
+      render(i);
+      await wait(280);
+    }
+    activateStep(2);
+    list.push(val);
+    render(list.length-1);
+    log(`<b>Insert tail(${val}):</b> walked ${hops} hop(s) from head just to FIND the last node before a single pointer write &mdash; O(n), unlike insert-head's O(1).`);
+  }));
+
+  document.getElementById('ll-delete-head').addEventListener('click', withBusyGuard(async ()=>{
+    if(list.length === 0){ log('<b>List is empty</b> &mdash; nothing to delete.'); return; }
+    const removed = list[0];
+    showSteps(`delete_head()`, [
+      `<b>Detach:</b> the arrow from the old head to node #2 is severed conceptually (head no longer needs it).`,
+      `<b>head = head.next</b> — head now refers to the second node.`,
+      `Old head node (${removed}) has zero remaining references → garbage collected.`
+    ]);
+    activateStep(0);
+    const firstArrow = trackEl.querySelector('.ll-arrow');
+    if(firstArrow) firstArrow.classList.add('detaching');
+    const firstNode = trackEl.querySelector('.ll-node');
+    await wait(350);
+    activateStep(1);
+    if(firstNode) firstNode.classList.add('removing');
+    await wait(400);
+    list.shift();
+    render();
+    activateStep(2);
+    log(`<b>Delete head:</b> head reassigned to head.next in one write. O(1) &mdash; no walking, no shifting.`);
+  }));
+
+  document.getElementById('ll-delete-mid').addEventListener('click', withBusyGuard(async ()=>{
+    if(list.length < 3){ log('<b>Need at least 3 nodes</b> to demonstrate a true middle deletion &mdash; try Insert tail a couple times first.'); return; }
+    const midIdx = 1;
+    const removedVal = list[midIdx];
+    const predVal = list[midIdx-1];
+    const nextVal2 = list[midIdx+1];
+    showSteps(`delete_middle(node holding ${removedVal})`, [
+      `<b>Walk</b> from head to find the PREDECESSOR of the target (node holding ${predVal}) &mdash; this is the O(n) part.`,
+      `<b>Detach</b> the two arrows touching node ${removedVal}: predecessor → ${removedVal}, and ${removedVal} → ${nextVal2==null?'None':nextVal2}.`,
+      `<b>prev.next = prev.next.next</b> — reattach predecessor directly to the node after the target.`,
+      `Node ${removedVal} has zero remaining references → garbage collected. This single reassignment is O(1) once the predecessor is known.`
+    ]);
+    activateStep(0);
+    for(let i=0;i<=midIdx-1;i++){ render(i); await wait(300); }
+    activateStep(1);
+    const arrows = trackEl.querySelectorAll('.ll-arrow');
+    if(arrows[midIdx-1]) arrows[midIdx-1].classList.add('detaching');
+    if(arrows[midIdx]) arrows[midIdx].classList.add('detaching');
+    const nodes = trackEl.querySelectorAll('.ll-node');
+    if(nodes[midIdx]) nodes[midIdx].classList.add('highlight');
+    await wait(450);
+    activateStep(2);
+    if(nodes[midIdx]) nodes[midIdx].classList.add('removing');
+    await wait(400);
+    list.splice(midIdx, 1);
+    render();
+    activateStep(3);
+    log(`<b>Delete middle (${removedVal}):</b> finding the predecessor cost O(k) (here k=${midIdx}), but the actual rewire &mdash; prev.next = prev.next.next &mdash; is a single O(1) pointer write.`);
+  }));
+
+  document.getElementById('ll-search').addEventListener('click', withBusyGuard(async ()=>{
+    render();
+    showSteps(`search(30)`, list.map((v,i)=>`Compare node[${i}] = ${v} against target 30${v===30?' &mdash; MATCH':''}`));
+    let i = 0;
+    while(i < list.length){
+      render(i);
+      activateStep(i);
+      if(list[i] === 30){
+        log(`<b>Search 30:</b> found after visiting ${i+1} node(s) &mdash; had to walk sequentially from head since there's no random access (unlike an array's O(1) index lookup).`);
+        return;
+      }
+      await wait(380);
+      i++;
+    }
+    log(`<b>Search 30:</b> walked all ${list.length} node(s), not found &mdash; O(n) worst case (target absent, or would be at the tail).`);
+  }));
+
+  document.getElementById('ll-reverse').addEventListener('click', withBusyGuard(async ()=>{
+    if(list.length <= 1){
+      log(`<b>Reverse:</b> list has ${list.length} node(s) &mdash; reversing changes nothing (0 or 1 elements are trivially their own reverse). The general algorithm handles this with no special-casing.`);
+      return;
+    }
+    showSteps(`reverse(head)`, [
+      `prev = None, curr = head`,
+      `Loop: save nxt = curr.next, then FLIP curr.next = prev (arrow now points backward)`,
+      `Advance: prev = curr, curr = nxt — repeat until curr is None`,
+      `Return prev as the new head`
+    ]);
+    activateStep(0);
+    await wait(300);
+    const nodes = Array.from(trackEl.querySelectorAll('.ll-node'));
+    for(let i=0;i<nodes.length;i++){
+      activateStep(1);
+      const arrow = trackEl.querySelectorAll('.ll-arrow')[i];
+      if(arrow) arrow.classList.add('detaching');
+      nodes[i].classList.add('highlight');
+      await wait(320);
+      activateStep(2);
+      await wait(200);
+    }
+    activateStep(3);
+    list.reverse();
+    render();
+    log(`<b>Reverse:</b> one full walk, flipping each node's next pointer to point backward instead of forward &mdash; O(n) time, O(1) extra space (just the prev/curr/nxt variables, no new list allocated).`);
+  }));
+
+  document.getElementById('ll-reset').addEventListener('click', withBusyGuard(async ()=>{
+    list = [10, 20, 30];
+    nextVal = 40;
+    render();
+    stepsEl.innerHTML = '';
+    log('Reset to 10 → 20 → 30 → None.');
+  }));
+
+  render();
+})();
+
+/* SECTION 4b: REVERSE EDGE CASES (length 0 / 1 / many) */
+(function(){
+  const chips = document.querySelectorAll('#operations [data-edge]');
+  const trackEl = document.getElementById('edge-track');
+  const btn = document.getElementById('edge-reverse');
+  const logEl = document.getElementById('edge-log');
+  const lists = { '0': [], '1': [7], 'many': [1,2,3,4] };
+  let current = '0';
+
+  function render(list){
+    trackEl.innerHTML = '';
+    if(list.length === 0){
+      trackEl.innerHTML = '<span class="ll-null">head → None (empty list — head itself is None)</span>';
+      return;
+    }
+    list.forEach((v,i)=>{
+      const node = document.createElement('div');
+      node.className = 'll-node entering';
+      if(i===0) node.classList.add('head-mark');
+      if(i===list.length-1) node.classList.add('tail-mark');
+      node.innerHTML = `<span class="data">${v}</span><span class="ptrs"><span class="ptr">next →</span></span>`;
+      trackEl.appendChild(node);
+      if(i < list.length-1){
+        const arrow = document.createElement('div');
+        arrow.className = 'll-arrow new';
+        trackEl.appendChild(arrow);
+      }
+    });
+    const nullLbl = document.createElement('span');
+    nullLbl.className = 'll-null';
+    nullLbl.textContent = '→ None';
+    trackEl.appendChild(nullLbl);
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      current = c.dataset.edge;
+      render(lists[current]);
+      logEl.innerHTML = '';
+    });
+  });
+
+  btn.addEventListener('click', ()=>{
+    const list = lists[current];
+    render(list);
+    logEl.innerHTML = '';
+    const p = document.createElement('div'); p.className = 'line fadein';
+    if(list.length === 0){
+      p.innerHTML = `<b>Empty list:</b> curr = head = None. The while-loop condition (while curr:) is False immediately — loop body never runs. Returns prev, which is still None. Result: still an empty list. No special-case code needed.`;
+    } else if(list.length === 1){
+      p.innerHTML = `<b>Single node (${list[0]}):</b> one iteration — nxt=None, node's next flips from None to None (unchanged), prev becomes the node, curr becomes None, loop ends. Returns the same node as head. Result: identical list. No special-case code needed.`;
+    } else {
+      const reversed = list.slice().reverse();
+      p.innerHTML = `<b>Many nodes:</b> ${list.length} iterations, each flipping one next pointer backward. Result: ${reversed.join(' → ')} → None. Same O(n) loop that correctly handled length 0 and 1 above handles this too — one algorithm, no branching on size.`;
+    }
+    logEl.appendChild(p);
+  });
+
+  render(lists['0']);
+})();
+</script>
+</body>
+</html>

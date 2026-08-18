@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Load Balancers</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --rr-c:#7fd8a0; --lc-c:#4fc3f7; --hash-c:#c792ea; --health-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid; }
+  .pipe-label.a{border-color:var(--rr-c); color:var(--rr-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--lc-c); color:var(--lc-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--hash-c); color:var(--hash-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* request routing visualization */
+  .lb-stage{position:relative; min-height:230px; margin:1.4rem 0;}
+  .lb-center{position:absolute; left:50%; top:20px; transform:translateX(-50%); font-family:var(--mono); font-size:0.85rem; padding:0.7rem 1.2rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); z-index:5;}
+  .server-row{position:absolute; top:120px; left:0; right:0; display:flex; justify-content:space-around; gap:0.8rem;}
+  .server-node{font-family:var(--mono); font-size:0.78rem; padding:0.7rem 1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:110px; transition:all .35s ease; position:relative;}
+  .server-node .sconns{font-size:0.68rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .server-node.down{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.1); opacity:0.55;}
+  .server-node.lit{box-shadow:0 0 16px currentColor; transform:translateY(4px);}
+  .req-dot{position:absolute; top:56px; left:50%; width:16px; height:16px; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); transform:translate(-50%,0); transition:all .6s cubic-bezier(.3,.7,.4,1); z-index:4;}
+  .req-dot.hidden-dot{opacity:0; transition:opacity .2s;}
+
+  /* health check timeline */
+  .health-track{position:relative; height:100px; margin:1.2rem 0;}
+  .health-server{position:absolute; top:30px; font-family:var(--mono); font-size:0.8rem; padding:0.6rem 1rem; border-radius:9px; border:1.5px solid var(--rr-c); color:var(--rr-c); background:rgba(127,216,160,0.06); transition:all .4s;}
+  .health-server.dead{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.1);}
+  .health-pulse{position:absolute; top:0; font-family:var(--mono); font-size:0.65rem; color:var(--health-c); text-align:center; width:80px; opacity:0; transition:opacity .3s;}
+  .health-pulse.show{opacity:1;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; }
+  .dc-col.rr{border-color:var(--rr-c);}
+  .dc-col.lc{border-color:var(--lc-c);}
+  .dc-col.hash{border-color:var(--hash-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.rr h4{color:var(--rr-c);} .dc-col.lc h4{color:var(--lc-c);} .dc-col.hash h4{color:var(--hash-c);}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.rr{border-left-color:var(--rr-c); background:rgba(127,216,160,0.06);} .callout.rr b{color:var(--rr-c);}
+  .callout.lc{border-left-color:var(--lc-c); background:rgba(79,195,247,0.06);} .callout.lc b{color:var(--lc-c);}
+  .callout.hash{border-left-color:var(--hash-c); background:rgba(199,146,234,0.06);} .callout.hash b{color:var(--hash-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS FUNDAMENTALS LAB · LOAD BALANCERS</div>
+  <h1>A load balancer is the one decision-maker standing between every request and <em>which server actually handles it</em>.</h1>
+  <p class="lede">Once you have more than one server, something has to decide, for every single incoming request, exactly which one gets it — and that choice has real consequences: uneven load, wasted capacity, or requests routed to a server that's already dead. This lab builds three real routing algorithms you can watch make that decision live, then adds the failure-detection layer that keeps them from routing into a hole.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Round robin</div>
+    <div class="pipe-label b">Least connections</div>
+    <div class="pipe-label c">IP hash</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="foundations">1 · What a Load Balancer Actually Does</a>
+  <a data-target="algorithms">2 · Round Robin, Least Connections, IP Hash</a>
+  <a data-target="health">3 · Health Checks &amp; Failover</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: FOUNDATIONS ============ -->
+<section id="foundations">
+  <div class="kicker">01 — The job before the algorithms</div>
+  <h2>What a load balancer does, and why</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Picture a busy restaurant with one host stand and several servers working the floor. Customers don't get to pick their own server — the host at the front makes that call for every single party that walks in, using some rule: maybe alternating who gets the next table, maybe sending people to whichever server currently has the fewest tables, maybe always sending a specific regular customer to the same server who already knows their order. Take the host away, and customers would have to guess which server is free themselves — some servers would get overwhelmed while others stood idle, and a customer might even walk up to a server who just went home sick.</p>
+
+  <p>A <strong>load balancer</strong> is that host stand, sitting in front of a pool of interchangeable servers. Every incoming request arrives at the load balancer first — never directly at a server — and the load balancer decides, using one of a small number of well-known algorithms, exactly which server actually handles it. This single design choice is what makes horizontal scaling <em>usable</em>: without something making that routing decision, having 10 servers instead of 1 doesn't automatically mean anything gets easier.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a <strong>load balancer</strong> is a component (hardware appliance, software process, or managed cloud service) that sits between clients and a pool of backend servers, distributing incoming requests across that pool according to a configured algorithm. It typically also performs <strong>health checking</strong> — continuously verifying which backend servers are actually able to serve traffic — so it only ever routes to servers known to be alive. Load balancers can operate at different layers of the network stack: <strong>Layer 4</strong> (transport layer — routes based on IP/port, faster, doesn't inspect request content) or <strong>Layer 7</strong> (application layer — routes based on HTTP headers, cookies, or URL path, slower but far more flexible, e.g. routing <code class="inline">/api/*</code> to one pool and <code class="inline">/static/*</code> to another).</div>
+
+  <h3>Why this isn't just "spread the load evenly"</h3>
+  <p>It's tempting to assume the goal is simply "give every server the same number of requests" — but that's often the wrong goal entirely. A request that takes 4 seconds to process and a request that takes 4 milliseconds both count as "one request," yet they cost wildly different amounts of server time. The three algorithms in the next section make genuinely different trade-offs about what "balanced" even means, and picking the wrong one for your traffic pattern can leave one server drowning while its neighbors sit idle, even though every server "received its fair share" by request count.</p>
+</section>
+
+<!-- ============ SECTION 2: ALGORITHMS ============ -->
+<section id="algorithms">
+  <div class="kicker">02 — Three different definitions of "fair"</div>
+  <h2>Round-robin vs least-connections vs IP-hash</h2>
+
+  <p><strong>Start here, before the demo.</strong> Back at the restaurant: the host could alternate strictly in order (table 1 gets server A, table 2 gets server B, table 3 gets server A again, regardless of how busy each server currently is) — that's <strong>round robin</strong>. Or the host could actually glance at the floor and send the next party to whichever server currently has the fewest tables to manage — that's <strong>least connections</strong>. Or the host could recognize a specific regular customer and always send them to the same server who remembers their usual order — that's <strong>IP hash</strong>. All three are "fair" by some definition; they just disagree about which one matters.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col rr">
+      <h4>Round robin</h4>
+      <p>Cycles through servers in a fixed order: 1, 2, 3, 1, 2, 3… Every server gets an equal <strong>count</strong> of requests over time, regardless of how expensive each one turns out to be.</p>
+    </div>
+    <div class="dc-col lc">
+      <h4>Least connections</h4>
+      <p>Sends each new request to whichever server currently has the fewest <strong>active</strong> connections right now. Naturally avoids piling more work onto a server that's already tied up.</p>
+    </div>
+    <div class="dc-col hash">
+      <h4>IP hash</h4>
+      <p>Hashes the client's IP address to deterministically pick the same server every time that same client connects — trading load evenness for <strong>session stickiness</strong>.</p>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH EACH ALGORITHM ROUTE THE SAME 6 REQUESTS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-algo="rr">Round robin</button>
+      <button class="chip" data-algo="lc">Least connections</button>
+      <button class="chip" data-algo="hash">IP hash</button>
+    </div>
+    <div class="lb-stage">
+      <div class="lb-center" id="lb-center-label">load balancer</div>
+      <div class="req-dot hidden-dot" id="lb-req-dot"></div>
+      <div class="server-row" id="lb-servers"></div>
+    </div>
+    <button class="btn" id="lb-send">Send next request</button>
+    <div class="log" id="lb-log"><span class="line">Click to send requests one at a time and watch the routing decision play out for the selected algorithm.</span></div>
+  </div>
+
+  <h3>Round robin — the failure mode of ignoring cost</h3>
+  <p>Round robin's blind spot: it has no idea how expensive a request actually is. If server B happens to receive a request that takes 4 seconds to process while servers A and C keep receiving quick sub-10ms requests, round robin keeps sending B its "fair share" every third request regardless — piling more slow work onto an already-backed-up server, purely because it's B's turn in the rotation.</p>
+
+  <h3>Least connections — the failure mode it doesn't fully solve</h3>
+  <p>Least connections is a real improvement — it actively avoids sending new work to a server that's visibly tied up — but it only sees <strong>connection count</strong>, not how expensive each connection actually is. A server holding one unusually slow request looks "less busy" (by count) than a server holding three fast ones, even if the slow request is consuming far more CPU. It's a good heuristic, not a perfect one.</p>
+
+  <h3>IP hash — trading balance for memory</h3>
+  <p>IP hash deliberately gives up perfect load distribution in exchange for a property neither of the other two algorithms provide: the <strong>same client reliably lands on the same server</strong>, every time. This matters when a server has built up local, unshared state about that specific client — most commonly a stateful session cache — and losing that stickiness would mean the next request from that client has to start from scratch on a different server, exactly the statelessness problem covered in the vertical-vs-horizontal-scaling lab.</p>
+
+  <div class="callout hash"><b>Why this matters:</b> IP hash is often described as "a workaround," and that's basically accurate — the better long-term fix is usually to make servers stateless (moving session data to a shared store, as covered in the statelessness lab) so any algorithm can be used freely. But IP hash remains a genuinely useful stopgap, or a deliberate choice when session affinity has real value (e.g. a WebSocket connection, which needs to stay pinned to one server for its entire lifetime regardless of load-balancing strategy).</div>
+
+  <div class="callout warn"><b>The trap in choosing IP hash blindly:</b> IP hash can badly concentrate traffic when many clients share one apparent IP address — for example, an entire office or university behind a single NAT gateway. Every request from that shared IP hashes to the exact same server, so that one server can become badly overloaded while the rest of the pool sits comparatively idle. This is a classic "load balancer looks correctly configured, but real-world traffic breaks the assumption behind it" interview scenario.</div>
+
+  <table class="cmp">
+    <tr><th>Algorithm</th><th>Optimizes for</th><th>Blind spot</th></tr>
+    <tr><td><strong>Round robin</strong></td><td>Simplicity, equal request count</td><td>Ignores request cost and current server load entirely</td></tr>
+    <tr><td><strong>Least connections</strong></td><td>Actual current load</td><td>Connection count isn't the same as connection cost</td></tr>
+    <tr><td><strong>IP hash</strong></td><td>Session stickiness / affinity</td><td>Can badly concentrate load behind shared IPs (NAT)</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 3: HEALTH CHECKS & FAILOVER ============ -->
+<section id="health">
+  <div class="kicker">03 — Routing decisions are only as good as what you know</div>
+  <h2>Health checks and failover</h2>
+
+  <p><strong>Start here, before the demo.</strong> Going back to the restaurant host one more time: what if a server quietly walked off the floor — sick, or just gone — and the host kept sending new tables their way anyway, because nobody told the host? Every one of those customers would sit down and simply never get served. The host needs some way of actually noticing a server is gone, not just assuming the roster from this morning is still accurate.</p>
+
+  <p>A <strong>health check</strong> is the load balancer periodically asking each backend server some version of "are you still there and working?" — often a lightweight HTTP request to a dedicated endpoint like <code class="inline">/health</code> that responds quickly if the server is genuinely able to handle real traffic. If a server fails enough consecutive health checks in a row, the load balancer marks it <strong>unhealthy</strong> and stops routing new requests to it — this automatic response is called <strong>failover</strong>. When the server starts passing health checks again, it's added back into rotation.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SIMULATE A SERVER GOING DOWN MID-TRAFFIC</span><button class="btn danger" id="health-kill">Kill Server B</button></div>
+    <div class="health-track">
+      <div class="health-server" id="health-a" style="left:5%;">Server A<br><span style="font-size:0.65rem; opacity:0.7;">healthy ✓</span></div>
+      <div class="health-server" id="health-b" style="left:38%;">Server B<br><span style="font-size:0.65rem; opacity:0.7;">healthy ✓</span></div>
+      <div class="health-server" id="health-c" style="left:71%;">Server C<br><span style="font-size:0.65rem; opacity:0.7;">healthy ✓</span></div>
+      <div class="health-pulse" id="health-pulse-b" style="left:38%;">checking…</div>
+    </div>
+    <div class="log" id="health-log"><span class="line">All three servers are currently healthy and receiving traffic. Click "Kill Server B" to simulate a crash, then watch the health check cycle detect it.</span></div>
+  </div>
+
+  <h3>The tuning trade-off: how fast should failover be?</h3>
+  <p>Health checks run on an interval (e.g. every 5 seconds) and typically require a small number of consecutive failures before declaring a server unhealthy (e.g. 3 in a row) — not just one. This threshold is a deliberate trade-off, not an arbitrary default:</p>
+
+  <table class="cmp">
+    <tr><th>Setting</th><th>Too aggressive (fails fast)</th><th>Too lenient (fails slow)</th></tr>
+    <tr><td>Check interval</td><td>Wastes server resources on constant health-check traffic</td><td>Slow to detect a real outage — requests keep failing longer</td></tr>
+    <tr><td>Failure threshold</td><td>A single slow response (a GC pause, a brief network blip) wrongly pulls a healthy server out of rotation — a "flapping" server</td><td>A genuinely dead server keeps receiving traffic for longer, and those requests all fail for real users</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why this matters in practice:</b> pulling a server out of rotation too eagerly (on a single missed health check) causes "flapping" — a perfectly fine server gets kicked out over one slow response, then added back, then kicked out again, destabilizing the whole pool's effective capacity. Requiring several consecutive failures absorbs brief hiccups (a garbage-collection pause, one dropped packet) while still catching genuine, sustained outages within a reasonable time. There is no universally correct threshold — it's tuned against how costly a false failover is versus how costly a slow real failover is for that specific service.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a <strong>health check</strong> is a periodic, lightweight probe (often an HTTP GET to a dedicated endpoint) the load balancer sends to each backend to determine liveness. <strong>Failover</strong> is the automatic removal of an unhealthy backend from the active routing pool once it fails a configured number of consecutive checks, and its automatic re-addition once it starts passing again. This combination is what allows a load-balanced, horizontally-scaled system to survive individual server failures without manual intervention — directly addressing the single-point-of-failure problem: losing one of N servers now costs roughly 1/N of capacity, not a full outage, precisely because the load balancer stops sending traffic to the dead one almost immediately.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Picking the right algorithm</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service handles two very different kinds of requests on the same servers: quick sub-5ms API calls, and occasional file-export jobs that take 30+ seconds. Which load-balancing algorithm from this lab handles this mixed workload best, and why do the other two struggle with it specifically?</p>
+    <details><summary>Show solution</summary><div class="solution">Least connections is the best fit of the three. It actively avoids routing
+new quick requests to a server that's currently tied up with a 30-second
+export job, because that server's active-connection count stays visibly
+elevated for the job's whole duration.
+
+Round robin struggles here specifically because it has no concept of
+request cost -- it will cheerfully route the next quick request to
+whichever server is "due" in the rotation, even if that server is in the
+middle of a 30-second export, creating unnecessary queuing delay for a
+request that should have been instant.
+
+IP hash struggles for an unrelated reason: it isn't optimizing for load at
+all, it's optimizing for session stickiness. Since this mixed workload has
+nothing to do with client identity, IP hash would route based on client IP
+regardless of which servers happen to be busy with exports, so a client
+could easily get pinned to a server that's currently backed up.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · The NAT trap</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A company switches their load balancer to IP hash so users stay pinned to the same server for their WebSocket connections. A week later, one server is consistently at 90% CPU while the other three sit around 15%. What likely happened, and what's a fix that keeps the stickiness property?</p>
+    <details><summary>Show solution</summary><div class="solution">Likely cause: a large number of the company's users are behind a shared
+NAT gateway (e.g. a big office, university, or corporate VPN) and all
+appear to the load balancer as the same IP address. IP hash deterministically
+routes every request from that one apparent IP to the same server, so all
+of those users -- however many there actually are behind that NAT -- pile
+onto a single backend, while genuinely distinct IPs spread normally across
+the other three.
+
+A fix that keeps stickiness without this specific failure mode: switch to
+a stickiness mechanism based on something more granular than raw IP, such
+as a session cookie the load balancer sets and reads (cookie-based session
+affinity). This still pins an individual USER's session to one server, but
+no longer collapses an entire NAT'd population down to a single hash
+bucket, since the cookie is unique per browser/session rather than shared
+across everyone behind the same gateway.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Trace round robin by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A pool has 3 servers (A, B, C) behind a round-robin load balancer, currently positioned to send the next request to B. 7 requests arrive back to back. Write out which server handles each of the 7, in order.</p>
+    <details><summary>Show solution</summary><div class="solution">B, C, A, B, C, A, B
+
+Round robin simply continues cycling in fixed order from wherever it left
+off -- it does not reset or consider load. Starting at B: B, C, A (one full
+cycle), then B, C, A again (second cycle), then B for the 7th request,
+picking back up exactly where the cycle would naturally continue.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Health check threshold tuning</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team sets their load balancer to mark a server unhealthy after just ONE failed health check, checked every 2 seconds. Within a day, they notice servers are being pulled out of rotation and re-added dozens of times, even though no server has actually crashed. Diagnose the problem and propose a fix.</p>
+    <details><summary>Show solution</summary><div class="solution">This is a classic "flapping" problem caused by an overly aggressive
+failure threshold. A single missed health check can happen for reasons
+that have nothing to do with the server being genuinely broken -- a brief
+garbage-collection pause, one dropped network packet, a momentary CPU
+spike from an unrelated request. With a threshold of 1, ANY of these
+transient blips is enough to yank a perfectly healthy server out of the
+pool, and then it gets added back once the next check succeeds, only to
+potentially flap again on the next transient blip.
+
+Fix: require several consecutive failures (commonly 2-3) before declaring
+a server unhealthy, not just one. This absorbs brief, harmless hiccups
+while still detecting genuinely sustained outages within a reasonable
+time (with checks every 2 seconds and a threshold of 3, a real outage is
+still caught within about 6 seconds -- a small cost for much more stable
+routing behavior).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Layer 4 vs Layer 7 routing decision</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A company wants to route all requests to <code class="inline">/api/v2/*</code> to a new server pool running updated code, while everything else keeps going to the old pool — as a gradual migration. Can a Layer 4 load balancer do this? Why or why not, and what's needed instead?</p>
+    <details><summary>Show solution</summary><div class="solution">No, a Layer 4 load balancer cannot do this. Layer 4 operates at the
+transport layer, making routing decisions based only on IP address and
+port -- it has no visibility into the HTTP request itself, including the
+URL path. From a Layer 4 balancer's perspective, a request to /api/v2/foo
+and a request to /home look identical: both are just TCP packets to the
+same IP and port.
+
+This requires a Layer 7 load balancer, which operates at the application
+layer and can inspect the actual HTTP request -- reading the URL path (or
+headers, cookies, etc.) and routing /api/v2/* to the new pool while
+sending everything else to the old pool. This path-based routing
+capability is exactly why Layer 7 load balancers, despite being slower
+than Layer 4 (more data to inspect per request), are the standard choice
+whenever routing needs to depend on anything about the request's content
+rather than just where it's addressed to.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why round robin can perform badly even when it's distributing requests perfectly evenly by count, (2) what specific real-world condition causes IP hash to concentrate load onto one server, and (3) why a health check threshold of exactly 1 consecutive failure is almost always the wrong choice? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — load balancers.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: ROUTING ALGORITHMS DEMO */
+(function(){
+  const chips = document.querySelectorAll('[data-algo]');
+  const serversEl = document.getElementById('lb-servers');
+  const sendBtn = document.getElementById('lb-send');
+  const logEl = document.getElementById('lb-log');
+  const reqDot = document.getElementById('lb-req-dot');
+
+  let algo = 'rr';
+  let reqNum = 0;
+  const maxReq = 6;
+  let rrIndex = 0;
+  const servers = [
+    {name:'Server A', conns:0},
+    {name:'Server B', conns:0},
+    {name:'Server C', conns:0}
+  ];
+  const clientIPs = ['203.0.113.5','198.51.100.9','203.0.113.5','192.0.2.44','198.51.100.9','203.0.113.5'];
+
+  function renderServers(litIdx){
+    serversEl.innerHTML = servers.map((s,i)=>`
+      <div class="server-node ${i===litIdx?'lit':''}" style="color:${i===litIdx? (algo==='rr'?'var(--rr-c)':algo==='lc'?'var(--lc-c)':'var(--hash-c)') : 'var(--ink)'}; border-color:${i===litIdx? (algo==='rr'?'var(--rr-c)':algo==='lc'?'var(--lc-c)':'var(--hash-c)') : 'var(--rule)'};">
+        ${s.name}
+        <div class="sconns">${s.conns} active conn</div>
+      </div>`).join('');
+  }
+
+  function reset(){
+    reqNum = 0; rrIndex = 0;
+    servers.forEach(s=>s.conns=0);
+    renderServers(-1);
+    logEl.innerHTML = `<span class="line">Click to send requests one at a time and watch the routing decision play out for ${algo==='rr'?'round robin':algo==='lc'?'least connections':'IP hash'}.</span>`;
+    sendBtn.disabled = false; sendBtn.textContent = 'Send next request';
+  }
+
+  function moveDotTo(idx){
+    const targetPct = (idx+0.5) * (100/3);
+    reqDot.classList.remove('hidden-dot');
+    reqDot.style.left = targetPct + '%';
+    reqDot.style.top = '110px';
+    setTimeout(()=>{ reqDot.classList.add('hidden-dot'); }, 550);
+  }
+
+  sendBtn.addEventListener('click', ()=>{
+    if(reqNum >= maxReq){ return; }
+    let chosen;
+    let reason;
+    if(algo === 'rr'){
+      chosen = rrIndex % 3;
+      rrIndex++;
+      reason = `Round robin picks the next server in fixed rotation, regardless of load: ${servers[chosen].name}.`;
+    } else if(algo === 'lc'){
+      chosen = 0;
+      for(let i=1;i<servers.length;i++){ if(servers[i].conns < servers[chosen].conns) chosen = i; }
+      reason = `Least connections checks current load and picks whichever server has the fewest active connections: ${servers[chosen].name} (${servers[chosen].conns} conn).`;
+    } else {
+      const ip = clientIPs[reqNum];
+      let hash = 0;
+      for(let i=0;i<ip.length;i++){ hash = (hash * 31 + ip.charCodeAt(i)) % 3; }
+      chosen = hash;
+      reason = `IP hash(${ip}) deterministically maps to ${servers[chosen].name} — this same client IP will always land here.`;
+    }
+    servers[chosen].conns++;
+    reqNum++;
+    renderServers(chosen);
+    moveDotTo(chosen);
+    reqDot.style.top = '56px';
+    setTimeout(()=>{ reqDot.style.top = '110px'; }, 20);
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = `<b>Request ${reqNum}:</b> ${reason}`;
+    logEl.innerHTML = ''; logEl.appendChild(p);
+    if(reqNum >= maxReq){ sendBtn.disabled = true; sendBtn.textContent = 'All 6 requests routed ✓'; }
+  });
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      algo = c.dataset.algo;
+      reset();
+    });
+  });
+  reset();
+})();
+
+/* SECTION 3: HEALTH CHECK / FAILOVER SIMULATION */
+(function(){
+  const killBtn = document.getElementById('health-kill');
+  const serverB = document.getElementById('health-b');
+  const pulse = document.getElementById('health-pulse-b');
+  const logEl = document.getElementById('health-log');
+  let killed = false;
+  let checkCount = 0;
+
+  killBtn.addEventListener('click', ()=>{
+    if(killed){ return; }
+    killed = true;
+    killBtn.disabled = true;
+    logEl.innerHTML = '';
+    const crashMsg = document.createElement('div'); crashMsg.className = 'line fadein';
+    crashMsg.innerHTML = '<b>Server B has crashed</b> — but the load balancer doesn\'t know this yet. It will only find out on the next scheduled health check.';
+    logEl.appendChild(crashMsg);
+
+    function runCheck(n){
+      pulse.classList.add('show');
+      pulse.textContent = `health check #${n}…`;
+      setTimeout(()=>{
+        pulse.classList.remove('show');
+        const p = document.createElement('div'); p.className = 'line fadein';
+        if(n < 3){
+          p.innerHTML = `<b>Health check #${n} failed.</b> That's ${n} consecutive failure${n>1?'s':''} — below the threshold of 3, so Server B is still technically in rotation (though every real request routed to it right now would fail).`;
+        } else {
+          serverB.classList.add('dead');
+          serverB.innerHTML = 'Server B<br><span style="font-size:0.65rem;">unhealthy ✗ — removed from rotation</span>';
+          p.innerHTML = '<b>Health check #3 failed — threshold reached.</b> The load balancer marks Server B unhealthy and stops routing new requests to it. Traffic now flows only to A and C until B starts passing checks again.';
+        }
+        logEl.appendChild(p);
+        logEl.scrollTop = logEl.scrollHeight;
+        if(n < 3){ setTimeout(()=>runCheck(n+1), 900); }
+      }, 700);
+    }
+    setTimeout(()=>runCheck(1), 500);
+  });
+})();
+</script>
+
+</body>
+</html>

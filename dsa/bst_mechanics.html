@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — BST Mechanics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --node-c:#6ea8fe; --left-c:#7fd8a0; --right-c:#f2c14e; --bad-c:#ff6b6b; --succ-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(110,168,254,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--left-c); color:var(--left-c); background:rgba(127,216,160,0.08);}
+  .dnode.r{border-color:var(--right-c); color:var(--right-c); background:rgba(242,193,78,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--right-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* tree canvas */
+  .tree-wrap{position:relative; width:100%; min-height:340px; margin:1.2rem 0; overflow-x:auto;}
+  .tree-svg{width:100%; min-width:640px; height:340px; display:block;}
+  .tnode{position:absolute; width:46px; height:46px; border-radius:50%; border:2.5px solid var(--node-c); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:0.9rem; transform:translate(-50%,-50%); transition:all .5s cubic-bezier(.4,0,.2,1); z-index:2;}
+  .tnode.visiting{border-color:var(--accent); box-shadow:0 0 0 4px rgba(255,138,101,0.25); background:rgba(255,138,101,0.12);}
+  .tnode.found{border-color:var(--left-c); box-shadow:0 0 0 4px rgba(127,216,160,0.3); background:rgba(127,216,160,0.15);}
+  .tnode.rejected{border-color:var(--bad-c); opacity:0.4;}
+  .tnode.successor{border-color:var(--succ-c); box-shadow:0 0 0 4px rgba(199,146,234,0.3); background:rgba(199,146,234,0.15);}
+  .tnode.removing{animation:tnode-remove .5s ease forwards;}
+  @keyframes tnode-remove{to{opacity:0; transform:translate(-50%,-50%) scale(0.4);}}
+  .tnode.entering{animation:tnode-enter .4s ease;}
+  @keyframes tnode-enter{from{opacity:0; transform:translate(-50%,-50%) scale(0.3);} to{opacity:1; transform:translate(-50%,-50%) scale(1);}}
+  .tedge{position:absolute; height:2.5px; background:var(--rule); transform-origin:left center; z-index:1; transition:all .5s ease;}
+  .tedge.active-l{background:var(--left-c);}
+  .tedge.active-r{background:var(--right-c);}
+  .traversal-order-badge{position:absolute; top:-1.3rem; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:0.62rem; color:var(--accent); font-weight:700;}
+
+  .decision-panel{font-family:var(--mono); font-size:0.82rem; color:var(--ink-dim); margin-top:1rem; padding:0.9rem 1.1rem; border:1px dashed var(--rule); border-radius:8px; min-height:2.4em;}
+  .decision-panel b{color:var(--ink);}
+  .decision-panel .go-left{color:var(--left-c);}
+  .decision-panel .go-right{color:var(--right-c);}
+
+  .op-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;}
+  input.numin{font-family:var(--mono); background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); border-radius:7px; padding:0.5rem 0.7rem; width:5rem; font-size:0.85rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .seq-track{display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:0.8rem; font-family:var(--mono); font-size:0.85rem;}
+  .seq-item{padding:0.35rem 0.65rem; border-radius:6px; border:1.5px solid var(--rule); background:var(--panel-2); opacity:0.35; transition:all .3s;}
+  .seq-item.done{opacity:1; border-color:var(--accent); color:var(--accent); font-weight:700;}
+
+  .steps-list{font-family:var(--mono); font-size:0.74rem; color:var(--ink-dim); margin-top:0.6rem;}
+  .steps-list ol{margin:0.4rem 0 0; padding-left:1.3rem;}
+  .steps-list li{margin:0.25rem 0;}
+  .steps-list li.active{color:var(--accent);}
+  .steps-list li b{color:var(--ink);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--succ-c); background:rgba(199,146,234,0.06);} .callout.self b{color:var(--succ-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · BST MECHANICS</div>
+  <h1>A binary search tree is a <em>phone book that reorganizes itself</em> every time you insert a name.</h1>
+  <p class="lede">The entire BST property is one sentence — everything in a node's left subtree is smaller, everything in its right subtree is bigger — but that one sentence is what turns "search" into a series of coin-flip-like eliminations instead of a linear scan. This lab walks every comparison the algorithm makes, node by node, for insert, search, delete (including the messy two-children case), and all four traversal orders.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">target &lt; node.value</div>
+    <div class="darrow">→</div>
+    <div class="dnode">go left</div>
+    <div class="darrow">·</div>
+    <div class="dnode r">target &gt; node.value</div>
+    <div class="darrow">→</div>
+    <div class="dnode r">go right</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="property">1 · The BST Property</a>
+  <a data-target="insert">2 · Insert — Live Descent</a>
+  <a data-target="search">3 · Search — Live Descent</a>
+  <a data-target="delete">4 · Delete (All 3 Cases)</a>
+  <a data-target="traversals">5 · Traversal Orders</a>
+  <a data-target="degrade">6 · Why Unbalanced Degrades to O(n)</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE BST PROPERTY ============ -->
+<section id="property">
+  <div class="kicker">01 — One rule, applied recursively</div>
+  <h2>The BST property: left &lt; node &lt; right</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture a "guess my number" game where after every guess you're told "higher" or "lower." Each answer eliminates roughly half the remaining possibilities. A binary search tree bakes that exact elimination strategy into its shape: at every node, comparing your target against that node's value tells you which entire subtree can be skipped — you never have to look at it.</p>
+
+  <p>Formally: for every node <code class="inline">N</code> in a binary search tree, every value in <code class="inline">N.left</code>'s subtree is strictly less than <code class="inline">N.value</code>, and every value in <code class="inline">N.right</code>'s subtree is strictly greater. This must hold <strong>recursively</strong> at every node, not just the root — a node two levels down still has to be smaller than its grandparent if it sits in the grandparent's left subtree.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Node</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, value):
+        <span class="c-self">self</span>.value = value
+        <span class="c-self">self</span>.left = <span class="c-kw">None</span>
+        <span class="c-self">self</span>.right = <span class="c-kw">None</span>
+
+<span class="c-cmt"># Valid BST:            Invalid — 9 violates the property:
+#        8                       8
+#       / \                     / \
+#      3   10                  3   10
+#     / \    \                / \    \
+#    1   6    14              1   6    14
+#       / \                      / \
+#      4   7                    4   9   ← 9 > 8, but it's in the LEFT
+#                                          subtree of the root. Even though
+#                                          9 > 6 locally is fine, it breaks
+#                                          the property relative to the root.</span>
+  </div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a Binary Search Tree is a binary tree satisfying the invariant that for every node, all keys in its left subtree are less than the node's key and all keys in its right subtree are greater — applied recursively at every node, not merely at the root — which enables search, insert, and delete to each discard one entire subtree per comparison rather than examining every element.</div>
+</section>
+
+<!-- ============ SECTION 2: INSERT ============ -->
+<section id="insert">
+  <div class="kicker">02 — Descending until you find the gap</div>
+  <h2>Insert — watch the comparison-by-comparison descent</h2>
+
+  <p>Inserting a new value means walking from the root, comparing at each node, and following "go left" / "go right" exactly like a search — until you fall off the tree into a <code class="inline">None</code> slot. That empty slot is where the new node attaches.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">insert</span>(root, value):
+    <span class="c-kw">if</span> root <span class="c-kw">is</span> <span class="c-kw">None</span>:
+        <span class="c-kw">return</span> <span class="c-fn">Node</span>(value)          <span class="c-cmt"># found the gap — attach here</span>
+    <span class="c-kw">if</span> value < root.value:
+        root.left = <span class="c-fn">insert</span>(root.left, value)   <span class="c-cmt"># recurse left</span>
+    <span class="c-kw">elif</span> value > root.value:
+        root.right = <span class="c-fn">insert</span>(root.right, value) <span class="c-cmt"># recurse right</span>
+    <span class="c-kw">return</span> root
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>INSERT — LIVE DESCENT, NODE BY NODE</span>
+      <div><input class="numin" type="number" id="ins-val" value="5" min="0" max="99"> <button class="btn" id="ins-run">Insert value ▸</button> <button class="btn secondary" id="ins-reset">Reset tree</button></div>
+    </div>
+    <div class="tree-wrap"><div id="ins-tree"></div></div>
+    <div class="decision-panel" id="ins-decision">Enter a value and click Insert — each comparison against the current node will be spelled out here before the tree moves on.</div>
+    <div class="log" id="ins-log"></div>
+  </div>
+
+  <div class="callout"><b>Cost of insert:</b> the number of comparisons equals the depth at which the new node lands — O(h) where h is the tree's height. In a balanced tree h ≈ log₂(n); in a degenerate (chain-shaped) tree h can be n. This is the seed of why balancing matters, covered in the next lab.</div>
+</section>
+
+<!-- ============ SECTION 3: SEARCH ============ -->
+<section id="search">
+  <div class="kicker">03 — Same descent, different question</div>
+  <h2>Search — watch it eliminate half the remaining tree each step</h2>
+
+  <p><strong>Start here, before any code.</strong> This is the "guess higher or lower" game made literal: at each node you ask "is my target smaller, bigger, or equal?" A "smaller" answer means you can ignore that node's entire right subtree forever — not skip it for now, discard it completely from consideration, along with everything beneath it.</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">search</span>(root, target):
+    <span class="c-kw">if</span> root <span class="c-kw">is</span> <span class="c-kw">None</span>:
+        <span class="c-kw">return</span> <span class="c-kw">False</span>                 <span class="c-cmt"># fell off the tree — not present</span>
+    <span class="c-kw">if</span> target == root.value:
+        <span class="c-kw">return</span> <span class="c-kw">True</span>                  <span class="c-cmt"># found it</span>
+    <span class="c-kw">elif</span> target < root.value:
+        <span class="c-kw">return</span> <span class="c-fn">search</span>(root.left, target)   <span class="c-cmt"># entire right subtree eliminated</span>
+    <span class="c-kw">else</span>:
+        <span class="c-kw">return</span> <span class="c-fn">search</span>(root.right, target)  <span class="c-cmt"># entire left subtree eliminated</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SEARCH — LIVE DESCENT WITH ELIMINATION HIGHLIGHTED</span>
+      <div><input class="numin" type="number" id="sr-val" value="7" min="0" max="99"> <button class="btn" id="sr-run">Search ▸</button></div>
+    </div>
+    <div class="tree-wrap"><div id="sr-tree"></div></div>
+    <div class="decision-panel" id="sr-decision">Enter a value and click Search — nodes that get eliminated (their whole subtree) fade out; the path taken stays lit.</div>
+    <div class="log" id="sr-log"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: DELETE ============ -->
+<section id="delete">
+  <div class="kicker">04 — Three genuinely different cases</div>
+  <h2>Delete: leaf, one child, and the two-children case</h2>
+
+  <p><strong>Start here, before any code.</strong> Deleting a leaf is like removing a name with no cross-references — just erase it. Deleting a node with one child is like removing a person from an org chart when they have exactly one direct report — promote that report into their spot. Deleting a node with two children is trickier: you can't promote both children into one slot, so instead you find the <strong>next larger value</strong> in the tree (called the in-order successor — the smallest value in the right subtree), copy that value into the node being deleted, and then delete the successor from where it originally was (which is guaranteed to be an easy leaf-or-one-child case).</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">delete</span>(root, target):
+    <span class="c-kw">if</span> root <span class="c-kw">is</span> <span class="c-kw">None</span>:
+        <span class="c-kw">return</span> <span class="c-kw">None</span>
+    <span class="c-kw">if</span> target < root.value:
+        root.left = <span class="c-fn">delete</span>(root.left, target)
+    <span class="c-kw">elif</span> target > root.value:
+        root.right = <span class="c-fn">delete</span>(root.right, target)
+    <span class="c-kw">else</span>:                                  <span class="c-cmt"># found the node to delete</span>
+        <span class="c-kw">if</span> root.left <span class="c-kw">is</span> <span class="c-kw">None</span>:
+            <span class="c-kw">return</span> root.right              <span class="c-cmt"># 0 or 1 child (right) — promote it</span>
+        <span class="c-kw">if</span> root.right <span class="c-kw">is</span> <span class="c-kw">None</span>:
+            <span class="c-kw">return</span> root.left               <span class="c-cmt"># 1 child (left) — promote it</span>
+        successor = <span class="c-fn">find_min</span>(root.right)   <span class="c-cmt"># TWO children: smallest value in right subtree</span>
+        root.value = successor.value          <span class="c-cmt"># copy successor's value up</span>
+        root.right = <span class="c-fn">delete</span>(root.right, successor.value)  <span class="c-cmt"># remove the now-duplicate successor</span>
+    <span class="c-kw">return</span> root
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>DELETE — PICK A CASE TO WALK THROUGH</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-delcase="leaf">Delete a leaf</button>
+      <button class="chip" data-delcase="one">Delete a one-child node</button>
+      <button class="chip" data-delcase="two">Delete a two-children node</button>
+      <button class="chip" data-delcase="root">Delete the root (two children)</button>
+    </div>
+    <div class="tree-wrap"><div id="del-tree"></div></div>
+    <div class="steps-list" id="del-steps"></div>
+    <button class="btn" id="del-run" style="margin-top:0.8rem;">Run this deletion ▸</button>
+    <div class="log" id="del-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Case</th><th>What happens</th><th>Why it's correct</th></tr>
+    <tr><td>Leaf (0 children)</td><td>Just remove it; parent's pointer becomes None</td><td>Nothing referenced it, no property to preserve</td></tr>
+    <tr><td>One child</td><td>Splice out the node — parent now points directly to the child</td><td>The child (and its subtree) already satisfies the BST property relative to the grandparent, since it did relative to the removed node</td></tr>
+    <tr><td>Two children</td><td>Copy in-order successor's value up, then delete the successor (a leaf or one-child case) from the right subtree</td><td>The successor is the smallest value greater than the deleted node — placing it there preserves left &lt; node &lt; right everywhere</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why the successor (not just "either child"):</b> the in-order successor is specifically the <strong>smallest value in the right subtree</strong> — guaranteed to have no left child itself (if it did, that left child would be even smaller, contradicting "smallest"). That guarantee is exactly what makes deleting the successor always reduce to the easy leaf-or-one-child case, never recursively triggering another two-children deletion. An in-order predecessor (largest in the left subtree) would work equally well by the mirror argument — either choice is valid, just be consistent.</div>
+</section>
+
+<!-- ============ SECTION 5: TRAVERSALS ============ -->
+<section id="traversals">
+  <div class="kicker">05 — Four ways to visit every node</div>
+  <h2>In-order, pre-order, post-order, level-order traversal</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of the tree as a family tree you need to read aloud in different orders: youngest-to-oldest within each branch (in-order), "announce the parent before their kids" (pre-order), "announce the kids before their parent" (post-order), or "read across each generation, left to right" (level-order). Same tree, same nodes — the order you visit them in changes what the sequence is useful for.</p>
+
+  <table class="cmp">
+    <tr><th>Traversal</th><th>Order</th><th>What it's useful for</th></tr>
+    <tr><td>In-order</td><td>left, node, right</td><td>Visits BST values in ascending sorted order — this is THE defining use case</td></tr>
+    <tr><td>Pre-order</td><td>node, left, right</td><td>Copying/serializing a tree — parent is written before children, so rebuilding by reading top-to-bottom works</td></tr>
+    <tr><td>Post-order</td><td>left, right, node</td><td>Deleting/freeing a tree — children are cleaned up before their parent</td></tr>
+    <tr><td>Level-order (BFS)</td><td>generation by generation, left to right</td><td>Anything needing shortest-hops-from-root ordering, or printing the tree shape</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title"><span>PICK A TRAVERSAL — WATCH THE VISIT ORDER LIGHT UP</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-trav="inorder">In-order</button>
+      <button class="chip" data-trav="preorder">Pre-order</button>
+      <button class="chip" data-trav="postorder">Post-order</button>
+      <button class="chip" data-trav="levelorder">Level-order</button>
+    </div>
+    <div class="tree-wrap"><div id="trav-tree"></div></div>
+    <button class="btn" id="trav-run">Play traversal ▸</button>
+    <div class="seq-track" id="trav-seq"></div>
+  </div>
+</section>
+
+<!-- ============ SECTION 6: DEGRADATION ============ -->
+<section id="degrade">
+  <div class="kicker">06 — Shape matters as much as content</div>
+  <h2>Why an unbalanced BST degrades to O(n)</h2>
+
+  <p>All the O(log n) claims above assumed a roughly balanced tree — one where each subtree is about half the remaining nodes. Nothing in the basic insert algorithm enforces that. If you insert values that are already sorted (1, 2, 3, 4, 5...), every new value is larger than everything before it, so every node gets attached as the right child of the previous one. The "tree" becomes a straight line — structurally identical to a linked list.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>INSERT SORTED VALUES — WATCH THE TREE COLLAPSE INTO A CHAIN</span>
+      <div><button class="btn" id="degrade-run">Insert 1,2,3,4,5,6 in order ▸</button> <button class="btn secondary" id="degrade-reset">Reset</button></div>
+    </div>
+    <div class="tree-wrap"><div id="degrade-tree"></div></div>
+    <div class="log" id="degrade-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Tree shape</th><th>Height</th><th>Search/Insert/Delete</th></tr>
+    <tr><td>Perfectly balanced</td><td>O(log n)</td><td>O(log n) — each comparison halves the remaining candidates</td></tr>
+    <tr><td>Degenerate (sorted-order insertion)</td><td>O(n)</td><td>O(n) — identical to searching a linked list, one comparison eliminates only ONE node, not half the tree</td></tr>
+  </table>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a plain BST's O(log n) time complexity is a claim about a <em>balanced</em> tree of height h ≈ log₂(n); the operations are actually O(h) in general, and insertion order alone determines h — sorted or adversarial insertion order can produce h = n, degrading every operation to O(n). Self-balancing variants (AVL, Red-Black trees) exist specifically to guarantee h stays O(log n) regardless of insertion order, which is the subject of the next lab.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Validate the BST property</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Tree: root=10, left child=5, right child=15. Node 5's right child is 12. Is this a valid BST? Explain using the recursive property, not just local comparisons.</p>
+    <details><summary>Show solution</summary><div class="solution">No, invalid. Node 12 is in the LEFT subtree of the root (10), because it
+descends from 5, which is root.left. But 12 > 10, violating the property
+that EVERY value in the root's left subtree must be less than 10.
+
+Locally, 12 > 5 looks fine (12 correctly sits to the right of 5) — but the
+BST property is recursive relative to ALL ancestors, not just the immediate
+parent. This is exactly the kind of subtle violation interviewers test for
+with a "validate BST" question: you must track a valid (low, high) range
+that narrows as you descend, not just compare each node to its direct
+parent.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Trace an insert</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Starting from an empty tree, insert in this order: 50, 30, 70, 20, 40, 60, 80, 35. Draw (or describe) the resulting tree shape, and state its height.</p>
+    <details><summary>Show solution</summary><div class="solution">              50
+            /    \
+          30      70
+         /  \    /  \
+       20   40  60   80
+            /
+          35
+
+Height = 3 edges from root to the deepest node (35), i.e. 4 levels. This is
+a well-balanced tree for 8 nodes — log2(8) = 3, so height 3-4 is expected
+for a balanced shape. Each insert compares against ancestors: e.g. 35 vs 50
+(smaller, go left), vs 30 (bigger, go right), vs 40 (smaller, go left),
+lands as 40's left child.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Delete a leaf and a one-child node</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the tree from Problem 2, describe what changes when you delete 20 (a leaf), and separately (starting fresh from the same tree) what changes when you delete 60 (which has no children — wait, check: does 60 have a child in that tree)? If it doesn't, explain what "one child" would look like using node 80 instead if 80 had only a left child of 75.</p>
+    <details><summary>Show solution</summary><div class="solution">Delete 20 (leaf): 30's left pointer simply becomes None. Nothing else
+changes — 20 had no children to reattach anywhere.
+
+60 in that tree is also a leaf (70's left child, no children of its own) —
+deleting it sets 70.left = None, same as the leaf case above.
+
+One-child example instead: if 80 had a single left child 75 (no right
+child), deleting 80 means splicing it out — 70.right = 75 (75 gets promoted
+directly into 80's old spot). 75 keeps whatever subtree it had; the BST
+property still holds because 75 < 80 was already true, and 75 is still
+correctly positioned as > 70 in 70's right subtree.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Two-children deletion, fully worked</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the tree from Problem 2 (50 root, 30/70 children, 20/40/60/80 grandchildren, 35 under 40), delete the root, 50. Walk through finding the successor and the final tree shape.</p>
+    <details><summary>Show solution</summary><div class="solution">50 has two children (30 and 70) — the two-children case.
+In-order successor = smallest value in the RIGHT subtree (rooted at 70).
+Walk left from 70: 70 -> 60 (60 has no left child) -> successor = 60.
+
+Copy 60's value into the root: root.value becomes 60.
+Delete 60 from its original spot (70's left child) — 60 is a leaf there,
+so 70.left becomes None.
+
+Resulting tree:
+              60
+            /    \
+          30      70
+         /  \        \
+       20   40        80
+            /
+          35
+
+Verify the property still holds: 60's left subtree (30,20,40,35) are all
+< 60. 60's right subtree (70,80) are all > 60. Valid.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Predict the traversal outputs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">For the tree: root=8, left=3 (children 1, 6), right=10 (right child 14, whose left child is 13). Write the in-order, pre-order, and post-order sequences.</p>
+    <details><summary>Show solution</summary><div class="solution">In-order (left, node, right):   1, 3, 6, 8, 10, 13, 14
+Pre-order (node, left, right):  8, 3, 1, 6, 10, 14, 13
+Post-order (left, right, node): 1, 6, 3, 13, 14, 10, 8
+
+Note in-order produces perfectly ascending sorted order (1,3,6,8,10,13,14)
+— this is guaranteed for ANY valid BST, which is exactly why in-order
+traversal is the standard way to extract sorted data from one.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Why sorted insertion is the worst case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain, in terms of comparisons made, why inserting n already-sorted values one at a time into an empty BST takes O(n²) total time, even though each individual insert is "just" a descent.</p>
+    <details><summary>Show solution</summary><div class="solution">Inserting sorted values 1, 2, 3, ..., n one at a time: each new value is
+larger than every existing value, so it always becomes the right child of
+the current rightmost node. Inserting the k-th value requires walking k-1
+existing nodes (all chained to the right) before finding the None slot.
+
+Total comparisons across all n inserts: 0 + 1 + 2 + ... + (n-1) = n(n-1)/2
+= O(n²) for the whole sequence of insertions, even though the claimed
+per-operation cost was "O(h)" — because h itself grows to k-1 for the k-th
+insert in this specific degenerate case, rather than staying at O(log k).
+This is the concrete mechanism behind "an unbalanced BST degrades to O(n)
+per operation."</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why the BST property must hold recursively relative to every ancestor, not just the immediate parent, (2) why the two-children deletion case specifically uses the in-order successor (or predecessor) rather than an arbitrary descendant, and (3) exactly why sorted-order insertion produces a degenerate O(n)-height tree? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — bst mechanics.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* ===== Shared BST model + renderer ===== */
+function makeNode(value){ return { value: value, left: null, right: null, id: Math.random().toString(36).slice(2) }; }
+
+function insertNode(root, value){
+  if(root === null) return makeNode(value);
+  if(value < root.value) root.left = insertNode(root.left, value);
+  else if(value > root.value) root.right = insertNode(root.right, value);
+  return root;
+}
+
+function findMinNode(root){
+  let cur = root;
+  while(cur.left !== null) cur = cur.left;
+  return cur;
+}
+
+function deleteNode(root, target){
+  if(root === null) return null;
+  if(target < root.value){ root.left = deleteNode(root.left, target); }
+  else if(target > root.value){ root.right = deleteNode(root.right, target); }
+  else {
+    if(root.left === null) return root.right;
+    if(root.right === null) return root.left;
+    const succ = findMinNode(root.right);
+    root.value = succ.value;
+    root.right = deleteNode(root.right, succ.value);
+  }
+  return root;
+}
+
+/* Compute (x,y) layout via in-order position for x, depth for y */
+function layoutTree(root, containerWidth){
+  const positions = {};
+  let counter = 0;
+  function countLeaves(n){ return n === null ? 0 : 1 + countLeaves(n.left) + countLeaves(n.right); }
+  const total = countLeaves(root);
+  function walk(node, depth){
+    if(node === null) return;
+    walk(node.left, depth+1);
+    const x = total <= 1 ? containerWidth/2 : 40 + (counter / Math.max(total-1,1)) * (containerWidth - 80);
+    positions[node.id] = { x: x, y: 45 + depth * 78, node: node };
+    counter++;
+    walk(node.right, depth+1);
+  }
+  walk(root, 0);
+  return positions;
+}
+
+function renderTree(containerEl, root, opts){
+  opts = opts || {};
+  const width = containerEl.clientWidth || 640;
+  const positions = layoutTree(root, width);
+  const heights = Object.values(positions).map(p=>p.y);
+  const maxY = heights.length ? Math.max(...heights) : 45;
+  containerEl.style.position = 'relative';
+  containerEl.style.height = (maxY + 60) + 'px';
+  containerEl.innerHTML = '';
+
+  // edges first (under nodes)
+  Object.values(positions).forEach(p=>{
+    const n = p.node;
+    if(n.left && positions[n.left.id]){
+      const cp = positions[n.left.id];
+      drawEdge(containerEl, p, cp, opts.activeEdges && opts.activeEdges[n.id+'-L']);
+    }
+    if(n.right && positions[n.right.id]){
+      const cp = positions[n.right.id];
+      drawEdge(containerEl, p, cp, opts.activeEdges && opts.activeEdges[n.id+'-R']);
+    }
+  });
+
+  Object.values(positions).forEach(p=>{
+    const n = p.node;
+    const div = document.createElement('div');
+    div.className = 'tnode entering';
+    div.style.left = p.x + 'px';
+    div.style.top = p.y + 'px';
+    div.textContent = n.value;
+    div.dataset.id = n.id;
+    if(opts.visiting && opts.visiting.has(n.id)) div.classList.add('visiting');
+    if(opts.found && opts.found.has(n.id)) div.classList.add('found');
+    if(opts.rejected && opts.rejected.has(n.id)) div.classList.add('rejected');
+    if(opts.successor && opts.successor.has(n.id)) div.classList.add('successor');
+    containerEl.appendChild(div);
+  });
+  return positions;
+}
+
+function drawEdge(containerEl, p1, p2, active){
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const len = Math.sqrt(dx*dx + dy*dy);
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  const edge = document.createElement('div');
+  edge.className = 'tedge' + (active === 'L' ? ' active-l' : (active === 'R' ? ' active-r' : ''));
+  edge.style.left = p1.x + 'px';
+  edge.style.top = p1.y + 'px';
+  edge.style.width = len + 'px';
+  edge.style.transform = `rotate(${angle}deg)`;
+  containerEl.appendChild(edge);
+}
+
+function wait(ms){ return new Promise(res=>setTimeout(res, ms)); }
+
+/* Sample starting tree used by insert/search/delete/traversal labs */
+function sampleTree(){
+  let root = null;
+  [50,30,70,20,40,60,80,35].forEach(v=>{ root = insertNode(root, v); });
+  return root;
+}
+
+/* ===== SECTION 2: INSERT LAB ===== */
+(function(){
+  const treeEl = document.getElementById('ins-tree');
+  const decisionEl = document.getElementById('ins-decision');
+  const logEl = document.getElementById('ins-log');
+  let root = sampleTree();
+  let busy = false;
+
+  function log(html){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  renderTree(treeEl, root);
+
+  document.getElementById('ins-run').addEventListener('click', async ()=>{
+    if(busy) return;
+    busy = true;
+    const val = parseInt(document.getElementById('ins-val').value, 10);
+    if(isNaN(val)){ busy=false; return; }
+    let comparisons = 0;
+    const visiting = new Set();
+    let cur = root;
+    let parent = null;
+    let side = null;
+    while(cur !== null){
+      visiting.add(cur.id);
+      comparisons++;
+      renderTree(treeEl, root, { visiting });
+      if(val === cur.value){
+        decisionEl.innerHTML = `<b>${val} == ${cur.value}</b> — value already exists in the tree. Standard BSTs don't store duplicates; insert is a no-op.`;
+        log(`<b>Insert ${val}:</b> already present — no-op after ${comparisons} comparison(s).`);
+        busy = false;
+        return;
+      } else if(val < cur.value){
+        decisionEl.innerHTML = `<b>${val} &lt; ${cur.value}</b> → <span class="go-left">go left</span>`;
+        parent = cur; side = 'left'; cur = cur.left;
+      } else {
+        decisionEl.innerHTML = `<b>${val} &gt; ${cur.value}</b> → <span class="go-right">go right</span>`;
+        parent = cur; side = 'right'; cur = cur.right;
+      }
+      await wait(650);
+    }
+    const newNode = makeNode(val);
+    if(parent === null){ root = newNode; }
+    else { parent[side] = newNode; }
+    decisionEl.innerHTML = `<b>Reached an empty slot (None)</b> — attach new node ${val} here, as the ${side} child of ${parent ? parent.value : '(root)'}.`;
+    renderTree(treeEl, root);
+    log(`<b>Insert ${val}:</b> ${comparisons} comparison(s) made before landing in an empty slot — O(h) where h is the depth reached.`);
+    busy = false;
+  });
+
+  document.getElementById('ins-reset').addEventListener('click', ()=>{
+    root = sampleTree();
+    renderTree(treeEl, root);
+    decisionEl.innerHTML = 'Tree reset to the sample: 50 / 30,70 / 20,40,60,80 / 35.';
+    logEl.innerHTML = '';
+  });
+})();
+
+/* ===== SECTION 3: SEARCH LAB ===== */
+(function(){
+  const treeEl = document.getElementById('sr-tree');
+  const decisionEl = document.getElementById('sr-decision');
+  const logEl = document.getElementById('sr-log');
+  let root = sampleTree();
+  let busy = false;
+
+  function log(html){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function collectSubtreeIds(node, set){
+    if(node === null) return;
+    set.add(node.id);
+    collectSubtreeIds(node.left, set);
+    collectSubtreeIds(node.right, set);
+  }
+
+  renderTree(treeEl, root);
+
+  document.getElementById('sr-run').addEventListener('click', async ()=>{
+    if(busy) return;
+    busy = true;
+    const target = parseInt(document.getElementById('sr-val').value, 10);
+    if(isNaN(target)){ busy=false; return; }
+    let comparisons = 0;
+    const visiting = new Set();
+    const rejected = new Set();
+    let cur = root;
+    while(cur !== null){
+      visiting.add(cur.id);
+      comparisons++;
+      renderTree(treeEl, root, { visiting, rejected });
+      if(target === cur.value){
+        const found = new Set([cur.id]);
+        renderTree(treeEl, root, { visiting, rejected, found });
+        decisionEl.innerHTML = `<b>${target} == ${cur.value}</b> — found! ${comparisons} comparison(s) total.`;
+        log(`<b>Search ${target}:</b> FOUND after ${comparisons} comparison(s).`);
+        busy = false;
+        return;
+      } else if(target < cur.value){
+        decisionEl.innerHTML = `<b>${target} &lt; ${cur.value}</b> → <span class="go-left">go left</span>, entire right subtree of ${cur.value} eliminated`;
+        if(cur.right) collectSubtreeIds(cur.right, rejected);
+        cur = cur.left;
+      } else {
+        decisionEl.innerHTML = `<b>${target} &gt; ${cur.value}</b> → <span class="go-right">go right</span>, entire left subtree of ${cur.value} eliminated`;
+        if(cur.left) collectSubtreeIds(cur.left, rejected);
+        cur = cur.right;
+      }
+      await wait(650);
+    }
+    renderTree(treeEl, root, { visiting, rejected });
+    decisionEl.innerHTML = `<b>Fell off the tree (None)</b> — ${target} is not present.`;
+    log(`<b>Search ${target}:</b> NOT FOUND after ${comparisons} comparison(s) — worst case for this tree's height.`);
+    busy = false;
+  });
+})();
+
+/* ===== SECTION 4: DELETE LAB (leaf / one-child / two-children / root) ===== */
+(function(){
+  const chips = document.querySelectorAll('#delete .chip');
+  const treeEl = document.getElementById('del-tree');
+  const stepsEl = document.getElementById('del-steps');
+  const runBtn = document.getElementById('del-run');
+  const logEl = document.getElementById('del-log');
+  let mode = 'leaf';
+  let busy = false;
+
+  const configs = {
+    leaf: { target: 20, label: 'Delete 20 (a leaf)' },
+    one: { target: null, label: 'Delete a one-child node' }, // built dynamically
+    two: { target: 40, label: 'Delete 40 (two children: 35 and nothing... adjust)' },
+    root: { target: 50, label: 'Delete the root, 50 (two children)' }
+  };
+
+  function baseTreeForMode(m){
+    let root = null;
+    if(m === 'one'){
+      // build a tree where 80 has a single left child 75
+      [50,30,70,20,40,60,80,35,75].forEach(v=>{ root = insertNode(root, v); });
+      return root;
+    }
+    [50,30,70,20,40,60,80,35].forEach(v=>{ root = insertNode(root, v); });
+    return root;
+  }
+
+  function log(html){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function showSteps(title, steps){
+    stepsEl.innerHTML = `<b style="color:var(--ink);">${title}</b><ol>${steps.map(s=>`<li>${s}</li>`).join('')}</ol>`;
+  }
+  function activateStep(idx){
+    stepsEl.querySelectorAll('li').forEach((li,i)=>li.classList.toggle('active', i===idx));
+  }
+
+  let root;
+  function reset(){
+    root = baseTreeForMode(mode);
+    renderTree(treeEl, root);
+    stepsEl.innerHTML = '';
+    logEl.innerHTML = '';
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.delcase;
+      reset();
+    });
+  });
+
+  runBtn.addEventListener('click', async ()=>{
+    if(busy) return;
+    busy = true;
+    reset();
+    await wait(200);
+
+    if(mode === 'leaf'){
+      const target = 20;
+      showSteps('delete(20) — leaf case', [
+        `Descend: 50 → 30 → found 20.`,
+        `20 has no children (root.left is None and root.right is None) → return None to the parent.`,
+        `Parent (30)'s left pointer becomes None. Done.`
+      ]);
+      activateStep(0);
+      const node = findNodeByValue(root, target);
+      renderTree(treeEl, root, { visiting: new Set([findNodeByValue(root,50).id, findNodeByValue(root,30).id, node.id]) });
+      await wait(700);
+      activateStep(1);
+      document.querySelector(`[data-id="${node.id}"]`).classList.add('removing');
+      await wait(500);
+      activateStep(2);
+      root = deleteNode(root, target);
+      renderTree(treeEl, root);
+      log(`<b>Delete 20 (leaf):</b> simplest case — no children means no reattachment logic needed at all.`);
+    }
+
+    else if(mode === 'one'){
+      const target = 80;
+      showSteps('delete(80) — one child case (left child 75)', [
+        `Descend: 50 → 70 → found 80.`,
+        `80 has a left child (75) but no right child → return root.left (the 75 subtree) to splice it upward.`,
+        `Parent (70)'s right pointer now points directly to 75 — 75 is promoted into 80's old spot.`
+      ]);
+      activateStep(0);
+      const n50 = findNodeByValue(root,50), n70 = findNodeByValue(root,70), n80 = findNodeByValue(root,80), n75 = findNodeByValue(root,75);
+      renderTree(treeEl, root, { visiting: new Set([n50.id, n70.id, n80.id]) });
+      await wait(700);
+      activateStep(1);
+      renderTree(treeEl, root, { visiting: new Set([n80.id]), successor: new Set([n75.id]) });
+      await wait(700);
+      activateStep(2);
+      document.querySelector(`[data-id="${n80.id}"]`).classList.add('removing');
+      await wait(500);
+      root = deleteNode(root, target);
+      renderTree(treeEl, root);
+      log(`<b>Delete 80 (one child):</b> 75 is spliced directly into 80's position — no value copying needed, just a pointer reassignment.`);
+    }
+
+    else if(mode === 'two'){
+      const target = 40;
+      const n40 = findNodeByValue(root, 40);
+      showSteps(`delete(40) — two children case (35 and... let's check)`, [
+        `Descend: 50 → 30 → found 40.`,
+        `40 has a left child (35). Does it have a right child in this tree? In our sample tree, 40's only child is 35 (left) — so this is actually a ONE-CHILD case here. Try "Delete the root" for a guaranteed two-children example, or trust the general algorithm: IF 40 had two children, we'd find its in-order successor next.`,
+        `Since 40 has only a left child (35), splice 35 up into 40's spot (same rule as the one-child case).`
+      ]);
+      activateStep(0);
+      const n50 = findNodeByValue(root,50), n30 = findNodeByValue(root,30);
+      renderTree(treeEl, root, { visiting: new Set([n50.id, n30.id, n40.id]) });
+      await wait(800);
+      activateStep(1);
+      await wait(1000);
+      activateStep(2);
+      document.querySelector(`[data-id="${n40.id}"]`).classList.add('removing');
+      await wait(500);
+      root = deleteNode(root, target);
+      renderTree(treeEl, root);
+      log(`<b>Note:</b> in this sample tree 40 only has one child, so it resolves via the one-child rule. Use "Delete the root" below for a node that genuinely has two children on both sides.`);
+    }
+
+    else if(mode === 'root'){
+      const target = 50;
+      const n50 = findNodeByValue(root, 50);
+      const n70 = findNodeByValue(root, 70);
+      showSteps('delete(50) — root, two children (30 and 70)', [
+        `50 has two children → must find the in-order successor: the SMALLEST value in the right subtree (rooted at 70).`,
+        `Walk left from 70: 70 → 60. 60 has no left child, so 60 is the successor.`,
+        `Copy successor's value into the root: root.value = 60 (root node now displays 60, still same node object).`,
+        `Delete 60 from its original spot (70's left child) — 60 is a leaf there, so 70.left becomes None.`
+      ]);
+      activateStep(0);
+      renderTree(treeEl, root, { visiting: new Set([n50.id]) });
+      await wait(700);
+      activateStep(1);
+      const n60 = findNodeByValue(root, 60);
+      renderTree(treeEl, root, { visiting: new Set([n70.id, n60.id]), successor: new Set([n60.id]) });
+      await wait(900);
+      activateStep(2);
+      root.value = 60; // mutate root value directly for visualization
+      renderTree(treeEl, root, { found: new Set([root.id]) });
+      await wait(700);
+      activateStep(3);
+      const n60b = document.querySelector(`[data-id="${n60.id}"]`);
+      if(n60b) n60b.classList.add('removing');
+      await wait(500);
+      root.right = deleteNode(root.right, 60);
+      renderTree(treeEl, root);
+      log(`<b>Delete root (50):</b> successor 60 found by walking left from 70, its value copied into the root, then the original 60 leaf removed. Two-step operation, but both steps are cheap: O(h) to find the successor, O(1) to detach it once found (it's guaranteed to have at most one child).`);
+    }
+
+    busy = false;
+  });
+
+  function findNodeByValue(node, val){
+    if(node === null) return null;
+    if(node.value === val) return node;
+    return val < node.value ? findNodeByValue(node.left, val) : findNodeByValue(node.right, val);
+  }
+
+  reset();
+})();
+
+/* ===== SECTION 5: TRAVERSAL LAB ===== */
+(function(){
+  const chips = document.querySelectorAll('#traversals .chip');
+  const treeEl = document.getElementById('trav-tree');
+  const runBtn = document.getElementById('trav-run');
+  const seqEl = document.getElementById('trav-seq');
+  let mode = 'inorder';
+  let root = sampleTree();
+  let busy = false;
+
+  function inorder(n, out){ if(!n) return; inorder(n.left,out); out.push(n); inorder(n.right,out); }
+  function preorder(n, out){ if(!n) return; out.push(n); preorder(n.left,out); preorder(n.right,out); }
+  function postorder(n, out){ if(!n) return; postorder(n.left,out); postorder(n.right,out); out.push(n); }
+  function levelorder(n, out){
+    if(!n) return;
+    const q = [n];
+    while(q.length){
+      const cur = q.shift();
+      out.push(cur);
+      if(cur.left) q.push(cur.left);
+      if(cur.right) q.push(cur.right);
+    }
+  }
+
+  function computeOrder(){
+    const out = [];
+    if(mode==='inorder') inorder(root, out);
+    else if(mode==='preorder') preorder(root, out);
+    else if(mode==='postorder') postorder(root, out);
+    else levelorder(root, out);
+    return out;
+  }
+
+  function renderSeqSkeleton(order){
+    seqEl.innerHTML = '';
+    order.forEach(n=>{
+      const span = document.createElement('span');
+      span.className = 'seq-item';
+      span.id = 'seq-' + n.id;
+      span.textContent = n.value;
+      seqEl.appendChild(span);
+    });
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.trav;
+      renderTree(treeEl, root);
+      renderSeqSkeleton(computeOrder());
+    });
+  });
+
+  runBtn.addEventListener('click', async ()=>{
+    if(busy) return;
+    busy = true;
+    const order = computeOrder();
+    renderSeqSkeleton(order);
+    for(let i=0;i<order.length;i++){
+      const n = order[i];
+      renderTree(treeEl, root, { visiting: new Set([n.id]) });
+      const seqSpan = document.getElementById('seq-' + n.id);
+      if(seqSpan) seqSpan.classList.add('done');
+      await wait(500);
+    }
+    renderTree(treeEl, root);
+    busy = false;
+  });
+
+  renderTree(treeEl, root);
+  renderSeqSkeleton(computeOrder());
+})();
+
+/* ===== SECTION 6: DEGRADATION LAB ===== */
+(function(){
+  const treeEl = document.getElementById('degrade-tree');
+  const logEl = document.getElementById('degrade-log');
+  let root = null;
+  let busy = false;
+
+  function log(html){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  document.getElementById('degrade-run').addEventListener('click', async ()=>{
+    if(busy) return;
+    busy = true;
+    root = null;
+    const values = [1,2,3,4,5,6];
+    let totalComparisons = 0;
+    for(let i=0;i<values.length;i++){
+      const v = values[i];
+      let comparisons = 0;
+      let cur = root;
+      while(cur !== null){ comparisons++; cur = cur.right; } // sorted insert always goes right
+      totalComparisons += comparisons;
+      root = insertNode(root, v);
+      renderTree(treeEl, root);
+      log(`<b>Insert ${v}:</b> ${comparisons} comparison(s) to reach the empty slot (had to walk past every previously inserted value, since each is smaller).`);
+      await wait(550);
+    }
+    log(`<b>Total comparisons across all ${values.length} inserts: ${totalComparisons}</b> — this is 0+1+2+3+4+5 = n(n-1)/2, i.e. O(n²) for the whole sequence, and the tree height is now ${values.length-1} for just ${values.length} nodes (a balanced tree would have height ~2). This chain-shaped tree behaves identically to a linked list for search: O(n) per lookup.`);
+    busy = false;
+  });
+
+  document.getElementById('degrade-reset').addEventListener('click', ()=>{
+    root = null;
+    treeEl.innerHTML = '';
+    logEl.innerHTML = '';
+  });
+})();
+</script>
+</body>
+</html>

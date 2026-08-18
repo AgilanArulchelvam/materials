@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
-    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --accent:#ff8a65;
+    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --accent:#ff8a65;
     --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
   }
   *{box-sizing:border-box;}
@@ -50,6 +50,17 @@
   .database .tag{color:var(--cache-c);}
   .database:hover{border-color:var(--cache-c);}
   .database .arrow{color:var(--cache-c);}
+  .roadmap .tag{color:var(--road-c);}
+  .roadmap:hover{border-color:var(--road-c);}
+  .roadmap .arrow{color:var(--road-c);}
+  .dsa .tag{color:var(--dsa-c);}
+  .dsa:hover{border-color:var(--dsa-c);}
+  .dsa .arrow{color:var(--dsa-c);}
+
+  .card.roadmap{position:relative;}
+  .card .status{font-family:var(--mono); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid var(--rule); color:var(--ink-dim); position:absolute; top:1.4rem; right:1.5rem;}
+  .card .status.active{color:var(--road-c); border-color:var(--road-c); background:rgba(232,163,85,0.08);}
+  .card .status.upcoming{opacity:0.7;}
 
   footer{max-width:1100px; margin:5rem auto 0; padding:2rem 0 0; border-top:1px solid var(--rule); font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); text-align:center;}
 </style>
@@ -58,8 +69,8 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Six labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
-  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, systems fundamentals, and relational databases. Pick one below — no setup required, just open and read.</p>
+  <h1>Twenty labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, and relational databases — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
 <main>
@@ -67,7 +78,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Python Internals</h2>
-      <span class="count">4 labs</span>
+      <span class="count">10 labs</span>
     </div>
     <div class="cards">
       <a class="card python" href="python/memory_and_scoping.html">
@@ -94,13 +105,76 @@
         <p>A comprehension is just a for-loop wearing a costume — plus how unpacking spreads values apart.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card python" href="python/oop_composition_and_abc.html">
+        <span class="tag">Composition, Inheritance &amp; Contracts</span>
+        <h3>Composition, Inheritance &amp; ABCs</h3>
+        <p>Every class relationship answers the same question: who's responsible for what. Composition, MRO, @property, and abstract base classes.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/iterators_and_generators.html">
+        <span class="tag">Iterators, Generators &amp; yield</span>
+        <h3>Iterators &amp; Generators</h3>
+        <p>A generator is a function that pauses instead of finishing. The __iter__/__next__ protocol, yield from, and the memory trade-off behind lazy evaluation.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/context_managers.html">
+        <span class="tag">with, __enter__ &amp; __exit__</span>
+        <h3>Context Managers</h3>
+        <p>A context manager is a promise that cleanup always happens. with-statement mechanics, exception suppression, and the @contextmanager shortcut.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/modules_and_packaging.html">
+        <span class="tag">Imports, sys.path &amp; pyproject.toml</span>
+        <h3>Modules &amp; Packaging</h3>
+        <p>How Python actually finds a module when you import it. Search paths, absolute vs relative imports, packaging metadata, and why virtual environments exist.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/typing.html">
+        <span class="tag">Type Hints, Generics &amp; Protocol</span>
+        <h3>Typing</h3>
+        <p>Type hints don't change runtime behavior — they're a contract a separate tool checks. Generics, structural typing with Protocol, and reading mypy's errors.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/error_handling.html">
+        <span class="tag">Exceptions, try/except &amp; raise ... from</span>
+        <h3>Error Handling</h3>
+        <p>The exception hierarchy, when a custom exception is actually warranted, what each try/except/else/finally block is for, and preserving context with raise X from Y.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Data Structures &amp; Algorithms</h2>
+      <span class="count">3 labs</span>
+    </div>
+    <div class="cards">
+      <a class="card dsa" href="dsa/big_o_and_linked_lists.html">
+        <span class="tag">Big-O by Hand &amp; Linked Lists</span>
+        <h3>Big-O &amp; Linked Lists</h3>
+        <p>Deriving time complexity by literally counting operations. Singly vs doubly linked lists, and the real cost of insert, delete, search, and reverse.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card dsa" href="dsa/bst_mechanics.html">
+        <span class="tag">BST Insert, Delete &amp; Traversal</span>
+        <h3>Binary Search Tree Mechanics</h3>
+        <p>The left-less-than-right invariant, all three deletion cases worked step by step, and every traversal order animated node by node.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card dsa" href="dsa/tree_rotations_and_balancing.html">
+        <span class="tag">AVL Rotations &amp; Red-Black Trees</span>
+        <h3>Tree Rotations &amp; Balancing</h3>
+        <p>Watch a rotation actually happen — nodes physically repositioning, not just before/after boxes. Balance factors, all 4 rotation cases, and why balancing guarantees O(log n).</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">1 lab</span>
+      <span class="count">4 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -109,13 +183,31 @@
         <p>Latency is how long one thing takes. Throughput is how much gets done. Why scaling one doesn't fix the other.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/vertical_vs_horizontal_scaling.html">
+        <span class="tag">System Design — Scaling Deep Dive</span>
+        <h3>Vertical vs Horizontal Scaling</h3>
+        <p>One bigger machine vs many that share the work. Single points of failure, the hardware ceiling, statelessness, load balancing, partitioning, and the cost trade-offs behind each.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card systems" href="systems/stateless_vs_stateful.html">
+        <span class="tag">System Design — State &amp; Scaling</span>
+        <h3>Stateless vs Stateful</h3>
+        <p>What "state" actually means for a service, why stateless services scale horizontally with almost no coordination cost, and where the state has to go instead.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card systems" href="systems/load_balancers.html">
+        <span class="tag">System Design — Routing &amp; Failover</span>
+        <h3>Load Balancers</h3>
+        <p>Round robin, least connections, and IP hash — watch each one route the same requests differently. Plus health checks and automatic failover.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">1 lab</span>
+      <span class="count">3 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -124,12 +216,75 @@
         <p>A relational database is just a set of grids that agree on how to reference each other.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/normalization_1nf_2nf.html">
+        <span class="tag">Normalization — 1NF &amp; 2NF</span>
+        <h3>Normalization: 1NF &amp; 2NF</h3>
+        <p>Normalization is giving every fact exactly one home. Atomic values, repeating groups, composite keys, and spotting partial dependencies.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/normalization_3nf_and_er_modeling.html">
+        <span class="tag">Normalization — 3NF &amp; ER Modeling</span>
+        <h3>Normalization: 3NF &amp; ER Modeling</h3>
+        <p>No transitive dependencies, when denormalization is a deliberate trade-off, and modeling entities/attributes/relationships before a single table exists.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Roadmap</h2>
+      <span class="count">6 months</span>
+    </div>
+    <div class="cards">
+      <a class="card roadmap" href="roadmap/month-1-checklist.html">
+        <span class="status active">In progress</span>
+        <span class="tag">Month 1</span>
+        <h3>Python Foundations &amp; Data Structures</h3>
+        <p>Syntax internals, OOP, generators, context managers, async, CPython internals — plus weekly system design and DB design tracks.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-2-checklist.html">
+        <span class="status upcoming">Upcoming</span>
+        <span class="tag">Month 2</span>
+        <h3>Backend API Design &amp; Protocols</h3>
+        <p>REST, gRPC, auth, and the protocol-level decisions behind real backend services.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-3-checklist.html">
+        <span class="status upcoming">Upcoming</span>
+        <span class="tag">Month 3</span>
+        <h3>Storage Engines &amp; RAG</h3>
+        <p>How storage engines actually work under the hood, plus retrieval-augmented generation.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-4-checklist.html">
+        <span class="status upcoming">Upcoming</span>
+        <span class="tag">Month 4</span>
+        <h3>MCP &amp; Agentic Frameworks</h3>
+        <p>Model Context Protocol and the architecture behind agentic systems.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-5-checklist.html">
+        <span class="status upcoming">Upcoming</span>
+        <span class="tag">Month 5</span>
+        <h3>Evals, Observability &amp; Infra</h3>
+        <p>Evaluating model behavior, observability practices, and the infrastructure that supports both.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-6-checklist.html">
+        <span class="status upcoming">Upcoming</span>
+        <span class="tag">Month 6</span>
+        <h3>Capstone &amp; Interview Execution</h3>
+        <p>Bringing everything together into a capstone project and interview-ready execution.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
     </div>
   </section>
 
 </main>
 
-<footer>materials/ · six standalone HTML labs, no build step</footer>
+<footer>materials/ · twenty standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>
