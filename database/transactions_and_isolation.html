@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Transactions &amp; Isolation Levels</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --t1-c:#4fc3f7; --t2-c:#f2c14e; --anomaly-c:#ff6b6b; --safe-c:#7fd8a0; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .grid-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.7rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .gh-box{padding:0.55rem 0.95rem; border-radius:8px; border:1.5px solid var(--t1-c); color:var(--t1-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ACID cards */
+  .acid-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:0.9rem; margin:1.4rem 0;}
+  @media(max-width:820px){.acid-grid{grid-template-columns:1fr 1fr;}}
+  @media(max-width:480px){.acid-grid{grid-template-columns:1fr;}}
+  .acid-card{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; background:var(--panel-2);}
+  .acid-card .letter{font-family:var(--display); font-size:1.8rem; font-weight:700; color:var(--accent);}
+  .acid-card h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; margin:0.3rem 0 0.5rem; color:var(--ink);}
+  .acid-card p{font-size:0.8rem; margin:0;}
+
+  /* transaction trace table */
+  .trace-table{width:100%; border-collapse:collapse; margin:1.2rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .trace-table th{background:var(--panel-2); padding:0.5rem 0.7rem; text-align:left; border:1px solid var(--rule); font-size:0.68rem; text-transform:uppercase; color:var(--ink-dim);}
+  .trace-table td{padding:0.5rem 0.7rem; border:1px solid var(--rule); vertical-align:top;}
+  .trace-table td.t1{color:var(--t1-c);}
+  .trace-table td.t2{color:var(--t2-c);}
+  .trace-table td.empty{color:var(--ink-dim); opacity:0.4;}
+  .trace-table tr.anomaly-row td{background:rgba(255,107,107,0.08);}
+  .trace-table td.anomaly-hit{color:var(--anomaly-c); font-weight:700;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.88rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.8rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+  table.cmp td.yes{color:var(--anomaly-c);} table.cmp td.no{color:var(--safe-c);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--t1-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--t1-c);}
+  .callout.info{border-left-color:var(--safe-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--safe-c);}
+  .callout.warn{border-left-color:var(--anomaly-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--anomaly-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · TRANSACTIONS &amp; ISOLATION</div>
+  <h1>Isolation levels don't ask "is this correct" — they ask "which specific ways of being wrong are you willing to tolerate."</h1>
+  <p class="lede">ACID gives transactions their guarantees on paper, but "isolated" is a sliding scale, not a boolean — every level below Serializable trades a specific, well-defined class of anomaly for better concurrency. This lab traces dirty reads, non-repeatable reads, and phantom reads statement by statement across two concurrent transactions, and pins down exactly which isolation level closes each door.</p>
+
+  <div class="grid-hero">
+    <div class="gh-box">Read Uncommitted</div>
+    <div class="gh-box">→ Read Committed →</div>
+    <div class="gh-box">Repeatable Read</div>
+    <div class="gh-box">→ Serializable</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="acid">1 · ACID, One Sentence Each</a>
+  <a data-target="levels">2 · Isolation Levels: Read Uncommitted → Serializable</a>
+  <a data-target="anomalies">3 · The Three Anomalies, Traced Statement by Statement</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ACID ============ -->
+<section id="acid">
+  <div class="kicker">01 — Four separate promises, not one vague one</div>
+  <h2>ACID properties, one clear sentence each</h2>
+
+  <p><strong>Start here, before the definitions.</strong> Think about a bank transfer: money leaves account A and lands in account B. You want the WHOLE thing to happen or NONE of it (not half-transferred if the system crashes mid-way), you want the balances to always add up correctly before and after (no money created or destroyed), you want a second transfer that's checking balances at the same moment to not see some weird half-done in-between state, and you want the transfer to survive a power outage the instant after it completes. Those four wants map directly onto ACID.</p>
+
+  <div class="acid-grid">
+    <div class="acid-card"><div class="letter">A</div><h4>Atomicity</h4><p>A transaction's operations all happen, or none of them do — there is no partial completion visible to anyone.</p></div>
+    <div class="acid-card"><div class="letter">C</div><h4>Consistency</h4><p>A transaction moves the database from one valid state to another, never violating declared constraints (foreign keys, uniqueness, checks).</p></div>
+    <div class="acid-card"><div class="letter">I</div><h4>Isolation</h4><p>Concurrent transactions produce the same result as if they had run one at a time, to a degree controlled by the chosen isolation level.</p></div>
+    <div class="acid-card"><div class="letter">D</div><h4>Durability</h4><p>Once a transaction commits, its changes survive any subsequent crash — they are written somewhere that outlives a power loss.</p></div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> ACID is the set of guarantees a database transaction provides: Atomicity (all-or-nothing execution), Consistency (the database moves between states that satisfy its declared integrity constraints), Isolation (concurrent transactions don't observe each other's uncommitted or partial intermediate states, to a degree set by the isolation level), and Durability (a committed transaction's effects persist even through a subsequent crash). This lab focuses specifically on Isolation — the other three are largely binary guarantees, while isolation is a deliberately configurable spectrum with real, named trade-offs at each level.</div>
+</section>
+
+<!-- ============ SECTION 2: ISOLATION LEVELS ============ -->
+<section id="levels">
+  <div class="kicker">02 — Same guarantee name, very different actual behavior</div>
+  <h2>Isolation levels: Read Uncommitted → Serializable</h2>
+
+  <p><strong>Start here, before the table.</strong> Isolation level is a dial, not a switch — turning it up (toward Serializable) buys stronger correctness guarantees at the cost of more locking/blocking and lower concurrency; turning it down (toward Read Uncommitted) buys higher throughput at the cost of tolerating specific, well-understood kinds of "wrong" reads. The interview-relevant skill is knowing exactly WHICH kind of wrongness each level still permits, not just memorizing the level names in order.</p>
+
+  <table class="cmp">
+    <tr><th>Isolation level</th><th>Dirty read</th><th>Non-repeatable read</th><th>Phantom read</th></tr>
+    <tr><td><strong>Read Uncommitted</strong></td><td class="yes">Possible</td><td class="yes">Possible</td><td class="yes">Possible</td></tr>
+    <tr><td><strong>Read Committed</strong></td><td class="no">Prevented</td><td class="yes">Possible</td><td class="yes">Possible</td></tr>
+    <tr><td><strong>Repeatable Read</strong></td><td class="no">Prevented</td><td class="no">Prevented</td><td class="yes">Possible*</td></tr>
+    <tr><td><strong>Serializable</strong></td><td class="no">Prevented</td><td class="no">Prevented</td><td class="no">Prevented</td></tr>
+  </table>
+  <p style="font-size:0.8rem; color:var(--ink-dim); margin-top:-0.6rem;">*Some databases (notably PostgreSQL's MVCC-based Repeatable Read) prevent phantom reads too as an implementation detail beyond the SQL standard's minimum requirement — but the standard only guarantees phantom-read prevention at Serializable.</p>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the SQL standard defines four isolation levels forming a strictly increasing guarantee ladder — Read Uncommitted (weakest, permits all three anomalies), Read Committed (prevents dirty reads only), Repeatable Read (additionally prevents non-repeatable reads), and Serializable (strongest, prevents all three, behaving as if transactions ran one at a time). Each step up trades concurrency/throughput for correctness — stronger isolation typically means more locking, more blocking, or more transaction aborts/retries under contention.</div>
+</section>
+
+<!-- ============ SECTION 3: ANOMALIES ============ -->
+<section id="anomalies">
+  <div class="kicker">03 — Watching exactly when each anomaly happens</div>
+  <h2>Dirty reads, non-repeatable reads, and phantom reads — traced live</h2>
+
+  <p><strong>Start here, before any trace.</strong> All three anomalies share a shape: Transaction 1 sees something that Transaction 2 is in the middle of changing, and the exact TIMING of what T1 sees relative to T2's commit is what determines whether the read is "dirty," "non-repeatable," or a "phantom." Watching the two transactions interleave statement by statement — not just reading a definition — is what actually makes the distinction between these three stick.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TWO-TRANSACTION TRACE: WATCH EACH ANOMALY HAPPEN</span>
+      <div><button class="btn secondary" id="tr-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-anom="dirty">Dirty read</button>
+      <button class="chip" data-anom="nonrepeatable">Non-repeatable read</button>
+      <button class="chip" data-anom="phantom">Phantom read</button>
+    </div>
+    <table class="trace-table" id="trace-table"></table>
+    <button class="btn" id="tr-run">Run the trace ▸</button>
+    <div class="log" id="tr-log"><span class="line">Pick an anomaly and run the trace — each step highlights exactly when the anomaly occurs.</span></div>
+  </div>
+
+  <h3>Dirty read — seeing data that never actually committed</h3>
+  <p>Transaction 1 reads a value that Transaction 2 has written but NOT yet committed. If Transaction 2 then rolls back, Transaction 1 acted on data that, from the database's permanent record, never actually existed. <strong>Prevented starting at Read Committed</strong> — Read Committed guarantees a transaction only ever sees already-committed data.</p>
+
+  <h3>Non-repeatable read — the same row, two different answers</h3>
+  <p>Transaction 1 reads a row, Transaction 2 commits a change to that SAME row, and Transaction 1 reads it again within the same transaction — getting a different value the second time, even though it never wrote anything itself in between. <strong>Prevented starting at Repeatable Read</strong> — that level guarantees any row you've already read stays consistent for the rest of your transaction.</p>
+
+  <h3>Phantom read — the same query, a different set of rows</h3>
+  <p>Transaction 1 runs a query matching a set of rows (e.g. "all orders over $100"), Transaction 2 commits a NEW row that would now match that same condition, and Transaction 1 re-runs the identical query — seeing a row that "phantom-ly" appeared, even though no single row Transaction 1 already read was altered. <strong>Prevented starting at Serializable</strong> (per the standard) — this is subtly different from a non-repeatable read because it's about the SET of matching rows changing, not an existing row's value changing.</p>
+
+  <div class="callout warn"><b>The distinction that trips people up in interviews:</b> non-repeatable read and phantom read sound almost identical, but the difference is precise: a non-repeatable read is the SAME row returning a different value on a second read; a phantom read is the SAME query returning a DIFFERENT SET of rows (new rows appearing or existing ones disappearing from the result) on a second execution. Repeatable Read isolation locks/versions rows it has already read to prevent the former, but by default doesn't prevent brand-new rows from satisfying the query's condition and showing up — that gap is exactly what Serializable closes.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> a dirty read observes another transaction's uncommitted, possibly-to-be-rolled-back writes. A non-repeatable read observes a different value for the SAME previously-read row because another transaction committed a change to it in between. A phantom read observes a different SET of rows matching the same query condition because another transaction committed a row insertion or deletion that changes which rows satisfy that condition. Each is prevented by a specific minimum isolation level: Read Committed prevents dirty reads, Repeatable Read additionally prevents non-repeatable reads, and Serializable additionally prevents phantom reads.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Classifying an anomaly from a trace</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">T1 runs `SELECT COUNT(*) FROM orders WHERE status='pending'` and gets 12. Before T1 commits, T2 inserts a new pending order and commits. T1 re-runs the exact same COUNT query and gets 13. Which anomaly is this, and what is the minimum isolation level that prevents it?</p>
+    <details><summary>Show solution</summary><div class="solution">This is a phantom read. No previously-read ROW changed value -- T1 never
+read any individual order row and had its value change underneath it.
+Instead, the SET of rows matching the query's condition (status='pending')
+changed, because T2 committed a brand-new row that now satisfies that
+condition. The minimum isolation level that prevents this per the SQL
+standard is Serializable -- Repeatable Read specifically guards against
+already-read ROWS changing value, not against new rows appearing that
+would now match a previously-run query's WHERE clause.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Dirty read consequences</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Under Read Uncommitted, T1 reads a bank balance that T2 just updated (but hasn't committed) to reflect a $500 deposit, and T1 uses that value to approve a withdrawal. T2 then rolls back due to an unrelated error. What's the concrete problem?</p>
+    <details><summary>Show solution</summary><div class="solution">T1 made a real, consequential decision (approving a withdrawal) based on
+a balance that INCLUDED a $500 deposit that, after T2's rollback, never
+actually happened as far as the permanent database record is concerned.
+T1's decision is now based on data that is provably wrong -- the approved
+withdrawal may leave the account with a balance the account holder never
+actually had, since the $500 that justified the withdrawal was rolled
+back. This is exactly why dirty reads are considered dangerous enough that
+essentially no production system defaults to Read Uncommitted for anything
+involving real business decisions -- acting on uncommitted, potentially
+transient data can produce results that are impossible to reconcile after
+the fact, since the "phantom" $500 leaves no trace once rolled back.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing an isolation level for a report</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A nightly reporting job runs several SELECT queries against the same set of tables over several minutes, and needs every query in the job to see a perfectly consistent snapshot — no row it already looked at should appear to change mid-report, though it doesn't specifically need protection from brand-new unrelated rows appearing in a completely different, unrelated query. Which isolation level is the minimum sufficient choice, and why not weaker or stronger?</p>
+    <details><summary>Show solution</summary><div class="solution">Repeatable Read is the minimum sufficient choice. The stated requirement
+is specifically "a row I've already read shouldn't appear to change value
+mid-report" -- that is precisely what Repeatable Read guarantees (it
+prevents non-repeatable reads), no more and no less than what's actually
+needed here.
+
+Read Committed would be insufficient -- it only prevents dirty reads, so a
+row read early in the report could still show a different, newly-committed
+value if read again later in the same long-running job, producing an
+internally inconsistent report.
+
+Serializable would work too (it's strictly stronger) but is more than
+necessary given the stated requirement explicitly doesn't care about
+phantom rows from unrelated queries -- and Serializable's stronger
+guarantee typically comes with more locking overhead or a higher chance of
+transaction conflicts/retries, a real cost you'd be paying for a guarantee
+this specific job doesn't need.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Tracing a non-repeatable read by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write out, statement by statement, a concrete 2-transaction sequence under Read Committed isolation that produces a non-repeatable read on an `accounts.balance` column.</p>
+    <details><summary>Show solution</summary><div class="solution">T1: BEGIN;
+T1: SELECT balance FROM accounts WHERE id=7;         -- returns 1000
+T2: BEGIN;
+T2: UPDATE accounts SET balance = 800 WHERE id=7;
+T2: COMMIT;                                           -- T2's change is now committed
+T1: SELECT balance FROM accounts WHERE id=7;         -- returns 800 -- DIFFERENT from the first read!
+T1: COMMIT;
+
+Under Read Committed, T1's first SELECT sees 1000 (T2 hasn't started
+yet). T2 then updates the SAME row and commits. T1's SECOND SELECT of the
+exact same row, still within the same transaction, now sees 800 -- a
+different value for a row T1 already read once, with no write by T1
+itself in between. This is a non-repeatable read specifically because it's
+the SAME row (id=7) returning two different values across two reads
+within one transaction. Repeatable Read isolation would prevent this by
+ensuring T1's second read still returns 1000, either by holding a read
+lock on the row or by giving T1 a consistent snapshot as of when its
+transaction (or first read, depending on the exact MVCC implementation)
+began.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Serializable's cost</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If Serializable prevents all three anomalies and is therefore "the most correct" isolation level, why isn't every transaction in every system just run at Serializable by default?</p>
+    <details><summary>Show solution</summary><div class="solution">Serializable's stronger guarantee has to be enforced SOMEHOW at runtime,
+and that enforcement carries real costs. Depending on the database's
+implementation, this typically means either much more aggressive locking
+(transactions block each other far more often, reducing how many can
+genuinely run concurrently, which directly hurts throughput under
+contention) or, in optimistic/MVCC-based implementations, a higher rate of
+transaction ABORTS -- the database detects, at commit time, that two
+concurrent transactions' actual execution wasn't equivalent to some
+serial ordering, and forces one of them to roll back and retry, which
+costs wasted work and adds application-level complexity (you now need
+retry logic for a class of failure that lower isolation levels wouldn't
+have triggered nearly as often).
+
+Most real workloads don't need protection against ALL three anomalies for
+every single transaction -- many transactions are fine with Read Committed
+(the common default in systems like PostgreSQL and Oracle) because they
+either don't re-read the same row twice, don't run range queries sensitive
+to phantom rows, or the specific anomaly simply doesn't matter for that
+particular business operation. Choosing the isolation level per-workload,
+rather than blanket-defaulting to the strongest option everywhere, is a
+deliberate cost/correctness trade-off, not an oversight.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) all four ACID properties in one sentence each without looking, (2) the precise difference between a non-repeatable read and a phantom read (not just "they sound similar"), and (3) which minimum isolation level prevents each of the three anomalies, well enough to fill in the comparison table from memory? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — transactions &amp; isolation levels.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 3: TRANSACTION TRACE DEMO */
+(function(){
+  const chips = document.querySelectorAll('[data-anom]');
+  const tableEl = document.getElementById('trace-table');
+  const runBtn = document.getElementById('tr-run');
+  const resetBtn = document.getElementById('tr-reset');
+  const logEl = document.getElementById('tr-log');
+  let mode = 'dirty';
+  let timers = [];
+
+  const traces = {
+    dirty: {
+      title: "Dirty read (Read Uncommitted)",
+      rows: [
+        {t1:"BEGIN;", t2:""},
+        {t1:"", t2:"BEGIN;"},
+        {t1:"", t2:"UPDATE accounts SET balance=1500 WHERE id=7; -- NOT committed"},
+        {t1:"SELECT balance FROM accounts WHERE id=7; -- reads 1500", t2:"", anomaly:true},
+        {t1:"", t2:"ROLLBACK; -- the 1500 never actually happened"},
+        {t1:"-- T1 already acted on a value that no longer exists!", t2:""}
+      ],
+      explain: "T1 reads T2's UNCOMMITTED write (1500). T2 then rolls back — that 1500 never became real, but T1 already saw and used it. This is the dirty read: a transaction observed data that was never actually committed."
+    },
+    nonrepeatable: {
+      title: "Non-repeatable read (Read Committed)",
+      rows: [
+        {t1:"BEGIN;", t2:""},
+        {t1:"SELECT balance FROM accounts WHERE id=7; -- reads 1000", t2:""},
+        {t1:"", t2:"BEGIN;"},
+        {t1:"", t2:"UPDATE accounts SET balance=800 WHERE id=7;"},
+        {t1:"", t2:"COMMIT;"},
+        {t1:"SELECT balance FROM accounts WHERE id=7; -- reads 800 !!", t2:"", anomaly:true},
+        {t1:"-- SAME row, two different values in one transaction", t2:""}
+      ],
+      explain: "T1 reads row id=7 twice within the same transaction. Between the two reads, T2 committed a change to that SAME row. T1's second read returns a different value for a row it already read — the non-repeatable read."
+    },
+    phantom: {
+      title: "Phantom read (Repeatable Read, standard-strict)",
+      rows: [
+        {t1:"BEGIN;", t2:""},
+        {t1:"SELECT * FROM orders WHERE status='pending'; -- 12 rows", t2:""},
+        {t1:"", t2:"BEGIN;"},
+        {t1:"", t2:"INSERT INTO orders (status) VALUES ('pending'); -- new row"},
+        {t1:"", t2:"COMMIT;"},
+        {t1:"SELECT * FROM orders WHERE status='pending'; -- 13 rows now !!", t2:"", anomaly:true},
+        {t1:"-- SAME query, a DIFFERENT SET of matching rows", t2:""}
+      ],
+      explain: "T1 runs the same query twice. No row T1 already read changed value — but T2 committed a brand-new row that now matches the query's condition. T1's second run of the identical query returns an extra row that wasn't there before — the phantom read."
+    }
+  };
+
+  function build(){
+    const trace = traces[mode];
+    let html = '<tr><th>Transaction 1</th><th>Transaction 2</th></tr>';
+    trace.rows.forEach((r,i)=>{
+      html += `<tr id="trow-${i}" style="opacity:0.25; transition:opacity .3s;">
+        <td class="t1${r.t1?'':' empty'}">${r.t1 || '—'}</td>
+        <td class="t2${r.t2?'':' empty'}">${r.t2 || '—'}</td>
+      </tr>`;
+    });
+    tableEl.innerHTML = html;
+  }
+  build();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.anom;
+      timers.forEach(t=>clearTimeout(t));
+      timers = [];
+      build();
+      logEl.innerHTML = '<span class="line">Trace loaded: ' + traces[mode].title + '. Click Run.</span>';
+    });
+  });
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '';
+    const trace = traces[mode];
+    log('<b>' + trace.title + '</b>');
+    trace.rows.forEach((r,i)=>{
+      timers.push(setTimeout(()=>{
+        const row = document.getElementById('trow-'+i);
+        row.style.opacity = '1';
+        if(r.anomaly){ row.classList.add('anomaly-row'); }
+        const who = r.t1 ? 'T1' : 'T2';
+        const stmt = r.t1 || r.t2;
+        log((r.anomaly ? '<b style="color:var(--anomaly-c);">⚠ ' : '<b>') + who + ':</b> ' + stmt);
+      }, i*700));
+    });
+    timers.push(setTimeout(()=>{
+      log('<b>Explanation:</b> ' + trace.explain);
+    }, trace.rows.length*700 + 300));
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '<span class="line">Pick an anomaly and run the trace — each step highlights exactly when the anomaly occurs.</span>';
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — WebSockets</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --client-c:#4fc3f7; --server-c:#7fd8a0; --key-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .ws-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.6rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .wh{padding:0.5rem 0.9rem; border-radius:8px; border:1.5px solid var(--client-c); color:var(--client-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+  .code .hdr-new{color:var(--key-c); font-weight:700;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* duplex chat visualization */
+  .duplex-stage{display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin:1.4rem 0;}
+  @media(max-width:700px){.duplex-stage{grid-template-columns:1fr;}}
+  .duplex-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem;}
+  .duplex-col.client{border-color:var(--client-c);}
+  .duplex-col.server{border-color:var(--server-c);}
+  .duplex-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .duplex-col.client h4{color:var(--client-c);} .duplex-col.server h4{color:var(--server-c);}
+  .duplex-msgs{min-height:180px; display:flex; flex-direction:column; gap:0.4rem;}
+  .msg-bubble{font-family:var(--mono); font-size:0.75rem; padding:0.45rem 0.7rem; border-radius:8px; opacity:0; transform:translateY(6px); transition:all .35s ease;}
+  .msg-bubble.show{opacity:1; transform:translateY(0);}
+  .msg-bubble.sent{background:rgba(79,195,247,0.12); border:1px solid var(--client-c); align-self:flex-end;}
+  .msg-bubble.recv{background:rgba(127,216,160,0.12); border:1px solid var(--server-c); align-self:flex-start;}
+
+  /* state machine diagram */
+  .state-diagram{display:flex; align-items:center; justify-content:center; gap:0.5rem; margin:1.6rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .state-node{padding:0.7rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .3s;}
+  .state-node.active{border-color:var(--accent); color:var(--accent); box-shadow:0 0 16px rgba(255,138,101,0.4);}
+  .state-node.err{border-color:var(--bad-c);}
+  .state-node.err.active{color:var(--bad-c); box-shadow:0 0 16px rgba(255,107,107,0.4);}
+  .state-arrow{color:var(--ink-dim); font-size:1rem;}
+
+  /* handshake sequence */
+  .header-block{font-family:var(--mono); font-size:0.78rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:1rem 0; line-height:1.75; white-space:pre-wrap;}
+  .header-block .req-line{color:var(--client-c);}
+  .header-block .resp-line{color:var(--server-c);}
+  .header-block .hi{color:var(--key-c); font-weight:700;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--server-c);} .dc-col.b h4{color:var(--server-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--client-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--client-c);}
+  .callout.info{border-left-color:var(--server-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--server-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · WEBSOCKETS</div>
+  <h1>A WebSocket connection starts life as an ordinary HTTP request, then never goes back.</h1>
+  <p class="lede">WebSockets don't replace HTTP — they hijack a single HTTP request into something entirely different via a one-time "upgrade" handshake, after which both sides can send messages to each other at any moment, independently, with no request/response turn-taking at all. This lab shows the real upgrade headers, animates true full-duplex messaging, and walks the connection lifecycle as a state machine.</p>
+
+  <div class="ws-hero">
+    <div class="wh">HTTP GET</div>
+    <div class="wh">→ 101 Switching Protocols →</div>
+    <div class="wh">full-duplex WebSocket</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="handshake">1 · The Upgrade Handshake</a>
+  <a data-target="duplex">2 · Full-Duplex vs Request/Response</a>
+  <a data-target="lifecycle">3 · Connection Lifecycle</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: HANDSHAKE ============ -->
+<section id="handshake">
+  <div class="kicker">01 — One HTTP request that asks to stop being HTTP</div>
+  <h2>The upgrade handshake, header by header</h2>
+
+  <p><strong>Start here, before any headers.</strong> Think of calling a company's automated phone line and, partway through, asking to be transferred to a live human on an open line that stays connected until either of you hangs up — no more pressing 1 for this and 2 for that, just a continuous conversation. That transfer request itself still has to go through the normal phone system to initiate, but once it succeeds, the nature of the call has fundamentally changed.</p>
+
+  <p>A WebSocket connection begins as a completely normal HTTP request — the same TCP connection, same HTTP framing — but with special headers asking the server to <strong>upgrade</strong> the connection to a different protocol entirely. If the server agrees, it responds with status <code class="inline">101 Switching Protocols</code>, and from that point forward, the SAME underlying TCP connection stops speaking HTTP and starts speaking the WebSocket framing protocol instead.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>THE REAL HANDSHAKE HEADERS</span></div>
+    <div class="header-block"><span class="req-line">GET /chat HTTP/1.1
+Host: example.com
+<span class="hi">Upgrade: websocket</span>
+<span class="hi">Connection: Upgrade</span>
+<span class="hi">Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==</span>
+Sec-WebSocket-Version: 13</span>
+
+<span class="resp-line">HTTP/1.1 101 Switching Protocols
+<span class="hi">Upgrade: websocket</span>
+<span class="hi">Connection: Upgrade</span>
+<span class="hi">Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=</span></span></div>
+    <button class="btn" id="hs-compute">Compute Sec-WebSocket-Accept from the Key ▸</button>
+    <div class="log" id="hs-log"><span class="line">Click to see exactly how the server proves it understood the upgrade request.</span></div>
+  </div>
+
+  <p>The <code class="inline">Sec-WebSocket-Key</code> is a random, client-generated base64 value — it isn't a secret or a credential, it exists purely to prove the server actually understood the WebSocket handshake protocol (and to help defend against certain caching proxies mistakenly treating this as a cacheable plain HTTP response). The server proves it understood by taking that key, appending a fixed "magic" GUID string defined by the WebSocket spec, SHA-1 hashing the result, and base64-encoding that hash into <code class="inline">Sec-WebSocket-Accept</code>. Any client can verify this computation locally to confirm the response came from a real WebSocket-aware server.</p>
+
+  <div class="callout warn"><b>The mistake this trips people into:</b> <code class="inline">Sec-WebSocket-Key</code> looks like it should be a security credential (it's random, it's in a header called "Key"), but it provides no actual security — anyone can compute the matching Accept value, since the transformation algorithm and magic GUID are public and fixed by the spec. Its purpose is protocol confirmation, not authentication; any real auth (session cookies, a token in the initial URL or a subprotocol) has to be handled separately, typically during this same initial HTTP handshake before the upgrade completes.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the WebSocket handshake is a single HTTP/1.1 request containing <code class="inline">Upgrade: websocket</code> and <code class="inline">Connection: Upgrade</code> headers plus a randomly generated <code class="inline">Sec-WebSocket-Key</code>; a server that supports the upgrade responds with <code class="inline">101 Switching Protocols</code> and a <code class="inline">Sec-WebSocket-Accept</code> header computed deterministically from the key, confirming both sides understood the handshake. After this single exchange, the same underlying TCP connection is repurposed entirely for WebSocket framing — it is no longer an HTTP connection at all.</div>
+</section>
+
+<!-- ============ SECTION 2: FULL-DUPLEX ============ -->
+<section id="duplex">
+  <div class="kicker">02 — Both sides can talk whenever they want</div>
+  <h2>Full-duplex communication vs request/response</h2>
+
+  <p><strong>Start here, before the demo.</strong> Ordinary HTTP is like a customer service call where you can only speak after you've pressed a button to ask a question, and the agent only ever responds to what you just asked — the agent can never call you out of the blue to tell you something on their own initiative. A WebSocket connection is like an open phone line where either party can start talking at literally any moment, independent of whether the other side just said something, and both can even talk at exactly the same time.</p>
+
+  <p>This property is called <strong>full-duplex</strong>: after the handshake, either the client or the server can send a message at any time, with no requirement that a message be "in response to" anything. This is fundamentally different from HTTP's request/response model, where the server can only ever speak when spoken to (a client sends a request, and only then does a response come back).</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH BOTH SIDES SEND MESSAGES INDEPENDENTLY AND SIMULTANEOUSLY</span>
+      <div><button class="btn secondary" id="dx-reset">Reset</button></div>
+    </div>
+    <div class="duplex-stage">
+      <div class="duplex-col client"><h4>Client</h4><div class="duplex-msgs" id="dx-client"></div></div>
+      <div class="duplex-col server"><h4>Server</h4><div class="duplex-msgs" id="dx-server"></div></div>
+    </div>
+    <button class="btn" id="dx-run">Play the conversation ▸</button>
+    <div class="log" id="dx-log"><span class="line">Watch the timestamps closely — some messages happen so close together neither side is "waiting" for the other.</span></div>
+  </div>
+
+  <div class="callout info"><b>Why this matters in practice:</b> full-duplex is what makes WebSockets the right fit for genuinely bidirectional, low-latency use cases — live chat (either party can type at any time), multiplayer games (both the local player's actions and other players' state updates arrive independently), and collaborative editing (any collaborator's keystroke needs to reach everyone else immediately, not on some polling schedule). Simulating this over plain HTTP requires ugly workarounds like long-polling, where the client repeatedly asks "anything new?" and the connection just hangs open until there's an answer.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> full-duplex communication means both parties can transmit data independently and concurrently over the same connection, with no turn-taking requirement — contrasted with HTTP's half-duplex request/response model, where the server may only send data in direct reply to a client-initiated request and can never push data unprompted. WebSockets provide true full-duplex messaging over a single persistent TCP connection once the upgrade handshake completes.</div>
+</section>
+
+<!-- ============ SECTION 3: LIFECYCLE ============ -->
+<section id="lifecycle">
+  <div class="kicker">03 — What a WebSocket connection goes through, start to finish</div>
+  <h2>Connection lifecycle: open, message, close, error</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Any long-lived phone call has a shape: it gets connected, conversation happens (possibly for a long time), and eventually it ends — either because someone hangs up normally, or because the line just drops unexpectedly. A WebSocket connection, as an object in your client-side code, exposes exactly this shape as four events you can listen for.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CONNECTION STATE MACHINE</span>
+      <div><button class="btn secondary" id="sm-reset">Reset</button></div>
+    </div>
+    <div class="state-diagram" id="sm-diagram">
+      <div class="state-node" data-state="connecting">CONNECTING</div>
+      <span class="state-arrow">→</span>
+      <div class="state-node" data-state="open">OPEN<br><span style="font-size:0.65rem; opacity:0.7;">(onopen fired)</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node" data-state="closing">CLOSING</div>
+      <span class="state-arrow">→</span>
+      <div class="state-node" data-state="closed">CLOSED<br><span style="font-size:0.65rem; opacity:0.7;">(onclose fired)</span></div>
+    </div>
+    <div style="text-align:center; margin:0.5rem 0 1rem;"><span class="state-arrow">or, at any point after OPEN:</span></div>
+    <div class="state-diagram">
+      <div class="state-node err" data-state="error">ERROR<br><span style="font-size:0.65rem; opacity:0.7;">(onerror fired, connection unusable)</span></div>
+      <span class="state-arrow">→</span>
+      <div class="state-node" data-state="closed">CLOSED</div>
+    </div>
+    <div class="lookup-controls" style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;">
+      <button class="btn" id="sm-normal">Simulate normal lifecycle ▸</button>
+      <button class="btn danger" id="sm-error">Simulate a connection error ▸</button>
+    </div>
+    <div class="log" id="sm-log"><span class="line">Pick a scenario to watch the client-side WebSocket events fire in order.</span></div>
+  </div>
+
+  <div class="code">
+<span class="c-kw">const</span> ws = <span class="c-kw">new</span> <span class="c-fn">WebSocket</span>(<span class="c-str">"wss://example.com/chat"</span>);
+
+ws.onopen = <span class="c-kw">function</span>(event) {
+  <span class="c-cmt">// fires once, when the 101 handshake completes -- safe to send now</span>
+  ws.send(<span class="c-str">"hello from client"</span>);
+};
+
+ws.onmessage = <span class="c-kw">function</span>(event) {
+  <span class="c-cmt">// fires every time a message arrives, in any order relative to sends</span>
+  console.log(<span class="c-str">"received:"</span>, event.data);
+};
+
+ws.onerror = <span class="c-kw">function</span>(event) {
+  <span class="c-cmt">// fires on a connection-level failure -- the socket is unusable now</span>
+  console.error(<span class="c-str">"WebSocket error"</span>, event);
+};
+
+ws.onclose = <span class="c-kw">function</span>(event) {
+  <span class="c-cmt">// fires exactly once, whether closed cleanly or after an error</span>
+  console.log(<span class="c-str">"closed:"</span>, event.code, event.reason);
+};
+  </div>
+
+  <div class="callout warn"><b>The ordering detail worth remembering:</b> <code class="inline">onerror</code> does NOT replace <code class="inline">onclose</code> — a connection that errors out still transitions to CLOSED and still fires the close event afterward. This means cleanup logic that needs to run whenever a connection ends (regardless of whether it ended cleanly or via an error) belongs in <code class="inline">onclose</code>, not duplicated into both handlers.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> a WebSocket connection moves through four states — <code class="inline">CONNECTING</code> (handshake in flight), <code class="inline">OPEN</code> (handshake succeeded, full-duplex messaging active, <code class="inline">onopen</code> fired), <code class="inline">CLOSING</code> (a close handshake has started), and <code class="inline">CLOSED</code> (connection fully terminated, <code class="inline">onclose</code> fired with a status code and reason). An <code class="inline">error</code> event can fire while OPEN to signal an abnormal failure, but it always precedes an eventual <code class="inline">close</code> event rather than replacing it — client code should treat <code class="inline">onclose</code> as the single reliable place to detect "this connection is now over," for any reason.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · What Sec-WebSocket-Key actually proves</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A developer argues that since Sec-WebSocket-Key is randomly generated per connection, it must be providing some security guarantee (like proving the client isn't malicious). Is this correct?</p>
+    <details><summary>Show solution</summary><div class="solution">No. Sec-WebSocket-Key provides protocol confirmation, not security. Its
+randomness exists mainly to prevent certain caching proxies from
+incorrectly treating the 101 response as a cacheable, generic HTTP
+response for that URL (since the accept value differs every time). The
+transformation from key to Sec-WebSocket-Accept (append a fixed public
+GUID, SHA-1 hash, base64 encode) is entirely public and specified by the
+WebSocket RFC -- any client, malicious or not, can compute the correct
+Accept value for any Key. It proves the SERVER implements the WebSocket
+handshake correctly, not anything about the trustworthiness of the client.
+Actual authentication (verifying who the client is) has to be handled
+separately, typically via a cookie or token sent during the same initial
+HTTP request.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Recognizing when polling should become a WebSocket</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An app currently polls a REST endpoint every 2 seconds asking "any new chat messages?" Explain concretely what problem this causes and why WebSockets are a better fit.</p>
+    <details><summary>Show solution</summary><div class="solution">Polling every 2 seconds means: (1) up to 2 seconds of latency between a
+message being sent and the recipient seeing it, even when the recipient is
+actively online and ready, and (2) constant wasted requests during the
+much more common case where there's NO new message yet -- every single
+poll that returns "nothing new" was pure overhead (a full HTTP
+request/response round trip, connection overhead, server load) for zero
+useful information.
+
+A WebSocket connection flips this: the server can PUSH a new message to
+the client the instant it exists, with no polling interval determining the
+worst-case latency, and no wasted round trips when nothing has happened --
+the connection just sits open, idle, and costs nothing extra until there's
+actually something to send. This is exactly the full-duplex, server-can-
+speak-first property that plain HTTP request/response cannot provide.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Tracing the state machine under a network drop</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user's WiFi drops mid-conversation while a WebSocket connection is OPEN. Which events fire, in what order, and does the client's cleanup logic in onclose still run?</p>
+    <details><summary>Show solution</summary><div class="solution">The sequence is: OPEN -> error event fires (onerror) because the
+underlying transport failed abnormally -> the connection transitions to
+CLOSED -> close event fires (onclose), typically with a non-normal close
+code (e.g. 1006, "abnormal closure") since no clean closing handshake
+occurred.
+
+Yes, onclose still runs. The error event does not replace or skip past
+onclose -- every WebSocket connection that reaches CLOSED fires onclose
+exactly once, whether it got there via a clean, intentional close or via
+an abnormal failure. This is precisely why any cleanup that must run
+regardless of HOW the connection ended (releasing resources, updating UI
+state, attempting reconnection) belongs in onclose rather than being
+duplicated into onerror.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Upgrade request rejected</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client sends a WebSocket upgrade request to a server that doesn't support WebSockets at all. What does the server most likely respond with, and what does the client-side WebSocket object do as a result?</p>
+    <details><summary>Show solution</summary><div class="solution">A server with no WebSocket support simply doesn't recognize the Upgrade
+header as anything special -- it responds like it would to any other
+request it can't fulfill as asked, typically with a normal HTTP status
+(commonly 400 Bad Request, or whatever status the route would normally
+return, since from the server's perspective this just looked like a
+regular GET request with some unusual headers it ignored). It will NOT
+respond with 101 Switching Protocols, because that requires explicit
+WebSocket support to send.
+
+On the client side, since the handshake didn't succeed with 101, the
+WebSocket object never transitions to OPEN -- onopen never fires. Instead,
+it fires onerror (the handshake failed) followed by onclose, and the
+application never gets a usable full-duplex connection.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Why the handshake has to be HTTP at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Why does the WebSocket protocol bother starting as an HTTP request instead of just being its own completely separate protocol with its own port and handshake from the start?</p>
+    <details><summary>Show solution</summary><div class="solution">Starting as a normal HTTP request lets WebSocket connections travel
+through the exact same infrastructure that already exists for HTTP
+traffic -- the same port (80/443), the same TLS termination points, the
+same reverse proxies, load balancers, and corporate/network firewalls that
+are already configured to allow and route HTTP(S) traffic. If WebSockets
+required an entirely separate protocol and port from scratch, every one of
+those intermediary systems would need explicit new configuration to allow
+it through, and many restrictive networks (corporate firewalls, some
+mobile carriers) that only permit standard web ports would block it
+outright.
+
+By beginning as a request that looks completely ordinary to any
+intermediary that doesn't specifically understand the Upgrade header,
+WebSocket traffic can piggyback on infrastructure built for HTTP, and only
+diverges into its own framing protocol after both endpoints have
+explicitly agreed to it -- any middlebox that doesn't understand the
+upgrade just sees a request it can't fulfill and responds accordingly,
+rather than mysteriously breaking or blocking traffic on some unfamiliar
+port.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly what Sec-WebSocket-Key and Sec-WebSocket-Accept do and don't prove, (2) what "full-duplex" means precisely enough to contrast it with HTTP's request/response model in one sentence, and (3) why onerror never replaces onclose in the connection lifecycle? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — websockets.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: HANDSHAKE KEY COMPUTATION (simplified illustrative walk-through) */
+(function(){
+  const btn = document.getElementById('hs-compute');
+  const logEl = document.getElementById('hs-log');
+  btn.addEventListener('click', ()=>{
+    logEl.innerHTML = '';
+    const steps = [
+      'Client-generated Sec-WebSocket-Key: "dGhlIHNhbXBsZSBub25jZQ=="',
+      'Server appends the fixed WebSocket magic GUID (defined by RFC 6455): "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"',
+      'Concatenated string: "dGhlIHNhbXBsZSBub25jZQ==258EAFA5-E914-47DA-95CA-C5AB0DC85B11"',
+      'Server computes SHA-1 hash of that concatenated string, then base64-encodes the raw hash bytes',
+      'Result: "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=" — this is what gets sent back as Sec-WebSocket-Accept',
+      'Any client can perform this exact same computation locally to verify the server responded correctly — it is a public, deterministic transformation, not a secret.'
+    ];
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        const p = document.createElement('div'); p.className = 'line fadein';
+        p.innerHTML = '<b>Step ' + (i+1) + ':</b> ' + s;
+        logEl.appendChild(p);
+        logEl.scrollTop = logEl.scrollHeight;
+      }, i*500);
+    });
+  });
+})();
+
+/* SECTION 2: FULL DUPLEX CHAT DEMO */
+(function(){
+  const clientEl = document.getElementById('dx-client');
+  const serverEl = document.getElementById('dx-server');
+  const runBtn = document.getElementById('dx-run');
+  const resetBtn = document.getElementById('dx-reset');
+  const logEl = document.getElementById('dx-log');
+  let timers = [];
+
+  const events = [
+    {t:0,    side:'client', text:'"hey, you there?"'},
+    {t:150,  side:'server', text:'"push: user_42 went online"'},
+    {t:900,  side:'server', text:'"yep, online now"'},
+    {t:1400, side:'client', text:'"cool, sending a file"'},
+    {t:1420, side:'server', text:'"push: new notification"'},
+    {t:2100, side:'server', text:'"file received, 4.2MB"'},
+    {t:2150, side:'client', text:'"thanks!"'}
+  ];
+
+  function addBubble(side, text, delay){
+    const container = side === 'client' ? clientEl : serverEl;
+    const cls = side === 'client' ? 'sent' : 'recv';
+    timers.push(setTimeout(()=>{
+      const b = document.createElement('div');
+      b.className = 'msg-bubble ' + cls;
+      b.textContent = text;
+      container.appendChild(b);
+      requestAnimationFrame(()=>b.classList.add('show'));
+      const p = document.createElement('div'); p.className = 'line fadein';
+      p.innerHTML = '<b>t=' + (delay/1000).toFixed(2) + 's [' + side + ']</b> ' + text;
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    }, delay));
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    clientEl.innerHTML = ''; serverEl.innerHTML = ''; logEl.innerHTML = '';
+    events.forEach(e => addBubble(e.side, e.text, e.t));
+    timers.push(setTimeout(()=>{
+      const p = document.createElement('div'); p.className = 'line fadein';
+      p.innerHTML = '<b>Notice:</b> at t=1.40-1.42s both sides send within 20ms of each other — neither is "waiting its turn." That is full-duplex.';
+      logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+    }, 2600));
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    clientEl.innerHTML = ''; serverEl.innerHTML = '';
+    logEl.innerHTML = '<span class="line">Watch the timestamps closely — some messages happen so close together neither side is "waiting" for the other.</span>';
+  });
+})();
+
+/* SECTION 3: STATE MACHINE DEMO */
+(function(){
+  const nodes = document.querySelectorAll('#sm-diagram .state-node, .state-diagram .state-node');
+  const normalBtn = document.getElementById('sm-normal');
+  const errorBtn = document.getElementById('sm-error');
+  const resetBtn = document.getElementById('sm-reset');
+  const logEl = document.getElementById('sm-log');
+  let timers = [];
+
+  function clearActive(){
+    document.querySelectorAll('.state-node').forEach(n=>n.classList.remove('active'));
+  }
+  function activate(state){
+    document.querySelectorAll('.state-node[data-state="'+state+'"]').forEach(n=>n.classList.add('active'));
+  }
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  normalBtn.addEventListener('click', ()=>{
+    clearActive(); logEl.innerHTML = '';
+    log('new WebSocket(url) called — state is CONNECTING.');
+    activate('connecting');
+    timers.push(setTimeout(()=>{ clearActive(); activate('open'); log('<b>onopen fires.</b> 101 handshake completed — state is OPEN. Messages can flow both ways now.'); }, 900));
+    timers.push(setTimeout(()=>{ log('Some onmessage events would fire here during normal use.'); }, 1700));
+    timers.push(setTimeout(()=>{ clearActive(); activate('closing'); log('ws.close() called by the app — state is CLOSING, a closing handshake is in flight.'); }, 2500));
+    timers.push(setTimeout(()=>{ clearActive(); activate('closed'); log('<b>onclose fires.</b> State is CLOSED with a normal status code (1000).'); }, 3300));
+  });
+
+  errorBtn.addEventListener('click', ()=>{
+    clearActive(); logEl.innerHTML = '';
+    log('new WebSocket(url) called — state is CONNECTING.');
+    activate('connecting');
+    timers.push(setTimeout(()=>{ clearActive(); activate('open'); log('<b>onopen fires.</b> Connection is OPEN and working normally.'); }, 900));
+    timers.push(setTimeout(()=>{ activate('error'); log('<b>Network drops. onerror fires.</b> The connection failed abnormally while still OPEN.'); }, 2000));
+    timers.push(setTimeout(()=>{ clearActive(); activate('closed'); log('<b>onclose STILL fires</b> (code 1006, abnormal closure) — error never replaces close, it always precedes it.'); }, 2900));
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    clearActive();
+    logEl.innerHTML = '<span class="line">Pick a scenario to watch the client-side WebSocket events fire in order.</span>';
+  });
+})();
+</script>
+</body>
+</html>

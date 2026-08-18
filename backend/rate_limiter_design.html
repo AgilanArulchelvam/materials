@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Rate Limiter Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --bucket-c:#f2c14e; --window-c:#4fc3f7; --fixed-c:#c792ea; --dist-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--bucket-c); color:var(--bucket-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--window-c); color:var(--window-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--dist-c); color:var(--dist-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* token bucket visualization */
+  .bucket-stage{display:flex; align-items:flex-end; gap:2rem; margin:1.4rem 0; flex-wrap:wrap; justify-content:center;}
+  .bucket-visual{width:140px; height:170px; border:3px solid var(--bucket-c); border-top:none; border-radius:0 0 14px 14px; position:relative; background:var(--panel-2); overflow:hidden;}
+  .bucket-fill{position:absolute; bottom:0; left:0; right:0; background:linear-gradient(180deg, rgba(242,193,78,0.65), rgba(242,193,78,0.9)); transition:height .4s ease; height:0%;}
+  .bucket-tokens{position:absolute; inset:0; display:flex; flex-wrap:wrap; align-content:flex-end; gap:3px; padding:6px; font-family:var(--mono); font-size:0.85rem;}
+  .token-dot{width:14px; height:14px; border-radius:50%; background:var(--bucket-c); box-shadow:0 0 6px rgba(242,193,78,0.6);}
+  .bucket-label{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-align:center; margin-top:0.5rem;}
+  .bucket-count{font-family:var(--mono); font-size:1.4rem; color:var(--bucket-c); text-align:center; font-weight:700;}
+
+  /* sliding vs fixed window */
+  .window-track{position:relative; height:60px; background:var(--panel-2); border:1px solid var(--rule); border-radius:8px; margin:1rem 0; overflow:hidden;}
+  .window-tick{position:absolute; top:0; bottom:0; width:2px; background:var(--rule);}
+  .window-box{position:absolute; top:4px; bottom:4px; border:2px solid var(--window-c); border-radius:6px; background:rgba(79,195,247,0.1); transition:left .4s ease, width .4s ease;}
+  .window-box.fixed{border-color:var(--fixed-c); background:rgba(199,146,234,0.1);}
+  .req-tick{position:absolute; top:50%; width:8px; height:8px; border-radius:50%; background:var(--accent); transform:translate(-50%,-50%); opacity:0; transition:opacity .3s;}
+  .req-tick.show{opacity:1;}
+  .req-tick.excluded{background:var(--ink-dim);}
+  .window-count-label{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); margin-top:0.4rem;}
+
+  /* distributed counter diagram */
+  .dist-diagram{display:flex; align-items:center; justify-content:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .dist-server{font-family:var(--mono); font-size:0.75rem; padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center;}
+  .dist-store{font-family:var(--mono); font-size:0.78rem; padding:0.7rem 1.1rem; border-radius:10px; border:1.5px solid var(--dist-c); color:var(--dist-c); background:rgba(127,216,160,0.08);}
+  .dist-arrow{color:var(--ink-dim); font-size:1.2rem;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.bucket{border-color:var(--bucket-c);}
+  .dc-col.window{border-color:var(--window-c);}
+  .dc-col.fixed{border-color:var(--fixed-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.bucket h4{color:var(--bucket-c);} .dc-col.window h4{color:var(--window-c);} .dc-col.fixed h4{color:var(--fixed-c);}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.bucket{border-left-color:var(--bucket-c); background:rgba(242,193,78,0.06);} .callout.bucket b{color:var(--bucket-c);}
+  .callout.window{border-left-color:var(--window-c); background:rgba(79,195,247,0.06);} .callout.window b{color:var(--window-c);}
+  .callout.dist{border-left-color:var(--dist-c); background:rgba(127,216,160,0.06);} .callout.dist b{color:var(--dist-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · RATE LIMITER DESIGN</div>
+  <h1>A single in-memory counter looks like a rate limiter — until your second server exists.</h1>
+  <p class="lede">Rate limiting sounds simple until you have to pick an algorithm that handles bursts sanely, and run it correctly across more than one server instance. This lab builds a token bucket you can watch refill and drain, a sliding window with a live in-window request count, contrasts it against fixed-window's boundary flaw, and works through exactly why distributed rate limiting needs a shared, atomically-updated store.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Token bucket</div>
+    <div class="pipe-label b">Sliding window</div>
+    <div class="pipe-label c">Distributed counter</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="tokenbucket">1 · Token Bucket — Refill &amp; Burst</a>
+  <a data-target="windows">2 · Sliding Window vs Fixed Window</a>
+  <a data-target="distributed">3 · Distributed Rate Limiting</a>
+  <a data-target="bursts">4 · Handling Burst Traffic</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TOKEN BUCKET ============ -->
+<section id="tokenbucket">
+  <div class="kicker">01 — A budget that refills itself over time</div>
+  <h2>Token bucket: refilling and draining, live</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a subway fare card that automatically adds one ride's worth of credit every few minutes, up to a maximum of 10 rides stored at once. If you haven't ridden in a while, you can burn through several stored rides back-to-back right now — the card doesn't care that you're "supposed" to only need one ride per refill period, it just checks whether you have credit available at all. But once you've drained it, you're stuck waiting for the next refill tick, same as anyone else.</p>
+
+  <p>A <strong>token bucket</strong> holds up to some maximum number of tokens (the burst capacity), refilling at a fixed rate (e.g. 2 tokens per second) up to that cap. Each incoming request consumes exactly one token if any are available; if the bucket is empty, the request is rejected (or queued, depending on design). This design explicitly ALLOWS bursts — a client that's been idle can spend its entire accumulated bucket in one instant — while still enforcing a strict long-run average rate once the bucket runs dry.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH A TOKEN BUCKET REFILL AND DRAIN</span>
+      <div><button class="btn secondary" id="tb-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Capacity: 10 tokens. Refill rate: 1 token every 0.5s. Click "Send request" repeatedly to consume tokens; click "Wait 2s" to let it refill.</p>
+    <div class="bucket-stage">
+      <div>
+        <div class="bucket-visual"><div class="bucket-fill" id="tb-fill"></div></div>
+        <div class="bucket-count" id="tb-count">10</div>
+        <div class="bucket-label">tokens available</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;">
+      <button class="btn" id="tb-send">Send request (consume 1 token) ▸</button>
+      <button class="btn secondary" id="tb-wait">Wait 2 seconds (let it refill) ▸</button>
+    </div>
+    <div class="log" id="tb-log"><span class="line">Bucket starts full at capacity (10). Send requests to drain it, or wait to watch it refill.</span></div>
+  </div>
+
+  <div class="callout bucket"><b>Interview-ready definition:</b> a token bucket rate limiter maintains a counter capped at a maximum burst capacity, refilling at a fixed rate over time; each request consumes one token if available and is rejected otherwise. It permits short bursts up to the full bucket capacity (useful for clients with naturally bursty-but-bounded traffic) while still enforcing a hard long-run average rate equal to the refill rate once accumulated tokens are exhausted — the key design lever is choosing capacity (how large a burst to tolerate) independently from refill rate (the sustained long-run limit).</div>
+</section>
+
+<!-- ============ SECTION 2: SLIDING VS FIXED WINDOW ============ -->
+<section id="windows">
+  <div class="kicker">02 — Counting requests "in the last N seconds" is trickier than it sounds</div>
+  <h2>Sliding window vs fixed window, and the boundary flaw</h2>
+
+  <p><strong>Start here, before the demo.</strong> Imagine a rule "no more than 5 coffees per calendar hour" versus "no more than 5 coffees in any rolling 60-minute stretch." The calendar-hour rule has an exploit: order 5 coffees at 8:59am (still within the 8am hour) and another 5 at 9:01am (now within the 9am hour) — that's 10 coffees in 2 minutes, technically obeying the calendar-hour rule the whole time. The rolling-60-minute rule has no such exploit — it always looks back exactly 60 minutes from RIGHT NOW, no matter where that lands relative to any clock boundary.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SLIDING WINDOW VS FIXED WINDOW: THE BOUNDARY EXPLOIT</span>
+      <div><button class="btn secondary" id="win-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Limit: 5 requests per window. Watch a burst of requests land right at a fixed-window boundary.</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-win="fixed">Fixed window</button>
+      <button class="chip" data-win="sliding">Sliding window</button>
+    </div>
+    <div class="window-track" id="win-track"></div>
+    <div class="window-count-label" id="win-count-label">Requests currently counted in the active window: 0 / 5</div>
+    <button class="btn" id="win-run">Replay the burst ▸</button>
+    <div class="log" id="win-log"><span class="line">Pick a mode and replay: 5 requests just before a boundary, then 5 more just after.</span></div>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col fixed">
+      <h4>Fixed window</h4>
+      <p>Counts requests within rigid clock-aligned buckets (e.g. 9:00:00-9:00:59). Simple and cheap, but a client can send a full limit's worth of requests in the last instant of one window and another full limit's worth in the first instant of the next — doubling the effective rate right at the boundary.</p>
+    </div>
+    <div class="dc-col window">
+      <h4>Sliding window</h4>
+      <p>Counts requests within a continuously moving window measured back from the current instant (e.g. "the last 60 seconds, right now"). No fixed boundary to exploit — the count at any moment reflects exactly what happened in the immediately preceding window, regardless of clock alignment.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>The trap, made concrete:</b> with a fixed 60-second window and a limit of 5, a client can send 5 requests at 9:00:59 and 5 more at 9:01:00 — 10 requests in roughly 1 second, yet each 60-second bucket individually shows exactly 5, satisfying the rule as literally written. A true sliding window looking back 60 seconds from 9:01:00 would see all 10 of those requests within its lookback range and correctly reject the excess.</div>
+
+  <div class="callout window"><b>Interview-ready definition:</b> fixed-window rate limiting counts requests in rigid, clock-aligned time buckets and resets the count to zero at each boundary, which allows up to roughly 2x the intended rate for requests clustered around a boundary crossing. Sliding-window rate limiting counts requests within a continuously moving lookback interval measured from the current moment, eliminating the boundary exploit at the cost of needing to track individual request timestamps (or a weighted approximation blending the current and previous fixed windows) rather than a single resettable integer.</div>
+</section>
+
+<!-- ============ SECTION 3: DISTRIBUTED ============ -->
+<section id="distributed">
+  <div class="kicker">03 — The counter that works fine until you add a second server</div>
+  <h2>Distributed rate limiting</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Picture 3 separate cashiers at 3 separate registers, each keeping their OWN private tally of how many items a particular customer has bought today, with no way to compare notes. That customer can simply visit a different register each time and, from each cashier's individual perspective, never exceed the limit — even though their TOTAL across all three registers is way over. The limit was real, but it was only ever being enforced per-register, not per-customer.</p>
+
+  <p>An in-memory counter (a plain variable in your application process) works perfectly on a single server — but the moment you run multiple instances behind a load balancer, each instance has its OWN separate copy of that counter, with no visibility into what the others have counted. A client hitting 3 different instances round-robin can consume 3x its intended limit, because each instance independently believes the client is well within bounds.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHY IN-MEMORY COUNTERS BREAK ACROSS INSTANCES</span>
+      <div><button class="btn secondary" id="dist-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-dist="local">In-memory (per-instance) counters</button>
+      <button class="chip" data-dist="shared">Shared store, atomic increment</button>
+    </div>
+    <div id="dist-visual"></div>
+    <button class="btn" id="dist-run">Send 6 requests, round-robin across 3 instances ▸</button>
+    <div class="log" id="dist-log"><span class="line">Limit: 5 requests per client. Watch what each mode actually enforces.</span></div>
+  </div>
+
+  <div class="code">
+<span class="c-cmt">// The fix: every instance increments the SAME shared counter atomically
+// (e.g. Redis INCR, which is a single atomic operation -- no race condition
+// between the read and the write, even under concurrent access from many
+// instances at once)</span>
+<span class="c-kw">async def</span> <span class="c-fn">allow_request</span>(client_id):
+    key = <span class="c-str">f"ratelimit:{client_id}:{current_window()}"</span>
+    count = <span class="c-kw">await</span> redis.incr(key)          <span class="c-cmt"># atomic increment, returns new value</span>
+    <span class="c-kw">if</span> count == <span class="c-num">1</span>:
+        <span class="c-kw">await</span> redis.expire(key, WINDOW_SECONDS)  <span class="c-cmt"># set TTL only on first request in window</span>
+    <span class="c-kw">return</span> count &lt;= LIMIT
+  </div>
+
+  <div class="callout dist"><b>Interview-ready definition:</b> distributed rate limiting requires every server instance to check and update a SHARED counter (typically in a fast in-memory store like Redis) rather than an independent in-process counter, because per-instance counters cannot see traffic hitting sibling instances and collectively under-enforce the true limit by roughly a factor of the instance count. The shared store's increment operation must be atomic (a single indivisible read-modify-write, like Redis's <code class="inline">INCR</code>) to avoid a race condition where two instances both read the same pre-increment value concurrently and both allow a request that, combined, exceeds the limit.</div>
+</section>
+
+<!-- ============ SECTION 4: BURST TRAFFIC ============ -->
+<section id="bursts">
+  <div class="kicker">04 — Not every spike is abuse</div>
+  <h2>Handling burst traffic</h2>
+
+  <p><strong>Start here, before the table.</strong> A legitimate user opening an app after being offline for an hour might fire off a dozen requests in the first second (syncing everything they missed) — that's a burst, not an attack. A rate limiter that treats ALL bursts as violations equally, with zero tolerance, ends up punishing normal usage patterns just as harshly as actual abuse.</p>
+
+  <table class="cmp">
+    <tr><th>Approach</th><th>How it handles bursts</th><th>Trade-off</th></tr>
+    <tr><td>Token bucket</td><td>Explicitly tolerates bursts up to bucket capacity, independent of refill rate</td><td>Requires tuning two separate parameters (capacity and refill rate) instead of one</td></tr>
+    <tr><td>Sliding window</td><td>Tolerates bursts only within the limit for that rolling window — no special burst allowance</td><td>Simpler mental model, but less forgiving of legitimately bursty-but-bounded clients</td></tr>
+    <tr><td>Fixed window</td><td>Unintentionally over-tolerates bursts at window boundaries (the flaw covered above)</td><td>The "burst tolerance" here is an accidental bug, not a deliberate design choice</td></tr>
+  </table>
+
+  <p>In practice, many production rate limiters layer multiple limits together: a short-window limit (e.g. 20 requests per second, catching abusive bursts) combined with a longer-window limit (e.g. 1000 requests per hour, catching sustained overuse that trickles in slowly enough to dodge the short-window check). This gives a legitimate bursty client room to breathe on the short window while still bounding their total consumption over time.</p>
+
+  <div class="callout warn"><b>Why this matters in practice:</b> a rate limiter that's too strict on bursts causes real users to see errors during completely normal usage (a mobile app reconnecting after being backgrounded, a batch UI action that fires several requests at once) — this is a genuine product regression, not just an edge case. Choosing token bucket over a bare sliding window specifically because it tolerates bounded bursts is often the right call for user-facing APIs, while strict sliding-window enforcement is more appropriate for protecting genuinely scarce backend resources (a downstream service that truly cannot handle spikes at all, regardless of legitimacy).</div>
+
+  <div class="callout dist"><b>Interview-ready definition:</b> burst traffic is a legitimate, temporary spike in request rate from a single client that doesn't represent sustained overuse or abuse — a well-designed rate limiter distinguishes tolerable bursts from actual abuse by choosing an algorithm (token bucket) or a layered set of limits (short-window plus long-window) that explicitly allows short-term spikes while still capping the long-run average rate, rather than treating every momentary spike as a violation.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing a token bucket by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A token bucket has capacity 5, refills 1 token/second, and starts full. A client sends 5 requests instantly at t=0, then 1 request at t=0.5s, then 1 request at t=1.2s. Which requests succeed, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">The 5 requests at t=0 all succeed, draining the bucket from 5 tokens to 0
+(it started full, at capacity). The request at t=0.5s FAILS -- only 0.5
+seconds have passed since the bucket hit empty, and at a refill rate of 1
+token/second, only 0.5 tokens have accumulated (not yet a full token), so
+there's nothing available to consume. The request at t=1.2s SUCCEEDS --
+by then, 1.2 seconds have passed since the bucket was emptied, meaning
+slightly more than 1 full token has refilled (capped at capacity 5, but
+here well under that cap), so exactly 1 token is available and gets
+consumed, bringing the bucket back to roughly 0.2 tokens remaining.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · The fixed-window boundary exploit, quantified</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A fixed-window rate limiter allows 100 requests per 60-second window. What is the maximum number of requests a client could send in any 1-second real-world interval while technically never exceeding the stated limit in any single window, and how?</p>
+    <details><summary>Show solution</summary><div class="solution">Up to 200 requests in roughly 1 second. The exploit: send 100 requests in
+the final second of one window (e.g. 9:00:59), which is fully within that
+window's 100-request allowance, then send another 100 requests in the
+very first second of the NEXT window (9:01:00), which is fully within
+THAT window's separate 100-request allowance. From the fixed-window
+limiter's perspective, two entirely separate buckets each correctly
+recorded exactly 100 -- no individual window was ever exceeded -- but a
+real 1-2 second slice of wall-clock time actually saw 200 requests,
+double the intended sustained rate. This is exactly the boundary flaw a
+sliding window eliminates, since it would see all 200 requests within its
+continuously-moving 60-second lookback and correctly flag the excess.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing under-enforcement across instances</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service is meant to enforce a limit of 100 requests/minute per API key, using a simple in-process counter, and runs behind a load balancer with 4 instances using round-robin routing. What is the effective, actually-enforced limit per client, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">The effective enforced limit is roughly 400 requests/minute per client --
+4 times the intended 100 -- because each of the 4 instances maintains its
+OWN independent in-process counter with no visibility into the other 3.
+With round-robin routing spreading a client's requests evenly across all 4
+instances, each instance individually sees only about 1/4 of that
+client's total traffic, so each instance's local counter stays under 100
+even when the client's TRUE total across all instances is 4x that. The
+limit was never actually broken from any single instance's narrow
+point of view -- it was simply never being measured against the client's
+real, cross-instance total at all. Fixing this requires a shared counter
+(e.g. in Redis) that every instance reads from and atomically increments,
+so the count reflects the client's true aggregate usage regardless of
+which instance happened to handle each request.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Why the increment must be atomic</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team implements distributed rate limiting by having each instance run: (1) GET the current count from Redis, (2) check in application code if count &lt; limit, (3) if so, SET count+1 back to Redis. Under concurrent requests from the same client hitting two different instances at nearly the same moment, what can go wrong?</p>
+    <details><summary>Show solution</summary><div class="solution">This is a classic race condition (a check-then-act pattern that isn't
+atomic). Suppose the current count is 99 and the limit is 100. Instance A
+reads count=99, checks 99 &lt; 100 (true), and prepares to write 100 back.
+Before Instance A's write completes, Instance B ALSO reads count=99 (A
+hasn't written yet), also checks 99 &lt; 100 (true), and also prepares to
+write 100. Both instances independently concluded their request should be
+ALLOWED based on the same stale read of 99, and both write back 100 --
+meaning 2 requests were let through when only 1 slot (99 -> 100) actually
+remained, silently allowing the client to exceed the limit by however many
+requests race in this way.
+
+The fix is to use a genuinely atomic operation like Redis's INCR, which
+performs the read-increment-write as a single indivisible step server-side
+-- there's no window between reading and writing where a second concurrent
+caller could read the same stale value, because the increment and the
+return of the new value happen together, atomically, for every caller.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Choosing token bucket vs sliding window for a real scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A mobile app syncs data with the server, sending nothing while the app is backgrounded and then a flurry of catch-up requests the moment the user reopens it. Meanwhile, a separate internal service must never send more than a strictly bounded rate to a fragile downstream dependency, no exceptions. Which algorithm fits each scenario, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">The mobile app sync scenario fits TOKEN BUCKET well. The "nothing while
+backgrounded, then a burst on reopen" pattern is exactly what a bucket's
+accumulated-capacity model is built to tolerate -- tokens quietly build up
+while idle, and the burst on reopen simply spends that built-up
+allowance, which is legitimate usage, not abuse. Rejecting that burst with
+a strict, non-bursty limiter would create a poor user experience for
+completely normal behavior.
+
+The fragile-downstream-dependency scenario fits SLIDING WINDOW (or an
+even stricter fixed-rate approach) better. Here the goal is a hard,
+consistent ceiling on instantaneous rate with no tolerance for bursts at
+all, because the downstream system genuinely cannot absorb a burst
+regardless of whether it's "legitimate" -- token bucket's core feature
+(deliberately allowing bursts) is precisely the property this scenario
+needs to AVOID. A tightly-scoped sliding window with a low limit gives
+the most consistent, predictable request pacing with no burst allowance
+baked in.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why token bucket's capacity and refill rate are two independently tunable parameters rather than one, (2) the fixed-window boundary exploit precisely enough to quantify the worst case, and (3) exactly why a non-atomic read-then-write pattern breaks distributed rate limiting even when each individual instance's logic looks correct? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — rate limiter design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: TOKEN BUCKET */
+(function(){
+  const CAPACITY = 10;
+  const REFILL_MS = 500; // 1 token per 0.5s
+  let tokens = CAPACITY;
+  let lastRefill = Date.now();
+
+  const fillEl = document.getElementById('tb-fill');
+  const countEl = document.getElementById('tb-count');
+  const sendBtn = document.getElementById('tb-send');
+  const waitBtn = document.getElementById('tb-wait');
+  const resetBtn = document.getElementById('tb-reset');
+  const logEl = document.getElementById('tb-log');
+
+  function refillNow(){
+    const now = Date.now();
+    const elapsed = now - lastRefill;
+    const newTokens = Math.floor(elapsed / REFILL_MS);
+    if(newTokens > 0){
+      tokens = Math.min(CAPACITY, tokens + newTokens);
+      lastRefill += newTokens * REFILL_MS;
+    }
+  }
+
+  function render(){
+    fillEl.style.height = ((tokens/CAPACITY)*100) + '%';
+    countEl.textContent = tokens;
+  }
+  render();
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click', ()=>{
+    refillNow();
+    if(tokens > 0){
+      tokens -= 1;
+      render();
+      log('<b>Request ALLOWED.</b> Token consumed — ' + tokens + ' remaining.');
+    } else {
+      render();
+      log('<b>Request REJECTED.</b> Bucket is empty (0 tokens) — must wait for refill.');
+    }
+  });
+
+  waitBtn.addEventListener('click', ()=>{
+    setTimeout(()=>{
+      refillNow();
+      render();
+      log('Waited 2 seconds — bucket refilled to ' + tokens + ' / ' + CAPACITY + ' tokens (capped at capacity).');
+    }, 300);
+    // simulate 2 seconds of elapsed time immediately for demo purposes
+    lastRefill -= 2000;
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    tokens = CAPACITY;
+    lastRefill = Date.now();
+    render();
+    logEl.innerHTML = '<span class="line">Bucket reset to full (10 tokens).</span>';
+  });
+})();
+
+/* SECTION 2: SLIDING VS FIXED WINDOW */
+(function(){
+  const chips = document.querySelectorAll('[data-win]');
+  const track = document.getElementById('win-track');
+  const countLabel = document.getElementById('win-count-label');
+  const runBtn = document.getElementById('win-run');
+  const resetBtn = document.getElementById('win-reset');
+  const logEl = document.getElementById('win-log');
+  let mode = 'fixed';
+  let timers = [];
+
+  // requests at these times (seconds, scaled to track width): 5 just before boundary at t=6, 5 just after
+  const reqTimes = [5.5, 5.6, 5.7, 5.8, 5.9, 6.1, 6.2, 6.3, 6.4, 6.5];
+  const trackMax = 12; // seconds represented across the track width
+
+  function build(){
+    track.innerHTML = '';
+    // draw boundary tick at t=6 for fixed mode
+    const boundary = document.createElement('div');
+    boundary.className = 'window-tick';
+    boundary.style.left = (6/trackMax*100) + '%';
+    track.appendChild(boundary);
+
+    if(mode === 'fixed'){
+      const boxA = document.createElement('div');
+      boxA.className = 'window-box fixed';
+      boxA.style.left = '0%'; boxA.style.width = (6/trackMax*100) + '%';
+      track.appendChild(boxA);
+      const boxB = document.createElement('div');
+      boxB.className = 'window-box fixed';
+      boxB.style.left = (6/trackMax*100) + '%'; boxB.style.width = ((trackMax-6)/trackMax*100) + '%';
+      track.appendChild(boxB);
+    } else {
+      const box = document.createElement('div');
+      box.id = 'sliding-box';
+      box.className = 'window-box';
+      box.style.left = '0%'; box.style.width = '0%';
+      track.appendChild(box);
+    }
+
+    reqTimes.forEach((t,i)=>{
+      const tick = document.createElement('div');
+      tick.className = 'req-tick';
+      tick.id = 'req-tick-'+i;
+      tick.style.left = (t/trackMax*100) + '%';
+      track.appendChild(tick);
+    });
+  }
+  build();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.win;
+      timers.forEach(t=>clearTimeout(t));
+      timers = [];
+      build();
+      logEl.innerHTML = '<span class="line">Mode switched to ' + (mode==='fixed'?'fixed window':'sliding window') + '. Click replay.</span>';
+      countLabel.textContent = 'Requests currently counted in the active window: 0 / 5';
+    });
+  });
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '';
+    let windowACount = 0, windowBCount = 0;
+    log(mode === 'fixed' ? 'Fixed window: bucket A = [0s,6s), bucket B = [6s,12s).' : 'Sliding window: continuously counts the last 1 second of requests, from right now.');
+
+    reqTimes.forEach((t,i)=>{
+      timers.push(setTimeout(()=>{
+        const tick = document.getElementById('req-tick-'+i);
+        tick.classList.add('show');
+        if(mode === 'fixed'){
+          if(t < 6){ windowACount++; log('Request at t=' + t.toFixed(1) + 's → counted in Window A (' + windowACount + '/5).'); }
+          else { windowBCount++; log('Request at t=' + t.toFixed(1) + 's → counted in Window B (' + windowBCount + '/5).'); }
+          countLabel.textContent = 'Window A: ' + windowACount + '/5   |   Window B: ' + windowBCount + '/5   — neither window individually exceeds 5, but ' + (windowACount+windowBCount) + ' requests landed within about 1 real second.';
+        } else {
+          // sliding window: count requests within 1 second lookback of this request's time
+          const inWindow = reqTimes.filter(rt => rt <= t && rt > t - 1).length;
+          const box = document.getElementById('sliding-box');
+          const left = Math.max(0, t-1);
+          box.style.left = (left/trackMax*100) + '%';
+          box.style.width = ((t-left)/trackMax*100) + '%';
+          if(inWindow > 5){ tick.classList.add('excluded'); log('Request at t=' + t.toFixed(1) + 's → REJECTED (sliding window would already contain ' + inWindow + ' requests in the last 1s, over the limit of 5).'); }
+          else { log('Request at t=' + t.toFixed(1) + 's → allowed (' + inWindow + '/5 in the trailing 1-second window).'); }
+          countLabel.textContent = 'Trailing 1-second window right now contains: ' + inWindow + ' / 5 requests.';
+        }
+      }, i*350));
+    });
+
+    timers.push(setTimeout(()=>{
+      if(mode === 'fixed'){
+        log('<b>Result:</b> ' + (windowACount+windowBCount) + ' total requests slipped through around the boundary, even though each individual window reported ≤5.');
+      } else {
+        log('<b>Result:</b> the sliding window correctly caught the burst regardless of clock alignment — no boundary to exploit.');
+      }
+    }, reqTimes.length*350 + 300));
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '<span class="line">Pick a mode and replay: 5 requests just before a boundary, then 5 more just after.</span>';
+    countLabel.textContent = 'Requests currently counted in the active window: 0 / 5';
+  });
+})();
+
+/* SECTION 3: DISTRIBUTED COUNTER */
+(function(){
+  const chips = document.querySelectorAll('[data-dist]');
+  const visual = document.getElementById('dist-visual');
+  const runBtn = document.getElementById('dist-run');
+  const resetBtn = document.getElementById('dist-reset');
+  const logEl = document.getElementById('dist-log');
+  let mode = 'local';
+  let timers = [];
+
+  function build(){
+    if(mode === 'local'){
+      visual.innerHTML = `
+        <div class="dist-diagram">
+          <div class="dist-server" id="inst-0">Instance A<br><span style="color:var(--bad-c);">local count: 0/5</span></div>
+          <div class="dist-server" id="inst-1">Instance B<br><span style="color:var(--bad-c);">local count: 0/5</span></div>
+          <div class="dist-server" id="inst-2">Instance C<br><span style="color:var(--bad-c);">local count: 0/5</span></div>
+        </div>`;
+    } else {
+      visual.innerHTML = `
+        <div class="dist-diagram">
+          <div class="dist-server" id="inst-0">Instance A</div>
+          <span class="dist-arrow">↘</span>
+          <div class="dist-store" id="shared-store">Shared store (Redis)<br>count: 0/5</div>
+          <span class="dist-arrow">↙</span>
+          <div class="dist-server" id="inst-2">Instance C</div>
+        </div>
+        <div style="text-align:center; margin-top:0.5rem;"><div class="dist-server" id="inst-1" style="display:inline-block;">Instance B</div></div>`;
+    }
+  }
+  build();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.dist;
+      timers.forEach(t=>clearTimeout(t));
+      timers = [];
+      build();
+      logEl.innerHTML = '<span class="line">Mode switched. Click to send 6 requests round-robin.</span>';
+    });
+  });
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '';
+    const LIMIT = 5;
+    if(mode === 'local'){
+      const localCounts = [0,0,0];
+      for(let i=0;i<6;i++){
+        const instIdx = i % 3;
+        timers.push(setTimeout(()=>{
+          localCounts[instIdx]++;
+          const el = document.getElementById('inst-'+instIdx);
+          el.innerHTML = 'Instance ' + String.fromCharCode(65+instIdx) + '<br><span style="color:' + (localCounts[instIdx] > LIMIT ? 'var(--bad-c)' : 'var(--dist-c)') + ';">local count: ' + localCounts[instIdx] + '/' + LIMIT + '</span>';
+          log('Request ' + (i+1) + ' → Instance ' + String.fromCharCode(65+instIdx) + ' (its own local count is only ' + localCounts[instIdx] + ' — looks fine to THIS instance).');
+        }, i*500));
+      }
+      timers.push(setTimeout(()=>{
+        log('<b>Result:</b> client sent 6 requests total, but no single instance ever saw more than 2 — every instance individually "allowed" every request. The true global limit of 5 was silently exceeded.');
+      }, 6*500 + 200));
+    } else {
+      let sharedCount = 0;
+      for(let i=0;i<6;i++){
+        const instIdx = i % 3;
+        timers.push(setTimeout(()=>{
+          sharedCount++;
+          const store = document.getElementById('shared-store');
+          const allowed = sharedCount <= LIMIT;
+          store.innerHTML = 'Shared store (Redis)<br>count: ' + sharedCount + '/' + LIMIT;
+          log('Request ' + (i+1) + ' → Instance ' + String.fromCharCode(65+instIdx) + ' calls INCR on the shared store → new count = ' + sharedCount + ' → ' + (allowed ? 'ALLOWED' : '<b style="color:var(--bad-c);">REJECTED</b>'));
+        }, i*500));
+      }
+      timers.push(setTimeout(()=>{
+        log('<b>Result:</b> every instance reads and writes the SAME atomic counter — the 6th request is correctly rejected because the true global count reached 6, over the limit of 5, regardless of which instance handled it.');
+      }, 6*500 + 200));
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    build();
+    logEl.innerHTML = '<span class="line">Limit: 5 requests per client. Watch what each mode actually enforces.</span>';
+  });
+})();
+</script>
+</body>
+</html>

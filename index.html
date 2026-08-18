@@ -72,7 +72,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Thirty-seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Forty-three labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, and backend API design — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -303,13 +303,19 @@
         <p>Why a range query narrows through a B-tree instead of scanning every row, the leftmost-prefix rule for composite indexes, and reading real EXPLAIN ANALYZE output.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/transactions_and_isolation.html">
+        <span class="tag">ACID, Isolation Levels &amp; Anomalies</span>
+        <h3>Transactions &amp; Isolation</h3>
+        <p>ACID in one sentence each, a comparison table from Read Uncommitted to Serializable, and dirty/non-repeatable/phantom reads traced statement by statement across two transactions.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">5 labs</span>
+      <span class="count">10 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -340,6 +346,36 @@
         <span class="tag">JWT Structure &amp; OAuth2 Password Flow</span>
         <h3>Auth: JWT &amp; OAuth2</h3>
         <p>Decode a real JWT into its three parts live, trace the OAuth2 password flow request by request, and why localStorage is a real XSS risk for tokens.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/http1_vs_http2.html">
+        <span class="tag">Head-of-Line Blocking &amp; Multiplexing</span>
+        <h3>HTTP/1.1 vs HTTP/2</h3>
+        <p>Watch 4 requests queue behind one slow one on HTTP/1.1, then race the same 4 requests multiplexed over HTTP/2 — plus the transport-layer catch that motivated HTTP/3.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/websockets.html">
+        <span class="tag">Upgrade Handshake, Full-Duplex &amp; Lifecycle</span>
+        <h3>WebSockets</h3>
+        <p>The real Upgrade/Sec-WebSocket-Key headers, both sides sending messages independently and simultaneously, and the connection state machine from CONNECTING to CLOSED.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/grpc.html">
+        <span class="tag">Protobuf Wire Format &amp; 4 RPC Types</span>
+        <h3>gRPC</h3>
+        <p>A .proto schema's binary encoding measured byte-for-byte against equivalent JSON, all 4 RPC shapes animated, and when gRPC beats REST — and when it doesn't.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/sse.html">
+        <span class="tag">text/event-stream, id/event/retry &amp; SSE vs WS</span>
+        <h3>Server-Sent Events</h3>
+        <p>The real text/event-stream wire framing byte by byte, what id:/event:/retry: each solve, and when one-directional streaming is genuinely enough versus needing WebSockets.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/rate_limiter_design.html">
+        <span class="tag">System Design — Token Bucket, Windows &amp; Distributed Limits</span>
+        <h3>Rate Limiter Design</h3>
+        <p>A live token bucket refilling and draining, sliding window vs fixed window's boundary exploit, and why distributed rate limiting needs an atomic shared counter.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -398,7 +434,7 @@
 
 </main>
 
-<footer>materials/ · thirty-seven standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · forty-three standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

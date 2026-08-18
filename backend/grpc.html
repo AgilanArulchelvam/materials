@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — gRPC</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --proto-c:#f2c14e; --binary-c:#7fd8a0; --json-c:#ff6b6b; --stream-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .proto-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.6rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .ph{padding:0.5rem 0.9rem; border-radius:8px; border:1.5px solid var(--proto-c); color:var(--proto-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-dec{color:#f2c14e;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* byte comparison bars */
+  .byte-compare{display:flex; gap:1.5rem; align-items:flex-end; margin:1.4rem 0; flex-wrap:wrap;}
+  .byte-col{flex:1; min-width:220px;}
+  .byte-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .byte-col.json h4{color:var(--json-c);}
+  .byte-col.proto h4{color:var(--binary-c);}
+  .byte-bar{height:36px; border-radius:6px; display:flex; align-items:center; padding-left:0.6rem; font-family:var(--mono); font-size:0.75rem; font-weight:700; color:#0c0e12; transition:width .6s ease;}
+  .byte-bar.json{background:var(--json-c); width:0%;}
+  .byte-bar.proto{background:var(--binary-c); width:0%;}
+  .byte-track{background:var(--panel-2); border:1px solid var(--rule); border-radius:6px; overflow:hidden;}
+
+  /* rpc flow diagrams */
+  .rpc-diagram{display:flex; align-items:center; justify-content:center; gap:1.5rem; margin:1.2rem 0; flex-wrap:wrap;}
+  .rpc-actor{font-family:var(--mono); font-size:0.75rem; padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2);}
+  .rpc-msgs{display:flex; flex-direction:column; gap:0.4rem; min-width:160px;}
+  .rpc-msg{font-family:var(--mono); font-size:0.68rem; padding:0.35rem 0.6rem; border-radius:14px; text-align:center; opacity:0; transform:scale(0.8); transition:all .3s;}
+  .rpc-msg.show{opacity:1; transform:scale(1);}
+  .rpc-msg.req{background:rgba(199,146,234,0.15); border:1px solid var(--stream-c); color:var(--stream-c);}
+  .rpc-msg.resp{background:rgba(127,216,160,0.15); border:1px solid var(--binary-c); color:var(--binary-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--proto-c);} .dc-col.a h4{color:var(--proto-c);}
+  .dc-col.b{border-color:var(--json-c);} .dc-col.b h4{color:var(--json-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--binary-c); background:rgba(127,216,160,0.06);} .callout.def b{color:var(--binary-c);}
+  .callout.info{border-left-color:var(--stream-c); background:rgba(199,146,234,0.06);} .callout.info b{color:var(--stream-c);}
+  .callout.warn{border-left-color:var(--json-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--json-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · GRPC</div>
+  <h1>Protobuf doesn't send field <em>names</em> over the wire at all — just numbers, in a schema both sides already agreed on.</h1>
+  <p class="lede">gRPC is Protocol Buffers (a compact binary wire format) plus HTTP/2 (multiplexed streaming transport) plus four distinct call shapes. This lab compares protobuf's binary encoding against equivalent JSON byte-for-byte, animates all four RPC types, and covers exactly when trading REST's ubiquity for gRPC's efficiency is actually worth it.</p>
+
+  <div class="proto-hero">
+    <div class="ph">.proto schema</div>
+    <div class="ph">→ compact binary wire format</div>
+    <div class="ph">→ 4 RPC shapes over HTTP/2</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="protobuf">1 · Protocol Buffers as the Wire Format</a>
+  <a data-target="rpctypes">2 · Unary vs Streaming RPCs — All 4 Types</a>
+  <a data-target="tradeoffs">3 · When gRPC Beats REST, and When It Doesn't</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: PROTOBUF ============ -->
+<section id="protobuf">
+  <div class="kicker">01 — A schema both sides already agree on</div>
+  <h2>Protocol Buffers as the wire format</h2>
+
+  <p><strong>Start here, before any schema.</strong> Imagine two people who've agreed in advance on a very specific form: "field 1 is always your name, field 2 is always your age, field 3 is always your email." Once both sides have that form memorized, you don't need to write "name:", "age:", "email:" on every single submission — you can just send the values in the agreed field-number order, and the other person already knows what each one means. JSON is like re-writing the field labels every single time; protobuf is like both sides having already memorized the form.</p>
+
+  <p>A <strong>.proto file</strong> defines a message schema with explicit field numbers, and a compiler generates code in whatever language you're using to serialize/deserialize messages matching that schema. Both the client and server compile the SAME <code class="inline">.proto</code> file, so both sides know exactly what field number 1 means without ever needing to transmit the word "name" over the network.</p>
+
+  <div class="code">
+<span class="c-cmt">// user.proto</span>
+<span class="c-kw">message</span> <span class="c-fn">User</span> {
+  <span class="c-kw">string</span> name = <span class="c-num">1</span>;
+  <span class="c-kw">int32</span> age = <span class="c-num">2</span>;
+  <span class="c-kw">string</span> email = <span class="c-num">3</span>;
+}
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME DATA, TWO WIRE FORMATS: JSON VS PROTOBUF BINARY</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Encoding: <code class="inline">{"name": "Ada Lovelace", "age": 36, "email": "ada@example.com"}</code></p>
+    <div class="byte-compare">
+      <div class="byte-col json">
+        <h4>JSON (text)</h4>
+        <div class="byte-track"><div class="byte-bar json" id="bar-json">0 bytes</div></div>
+      </div>
+      <div class="byte-col proto">
+        <h4>Protobuf (binary)</h4>
+        <div class="byte-track"><div class="byte-bar proto" id="bar-proto">0 bytes</div></div>
+      </div>
+    </div>
+    <button class="btn" id="byte-run">Measure both encodings ▸</button>
+    <div class="log" id="byte-log"><span class="line">Click to see the actual byte counts and exactly why protobuf comes in smaller.</span></div>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Why protobuf is smaller — mechanically</h4>
+      <p>Field names ("name", "age", "email") are NEVER transmitted — only small integer field-number tags plus a wire-type byte, then the raw value bytes. Integers are varint-encoded (small numbers use fewer bytes), and there's no repeated punctuation (quotes, colons, braces, commas) at all.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Why JSON is larger — mechanically</h4>
+      <p>Every single field name is spelled out as a literal string, in full, on every single message — "name", "age", "email" cost real bytes each time, even though both sides already "know" the schema at the application level. JSON is also text-based, so even numbers are stored as their full decimal digit characters, not compact binary.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>The trade-off this buys you:</b> protobuf's compactness costs you human-readability — you cannot open a protobuf message in a text editor and read it the way you can with JSON; you need the <code class="inline">.proto</code> schema and a decoder to make sense of the bytes at all. This is a genuine debugging cost, which is part of why REST/JSON remains dominant for public-facing APIs where ad-hoc inspection (curl, browser devtools, Postman) matters a lot.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> Protocol Buffers (protobuf) is a binary serialization format where a shared <code class="inline">.proto</code> schema assigns each field a small integer number; messages on the wire contain only those field numbers (as compact tags) and their raw values — never the field names themselves — combined with variable-length integer encoding for numeric fields. This produces meaningfully smaller payloads than JSON for the same logical data, at the cost of the format no longer being human-readable without the schema, and requiring both client and server to compile and stay in sync with that same schema.</div>
+</section>
+
+<!-- ============ SECTION 2: RPC TYPES ============ -->
+<section id="rpctypes">
+  <div class="kicker">02 — Four different shapes of "call a function on another machine"</div>
+  <h2>Unary vs streaming RPCs — all 4 types</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> A phone call and a walkie-talkie conversation are structured completely differently, even though both are "talking to someone remotely." A phone call is one question, one answer, done. A walkie-talkie exchange might be one person continuously narrating updates while the other just listens, or both people talking back and forth freely whenever they each have something to say. gRPC gives you all of these shapes as first-class options, not just the simple phone-call one.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH EACH RPC TYPE'S MESSAGE FLOW</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-rpc="unary">Unary</button>
+      <button class="chip" data-rpc="server">Server-streaming</button>
+      <button class="chip" data-rpc="client">Client-streaming</button>
+      <button class="chip" data-rpc="bidi">Bidirectional-streaming</button>
+    </div>
+    <div class="rpc-diagram">
+      <div class="rpc-actor">Client</div>
+      <div class="rpc-msgs" id="rpc-msgs"></div>
+      <div class="rpc-actor">Server</div>
+    </div>
+    <button class="btn" id="rpc-run">Play this RPC type ▸</button>
+    <div class="log" id="rpc-log"><span class="line">Pick an RPC type and watch its message flow — direction and count both matter.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>RPC type</th><th>Requests</th><th>Responses</th><th>Real example</th></tr>
+    <tr><td><strong>Unary</strong></td><td>One</td><td>One</td><td>Look up a user by ID</td></tr>
+    <tr><td><strong>Server-streaming</strong></td><td>One</td><td>Many, over time</td><td>Subscribe to live stock price ticks</td></tr>
+    <tr><td><strong>Client-streaming</strong></td><td>Many, over time</td><td>One (at the end)</td><td>Upload a large file in chunks, get one confirmation</td></tr>
+    <tr><td><strong>Bidirectional-streaming</strong></td><td>Many, over time</td><td>Many, over time, independently</td><td>A live chat or collaborative editing session</td></tr>
+  </table>
+
+  <div class="callout info"><b>The detail worth remembering about bidirectional streaming:</b> the two streams (client-to-server and server-to-client) are fully independent — neither side has to wait for a message on one stream before sending on the other, and message counts on each side don't need to match at all. This is possible specifically because gRPC runs over HTTP/2, whose multiplexed streams already support exactly this kind of independent, simultaneous flow in both directions.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> gRPC supports four RPC shapes built directly on HTTP/2 streams: unary (single request, single response — functionally like a normal function call), server-streaming (single request, a stream of responses over time), client-streaming (a stream of requests over time, single final response), and bidirectional-streaming (independent streams of requests and responses flowing in both directions simultaneously, with no fixed correspondence between message counts on each side).</div>
+</section>
+
+<!-- ============ SECTION 3: TRADE-OFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">03 — Efficiency isn't free, and REST isn't just "the old way"</div>
+  <h2>When gRPC beats REST, and when it doesn't</h2>
+
+  <p><strong>Start here, before the table.</strong> A race car is objectively faster than a family sedan, but you wouldn't daily-drive a race car to pick up groceries — it needs premium fuel, specialized maintenance, and a place to actually go fast. gRPC's efficiency gains are real, but they come with real requirements (schema compilation, less casual debuggability, weaker browser support) that make it the wrong tool for plenty of common jobs.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Where gRPC genuinely wins</h4>
+      <p>Internal service-to-service communication in a microservices architecture, where both sides are your own code (so schema coordination is easy), traffic volume is high enough that payload size and serialization speed actually matter, and you want strongly-typed contracts enforced by generated code rather than hand-maintained documentation.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Where REST/JSON is still the better call</h4>
+      <p>Public-facing APIs consumed by many unknown third-party clients (JSON is universally parseable, curl-able, and human-readable without special tooling), browser-based clients calling your API directly (native browser gRPC support is limited — usually needs a proxy like gRPC-Web), and anywhere ad-hoc debuggability matters more than shaving bytes off the wire.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>gRPC</th><th>REST/JSON</th></tr>
+    <tr><td>Payload size</td><td>Smaller (binary, no field names)</td><td>Larger (text, field names repeated)</td></tr>
+    <tr><td>Browser support</td><td>Needs a proxy layer (gRPC-Web) for direct browser use</td><td>Native — any browser can call a REST endpoint directly</td></tr>
+    <tr><td>Human debuggability</td><td>Low — needs the schema and a decoder</td><td>High — readable in a browser, curl, or plain text editor</td></tr>
+    <tr><td>Streaming support</td><td>First-class (all 4 RPC types, built on HTTP/2)</td><td>Awkward — typically needs SSE or WebSockets bolted on</td></tr>
+    <tr><td>Contract enforcement</td><td>Strong — schema-generated code on both sides</td><td>Weaker — usually convention plus separate docs (OpenAPI)</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The interview trap, stated plainly:</b> "gRPC is just strictly better and faster" is the wrong takeaway. It's better along specific, measurable axes (payload size, streaming ergonomics, contract strictness) that matter most for internal, high-volume, same-organization traffic — and it's actively worse along other axes (browser-native support, human debuggability, ecosystem ubiquity) that matter most for public APIs. The right answer to "gRPC or REST?" is almost always "it depends on who's calling this API and how often," not a blanket preference.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> gRPC is generally preferred for internal, high-throughput, same-organization service-to-service communication where both endpoints can share a compiled schema and streaming or strict typing add real value; REST with JSON remains preferred for public or browser-facing APIs where universal client compatibility, human-readability, and ad-hoc debuggability outweigh the bandwidth and serialization-speed advantages gRPC provides.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Why field numbers instead of names</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain concretely, in terms of actual bytes on the wire, why a protobuf message encoding {"user_id": 42} is smaller than the equivalent JSON, even though both "represent the same information."</p>
+    <details><summary>Show solution</summary><div class="solution">The JSON version must literally spell out the string "user_id" as UTF-8
+bytes (7 characters plus surrounding quotes and a colon) every single time
+the field appears, because JSON has no separate schema -- the field name
+IS the only thing identifying what the value means. Protobuf instead
+assigns "user_id" a small integer field number (say, field 1) once, in the
+shared .proto schema that both sides already compiled against -- so on the
+wire, only a compact tag byte encoding "field 1, wire type varint" plus
+the value 42 (itself varint-encoded, likely 1 byte for a small number)
+needs to be sent. The English name "user_id" never travels over the
+network at all; it only exists in the schema file both sides already
+have. This is the core mechanical reason protobuf payloads shrink relative
+to JSON -- eliminating repeated field-name strings, not just switching
+text to binary.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Picking the right RPC type</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service needs to let a client upload a very large file in small chunks, and only needs one final confirmation once the whole file has been received and validated. Which of the 4 RPC types fits, and why not the others?</p>
+    <details><summary>Show solution</summary><div class="solution">Client-streaming fits: many requests (the file chunks, sent over time)
+resulting in exactly one final response (the confirmation), which matches
+this scenario precisely.
+
+Unary doesn't fit because it only allows ONE request message -- you'd have
+to buffer the entire file into a single message before sending, defeating
+the purpose of chunked upload (memory pressure, no progress feedback,
+inability to handle files larger than a single message size limit).
+
+Server-streaming doesn't fit because it's the reverse shape -- one request,
+many responses -- which is backwards from "many chunks in, one
+confirmation out."
+
+Bidirectional-streaming COULD technically work (it's the most general
+shape) but is unnecessary complexity here -- the client never needs to
+receive a stream of responses back during the upload, only a single
+confirmation at the end, so client-streaming's simpler, more specific
+contract is the better fit and better documents the actual intent to
+anyone reading the .proto file.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Recognizing where gRPC is the wrong choice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team wants to expose a brand-new public API that any third-party developer, including ones building simple browser-based dashboards with plain JavaScript, can call directly. Should this API be built with gRPC? Explain the concrete obstacles.</p>
+    <details><summary>Show solution</summary><div class="solution">Building this as a plain gRPC API is a poor choice. Two concrete
+obstacles: (1) browsers cannot make native gRPC calls the way they can
+make a fetch() call to a REST/JSON endpoint -- gRPC relies on HTTP/2
+trailers and framing details that browser fetch/XHR APIs don't expose,
+so direct browser gRPC requires an intermediate proxy layer (gRPC-Web)
+translating between what the browser can actually send and true gRPC,
+adding real infrastructure complexity; (2) third-party developers benefit
+enormously from being able to just curl an endpoint, read a JSON response
+in a browser tab, or use universally available HTTP tooling without
+needing to obtain and compile a .proto schema first -- a public API's
+value is partly its accessibility to unknown, varied clients, which is
+exactly REST/JSON's strength and exactly where gRPC's binary,
+schema-dependent format creates friction. REST/JSON (possibly documented
+via OpenAPI) is the better fit here.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Bidirectional streaming message independence</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In a bidirectional-streaming RPC powering a live chat feature, does the server need to send exactly one response for every one request the client sends? Explain why or why not.</p>
+    <details><summary>Show solution</summary><div class="solution">No. Bidirectional streaming's defining property is that the two streams
+(client-to-server and server-to-client) are fully independent -- there is
+no requirement that message counts match, or that a response corresponds
+to any particular request. In a chat scenario, the client might send 3
+messages while the server, independently, pushes 7 messages from other
+users during that same window -- there's no 1:1 pairing at all. This is
+fundamentally different from unary or the other streaming types, which do
+have a fixed request/response cardinality (1:1, 1:many, or many:1).
+Bidirectional streaming is the one shape where both directions genuinely
+run on their own independent schedules, which is exactly why it's the
+right fit for chat-like, freely-flowing communication rather than any
+request-triggers-response pattern.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Debuggability trade-off in practice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team migrates their internal service-to-service API from REST/JSON to gRPC/protobuf and later complains that they can no longer quickly inspect request/response payloads with curl during incident debugging. Was this an unforeseeable side effect, or an inherent trade-off they should have anticipated?</p>
+    <details><summary>Show solution</summary><div class="solution">This is an inherent, well-known trade-off, not an unforeseeable surprise.
+Protobuf's entire size advantage over JSON comes specifically from NOT
+being human-readable text -- the field names are gone, numeric values are
+binary-encoded, and there's no plain-text structure to eyeball. Losing
+curl-and-eyeball debuggability is the direct, unavoidable cost of gaining
+that compactness; you cannot have both "smaller than JSON" and "as
+readable as JSON" from the same format, because the readability is
+precisely what protobuf strips out to save space.
+
+The team's mistake wasn't choosing gRPC -- for high-volume internal
+service-to-service traffic it's often a reasonable choice -- it was likely
+not investing in the standard mitigations upfront: tools like grpcurl
+(which can decode gRPC calls if given the schema or with server
+reflection enabled), structured logging of decoded payloads at the
+application layer, or a debugging proxy that decodes traffic using the
+.proto files. The debuggability cost is real and should be planned for
+before migrating, not discovered afterward.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) mechanically why protobuf messages are smaller than equivalent JSON, not just "because it's binary," (2) all 4 RPC types well enough to pick the correct one for a new scenario, and (3) at least two concrete reasons a public-facing API is usually still a worse fit for gRPC than for REST? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — grpc.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: BYTE SIZE COMPARISON */
+(function(){
+  const btn = document.getElementById('byte-run');
+  const barJson = document.getElementById('bar-json');
+  const barProto = document.getElementById('bar-proto');
+  const logEl = document.getElementById('byte-log');
+
+  const jsonBytes = 66;   // {"name":"Ada Lovelace","age":36,"email":"ada@example.com"}
+  const protoBytes = 32;  // tags + varints + string bytes, no field-name text
+
+  btn.addEventListener('click', ()=>{
+    logEl.innerHTML = '';
+    barJson.style.width = '0%'; barProto.style.width = '0%';
+    barJson.textContent = ''; barProto.textContent = '';
+    const maxBytes = jsonBytes;
+    setTimeout(()=>{
+      barJson.style.width = '100%';
+      barJson.textContent = jsonBytes + ' bytes';
+    }, 100);
+    setTimeout(()=>{
+      barProto.style.width = ((protoBytes/maxBytes)*100) + '%';
+      barProto.textContent = protoBytes + ' bytes';
+    }, 700);
+    setTimeout(()=>{
+      const p1 = document.createElement('div'); p1.className='line fadein';
+      p1.innerHTML = '<b>JSON:</b> ' + jsonBytes + ' bytes — includes the literal text "name", "age", "email" plus quotes, colons, braces, and commas.';
+      logEl.appendChild(p1);
+      const p2 = document.createElement('div'); p2.className='line fadein';
+      p2.innerHTML = '<b>Protobuf:</b> ' + protoBytes + ' bytes — field numbers (1, 2, 3) replace the field-name strings entirely, and 36 is varint-encoded in 1 byte instead of the 2 text characters "36".';
+      logEl.appendChild(p2);
+      const p3 = document.createElement('div'); p3.className='line fadein';
+      p3.innerHTML = '<b>Result:</b> roughly ' + Math.round((1 - protoBytes/jsonBytes)*100) + '% smaller for this small message — the gap widens further on messages with more fields or longer field names.';
+      logEl.appendChild(p3);
+    }, 1300);
+  });
+})();
+
+/* SECTION 2: RPC TYPE FLOW DEMO */
+(function(){
+  const chips = document.querySelectorAll('[data-rpc]');
+  const msgsEl = document.getElementById('rpc-msgs');
+  const runBtn = document.getElementById('rpc-run');
+  const logEl = document.getElementById('rpc-log');
+  let mode = 'unary';
+  let timers = [];
+
+  const scripts = {
+    unary: {
+      desc: 'One request, one response.',
+      msgs: [{dir:'req', t:0, text:'GetUser(id=42)'}, {dir:'resp', t:700, text:'User{...}'}]
+    },
+    server: {
+      desc: 'One request, many responses streamed back over time.',
+      msgs: [
+        {dir:'req', t:0, text:'Subscribe(ticker="ACME")'},
+        {dir:'resp', t:500, text:'price: $41.20'},
+        {dir:'resp', t:1000, text:'price: $41.35'},
+        {dir:'resp', t:1500, text:'price: $41.18'}
+      ]
+    },
+    client: {
+      desc: 'Many requests streamed up, one final response.',
+      msgs: [
+        {dir:'req', t:0, text:'chunk 1/3'},
+        {dir:'req', t:500, text:'chunk 2/3'},
+        {dir:'req', t:1000, text:'chunk 3/3'},
+        {dir:'resp', t:1600, text:'UploadComplete{ok:true}'}
+      ]
+    },
+    bidi: {
+      desc: 'Independent streams both ways, no fixed pairing.',
+      msgs: [
+        {dir:'req', t:0, text:'"hi"'},
+        {dir:'resp', t:200, text:'"user_9 joined"'},
+        {dir:'resp', t:650, text:'"welcome!"'},
+        {dir:'req', t:900, text:'"thanks"'},
+        {dir:'resp', t:950, text:'"user_11 joined"'}
+      ]
+    }
+  };
+
+  function build(){
+    msgsEl.innerHTML = '';
+    const s = scripts[mode];
+    const p = document.createElement('div'); p.style.fontFamily='var(--mono)'; p.style.fontSize='0.72rem'; p.style.color='var(--ink-dim)'; p.style.marginBottom='0.4rem';
+    p.textContent = s.desc;
+    // placeholder container, actual msgs added on run
+  }
+  build();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.rpc;
+      timers.forEach(t=>clearTimeout(t));
+      timers = [];
+      msgsEl.innerHTML = '';
+      logEl.innerHTML = '<span class="line">' + scripts[mode].desc + ' Click play to watch it.</span>';
+    });
+  });
+
+  runBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    msgsEl.innerHTML = '';
+    logEl.innerHTML = '';
+    const s = scripts[mode];
+    s.msgs.forEach(m=>{
+      timers.push(setTimeout(()=>{
+        const el = document.createElement('div');
+        el.className = 'rpc-msg ' + m.dir;
+        el.textContent = (m.dir === 'req' ? '→ ' : '← ') + m.text;
+        msgsEl.appendChild(el);
+        requestAnimationFrame(()=>el.classList.add('show'));
+        const logLine = document.createElement('div'); logLine.className = 'line fadein';
+        logLine.innerHTML = '<b>' + (m.dir === 'req' ? 'Client → Server' : 'Server → Client') + ':</b> ' + m.text;
+        logEl.appendChild(logLine);
+        logEl.scrollTop = logEl.scrollHeight;
+      }, m.t));
+    });
+  });
+})();
+</script>
+</body>
+</html>
