@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Graphs: BFS &amp; DFS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --unvisited-c:#454b58; --queue-c:#4fc3f7; --stack-c:#c792ea; --visited-c:#7fd8a0; --edge-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--queue-c); color:var(--queue-c); background:rgba(79,195,247,0.08);}
+  .dnode.s{border-color:var(--stack-c); color:var(--stack-c); background:rgba(199,146,234,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--edge-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* graph canvas */
+  .graph-wrap{position:relative; width:100%; min-height:320px; margin:1.2rem 0; overflow-x:auto;}
+  .graph-canvas{position:relative; min-width:560px; height:320px;}
+  .gnode{position:absolute; width:46px; height:46px; border-radius:50%; border:2.5px solid var(--unvisited-c); background:var(--panel-2); color:var(--ink-dim); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-weight:700; font-size:0.85rem; transform:translate(-50%,-50%); transition:all .4s ease; z-index:3;}
+  .gnode.inqueue{border-color:var(--queue-c); color:var(--queue-c); background:rgba(79,195,247,0.12); box-shadow:0 0 0 4px rgba(79,195,247,0.2);}
+  .gnode.instack{border-color:var(--stack-c); color:var(--stack-c); background:rgba(199,146,234,0.12); box-shadow:0 0 0 4px rgba(199,146,234,0.2);}
+  .gnode.current{border-color:var(--accent); color:var(--accent); background:rgba(255,138,101,0.16); box-shadow:0 0 0 5px rgba(255,138,101,0.28); transform:translate(-50%,-50%) scale(1.12);}
+  .gnode.visited{border-color:var(--visited-c); color:var(--visited-c); background:rgba(127,216,160,0.12);}
+  .gnode.order-badge{position:relative;}
+  .gnode .obadge{position:absolute; top:-9px; right:-6px; background:var(--visited-c); color:#0d1a12; font-size:0.55rem; font-weight:800; border-radius:50%; width:16px; height:16px; display:flex; align-items:center; justify-content:center;}
+  .gedge{position:absolute; height:2.5px; background:var(--rule); transform-origin:left center; z-index:1; transition:background .3s;}
+  .gedge.active{background:var(--edge-c);}
+  .gedge.arrowed:after{content:''; position:absolute; right:0; top:-4px; border-left:8px solid var(--rule); border-top:5px solid transparent; border-bottom:5px solid transparent;}
+  .gedge.arrowed.active:after{border-left-color:var(--edge-c);}
+  .gedge-w{position:absolute; font-family:var(--mono); font-size:0.65rem; color:var(--ink-dim); background:var(--bg); padding:0 0.2rem; z-index:2; transform:translate(-50%,-50%);}
+
+  /* queue/stack strip */
+  .frontier-panel{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-top:1rem;}
+  @media(max-width:700px){.frontier-panel{grid-template-columns:1fr;}}
+  .frontier-box{border:1.5px dashed var(--rule); border-radius:10px; padding:0.8rem 1rem;}
+  .frontier-label{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-dim); margin-bottom:0.6rem;}
+  .frontier-items{display:flex; gap:0.4rem; flex-wrap:wrap; min-height:2.2rem;}
+  .fitem{font-family:var(--mono); font-size:0.85rem; font-weight:700; padding:0.35rem 0.6rem; border-radius:6px; border:1.5px solid var(--queue-c); color:var(--queue-c); background:rgba(79,195,247,0.08); animation:fadein .3s ease;}
+  .fitem.stack-item{border-color:var(--stack-c); color:var(--stack-c); background:rgba(199,146,234,0.08);}
+  .visited-order{font-family:var(--mono); font-size:0.85rem; color:var(--visited-c); margin-top:0.9rem; padding-top:0.8rem; border-top:1px dashed var(--rule); min-height:1.4em;}
+  .visited-order b{color:var(--ink-dim); font-weight:400;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.4rem 0;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.q{border-color:var(--queue-c);}
+  .dc-col.s{border-color:var(--stack-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.q h4{color:var(--queue-c);} .dc-col.s h4{color:var(--stack-c);}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .count-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.2rem 0; font-family:var(--mono); font-size:0.85rem;}
+  @media(max-width:700px){.count-grid{grid-template-columns:1fr;}}
+  .count-card{border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; background:var(--panel);}
+  .count-card .num{font-size:1.6rem; color:var(--accent); font-weight:700;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--visited-c); background:rgba(127,216,160,0.06);} .callout.self b{color:var(--visited-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATA STRUCTURES &amp; ALGORITHMS LAB · GRAPHS: BFS &amp; DFS</div>
+  <h1>A graph is just nodes and connections — and the ONLY thing that changes between BFS and DFS is <em>which end of a list you pull from</em>.</h1>
+  <p class="lede">BFS and DFS are, in code, almost identical: both maintain a "frontier" of nodes to visit and a "visited" set, and both loop while the frontier is non-empty. The single line that differs — pop from the front (queue) versus pop from the back (stack) — is the entire reason one explores level-by-level and the other plunges deep down one path first. This lab shows that frontier changing shape, item by item, live, on the same graph both algorithms share.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">frontier.pop(0) — FIFO</div>
+    <div class="darrow">→</div>
+    <div class="dnode">BFS: level by level</div>
+    <div class="darrow">·</div>
+    <div class="dnode s">frontier.pop() — LIFO</div>
+    <div class="darrow">→</div>
+    <div class="dnode s">DFS: one path, deep first</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="representations">1 · Adjacency List vs Matrix</a>
+  <a data-target="graphtypes">2 · Directed/Undirected, Weighted/Unweighted</a>
+  <a data-target="bfs">3 · BFS — Live Queue</a>
+  <a data-target="dfs">4 · DFS — Live Stack</a>
+  <a data-target="complexity">5 · Deriving O(V+E) by Counting</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: REPRESENTATIONS ============ -->
+<section id="representations">
+  <div class="kicker">01 — How do you even store "connections"?</div>
+  <h2>Adjacency list vs adjacency matrix</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine you're modeling a city's friendships. You could keep, for every person, a short personal list of "who I'm friends with" — that's an <strong>adjacency list</strong>. Or you could keep one giant spreadsheet with every person as both a row and a column, and mark a cell "yes" if those two people are friends — that's an <strong>adjacency matrix</strong>. The spreadsheet lets you instantly answer "are Alice and Bob friends?" by checking one cell, but if the city has a million people and each person only has ~200 friends, you're storing a trillion mostly-empty cells just to represent 200 million actual friendships.</p>
+
+  <p>A graph is formally just a set of <strong>vertices</strong> (nodes, V) and <strong>edges</strong> (connections between them, E). Everything else — directed/undirected, weighted/unweighted, cyclic/acyclic — is a property layered on top of that basic shape.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col q">
+      <h4>Adjacency list</h4>
+      <p>A dictionary/array where each vertex maps to a list of its neighbors. Space: <strong>O(V + E)</strong> — you only pay for edges that actually exist. Checking "are A and B connected?" costs O(degree of A) — you scan A's neighbor list. This is the default choice for almost every real graph, because real graphs are <strong>sparse</strong> (E is much closer to V than to V²).</p>
+    </div>
+    <div class="dc-col s">
+      <h4>Adjacency matrix</h4>
+      <p>A V×V grid where <code class="inline">matrix[i][j] = 1</code> (or a weight) if an edge exists from i to j. Space: <strong>O(V²)</strong> regardless of how many edges actually exist. Checking "are A and B connected?" is O(1) — one array lookup. Worth it only when the graph is <strong>dense</strong> (close to every pair connected) or when O(1) edge-existence checks matter more than memory.</p>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME GRAPH, BOTH REPRESENTATIONS — WATCH THE SPACE DIFFERENCE</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">This lab's running example graph has <strong>6 vertices and 7 edges</strong> (shown below in section 3). Compare what each representation actually has to store for it:</p>
+    <div class="count-grid">
+      <div class="count-card">
+        <div>ADJACENCY LIST — O(V + E)</div>
+        <div class="num" id="rep-list-count">—</div>
+        <div style="color:var(--ink-dim); font-size:0.78rem; margin-top:0.3rem;">total (vertex, neighbor) entries stored across all lists</div>
+      </div>
+      <div class="count-card">
+        <div>ADJACENCY MATRIX — O(V²)</div>
+        <div class="num" id="rep-matrix-count">—</div>
+        <div style="color:var(--ink-dim); font-size:0.78rem; margin-top:0.3rem;">total cells in the 6×6 grid, most of them storing 0 (no edge)</div>
+      </div>
+    </div>
+    <div class="log" id="rep-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Adjacency list</th><th>Adjacency matrix</th></tr>
+    <tr><td>Space</td><td><code>O(V + E)</code></td><td><code>O(V²)</code></td></tr>
+    <tr><td>"Is there an edge A→B?"</td><td><code>O(degree(A))</code> — scan A's list</td><td><code>O(1)</code> — one cell lookup</td></tr>
+    <tr><td>"Give me all of A's neighbors"</td><td><code>O(degree(A))</code> — already have the list</td><td><code>O(V)</code> — scan A's whole row</td></tr>
+    <tr><td>Best for</td><td>Sparse graphs (most real-world graphs: road networks, social graphs, dependency graphs)</td><td>Dense graphs, or when O(1) edge lookups matter more than memory</td></tr>
+  </table>
+
+  <div class="callout self"><b>Interview-ready definition:</b> an <strong>adjacency list</strong> represents a graph as a mapping from each vertex to a collection of its adjacent vertices, using O(V + E) space; an <strong>adjacency matrix</strong> represents it as a V×V boolean or weighted grid using O(V²) space regardless of edge count. The choice is a space/time trade-off governed by graph density: sparse graphs (E ≈ V) favor adjacency lists, dense graphs (E ≈ V²) make the matrix's fixed O(V²) cost less wasteful and its O(1) edge queries more valuable.</div>
+</section>
+
+<!-- ============ SECTION 2: GRAPH TYPES ============ -->
+<section id="graphtypes">
+  <div class="kicker">02 — Four independent axes</div>
+  <h2>Directed vs undirected, weighted vs unweighted</h2>
+
+  <p><strong>Start here, before any code.</strong> A two-way street is an <strong>undirected</strong> edge — if you can drive from A to B, you can also drive from B to A along the same road. A one-way street is a <strong>directed</strong> edge — a Twitter "follow" is directed too (you following someone doesn't mean they follow you back). Separately, <strong>weighted</strong> just means each connection has a "cost" attached — a road has a distance, a flight has a price — versus <strong>unweighted</strong>, where every edge just means "connected," full stop, with no notion of one connection costing more than another.</p>
+
+  <table class="cmp">
+    <tr><th>Property</th><th>Meaning</th><th>Real-world example</th></tr>
+    <tr><td>Directed</td><td>Edge A→B does NOT imply B→A</td><td>Twitter follows, task dependencies (A must finish before B)</td></tr>
+    <tr><td>Undirected</td><td>Edge {A,B} works both ways</td><td>Facebook friendships, road networks (two-way streets)</td></tr>
+    <tr><td>Weighted</td><td>Each edge carries a cost/distance/capacity</td><td>Flight prices, road distances, network bandwidth</td></tr>
+    <tr><td>Unweighted</td><td>Edges only encode "connected or not"</td><td>"Who follows whom" (just the relationship, not its strength)</td></tr>
+  </table>
+
+  <div class="callout"><b>Why this matters for algorithm choice:</b> BFS finds the shortest path by <em>edge count</em> in an unweighted graph — but that stops being true the instant edges have different weights, because BFS has no concept of one edge "costing more" than another. A 1-edge path with weight 100 looks identical to BFS as a 1-edge path with weight 1. Weighted shortest-path needs a different algorithm entirely (Dijkstra's, covered in a later lab) that specifically accounts for accumulated edge weight, not just hop count.</div>
+</section>
+
+<!-- ============ SECTION 3: BFS ============ -->
+<section id="bfs">
+  <div class="kicker">03 — Level by level, using a queue</div>
+  <h2>Breadth-First Search — watch the queue change, live</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture dropping a stone in a pond: the ripples spread outward one ring at a time — everything 1 step away lights up before anything 2 steps away does. That's BFS. It explores the graph in expanding "rings" outward from the start node, which is exactly why, in an unweighted graph, the FIRST time BFS reaches any node is guaranteed to be via the shortest possible path (fewest edges) to it — you can't skip a ring.</p>
+
+  <p>Mechanically: BFS keeps a <strong>queue</strong> (first-in-first-out) of nodes waiting to be explored. It pops the FRONT of the queue, looks at that node's unvisited neighbors, marks them visited and pushes them to the BACK of the queue, and repeats until the queue is empty. Because new neighbors always go to the back, all of "ring 1" gets fully processed before any of "ring 2" is even looked at.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> collections <span class="c-kw">import</span> deque
+
+<span class="c-kw">def</span> <span class="c-fn">bfs</span>(graph, start):
+    visited = {start}                    <span class="c-cmt"># mark as visited THE MOMENT it enters the queue,</span>
+    queue = deque([start])               <span class="c-cmt"># not when it's dequeued — prevents duplicate enqueues</span>
+    order = []
+    <span class="c-kw">while</span> queue:
+        node = queue.popleft()           <span class="c-cmt"># FIFO: pop from the FRONT</span>
+        order.append(node)
+        <span class="c-kw">for</span> neighbor <span class="c-kw">in</span> graph[node]:
+            <span class="c-kw">if</span> neighbor <span class="c-kw">not in</span> visited:
+                visited.add(neighbor)
+                queue.append(neighbor)   <span class="c-cmt"># push new neighbors to the BACK</span>
+    <span class="c-kw">return</span> order
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>BFS FROM NODE A — STEP THROUGH THE QUEUE</span>
+      <div><button class="btn" id="bfs-step">Next step ▸</button> <button class="btn secondary" id="bfs-reset">Restart</button></div>
+    </div>
+    <div class="graph-wrap"><div class="graph-canvas" id="bfs-canvas"></div></div>
+    <div class="frontier-panel">
+      <div class="frontier-box">
+        <div class="frontier-label">Queue (FIFO — pop from front, push to back)</div>
+        <div class="frontier-items" id="bfs-queue"></div>
+      </div>
+      <div class="frontier-box">
+        <div class="frontier-label">Visited set</div>
+        <div class="frontier-items" id="bfs-visited-set"></div>
+      </div>
+    </div>
+    <div class="visited-order" id="bfs-order"><b>Visit order: </b>(not started)</div>
+    <div class="log" id="bfs-log"></div>
+  </div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> Breadth-First Search explores a graph outward in order of distance (edge count) from the source, using a FIFO queue to ensure every node at distance <em>d</em> is dequeued and its neighbors examined before any node at distance <em>d+1</em> is processed. In an unweighted graph, this guarantees the first time a node is reached is via a shortest path, making BFS the standard algorithm for unweighted shortest-path and "minimum number of hops" problems.</div>
+</section>
+
+<!-- ============ SECTION 4: DFS ============ -->
+<section id="dfs">
+  <div class="kicker">04 — One path, all the way down, using a stack</div>
+  <h2>Depth-First Search — watch the stack change, live</h2>
+
+  <p><strong>Start here, before any code.</strong> Now picture exploring a maze by always taking the first unexplored turn and committing to it fully, only backtracking when you hit a dead end — you might tunnel far away from the start before ever circling back to try a different branch near the entrance. That's DFS. Same graph, same nodes, but instead of exploring in rings, it charges down one path as deep as it can go, then backtracks.</p>
+
+  <p>Mechanically: DFS keeps a <strong>stack</strong> (last-in-first-out) — or, equivalently, uses the call stack via recursion, which is the same idea in disguise. It pops the node most recently pushed, explores it, and pushes its unvisited neighbors. Because the most recently pushed neighbor is explored NEXT (not the oldest one waiting), DFS naturally follows one branch all the way to a dead end before backtracking to try the next one.</p>
+
+  <div class="code">
+<span class="c-cmt"># Iterative, explicit stack — mirrors the animation below exactly</span>
+<span class="c-kw">def</span> <span class="c-fn">dfs_iterative</span>(graph, start):
+    visited = <span class="c-fn">set</span>()
+    stack = [start]
+    order = []
+    <span class="c-kw">while</span> stack:
+        node = stack.pop()               <span class="c-cmt"># LIFO: pop from the BACK (top of stack)</span>
+        <span class="c-kw">if</span> node <span class="c-kw">in</span> visited:
+            <span class="c-kw">continue</span>                      <span class="c-cmt"># may have been pushed twice — skip if already done</span>
+        visited.add(node)
+        order.append(node)
+        <span class="c-kw">for</span> neighbor <span class="c-kw">in</span> <span class="c-fn">reversed</span>(graph[node]):
+            <span class="c-kw">if</span> neighbor <span class="c-kw">not in</span> visited:
+                stack.append(neighbor)
+
+<span class="c-cmt"># Recursive version — the call stack IS the stack, implicitly</span>
+<span class="c-kw">def</span> <span class="c-fn">dfs_recursive</span>(graph, node, visited=<span class="c-kw">None</span>, order=<span class="c-kw">None</span>):
+    <span class="c-kw">if</span> visited <span class="c-kw">is</span> <span class="c-kw">None</span>: visited, order = <span class="c-fn">set</span>(), []
+    visited.add(node)
+    order.append(node)
+    <span class="c-kw">for</span> neighbor <span class="c-kw">in</span> graph[node]:
+        <span class="c-kw">if</span> neighbor <span class="c-kw">not in</span> visited:
+            <span class="c-fn">dfs_recursive</span>(graph, neighbor, visited, order)
+    <span class="c-kw">return</span> order
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>DFS FROM NODE A — STEP THROUGH THE STACK</span>
+      <div><button class="btn" id="dfs-step">Next step ▸</button> <button class="btn secondary" id="dfs-reset">Restart</button></div>
+    </div>
+    <div class="graph-wrap"><div class="graph-canvas" id="dfs-canvas"></div></div>
+    <div class="frontier-panel">
+      <div class="frontier-box">
+        <div class="frontier-label">Stack (LIFO — pop from top/back)</div>
+        <div class="frontier-items" id="dfs-stack"></div>
+      </div>
+      <div class="frontier-box">
+        <div class="frontier-label">Visited set</div>
+        <div class="frontier-items" id="dfs-visited-set"></div>
+      </div>
+    </div>
+    <div class="visited-order" id="dfs-order"><b>Visit order: </b>(not started)</div>
+    <div class="log" id="dfs-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The one-line difference, made concrete:</b> on the exact same graph, BFS visits A, then ALL of A's direct neighbors, then all of THEIR unvisited neighbors — expanding outward in rings. DFS visits A, then dives into ONE neighbor, then ONE of that neighbor's neighbors, potentially reaching a node several hops away before ever touching a node that's only 2 hops away in a different direction. Run both labs above from the same start node and compare the visit-order lists directly — same graph, same start, genuinely different orders, purely because of pop-front vs pop-back.</div>
+
+  <h3>When DFS is the right tool (and BFS isn't)</h3>
+  <p>DFS is preferred when you need to explore a full path before deciding anything about it — cycle detection (next lab), topological sort (next lab), finding connected components, or exhaustively searching all paths (maze-solving, backtracking puzzles like Sudoku). BFS is preferred specifically when "shortest path" or "minimum steps" is the actual question — DFS can find *a* path, but offers no guarantee it's the shortest one, since it commits fully to one branch before backtracking rather than exploring proportionally to distance.</p>
+
+  <div class="callout self"><b>Interview-ready definition:</b> Depth-First Search explores as far as possible along each branch before backtracking, implemented via an explicit stack (LIFO) or equivalently via recursion (the call stack). Unlike BFS, DFS provides no shortest-path guarantee in general graphs, but its natural "fully explore this branch before trying another" behavior makes it the standard tool for cycle detection, topological sorting, and exhaustive path/backtracking search.</div>
+</section>
+
+<!-- ============ SECTION 5: COMPLEXITY ============ -->
+<section id="complexity">
+  <div class="kicker">05 — Not "just memorize O(V+E)"</div>
+  <h2>Deriving O(V + E) by counting, against this exact graph</h2>
+
+  <p>Both BFS and DFS are O(V + E). Instead of asserting that, let's count against the lab's running example graph: 6 vertices (A, B, C, D, E, F) and 7 edges.</p>
+
+  <div class="count-grid">
+    <div class="count-card">
+      <div>VERTEX WORK</div>
+      <div class="num">6 enqueues + 6 dequeues</div>
+      <div style="color:var(--ink-dim); font-size:0.78rem; margin-top:0.3rem;">Every vertex is added to the visited set and pushed onto the frontier exactly ONCE (the visited-check prevents re-adding it), and popped off exactly once. That's a constant amount of work per vertex → <strong>O(V)</strong> total across the whole run.</div>
+    </div>
+    <div class="count-card">
+      <div>EDGE WORK</div>
+      <div class="num">7 edges, each checked once</div>
+      <div style="color:var(--ink-dim); font-size:0.78rem; margin-top:0.3rem;">When a vertex is popped, the algorithm loops over ITS neighbor list. Summed across all vertices, that's exactly the total size of every adjacency list combined — which is 2×E for an undirected graph (each edge appears in two lists) or E for directed. Each edge is examined a constant number of times → <strong>O(E)</strong> total.</div>
+    </div>
+  </div>
+
+  <p>So the total work is (a constant amount of vertex bookkeeping) × V, plus (a constant amount of edge-checking) × E — added together, not multiplied, because vertex processing and edge scanning are two separate passes over two separate totals, not nested loops over each other. That sum is, by definition, <strong>O(V + E)</strong>. Concretely for THIS graph: 6 vertices worth of enqueue/dequeue overhead, plus 7 edges worth of neighbor-scanning overhead — the step-through logs above will show exactly 6 "dequeue" lines and (in an undirected reading) up to 14 total neighbor-checks (7 edges × 2 directions), matching this derivation exactly.</p>
+
+  <table class="cmp">
+    <tr><th>Claim</th><th>Why, mechanically</th></tr>
+    <tr><td>Each vertex is enqueued/pushed exactly once</td><td>The visited-check happens BEFORE adding to the frontier, so a vertex can never be queued twice — this is what makes the "once per vertex" claim exact, not approximate</td></tr>
+    <tr><td>Each edge is examined a constant number of times</td><td>An edge (u,v) is looked at when u is popped (scanning u's neighbor list) and, if undirected, again when v is popped — a fixed small constant, not something that grows with graph size</td></tr>
+    <tr><td>Total time</td><td>O(V) [vertex bookkeeping] + O(E) [edge scanning] = <strong>O(V + E)</strong></td></tr>
+  </table>
+
+  <div class="callout"><b>Why this is NOT O(V × E) or O(V²):</b> a common mistake is assuming that because you loop over vertices AND loop over their edges, the two costs multiply. They don't, because the inner "loop over edges" isn't repeated V times per vertex — each vertex's neighbor list is scanned exactly once, and the SUM of all neighbor-list lengths across every vertex equals the edge count (or twice the edge count for undirected graphs), not V times the edge count. The work is additive across the single combined pass, not multiplicative.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Space cost, concretely</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A social graph has 10,000 users, and on average each user follows 50 others (directed edges). Roughly how many total entries would an adjacency list store, versus how many cells an adjacency matrix would need? Which representation is clearly the right choice here, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Adjacency list: ~10,000 vertices x 50 average out-edges each = ~500,000
+total (vertex, neighbor) entries stored. That's O(V + E) with E = 500,000.
+
+Adjacency matrix: 10,000 x 10,000 = 100,000,000 cells, REGARDLESS of how
+many follows actually exist -- because the matrix always allocates space
+for every possible pair, not just the ones that are actually connected.
+
+Adjacency list is overwhelmingly the right choice: 500K entries vs 100M
+cells is a 200x difference, and the vast majority of those 100M matrix
+cells would just store "0" (not following). This graph is extremely
+sparse -- each user connects to 50 out of 10,000 possible others, so
+E (500K) is nowhere close to V^2 (100M). Sparse graphs are the textbook
+case for adjacency lists.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Trace BFS by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Graph: A connects to B and C. B connects to D. C connects to D and E. D connects to F. (Undirected.) Starting BFS from A, write the exact queue contents after each dequeue, and the final visit order.</p>
+    <details><summary>Show solution</summary><div class="solution">Start: visited={A}, queue=[A]
+
+Dequeue A. Neighbors B, C (unvisited) -> visited={A,B,C}, queue=[B,C]
+Dequeue B. Neighbor D (unvisited) -> visited={A,B,C,D}, queue=[C,D]
+Dequeue C. Neighbor D already visited, neighbor E unvisited
+           -> visited={A,B,C,D,E}, queue=[D,E]
+Dequeue D. Neighbor F unvisited -> visited={A,B,C,D,E,F}, queue=[E,F]
+Dequeue E. No unvisited neighbors -> queue=[F]
+Dequeue F. No unvisited neighbors -> queue=[]
+
+Visit order: A, B, C, D, E, F
+
+Notice the "ring" structure: A (ring 0), then B,C (ring 1, both 1 edge
+from A), then D,E (ring 2), then F (ring 3) -- BFS finishes an entire ring
+before starting the next one, which is exactly why the first time it
+reaches F, it's guaranteed to be via a shortest path (A-B-D-F or A-C-D-F,
+both length 3).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Trace DFS by hand, same graph</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Same graph as Problem 2 (A-B, A-C, B-D, C-D, C-E, D-F). Using the iterative stack version with neighbors pushed in the order given (not reversed), trace DFS from A and give the visit order. Contrast it with BFS's order from Problem 2.</p>
+    <details><summary>Show solution</summary><div class="solution">Stack starts: [A]
+
+Pop A. Not visited -> visit A. Push unvisited neighbors B, C: stack=[B,C]
+Pop C (top of stack/LIFO). Not visited -> visit C. Push D, E: stack=[B,D,E]
+Pop E (top). Not visited -> visit E. No unvisited neighbors: stack=[B,D]
+Pop D (top). Not visited -> visit D. D's neighbors are B, C, F -- C is
+   visited, B is not yet visited (still sitting on the stack), F is
+   unvisited. Push unvisited: B, F -> stack=[B,B,F] (B appears twice
+   because it was pushed once already and gets pushed again here before
+   either copy has been popped -- this is exactly why the iterative
+   version checks "if visited: continue" on pop, to safely discard stale
+   duplicate entries).
+Pop F (top). Not visited -> visit F. No new neighbors: stack=[B,B]
+Pop B (top). Not visited -> visit B. Its neighbors A, D both visited:
+   stack=[B]
+Pop B again. Already visited -> skip (continue).
+
+Visit order: A, C, E, D, F, B
+
+Contrast with BFS's A, B, C, D, E, F: DFS reached F (3 edges from A) as
+its 4th visited node, while BFS didn't reach F until its 6th (last) node
+-- DFS plunged deep down the C-D-F branch immediately rather than
+exploring B first, exactly because the most recently pushed neighbor (C,
+pushed after B) is popped next under LIFO.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Picking the right algorithm</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You need to find the minimum number of button presses to get from level 1 to level 20 in a game, where pressing a button takes you to one of several other levels (an unweighted directed graph of level transitions). Should you use BFS or DFS, and what specifically about the problem tells you that?</p>
+    <details><summary>Show solution</summary><div class="solution">BFS. The phrase "minimum number of button presses" is a minimum-hop-count
+question in an UNWEIGHTED graph (each press costs the same "1 step",
+regardless of which button) -- that combination is the exact signature of
+a shortest-path-by-edge-count problem, which BFS solves by construction
+because it explores in expanding rings of distance from the start.
+
+DFS would find *a* sequence of presses that reaches level 20, but offers
+no guarantee it's the shortest one -- it might tunnel down a long chain of
+transitions before ever trying a shorter route, since it commits fully to
+one branch before backtracking. You'd have to explore every possible path
+and compare lengths to guarantee a minimum with DFS, throwing away its
+main efficiency advantage.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Directed graph, one-directional reachability</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A directed graph has edges A→B and B→C (one-way only). Is C reachable from A? Is A reachable from C? Explain why a directed edge doesn't give you the reverse connection "for free," and how this changes what a BFS/DFS starting from C alone would discover.</p>
+    <details><summary>Show solution</summary><div class="solution">C is reachable from A: following A->B->C, yes, 2 edges get you there.
+
+A is NOT reachable from C: there is no edge C->B or C->A (or any edge at
+all) pointing back the way we came, because A->B and B->C are directed
+edges that only encode "you can go this direction," not "these two nodes
+are mutually connected." A directed edge is fundamentally a one-way
+relationship, like a Twitter follow -- A following B doesn't create B
+following A as a side effect.
+
+A BFS or DFS starting from C, using C's outgoing edges only, would
+discover NOTHING beyond C itself in this graph (C has no outgoing edges
+here) -- it would report C as an isolated component from that direction,
+even though C is very much reachable from elsewhere. This is exactly why
+"is the graph connected" and "is every node reachable from node X" are
+different, direction-sensitive questions in a directed graph, unlike in
+an undirected graph where reachability is always symmetric.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the space/time trade-off between adjacency list and adjacency matrix in your own words with a concrete number, (2) the single line of code that differentiates BFS from DFS and why that one difference produces "rings" versus "one deep path," and (3) derive O(V+E) against a small graph by literally counting enqueue/dequeue and edge-scan operations, the way section 5 did? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — graphs: bfs &amp; dfs.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+/* ===== SHARED SAMPLE GRAPH =====
+   A - B - D - F
+   |       |
+   C ------+
+   C - E
+   Undirected edges: A-B, A-C, B-C, B-D, C-D, C-E, D-F  (7 edges, 6 vertices)
+*/
+var GRAPH_LAYOUT = {
+  A: {x:80,  y:150, label:"A"},
+  B: {x:230, y:60,  label:"B"},
+  C: {x:230, y:240, label:"C"},
+  D: {x:390, y:150, label:"D"},
+  E: {x:390, y:280, label:"E"},
+  F: {x:520, y:150, label:"F"}
+};
+var GRAPH_EDGES = [
+  ["A","B"], ["A","C"], ["B","C"], ["B","D"], ["C","D"], ["C","E"], ["D","F"]
+];
+function buildAdjacency(){
+  var adj = {};
+  Object.keys(GRAPH_LAYOUT).forEach(function(v){ adj[v] = []; });
+  GRAPH_EDGES.forEach(function(e){
+    adj[e[0]].push(e[1]);
+    adj[e[1]].push(e[0]);
+  });
+  return adj;
+}
+var ADJ = buildAdjacency();
+
+function renderGraph(canvasEl, opts){
+  opts = opts || {};
+  canvasEl.innerHTML = "";
+  GRAPH_EDGES.forEach(function(e){
+    var p1 = GRAPH_LAYOUT[e[0]], p2 = GRAPH_LAYOUT[e[1]];
+    var dx = p2.x - p1.x, dy = p2.y - p1.y;
+    var len = Math.sqrt(dx*dx + dy*dy);
+    var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+    var key1 = e[0]+"-"+e[1], key2 = e[1]+"-"+e[0];
+    var active = (opts.activeEdges && (opts.activeEdges.has(key1) || opts.activeEdges.has(key2)));
+    var edge = document.createElement("div");
+    edge.className = "gedge" + (active ? " active" : "");
+    edge.style.left = p1.x + "px";
+    edge.style.top = p1.y + "px";
+    edge.style.width = len + "px";
+    edge.style.transform = "rotate(" + angle + "deg)";
+    canvasEl.appendChild(edge);
+  });
+  Object.keys(GRAPH_LAYOUT).forEach(function(id){
+    var p = GRAPH_LAYOUT[id];
+    var div = document.createElement("div");
+    div.className = "gnode";
+    if(opts.inqueue && opts.inqueue.has(id)) div.classList.add("inqueue");
+    if(opts.instack && opts.instack.has(id)) div.classList.add("instack");
+    if(opts.visited && opts.visited.has(id)) div.classList.add("visited");
+    if(opts.current === id) div.classList.add("current");
+    div.style.left = p.x + "px";
+    div.style.top = p.y + "px";
+    div.textContent = p.label;
+    if(opts.orderMap && opts.orderMap[id] !== undefined){
+      var badge = document.createElement("span");
+      badge.className = "obadge";
+      badge.textContent = opts.orderMap[id];
+      div.appendChild(badge);
+    }
+    canvasEl.appendChild(div);
+  });
+}
+
+/* ===== SECTION 1: REPRESENTATION SPACE COUNT ===== */
+(function(){
+  var listCountEl = document.getElementById("rep-list-count");
+  var matrixCountEl = document.getElementById("rep-matrix-count");
+  var logEl = document.getElementById("rep-log");
+  var V = Object.keys(GRAPH_LAYOUT).length;
+  var listTotal = 0;
+  Object.keys(ADJ).forEach(function(k){ listTotal += ADJ[k].length; });
+  var matrixTotal = V * V;
+  listCountEl.textContent = listTotal + " entries";
+  matrixCountEl.textContent = matrixTotal + " cells";
+  var p = document.createElement("div"); p.className = "line";
+  p.innerHTML = "<b>Adjacency list:</b> 7 undirected edges each appear in 2 neighbor lists (once per endpoint) = 14 total entries stored, roughly proportional to E. <b>Adjacency matrix:</b> a fixed 6x6 = 36 cells no matter how many of the 7 edges exist -- most cells (36 - 14 = 22, since each undirected edge occupies 2 symmetric cells) would store 0.";
+  logEl.appendChild(p);
+})();
+
+/* ===== SECTION 3: BFS LAB ===== */
+(function(){
+  var canvas = document.getElementById("bfs-canvas");
+  var queueEl = document.getElementById("bfs-queue");
+  var visitedSetEl = document.getElementById("bfs-visited-set");
+  var orderEl = document.getElementById("bfs-order");
+  var logEl = document.getElementById("bfs-log");
+  var stepBtn = document.getElementById("bfs-step");
+  var resetBtn = document.getElementById("bfs-reset");
+
+  var queue, visited, order, current, activeEdges, done, dequeueCount;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderState(){
+    var orderMap = {};
+    order.forEach(function(id, i){ orderMap[id] = i+1; });
+    renderGraph(canvas, {
+      inqueue: new Set(queue),
+      visited: new Set(order),
+      current: current,
+      activeEdges: activeEdges,
+      orderMap: orderMap
+    });
+    queueEl.innerHTML = queue.length ? queue.map(function(id){ return '<span class="fitem">'+id+'</span>'; }).join("") : '<span style="color:var(--ink-dim); font-size:0.8rem;">(empty)</span>';
+    visitedSetEl.innerHTML = order.length ? order.map(function(id){ return '<span class="fitem" style="border-color:var(--visited-c); color:var(--visited-c); background:rgba(127,216,160,0.08);">'+id+'</span>'; }).join("") : '<span style="color:var(--ink-dim); font-size:0.8rem;">(empty)</span>';
+    orderEl.innerHTML = "<b>Visit order: </b>" + (order.length ? order.join(", ") : "(not started)");
+  }
+
+  function reset(){
+    queue = ["A"];
+    visited = new Set(["A"]);
+    order = [];
+    current = null;
+    activeEdges = new Set();
+    done = false;
+    dequeueCount = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Next step ▸";
+    renderState();
+    log('<b>Start:</b> visited = {A}, queue = [A]. Click "Next step" to dequeue and process A.');
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(done){ reset(); return; }
+    if(queue.length === 0){ done = true; stepBtn.textContent = "Restart from top ▸"; log("<b>Queue is empty — BFS complete.</b> Final visit order: " + order.join(", ") + ". Total dequeues: " + dequeueCount + " (one per vertex, matching O(V))."); renderState(); return; }
+    var node = queue.shift();
+    dequeueCount++;
+    current = node;
+    order.push(node);
+    var newlyQueued = [];
+    ADJ[node].forEach(function(nb){
+      if(!visited.has(nb)){
+        visited.add(nb);
+        queue.push(nb);
+        activeEdges.add(node+"-"+nb);
+        newlyQueued.push(nb);
+      }
+    });
+    renderState();
+    log("<b>Dequeue " + node + "</b> (call #" + dequeueCount + ") — examine its neighbors [" + ADJ[node].join(", ") + "]. " + (newlyQueued.length ? "Newly discovered (marked visited, pushed to BACK of queue): " + newlyQueued.join(", ") + "." : "All neighbors already visited — nothing new queued."));
+    if(queue.length === 0){
+      done = true;
+      stepBtn.textContent = "Restart from top ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+
+/* ===== SECTION 4: DFS LAB (iterative, explicit stack) ===== */
+(function(){
+  var canvas = document.getElementById("dfs-canvas");
+  var stackEl = document.getElementById("dfs-stack");
+  var visitedSetEl = document.getElementById("dfs-visited-set");
+  var orderEl = document.getElementById("dfs-order");
+  var logEl = document.getElementById("dfs-log");
+  var stepBtn = document.getElementById("dfs-step");
+  var resetBtn = document.getElementById("dfs-reset");
+
+  var stack, visited, order, current, activeEdges, done, popCount;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderState(){
+    var orderMap = {};
+    order.forEach(function(id, i){ orderMap[id] = i+1; });
+    renderGraph(canvas, {
+      instack: new Set(stack),
+      visited: new Set(order),
+      current: current,
+      activeEdges: activeEdges,
+      orderMap: orderMap
+    });
+    stackEl.innerHTML = stack.length ? stack.map(function(id){ return '<span class="fitem stack-item">'+id+'</span>'; }).join("") : '<span style="color:var(--ink-dim); font-size:0.8rem;">(empty)</span>';
+    visitedSetEl.innerHTML = order.length ? order.map(function(id){ return '<span class="fitem" style="border-color:var(--visited-c); color:var(--visited-c); background:rgba(127,216,160,0.08);">'+id+'</span>'; }).join("") : '<span style="color:var(--ink-dim); font-size:0.8rem;">(empty)</span>';
+    orderEl.innerHTML = "<b>Visit order: </b>" + (order.length ? order.join(", ") : "(not started)");
+  }
+
+  function reset(){
+    stack = ["A"];
+    visited = new Set();
+    order = [];
+    current = null;
+    activeEdges = new Set();
+    done = false;
+    popCount = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Next step ▸";
+    renderState();
+    log('<b>Start:</b> stack = [A], visited = {}. Click "Next step" to pop the top of the stack.');
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(done){ reset(); return; }
+    if(stack.length === 0){ done = true; stepBtn.textContent = "Restart from top ▸"; log("<b>Stack is empty — DFS complete.</b> Final visit order: " + order.join(", ") + ". Total pops: " + popCount + "."); renderState(); return; }
+    var node = stack.pop();
+    popCount++;
+    if(visited.has(node)){
+      current = node;
+      renderState();
+      log("<b>Pop " + node + "</b> (call #" + popCount + ") — already visited (it was pushed twice, once from each neighbor that discovered it before either got processed). Skip.");
+      if(stack.length === 0){ done = true; stepBtn.textContent = "Restart from top ▸"; }
+      return;
+    }
+    visited.add(node);
+    current = node;
+    order.push(node);
+    var pushed = [];
+    ADJ[node].slice().reverse().forEach(function(nb){
+      if(!visited.has(nb)){
+        stack.push(nb);
+        activeEdges.add(node+"-"+nb);
+        pushed.push(nb);
+      }
+    });
+    renderState();
+    log("<b>Pop " + node + "</b> (call #" + popCount + ") — mark visited, add to order. Push unvisited neighbors onto TOP of stack: " + (pushed.length ? pushed.join(", ") + " (next one popped will be " + pushed[pushed.length-1] + ")." : "none — dead end, will backtrack next step."));
+    if(stack.length === 0){
+      done = true;
+      stepBtn.textContent = "Restart from top ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+</script>
+</body>
+</html>

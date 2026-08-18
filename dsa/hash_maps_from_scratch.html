@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Hash Maps From Scratch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --bucket-c:#4fc3f7; --chain-c:#f2c14e; --probe-c:#c792ea; --collide-c:#ff6b6b; --accent:#ff8a65; --resize-c:#7fd8a0;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:21ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .desugar-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.85rem; flex-wrap:wrap;}
+  .dnode{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--bucket-c); color:var(--bucket-c); background:rgba(79,195,247,0.08);}
+  .darrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:var(--chain-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+  input.txtin{font-family:var(--mono); background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); border-radius:7px; padding:0.5rem 0.7rem; width:9rem; font-size:0.85rem;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* hash arithmetic display */
+  .hash-arith{font-family:var(--mono); font-size:1.0rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.3rem; margin:1rem 0; display:flex; align-items:center; gap:0.6rem; flex-wrap:wrap;}
+  .hash-arith .hv{color:var(--bucket-c); font-weight:700;}
+  .hash-arith .hop{color:var(--ink-dim);}
+  .hash-arith .hresult{color:var(--accent); font-weight:700; font-size:1.15rem;}
+
+  /* bucket array */
+  .bucket-row{display:flex; gap:0.5rem; flex-wrap:wrap; margin:1.2rem 0; align-items:flex-start;}
+  .bucket{border:2px solid var(--rule); border-radius:8px; min-width:74px; min-height:56px; background:var(--panel-2); display:flex; flex-direction:column; align-items:center; padding:0.4rem; transition:all .35s ease;}
+  .bucket.hit{border-color:var(--accent); box-shadow:0 0 0 3px rgba(255,138,101,0.25);}
+  .bucket.collided{border-color:var(--collide-c);}
+  .bucket-idx{font-family:var(--mono); font-size:0.66rem; color:var(--ink-dim); margin-bottom:0.3rem;}
+  .bucket-slot{font-family:var(--mono); font-size:0.72rem; padding:0.2rem 0.4rem; border-radius:5px; background:var(--panel); color:var(--ink-dim); margin:0.15rem 0;}
+  .bucket-slot.filled{background:rgba(79,195,247,0.14); color:var(--bucket-c); border:1px solid var(--bucket-c);}
+  .bucket-slot.chained{background:rgba(242,193,78,0.14); color:var(--chain-c); border:1px solid var(--chain-c);}
+  .bucket-slot.tombstone{background:rgba(255,107,107,0.1); color:var(--collide-c); border:1px dashed var(--collide-c); text-decoration:line-through;}
+  .chain-arrow{font-family:var(--mono); font-size:0.6rem; color:var(--ink-dim);}
+  .probe-path{font-family:var(--mono); font-size:0.68rem; color:var(--probe-c); margin-top:0.2rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .stat-row{display:flex; gap:1rem; flex-wrap:wrap; margin:1rem 0; font-family:var(--mono); font-size:0.85rem;}
+  .stat-card{border:1px solid var(--rule); border-radius:10px; padding:0.8rem 1.1rem; background:var(--panel); min-width:140px;}
+  .stat-card .num{font-size:1.3rem; color:var(--accent); font-weight:700;}
+  .stat-card .lbl{color:var(--ink-dim); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.4rem 0;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--chain-c);}
+  .dc-col.b{border-color:var(--probe-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.a h4{color:var(--chain-c);} .dc-col.b h4{color:var(--probe-c);}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.self{border-left-color:var(--resize-c); background:rgba(127,216,160,0.06);} .callout.self b{color:var(--resize-c);}
+  .callout.warn{border-left-color:var(--collide-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--collide-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATA STRUCTURES &amp; ALGORITHMS LAB · HASH MAPS FROM SCRATCH</div>
+  <h1>A hash map is an array wearing a disguise — the "magic" is just <em>arithmetic that turns a key into an index</em>.</h1>
+  <p class="lede">Every hash map is, underneath, a plain array (the "bucket array") plus a function that converts any key into an array index. This lab computes that arithmetic live — hash(key) % table_size, shown as real numbers — then deliberately forces two keys into the same bucket so you can watch a collision get resolved two different ways: chaining (a linked list per bucket) and open addressing (probing to the next free slot). Then it grows the table and re-hashes everything, and constructs a genuinely pathological input to show worst-case O(n) with your own eyes.</p>
+
+  <div class="desugar-hero">
+    <div class="dnode">hash("bob") = 2648...</div>
+    <div class="darrow">% table_size →</div>
+    <div class="dnode">index 3</div>
+    <div class="darrow">→</div>
+    <div class="dnode">bucket[3]</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="hashfunctions">1 · Hash Function Properties</a>
+  <a data-target="collisions">2 · Collisions: Chaining vs Open Addressing</a>
+  <a data-target="loadfactor">3 · Load Factor &amp; Resizing</a>
+  <a data-target="worstcase">4 · Why O(1) Average Degrades to O(n) Worst Case</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: HASH FUNCTIONS ============ -->
+<section id="hashfunctions">
+  <div class="kicker">01 — Turning anything into a number, reliably</div>
+  <h2>Hash function properties: deterministic, uniform distribution</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a coat-check counter at a huge venue with exactly 8 numbered racks. The attendant needs a rule for which rack to hang your coat on, using only your name — and that rule needs two properties: (1) if you come back later and give the same name, they need the SAME rack every time (otherwise they can never find your coat again), and (2) the rule shouldn't send everyone named with a common first letter to the same rack, or that one rack would be overflowing while others sit empty. Property 1 is <strong>determinism</strong>. Property 2 is <strong>uniform distribution</strong>.</p>
+
+  <p>A hash function takes a key (a string, a number, any hashable value) and produces an integer — the "hash code." A hash map then takes that integer <strong>modulo the table size</strong> to get an actual array index that's guaranteed to be in bounds. This lab uses a simple polynomial rolling hash for strings, the same basic idea Python, Java, and most languages use under the hood (with more sophistication for security and distribution quality):</p>
+
+  <div class="code">
+<span class="c-kw">def</span> <span class="c-fn">simple_hash</span>(key: <span class="c-fn">str</span>) -&gt; <span class="c-fn">int</span>:
+    h = 0
+    <span class="c-kw">for</span> ch <span class="c-kw">in</span> key:
+        h = h * 31 + <span class="c-fn">ord</span>(ch)         <span class="c-cmt"># 31 is a small prime — spreads bits well, cheap to compute</span>
+    <span class="c-kw">return</span> h
+
+<span class="c-kw">def</span> <span class="c-fn">bucket_index</span>(key: <span class="c-fn">str</span>, table_size: <span class="c-fn">int</span>) -&gt; <span class="c-fn">int</span>:
+    <span class="c-kw">return</span> <span class="c-fn">simple_hash</span>(key) % table_size    <span class="c-cmt"># modulo brings any integer into [0, table_size)</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>HASH A KEY LIVE — WATCH THE ARITHMETIC</span></div>
+    <div class="lookup-controls">
+      <input class="txtin" type="text" id="hf-key" value="bob" placeholder="type a key...">
+      <button class="btn" id="hf-compute">Compute hash ▸</button>
+    </div>
+    <div class="hash-arith" id="hf-arith">Type a key and click compute.</div>
+    <div class="log" id="hf-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Property</th><th>What it means</th><th>What breaks without it</th></tr>
+    <tr><td>Deterministic</td><td>Same key always produces the same hash, forever</td><td>You could insert a key and then be unable to find it again — lookups would be non-functional</td></tr>
+    <tr><td>Uniform distribution</td><td>Different keys spread evenly across the possible output range, minimizing keys landing in the same bucket</td><td>Poor distribution clusters many keys into few buckets, degrading those buckets toward O(n) lookups while others sit empty and unused</td></tr>
+    <tr><td>Fast to compute</td><td>O(length of key) — a small constant amount of work per character</td><td>If hashing itself were slow, it would defeat the purpose of an O(1)-average data structure</td></tr>
+  </table>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a hash function maps keys of arbitrary type to a fixed-size integer range, and a well-behaved one for hash-table use is deterministic (identical input always yields identical output) and approximately uniform (dissimilar keys are unlikely to map to the same bucket after taking the result modulo the table size). Cryptographic hash functions add a third property (irreversibility) that hash tables don't need; hash-table hash functions optimize purely for speed and distribution quality, not security.</div>
+</section>
+
+<!-- ============ SECTION 2: COLLISIONS ============ -->
+<section id="collisions">
+  <div class="kicker">02 — Two keys, one bucket — now what?</div>
+  <h2>Collision handling: chaining vs open addressing</h2>
+
+  <p><strong>Start here, before any code.</strong> Back at the coat check: no matter how good the attendant's rule is, with enough coats and only 8 racks, eventually two different people's names WILL map to the same rack — this is unavoidable once you have more possible keys than buckets (the pigeonhole principle, guaranteed, not just likely). The question is what the attendant does next. One option: hang a second coat on the SAME hook, so that rack now holds a little list of coats — this is <strong>chaining</strong>. Another option: if rack 3 is full, walk to rack 4, then rack 5, until an empty one is found — this is <strong>open addressing</strong>.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Chaining</h4>
+      <p>Each bucket holds a small linked list (or dynamic array) of ALL keys that hashed there. Insert: hash, then append to that bucket's list. Lookup: hash, then linearly scan that bucket's list for the matching key. Never "runs out of room" — buckets can grow arbitrarily, though a very long chain degrades that bucket's lookups toward O(chain length).</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Open addressing (linear probing)</h4>
+      <p>Every bucket holds AT MOST one key. On collision, probe forward (bucket+1, bucket+2, ... wrapping around) until an empty slot is found. Lookup: hash, then walk forward the same way, comparing keys, until you find a match or hit a genuinely empty slot (which means "not present"). Deletions need special handling — a "tombstone" marker, not a true empty slot, or probing chains would incorrectly break early.</p>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>CHAINING — FORCE A COLLISION AND WATCH THE LINKED LIST FORM</span>
+      <div><button class="btn" id="chain-step">Insert next key ▸</button> <button class="btn secondary" id="chain-reset">Reset (8 buckets)</button></div>
+    </div>
+    <p style="font-size:0.82rem; margin:0 0 0.6rem;">Inserting, in order: <code class="inline">bob</code>, <code class="inline">amy</code>, <code class="inline">cid</code>, <code class="inline">eva</code> — into an 8-bucket table. Watch which ones share a bucket.</p>
+    <div class="bucket-row" id="chain-buckets"></div>
+    <div class="log" id="chain-log"></div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>OPEN ADDRESSING — SAME KEYS, WATCH THE PROBE SEQUENCE</span>
+      <div><button class="btn" id="probe-step">Insert next key ▸</button> <button class="btn secondary" id="probe-reset">Reset (8 buckets)</button></div>
+    </div>
+    <p style="font-size:0.82rem; margin:0 0 0.6rem;">Same 4 keys, same 8-bucket table, same hash function — only the collision RESOLUTION strategy differs.</p>
+    <div class="bucket-row" id="probe-buckets"></div>
+    <div class="log" id="probe-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The exact moment of collision, in both labs above:</b> <code class="inline">bob</code> and <code class="inline">cid</code> both hash to the same bucket index in this 8-slot table. In the chaining lab, watch <code class="inline">cid</code> get appended into <code class="inline">bob</code>'s bucket as a second list entry — both fit, no relocation needed. In the open-addressing lab, watch <code class="inline">cid</code> get REJECTED from its natural bucket (already occupied by <code class="inline">bob</code>) and probe forward to the next empty slot instead — landing in a completely different physical location than its hash computed.</div>
+
+  <table class="cmp">
+    <tr><th></th><th>Chaining</th><th>Open addressing</th></tr>
+    <tr><td>Extra memory per bucket</td><td>Pointer/list overhead per bucket</td><td>None — just the array itself</td></tr>
+    <tr><td>Table can exceed capacity</td><td>Yes — chains just grow</td><td>No — must resize before the table fills up completely</td></tr>
+    <tr><td>Deletion</td><td>Simple — remove from the bucket's list</td><td>Tricky — needs tombstones, or probe chains break</td></tr>
+    <tr><td>Cache performance</td><td>Worse — chain nodes scattered in memory</td><td>Better — probing stays within the contiguous array</td></tr>
+  </table>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a <strong>collision</strong> occurs when two distinct keys hash to the same bucket index. <strong>Chaining</strong> resolves this by storing a secondary structure (typically a linked list) per bucket holding all colliding keys. <strong>Open addressing</strong> resolves it by probing according to a deterministic sequence (linear, quadratic, or double hashing) to find an alternative empty slot in the same array, requiring the table to always have free capacity and requiring tombstones (not true deletion) to keep probe sequences intact after a removal.</div>
+</section>
+
+<!-- ============ SECTION 3: LOAD FACTOR & RESIZING ============ -->
+<section id="loadfactor">
+  <div class="kicker">03 — When "mostly full" becomes a performance problem</div>
+  <h2>Load factor and resizing / rehashing</h2>
+
+  <p><strong>Start here, before any code.</strong> Back at the coat check one more time: with 8 racks and only 2 coats, collisions are rare — plenty of empty racks to spread out across. But once you're checking in your 30th coat with only 8 racks, EVERY new coat collides with something, chains get long, and finding any specific coat means checking racks (or scanning long lists) one by one. The venue's fix: get more racks, and re-sort every existing coat onto the new, bigger rack layout. That's exactly what a hash map's <strong>resize</strong> operation does.</p>
+
+  <p><strong>Load factor</strong> = (number of stored keys) / (number of buckets). Most hash map implementations resize (commonly doubling the bucket count) once load factor crosses a threshold — typically around 0.7. Resizing means allocating a bigger bucket array and <strong>re-hashing every existing key</strong> into it, because the modulo (<code class="inline">hash % table_size</code>) changes when table_size changes — a key's bucket index is NOT portable across different table sizes.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH LOAD FACTOR CLIMB, THEN TRIGGER A RESIZE</span>
+      <div><button class="btn" id="lf-insert">Insert next key ▸</button> <button class="btn secondary" id="lf-reset">Reset</button></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-card"><div class="num" id="lf-count">0</div><div class="lbl">keys stored</div></div>
+      <div class="stat-card"><div class="num" id="lf-size">4</div><div class="lbl">bucket count</div></div>
+      <div class="stat-card"><div class="num" id="lf-factor">0.00</div><div class="lbl">load factor</div></div>
+    </div>
+    <div class="bucket-row" id="lf-buckets"></div>
+    <div class="log" id="lf-log"></div>
+  </div>
+
+  <div class="callout warn"><b>Why re-hashing is unavoidable, not just "extra work":</b> a key's bucket index is <code class="inline">hash(key) % table_size</code>. Change table_size from 4 to 8, and nearly every key's index changes too (e.g. hash=13: 13%4=1, but 13%8=5 — a completely different bucket). There is no way to "keep the old positions" after a resize — every single existing key must be re-inserted into the new, larger array. This is exactly why resize is an O(n) operation (touching all n existing keys) even though any INDIVIDUAL insert is normally O(1) — but because resizes happen rarely (only when crossing the threshold, and each resize roughly doubles capacity), the COST of resizing, spread out ("amortized") over all the inserts that happen between resizes, still averages out to O(1) per insert.</div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> load factor is the ratio of stored elements to bucket count, and it is the key signal for when to resize a hash table — as it approaches 1 (or a configured threshold below 1), collision frequency and chain/probe length grow, degrading average-case performance. Resizing allocates a larger bucket array (commonly double the size) and re-hashes every existing key into it, since bucket indices are a function of table size and are not preserved across a resize. Despite resizing being O(n), the amortized cost per insertion across the table's lifetime remains O(1), because resizes become exponentially less frequent as the table grows.</div>
+</section>
+
+<!-- ============ SECTION 4: WORST CASE ============ -->
+<section id="worstcase">
+  <div class="kicker">04 — Constructing the failure on purpose</div>
+  <h2>Why average-case O(1) degrades to worst-case O(n)</h2>
+
+  <p>Every complexity claim about hash maps — O(1) insert, lookup, delete — is an AVERAGE-case claim that assumes reasonably uniform distribution. It is possible to construct a pathological input where every single key collides into the same bucket, and this section builds exactly that, so the O(n) worst case isn't an abstract warning but something you can watch happen.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PATHOLOGICAL INPUT — EVERY KEY FORCED TO COLLIDE (CHAINING)</span>
+      <div><button class="btn" id="bad-step">Insert next key ▸</button> <button class="btn secondary" id="bad-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.82rem; margin:0 0 0.6rem;">These 5 keys were specifically chosen because <code class="inline">hash(key) % 8</code> is identical for all of them — every insert collides with everything already there.</p>
+    <div class="bucket-row" id="bad-buckets"></div>
+    <div class="log" id="bad-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Scenario</th><th>What happens to bucket 3's chain</th><th>Lookup cost for the last-inserted key</th></tr>
+    <tr><td>Well-distributed keys</td><td>Each bucket gets ~1 key on average (n keys / 8 buckets)</td><td>O(1) — scan a chain of length ~1</td></tr>
+    <tr><td>Pathological (all same bucket)</td><td>Every single key lands in ONE bucket — a chain of length n</td><td>O(n) — must scan the entire chain, exactly like a linked list search</td></tr>
+  </table>
+
+  <p>This is the mechanism, not just an assertion: with all n keys sharing one bucket, the hash table has degenerated into exactly one linked list wearing a hash-table costume. Lookup now means walking that one chain from the front, comparing keys one by one — indistinguishable in cost from searching an unsorted linked list. This is also precisely why some languages' hash-table implementations (e.g. Java's <code class="inline">HashMap</code> since Java 8) convert an unusually long chain into a balanced tree internally, capping this specific worst case at O(log n) instead of O(n) — a mitigation, not a full fix, since it only helps once a chain has already grown suspiciously long.</p>
+
+  <div class="callout warn"><b>Real-world relevance — hash flooding attacks:</b> if an attacker can predict or influence a service's hash function (e.g. a web server hashing form-parameter names into a dictionary), they can deliberately submit thousands of keys engineered to all collide, forcing every bucket lookup toward O(n) and effectively causing a denial-of-service through algorithmic complexity alone — no buffer overflow or memory exhaustion required, just degraded average case turned into guaranteed worst case. This is why many languages now randomize their hash seed per process (Python's <code class="inline">PYTHONHASHSEED</code>, for instance) — so an attacker can't predict which keys will collide without also knowing that process's random seed.</div>
+
+  <div class="callout self"><b>Interview-ready definition:</b> a hash table's O(1) average-case time complexity for insert/lookup/delete assumes keys are distributed roughly uniformly across buckets by the hash function. Worst-case O(n) arises when a hash function or an adversarially chosen input set causes many or all keys to collide into the same bucket, degenerating that bucket's chain (or open-addressing probe sequence) into a linear structure that must be scanned entirely — a failure mode independent of the table's average behavior and exploitable in security contexts if the hash function's collision behavior is predictable to an attacker.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Compute a hash by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">simple_hash</code> from section 1 (h = h*31 + ord(ch)), compute the hash of the 2-character key "ab" by hand (ord('a')=97, ord('b')=98), then compute its bucket index in a table of size 8.</p>
+    <details><summary>Show solution</summary><div class="solution">Start h = 0.
+Process 'a': h = 0*31 + 97 = 97
+Process 'b': h = 97*31 + 98 = 3007 + 98 = 3105
+
+hash("ab") = 3105
+
+Bucket index in an 8-slot table: 3105 % 8.
+3105 / 8 = 388.125, 388*8 = 3104, remainder = 3105 - 3104 = 1
+
+bucket_index("ab", 8) = 1</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Chaining vs open addressing trade-off</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A system needs to guarantee it never allocates memory unpredictably at insert-time (a hard real-time constraint), and deletions are extremely rare. Which collision strategy fits better, and which specific property of the OTHER strategy would violate the real-time constraint?</p>
+    <details><summary>Show solution</summary><div class="solution">Open addressing fits better here. Its collision resolution (probing to
+another slot in the SAME pre-allocated array) does not require any new
+memory allocation at insert time -- it's just arithmetic and array
+writes within already-reserved space.
+
+Chaining would violate the constraint: appending to a bucket's linked
+list (or growing a bucket's dynamic array) typically requires allocating
+a new node or reallocating the bucket's backing array, and allocation
+timing is exactly the kind of unpredictable-latency operation a hard
+real-time system needs to avoid. Since deletions are rare here, open
+addressing's usual weak point (tombstone bookkeeping on delete) barely
+matters, making it a clean fit on both counts.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Load factor and resize trigger</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A hash table has 6 buckets and a resize threshold of load factor 0.75. After inserting the 4th key (no deletions), does it resize? Show the load factor calculation, and state the new bucket count if a resize (doubling) is triggered.</p>
+    <details><summary>Show solution</summary><div class="solution">Load factor after 4th key = keys / buckets = 4 / 6 = 0.6667
+
+0.6667 < 0.75 (the threshold) -- no resize yet after the 4th key.
+
+It would resize after the 5th key: 5/6 = 0.8333, which crosses 0.75.
+At that point, doubling gives a new bucket count of 12, and all 5
+existing keys get re-hashed with % 12 instead of % 6 -- an O(5) = O(n)
+one-time cost for that resize, immediately followed by continued O(1)
+average-case inserts until the next threshold crossing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Why re-hashing can't be skipped</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A key K has hash(K) = 29. In a 4-bucket table, what index does it occupy? After resizing to 8 buckets, what index would it occupy? Explain concretely why simply copying K from its old array slot into the same-numbered slot in the new, bigger array would be incorrect.</p>
+    <details><summary>Show solution</summary><div class="solution">In a 4-bucket table: 29 % 4 = 1 (29 = 7*4 + 1) -- bucket 1.
+In an 8-bucket table: 29 % 8 = 5 (29 = 3*8 + 5) -- bucket 5.
+
+Simply copying K from old-slot-1 into new-slot-1 would be WRONG: K's
+correct home in an 8-bucket table is bucket 5, not bucket 1. If you
+naively preserved old slot numbers, a subsequent lookup for K would
+compute hash(K) % 8 = 5, look in bucket 5, find it empty, and incorrectly
+report K as not present -- even though it's sitting right there in
+bucket 1. This is exactly why resize must ITERATE every existing key and
+recompute hash(key) % new_table_size for each one individually, rather
+than just reallocating a bigger array and copying old contents over
+positionally.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Constructing a pathological worst case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain, in your own words, how an attacker who knows a server uses <code class="inline">simple_hash</code> from section 1 with a FIXED, non-randomized table size could deliberately degrade that server's hash map to O(n) per operation, and why randomizing the hash seed per process defends against this.</p>
+    <details><summary>Show solution</summary><div class="solution">If the attacker knows the exact hash function and the table size (or can
+infer it), they can offline-compute many candidate keys and select only
+the ones whose hash(key) % table_size all produce the SAME bucket index
+-- exactly like this lab's section 4 pathological example. Submitting a
+large batch of such keys (e.g. as form field names, JSON object keys, or
+URL query parameters that get inserted into a server-side hash map) forces
+every one of them into a single bucket's chain, so every subsequent
+lookup or insert touching that bucket costs O(chain length) = O(n)
+instead of the expected O(1) -- with enough colliding keys, this can
+consume enough CPU time per request to constitute a denial-of-service.
+
+Randomizing the hash seed per process means the attacker can no longer
+precompute colliding keys offline, because hash(key) now depends on a
+secret random value chosen fresh when the server process started --
+different every time the server restarts, and unknown to anyone outside
+the process. The SAME keys that collided against one seed will very
+likely NOT collide against a different random seed, which removes the
+attacker's ability to prepare a universal colliding key set in advance.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the two defining properties of a good hash function and why each one matters mechanically (not just "it should be good"), (2) trace through chaining and open addressing resolving the SAME collision and state one concrete trade-off between them, and (3) construct (in words) a small pathological example where every key collides, and explain why that degrades lookup to O(n)? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — hash maps from scratch.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+function simpleHash(key){
+  var h = 0;
+  for(var i=0;i<key.length;i++){
+    h = h * 31 + key.charCodeAt(i);
+  }
+  return h;
+}
+function bucketIndex(key, size){
+  var h = simpleHash(key);
+  return ((h % size) + size) % size;
+}
+
+/* ===== SECTION 1: LIVE HASH ARITHMETIC ===== */
+(function(){
+  var keyInput = document.getElementById("hf-key");
+  var computeBtn = document.getElementById("hf-compute");
+  var arithEl = document.getElementById("hf-arith");
+  var logEl = document.getElementById("hf-log");
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  computeBtn.addEventListener("click", function(){
+    var key = keyInput.value;
+    if(!key){ return; }
+    var h = simpleHash(key);
+    var idx8 = bucketIndex(key, 8);
+    arithEl.innerHTML = 'hash("' + key + '") = <span class="hv">' + h + '</span> <span class="hop">then</span> ' + h + ' % 8 <span class="hop">=</span> <span class="hresult">bucket ' + idx8 + '</span>';
+    var steps = "h=0; ";
+    var running = 0;
+    for(var i=0;i<key.length;i++){
+      running = running * 31 + key.charCodeAt(i);
+      steps += "'" + key[i] + "'(" + key.charCodeAt(i) + "): h=" + (running - key.charCodeAt(i))/31 + "*31+" + key.charCodeAt(i) + "=" + running + "; ";
+    }
+    log("<b>Step-by-step for \"" + key + "\":</b> " + steps);
+    log("Final: hash(\"" + key + "\") = " + h + ", and " + h + " % 8 = " + idx8 + " — that's the bucket this key would land in for an 8-slot table.");
+  });
+
+  computeBtn.click();
+})();
+
+/* ===== SHARED BUCKET RENDERER ===== */
+function renderBucketsChaining(container, buckets, opts){
+  opts = opts || {};
+  container.innerHTML = "";
+  buckets.forEach(function(bucket, i){
+    var div = document.createElement("div");
+    div.className = "bucket" + (opts.hit === i ? " hit" : "") + (bucket.length > 1 ? " collided" : "");
+    var idxDiv = document.createElement("div");
+    idxDiv.className = "bucket-idx";
+    idxDiv.textContent = "[" + i + "]";
+    div.appendChild(idxDiv);
+    if(bucket.length === 0){
+      var empty = document.createElement("div");
+      empty.className = "bucket-slot";
+      empty.textContent = "empty";
+      div.appendChild(empty);
+    } else {
+      bucket.forEach(function(key, j){
+        if(j > 0){
+          var arrow = document.createElement("div");
+          arrow.className = "chain-arrow";
+          arrow.textContent = "↓ chained";
+          div.appendChild(arrow);
+        }
+        var slot = document.createElement("div");
+        slot.className = "bucket-slot " + (j === 0 ? "filled" : "chained");
+        slot.textContent = key;
+        div.appendChild(slot);
+      });
+    }
+    container.appendChild(div);
+  });
+}
+
+function renderBucketsOpenAddr(container, slots, opts){
+  opts = opts || {};
+  container.innerHTML = "";
+  slots.forEach(function(slot, i){
+    var div = document.createElement("div");
+    div.className = "bucket" + (opts.hit === i ? " hit" : "");
+    var idxDiv = document.createElement("div");
+    idxDiv.className = "bucket-idx";
+    idxDiv.textContent = "[" + i + "]";
+    div.appendChild(idxDiv);
+    var slotDiv = document.createElement("div");
+    if(slot === null){
+      slotDiv.className = "bucket-slot";
+      slotDiv.textContent = "empty";
+    } else if(slot === "TOMBSTONE"){
+      slotDiv.className = "bucket-slot tombstone";
+      slotDiv.textContent = "deleted";
+    } else {
+      slotDiv.className = "bucket-slot filled";
+      slotDiv.textContent = slot;
+    }
+    div.appendChild(slotDiv);
+    container.appendChild(div);
+  });
+}
+
+/* ===== SECTION 2a: CHAINING LAB ===== */
+(function(){
+  var keys = ["bob","amy","cid","eva"];
+  var bucketsEl = document.getElementById("chain-buckets");
+  var logEl = document.getElementById("chain-log");
+  var stepBtn = document.getElementById("chain-step");
+  var resetBtn = document.getElementById("chain-reset");
+  var SIZE = 8;
+  var buckets, idx;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    buckets = []; for(var i=0;i<SIZE;i++) buckets.push([]);
+    idx = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Insert next key ▸";
+    renderBucketsChaining(bucketsEl, buckets);
+    log("<b>Start:</b> " + SIZE + " empty buckets. Keys to insert in order: " + keys.join(", ") + ".");
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(idx >= keys.length){ reset(); return; }
+    var key = keys[idx];
+    var i = bucketIndex(key, SIZE);
+    var collided = buckets[i].length > 0;
+    buckets[i].push(key);
+    idx++;
+    renderBucketsChaining(bucketsEl, buckets, {hit:i});
+    log("<b>Insert \"" + key + "\":</b> hash(\"" + key + "\") % " + SIZE + " = " + i + ". " + (collided ? '<b style="color:var(--collide-c)">COLLISION</b> — bucket ' + i + ' already has a key. Append "' + key + '" to that bucket\'s chain (now length ' + buckets[i].length + ').' : "Bucket " + i + " was empty — placed directly."));
+    if(idx >= keys.length){ stepBtn.textContent = "Restart from top ▸"; log("<b>All keys inserted.</b> Bucket " + buckets.findIndex(function(b){return b.length>1;}) + " ended up with a chain of length " + Math.max.apply(null, buckets.map(function(b){return b.length;})) + " — that bucket's future lookups cost proportional to chain length, not O(1)."); }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+
+/* ===== SECTION 2b: OPEN ADDRESSING LAB ===== */
+(function(){
+  var keys = ["bob","amy","cid","eva"];
+  var bucketsEl = document.getElementById("probe-buckets");
+  var logEl = document.getElementById("probe-log");
+  var stepBtn = document.getElementById("probe-step");
+  var resetBtn = document.getElementById("probe-reset");
+  var SIZE = 8;
+  var slots, idx;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    slots = []; for(var i=0;i<SIZE;i++) slots.push(null);
+    idx = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Insert next key ▸";
+    renderBucketsOpenAddr(bucketsEl, slots);
+    log("<b>Start:</b> " + SIZE + " empty slots. Keys to insert in order: " + keys.join(", ") + ".");
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(idx >= keys.length){ reset(); return; }
+    var key = keys[idx];
+    var home = bucketIndex(key, SIZE);
+    var probes = [home];
+    var i = home;
+    while(slots[i] !== null && slots[i] !== "TOMBSTONE"){
+      i = (i + 1) % SIZE;
+      probes.push(i);
+    }
+    slots[i] = key;
+    idx++;
+    renderBucketsOpenAddr(bucketsEl, slots, {hit:i});
+    if(probes.length > 1){
+      log("<b>Insert \"" + key + "\":</b> home bucket = hash % " + SIZE + " = " + home + " — OCCUPIED. Probe sequence: " + probes.join(" → ") + ". Placed in slot " + i + " (" + (probes.length-1) + " probe" + (probes.length-1===1?"":"s") + " past its natural home).");
+    } else {
+      log("<b>Insert \"" + key + "\":</b> home bucket = hash % " + SIZE + " = " + home + " — empty, placed directly, no probing needed.");
+    }
+    if(idx >= keys.length){ stepBtn.textContent = "Restart from top ▸"; log("<b>All keys inserted.</b> Notice \"cid\" physically lives in a different slot than its own hash computed, purely because its home slot was taken — this is exactly why deleting a key mid-chain needs a tombstone: a true empty slot would wrongly tell a later lookup for \"cid\" to stop probing early."); }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+
+/* ===== SECTION 3: LOAD FACTOR & RESIZE LAB ===== */
+(function(){
+  var keySeq = ["k1","k2","k3","zeb","k5","k6","gronk","k8","florb","k10"];
+  var bucketsEl = document.getElementById("lf-buckets");
+  var logEl = document.getElementById("lf-log");
+  var stepBtn = document.getElementById("lf-insert");
+  var resetBtn = document.getElementById("lf-reset");
+  var countEl = document.getElementById("lf-count");
+  var sizeEl = document.getElementById("lf-size");
+  var factorEl = document.getElementById("lf-factor");
+  var THRESHOLD = 0.75;
+
+  var buckets, size, idx, count;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderStats(){
+    countEl.textContent = count;
+    sizeEl.textContent = size;
+    factorEl.textContent = (count/size).toFixed(2);
+  }
+
+  function reset(){
+    size = 4;
+    buckets = []; for(var i=0;i<size;i++) buckets.push([]);
+    idx = 0; count = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Insert next key ▸";
+    renderBucketsChaining(bucketsEl, buckets);
+    renderStats();
+    log("<b>Start:</b> 4 buckets, resize threshold = load factor " + THRESHOLD + " (doubles when crossed).");
+  }
+
+  function allKeys(){
+    var out = [];
+    buckets.forEach(function(b){ b.forEach(function(k){ out.push(k); }); });
+    return out;
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(idx >= keySeq.length){ reset(); return; }
+    var key = keySeq[idx];
+    var i = bucketIndex(key, size);
+    buckets[i].push(key);
+    count++; idx++;
+    renderBucketsChaining(bucketsEl, buckets, {hit:i});
+    renderStats();
+    var lf = count/size;
+    log("<b>Insert \"" + key + "\"</b> → bucket " + i + " (of " + size + "). Load factor now " + count + "/" + size + " = " + lf.toFixed(2) + ".");
+    if(lf > THRESHOLD){
+      var existing = allKeys();
+      var newSize = size * 2;
+      var newBuckets = []; for(var j=0;j<newSize;j++) newBuckets.push([]);
+      existing.forEach(function(k){
+        var ni = bucketIndex(k, newSize);
+        newBuckets[ni].push(k);
+      });
+      log('<b style="color:var(--resize-c);">RESIZE TRIGGERED</b> — load factor ' + lf.toFixed(2) + ' exceeded threshold ' + THRESHOLD + '. Doubling bucket count from ' + size + ' to ' + newSize + ', and RE-HASHING all ' + existing.length + ' existing keys (an O(n) pass) because hash % ' + size + ' and hash % ' + newSize + ' generally give different indices.');
+      size = newSize;
+      buckets = newBuckets;
+      renderBucketsChaining(bucketsEl, buckets);
+      renderStats();
+    }
+    if(idx >= keySeq.length){ stepBtn.textContent = "Restart from top ▸"; }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+
+/* ===== SECTION 4: PATHOLOGICAL WORST CASE LAB ===== */
+(function(){
+  // Constructed so all keys land in the same bucket of an 8-slot table.
+  var SIZE = 8;
+  var candidates = ["aa","bF","c$","d5","e#","f!","gZ","hQ","iN","jM","kL","lK","mJ","nI","oH"];
+  var target = null;
+  var targetBucket = null;
+  var keys = [];
+  for(var c=0;c<candidates.length && keys.length<5;c++){
+    var b = bucketIndex(candidates[c], SIZE);
+    if(target === null){ target = candidates[c]; targetBucket = b; keys.push(candidates[c]); }
+    else if(b === targetBucket){ keys.push(candidates[c]); }
+  }
+  // Fallback: if fewer than 5 found naturally, brute-force search short strings.
+  if(keys.length < 5){
+    keys = [];
+    targetBucket = null;
+    outer:
+    for(var len=1; len<=3; len++){
+      for(var code=97; code<123 && keys.length<5; code++){
+        var k = String.fromCharCode(code) + (len>1?"x":"");
+        var bi = bucketIndex(k, SIZE);
+        if(targetBucket === null){ targetBucket = bi; }
+        if(bi === targetBucket){ keys.push(k); }
+        if(keys.length>=5) break outer;
+      }
+    }
+  }
+
+  var bucketsEl = document.getElementById("bad-buckets");
+  var logEl = document.getElementById("bad-log");
+  var stepBtn = document.getElementById("bad-step");
+  var resetBtn = document.getElementById("bad-reset");
+  var buckets, idx;
+
+  function log(html){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = html;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    buckets = []; for(var i=0;i<SIZE;i++) buckets.push([]);
+    idx = 0;
+    logEl.innerHTML = "";
+    stepBtn.textContent = "Insert next key ▸";
+    renderBucketsChaining(bucketsEl, buckets);
+    log("<b>Pathological key set:</b> " + keys.join(", ") + " — every single one hashes to bucket " + targetBucket + " in this " + SIZE + "-slot table. Watch what happens to lookup cost as they all pile into one chain.");
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(idx >= keys.length){ reset(); return; }
+    var key = keys[idx];
+    var i = bucketIndex(key, SIZE);
+    buckets[i].push(key);
+    idx++;
+    renderBucketsChaining(bucketsEl, buckets, {hit:i});
+    log("<b>Insert \"" + key + "\":</b> hash % " + SIZE + " = " + i + " — same bucket as every previous key. Chain length now " + buckets[i].length + ". A lookup for the key inserted just now would have to scan past all " + (buckets[i].length-1) + " earlier entries first if it were the OLDEST key, or (for THIS key, just inserted) is found immediately — but the OLDEST key in this chain now costs " + buckets[i].length + " comparisons to find, not O(1).");
+    if(idx >= keys.length){
+      stepBtn.textContent = "Restart from top ▸";
+      log("<b>Final state:</b> one bucket holds all " + keys.length + " keys as a single chain, and every other bucket is empty. Looking up the FIRST key ever inserted (\"" + keys[0] + "\") now requires scanning all " + keys.length + " entries in the worst case (if it were last in the chain) — this bucket behaves exactly like an O(n) linked list, not an O(1) hash table, purely because every key was engineered to collide.");
+    }
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+</script>
+</body>
+</html>
