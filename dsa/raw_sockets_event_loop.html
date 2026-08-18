@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Raw Sockets &amp; the Selectors Event Loop</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --sock-c:#4fc3f7; --select-c:#f2c14e; --dispatch-c:#7fd8a0; --block-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:21ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .loop-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.7rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .lh-box{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid var(--sock-c); color:var(--sock-c); background:rgba(79,195,247,0.08);}
+  .lh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.82rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* blocking vs non-blocking comparison */
+  .block-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.block-compare{grid-template-columns:1fr;}}
+  .block-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .block-col.bad{border-color:var(--block-c);}
+  .block-col.good{border-color:var(--dispatch-c);}
+  .block-col h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .block-col.bad h4{color:var(--block-c);} .block-col.good h4{color:var(--dispatch-c);}
+
+  /* register/wait/dispatch loop visualization */
+  .selector-stage{display:flex; gap:1.5rem; align-items:flex-start; flex-wrap:wrap; margin:1.2rem 0;}
+  .selector-core{width:150px; height:150px; border-radius:16px; border:3px solid var(--select-c); background:rgba(242,193,78,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.72rem; color:var(--select-c); text-align:center; flex-shrink:0; transition:all .3s; padding:0.6rem;}
+  .selector-core .sc-state{font-size:0.9rem; color:var(--ink); margin-top:0.4rem; font-weight:700;}
+  .selector-core.polling{animation:poll-glow 1s ease infinite;}
+  @keyframes poll-glow{0%,100%{box-shadow:0 0 0 0 rgba(242,193,78,0.4);} 50%{box-shadow:0 0 0 14px rgba(242,193,78,0);}}
+  .conn-list{flex:1; min-width:260px; display:flex; flex-direction:column; gap:0.5rem;}
+  .conn-item{display:flex; align-items:center; gap:0.7rem; padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.76rem; transition:all .3s;}
+  .conn-item.ready{border-color:var(--select-c); background:rgba(242,193,78,0.12);}
+  .conn-item.dispatched{border-color:var(--dispatch-c); background:rgba(127,216,160,0.12); transform:scale(1.02);}
+  .conn-item.registered{opacity:0.7;}
+  .conn-status{margin-left:auto; font-size:0.68rem; padding:0.2rem 0.5rem; border-radius:10px; background:var(--panel);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--sock-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--sock-c);}
+  .callout.survival{border-left-color:var(--select-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--select-c);}
+  .callout.checkpoint{border-left-color:var(--dispatch-c); background:rgba(127,216,160,0.08);}
+  .callout.checkpoint b{color:var(--dispatch-c);}
+  .callout.checkpoint ul{margin:0.6rem 0 0; padding-left:1.3rem;}
+  .callout.checkpoint li{margin:0.4rem 0;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DSA / SURVIVAL EXERCISE · RAW SOCKETS &amp; THE SELECTORS EVENT LOOP</div>
+  <h1>Underneath asyncio's syntax sugar is exactly <em>this</em>: a loop asking sockets "got anything for me?"</h1>
+  <p class="lede">Every event loop — asyncio's included — is built on the same three-step idea: register file descriptors you care about, block efficiently until the OS says one of them is ready, then dispatch to the right handler. This lab builds that loop from scratch with Python's <code class="inline">selectors</code> module and a real, runnable TCP echo server that handles many clients without a thread per connection.</p>
+
+  <div class="loop-hero">
+    <div class="lh-box">register(socket, EVENT_READ)</div>
+    <div class="lh-arrow">⟶</div>
+    <div class="lh-box">selector.select() blocks until ready</div>
+    <div class="lh-arrow">⟶</div>
+    <div class="lh-box">dispatch to that socket's handler</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="blockingsockets">1 · Blocking vs Non-Blocking Sockets</a>
+  <a data-target="selectors">2 · select / selectors</a>
+  <a data-target="loopstructure">3 · The Event Loop Structure</a>
+  <a data-target="echoserver">4 · A Real Selectors Echo Server</a>
+  <a data-target="asyncioconnection">5 · How This Becomes asyncio</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 6 survival exercise:</b> the roadmap's checkpoint for this exercise reads: <em>"Async TCP server (select/selectors) handles 50+ concurrent connections without blocking."</em> Everything below builds toward that directly — by the end of this lab you'll have a complete, runnable echo server built on <code class="inline">selectors</code> that does exactly this, and you should be able to explain every line of it without notes.</div>
+</div>
+
+<!-- ============ SECTION 1: BLOCKING VS NON-BLOCKING ============ -->
+<section id="blockingsockets">
+  <div class="kicker">01 — The fundamental choice a socket makes</div>
+  <h2>Blocking vs. non-blocking sockets</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine calling a friend and asking a question, then just standing there silently with the phone to your ear until they answer — you can't do anything else at all while you wait, even if the call takes ten minutes. That's a blocking call. Now imagine instead you leave a voicemail and hang up, going about your day, and simply check back periodically (or get a notification) when they've actually replied. That's non-blocking: the "waiting" doesn't consume your ability to do anything else in the meantime.</p>
+
+  <p>A <strong>blocking socket</strong> is Python's default: calling <code class="inline">sock.recv()</code> or <code class="inline">sock.accept()</code> on it halts your entire thread until data actually arrives (or a connection actually comes in) — that thread can do nothing else during the wait. A <strong>non-blocking socket</strong> (set via <code class="inline">sock.setblocking(False)</code>) makes those same calls return immediately: if there's data, you get it; if there isn't, the call raises an exception (or returns a sentinel) telling you "nothing's ready yet, don't wait for me, go check on something else."</p>
+
+  <div class="block-compare">
+    <div class="block-col bad">
+      <h4>✗ Blocking: one connection at a time</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">import</span> socket
+
+server = socket.socket()
+server.bind((<span class="c-str">"0.0.0.0"</span>, <span class="c-num">9000</span>))
+server.listen()
+
+<span class="c-kw">while</span> <span class="c-kw">True</span>:
+    conn, addr = server.accept()  <span class="c-cmt"># BLOCKS here until
+                                   # someone connects</span>
+    data = conn.recv(<span class="c-num">1024</span>)     <span class="c-cmt"># BLOCKS here until
+                                   # that client sends data
+                                   # — no OTHER client can
+                                   # be served meanwhile!</span>
+      </div>
+    </div>
+    <div class="block-col good">
+      <h4>✓ Non-blocking: never gets stuck on one</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">import</span> socket
+
+server = socket.socket()
+server.setblocking(<span class="c-kw">False</span>)
+server.bind((<span class="c-str">"0.0.0.0"</span>, <span class="c-num">9000</span>))
+server.listen()
+
+<span class="c-cmt"># accept() and recv() now return
+# immediately, raising BlockingIOError
+# if nothing is ready — but checking
+# EVERY socket in a tight loop wastes
+# CPU. We need a smarter way to know
+# WHICH socket is ready. That's next.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> a blocking socket call suspends the calling thread until the operation can complete (data arrives, a connection is accepted, a buffer drains), making that thread unavailable for any other work during the wait. A non-blocking socket call returns immediately regardless of readiness, signaling "not ready yet" rather than waiting, which allows a single thread to juggle many sockets — but only if paired with an efficient way to know which sockets have actually become ready, rather than busy-polling every socket in a loop.</div>
+</section>
+
+<!-- ============ SECTION 2: SELECT/SELECTORS ============ -->
+<section id="selectors">
+  <div class="kicker">02 — The efficient "who's ready?" mechanism</div>
+  <h2>What select / selectors actually does</h2>
+
+  <p><strong>Start here, before any code.</strong> Back to the phone analogy: instead of checking every single friend's phone one by one to see if any of them replied (wasteful, especially with hundreds of friends), imagine a single receptionist who watches ALL the phone lines at once and can tell you instantly, the moment any of them lights up, exactly which ones need attention right now — and who does this waiting efficiently, without spinning through and checking each line individually a thousand times a second.</p>
+
+  <p>That's what <code class="inline">select()</code> (and Python's higher-level <code class="inline">selectors</code> module wrapping it) does: it hands the operating system a set of socket file descriptors you care about, and blocks — efficiently, at the OS level, costing essentially nothing while genuinely idle — until at least one of them becomes ready for the operation you asked about (readable, writable). It then hands back exactly which ones are ready, so your program only touches sockets that actually have something to do. This is the entire trick that lets one thread monitor thousands of connections without a thread per connection and without wastefully polling each one in a spin loop.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> selectors
+
+sel = selectors.DefaultSelector()          <span class="c-cmt"># picks the best available mechanism for your OS
+                                            # (epoll on Linux, kqueue on BSD/macOS, select elsewhere)</span>
+
+sel.register(some_socket, selectors.EVENT_READ, data=<span class="c-str">"handler info"</span>)
+<span class="c-cmt"># "tell me when some_socket has data ready to read"</span>
+
+events = sel.select(timeout=<span class="c-kw">None</span>)   <span class="c-cmt"># BLOCKS here — efficiently — until ANYTHING registered is ready</span>
+<span class="c-kw">for</span> key, mask <span class="c-kw">in</span> events:
+    <span class="c-kw">print</span>(key.fileobj, <span class="c-str">"is ready!"</span>)  <span class="c-cmt"># only the sockets that are ACTUALLY ready show up here</span>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Piece</th><th>What it does</th></tr>
+    <tr><td><code>DefaultSelector()</code></td><td>Picks the most efficient readiness-notification mechanism your OS offers</td></tr>
+    <tr><td><code>sel.register(sock, EVENT_READ, data)</code></td><td>"I care about this socket becoming readable — remember this <code>data</code> for when it does"</td></tr>
+    <tr><td><code>sel.select(timeout)</code></td><td>Blocks (efficiently, at the OS level) until at least one registered socket is ready, then returns just those</td></tr>
+    <tr><td><code>sel.unregister(sock)</code></td><td>Stop monitoring a socket (e.g. a client disconnected)</td></tr>
+  </table>
+
+  <div class="callout def"><b>Interview-ready definition:</b> <code class="inline">select</code>/<code class="inline">selectors</code> provides a way to monitor multiple socket file descriptors for I/O readiness using a single blocking call, rather than requiring a dedicated thread per connection to block on each one individually. The call returns only the subset of registered sockets that are actually ready for the requested operation, letting a single thread efficiently manage a large number of connections by acting only where there's actually something to do.</div>
+</section>
+
+<!-- ============ SECTION 3: EVENT LOOP STRUCTURE ============ -->
+<section id="loopstructure">
+  <div class="kicker">03 — Register, wait, dispatch, repeat</div>
+  <h2>Event loop structure: the three-step cycle</h2>
+
+  <p>Every selectors-based event loop follows the exact same shape: <strong>register</strong> each socket you care about along with what you want to know about it (readable? writable?) and what to do when it's ready; <strong>wait</strong> via a single blocking call that the OS wakes you from the instant something is ready; <strong>dispatch</strong> to whichever handler function was registered for each ready socket. Then loop back to waiting again.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH REGISTER → WAIT → DISPATCH HANDLE MULTIPLE CLIENTS</span>
+      <div><button class="btn secondary" id="loop-reset">Reset</button></div>
+    </div>
+    <div class="selector-stage">
+      <div class="selector-core" id="loop-core">
+        <span>SELECTOR</span>
+        <span class="sc-state" id="loop-state">idle</span>
+      </div>
+      <div class="conn-list" id="loop-conns"></div>
+    </div>
+    <button class="btn" id="loop-run">Start the loop ▸</button>
+    <div class="log" id="loop-log"></div>
+  </div>
+
+  <div class="callout"><b>The key property this demonstrates:</b> notice that no single client connection ever blocks the others. A slow client that hasn't sent data yet just isn't in the "ready" set returned by <code class="inline">select()</code> — the loop is never sitting there waiting on that specific one; it just checks back next time around. This is exactly what lets one thread scale to handling 50, 500, or 50,000 connections gracefully.</div>
+</section>
+
+<!-- ============ SECTION 4: FULL ECHO SERVER ============ -->
+<section id="echoserver">
+  <div class="kicker">04 — A complete, runnable server</div>
+  <h2>A minimal selectors-based TCP echo server</h2>
+  <p>This is the actual survival exercise, in full: a complete, runnable TCP echo server using <code class="inline">selectors</code>. It accepts a new connection by registering the listening socket for <code class="inline">EVENT_READ</code>, and once a client connects, registers that client socket too — so the SAME loop and the SAME <code class="inline">select()</code> call handle both "a new client is connecting" and "an existing client sent data," dispatching to the right handler either way.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> selectors
+<span class="c-kw">import</span> socket
+
+sel = selectors.DefaultSelector()
+
+<span class="c-kw">def</span> <span class="c-fn">accept_connection</span>(sock):
+    conn, addr = sock.accept()                 <span class="c-cmt"># the listening socket is ready → a new client is waiting</span>
+    conn.setblocking(<span class="c-kw">False</span>)
+    <span class="c-kw">print</span>(f<span class="c-str">"Accepted connection from {addr}"</span>)
+    sel.register(conn, selectors.EVENT_READ, data=<span class="c-fn">handle_client</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">handle_client</span>(sock):
+    <span class="c-kw">try</span>:
+        data = sock.recv(<span class="c-num">1024</span>)               <span class="c-cmt"># safe to call now — we KNOW this socket is readable</span>
+    <span class="c-kw">except</span> ConnectionResetError:
+        data = <span class="c-kw">None</span>
+    <span class="c-kw">if</span> data:
+        sock.sendall(data)                     <span class="c-cmt"># echo it straight back</span>
+    <span class="c-kw">else</span>:
+        <span class="c-kw">print</span>(<span class="c-str">"Client disconnected"</span>)
+        sel.unregister(sock)                   <span class="c-cmt"># stop monitoring this one — it's gone</span>
+        sock.close()
+
+<span class="c-kw">def</span> <span class="c-fn">main</span>():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, <span class="c-num">1</span>)
+    server.bind((<span class="c-str">"0.0.0.0"</span>, <span class="c-num">9000</span>))
+    server.listen()
+    server.setblocking(<span class="c-kw">False</span>)
+    sel.register(server, selectors.EVENT_READ, data=<span class="c-fn">accept_connection</span>)
+    <span class="c-kw">print</span>(<span class="c-str">"Echo server listening on :9000 ..."</span>)
+
+    <span class="c-kw">try</span>:
+        <span class="c-kw">while</span> <span class="c-kw">True</span>:
+            events = sel.select(timeout=<span class="c-kw">None</span>)   <span class="c-cmt"># WAIT — blocks efficiently until something's ready</span>
+            <span class="c-kw">for</span> key, mask <span class="c-kw">in</span> events:
+                callback = key.data                <span class="c-cmt"># DISPATCH — the handler we registered for THIS socket</span>
+                callback(key.fileobj)
+    <span class="c-kw">except</span> KeyboardInterrupt:
+        <span class="c-kw">print</span>(<span class="c-str">"Shutting down."</span>)
+    <span class="c-kw">finally</span>:
+        sel.close()
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    <span class="c-fn">main</span>()
+
+<span class="c-cmt"># Run this, then open 50+ terminals with: nc localhost 9000
+# Every connection gets echoed instantly, none blocking any other —
+# all handled by ONE thread, ONE loop, ONE selector.</span>
+  </div>
+
+  <p>Notice the dispatch pattern: <code class="inline">key.data</code> holds whichever function was registered for that socket (<code class="inline">accept_connection</code> for the listening socket, <code class="inline">handle_client</code> for every connected client), so the loop body itself never needs an if/else on socket type — it just calls whatever was registered. This registered-callback dispatch pattern is the same idea used everywhere in event-driven systems, from GUI frameworks to asyncio itself.</p>
+</section>
+
+<!-- ============ SECTION 5: CONNECTION TO ASYNCIO ============ -->
+<section id="asyncioconnection">
+  <div class="kicker">05 — Closing the loop back to lab #3</div>
+  <h2>This IS what asyncio's event loop is built on</h2>
+
+  <p>Go back to the asyncio fundamentals lab's event loop: "picks a ready task, runs it until its next await, switches to another." Underneath that friendly <code class="inline">async</code>/<code class="inline">await</code> syntax, asyncio's default event loop is doing precisely the register/wait/dispatch cycle from this lab — when a coroutine awaits a socket read, asyncio registers that socket with a selector (the same <code class="inline">selectors</code> module, essentially), suspends the coroutine, and the loop's internals call <code class="inline">select()</code> to find out which sockets (and therefore which waiting coroutines) are ready to resume. asyncio adds scheduling for coroutines/Tasks, exception propagation, timers, and a much nicer syntax on top — but the readiness-polling core is the exact same idea you just built by hand.</p>
+
+  <table class="cmp">
+    <tr><th>This lab (raw selectors)</th><th>asyncio's equivalent</th></tr>
+    <tr><td><code>sel.register(sock, EVENT_READ, data=handler)</code></td><td>A coroutine does <code>await reader.read()</code> — asyncio registers the underlying socket for you</td></tr>
+    <tr><td><code>sel.select()</code> blocking wait</td><td>The event loop's internal call to the OS's readiness mechanism (also selectors-based by default on most platforms)</td></tr>
+    <tr><td>Dispatch: call <code>key.data(key.fileobj)</code></td><td>Dispatch: resume the specific paused coroutine whose await is now satisfied</td></tr>
+    <tr><td>You write the loop yourself</td><td>asyncio.run() drives an equivalent loop for you, plus Task scheduling, cancellation, and much more</td></tr>
+  </table>
+
+  <div class="callout def"><b>Interview-ready definition:</b> asyncio's event loop is, at its core, a readiness-polling loop built on the same register/wait/dispatch model as a hand-written <code class="inline">selectors</code> loop — sockets (and other event sources) are registered for readiness notification, a single blocking call waits efficiently until something is ready, and the loop dispatches to whichever coroutine or callback is waiting on that readiness event. asyncio's contribution on top is coroutine scheduling, structured cancellation, timers, and ergonomic async/await syntax — not a fundamentally different mechanism for detecting I/O readiness.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Blocking accept in a single-threaded server</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A single-threaded server calls <code class="inline">conn, addr = server.accept()</code> with a BLOCKING socket, then immediately calls <code class="inline">data = conn.recv(1024)</code>, also blocking, before looping back to <code class="inline">accept()</code> again. With 50 clients trying to connect, what actually happens?</p>
+    <details><summary>Show solution</summary><div class="solution">Only ONE client is served at a time, in strict sequence. The server
+accepts client #1, then blocks entirely on conn.recv() waiting for client
+#1 to send data — during this wait, it cannot accept client #2 at all,
+even though client #2 is sitting there ready to connect. Client #2 (and
+all the others) simply queue up waiting for the listening socket's backlog,
+un-served, until client #1's recv() finally returns. This is exactly the
+failure mode selectors-based non-blocking I/O is designed to eliminate.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · What select() actually returns</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You've registered 10 client sockets for EVENT_READ. At the moment you call <code class="inline">sel.select()</code>, only 2 of them currently have data waiting to be read. What does the call return, and what happens to the other 8?</p>
+    <details><summary>Show solution</summary><div class="solution">sel.select() returns a list containing just the 2 ready sockets (as
+(key, mask) pairs) — it does NOT return anything for the other 8, and
+crucially it does not error or block waiting on them either. The other 8
+sockets are simply not part of this particular return value; they'll show
+up in a future call to select() once (if) they become ready. This is
+precisely why the loop can serve 2 ready clients immediately without
+needing to know or care about the state of the other 8.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Why register the listening socket at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In the echo server code above, the listening socket itself is registered with the selector via <code class="inline">sel.register(server, selectors.EVENT_READ, data=accept_connection)</code>. Why does a socket that isn't even connected to a client need to be registered for EVENT_READ?</p>
+    <details><summary>Show solution</summary><div class="solution">For a listening socket, "readable" specifically means "a new incoming
+connection is waiting to be accepted" — the OS uses the same readiness
+signal (EVENT_READ) to mean two different things depending on the socket's
+role: for a connected client socket it means "there's data to recv()", for
+a listening socket it means "there's a pending connection to accept()".
+Registering it lets the SAME select() call and the SAME loop handle both
+"a brand new client wants in" and "an existing client sent data" uniformly
+— that uniformity is exactly what lets one small loop scale to many
+connections without special-casing the listening socket into a separate
+mechanism.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Handling disconnection</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In <code class="inline">handle_client</code>, what does it mean when <code class="inline">sock.recv(1024)</code> returns an empty bytes object <code class="inline">b""</code> rather than raising an exception, and why must the handler call <code class="inline">sel.unregister(sock)</code> in that case?</p>
+    <details><summary>Show solution</summary><div class="solution">An empty b"" from recv() on a readable socket is the TCP signal that the
+OTHER side has closed the connection cleanly (a FIN was received) — it is
+NOT "no data yet" (that case wouldn't have made the socket appear as ready
+in the first place). If the handler doesn't call sel.unregister(sock), the
+selector will keep including this now-dead socket in its readable set
+forever (a closed connection's socket typically keeps reporting as
+"readable" once it's received EOF), causing the loop to repeatedly call
+handle_client on a dead connection — wasted work at best, resource leaks
+(the socket object and its file descriptor never get released) at worst.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Selectors vs threading at 50 connections</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the reasoning from the "async I/O vs threading" systems lab, would a thread-per-connection design actually struggle at just 50 concurrent connections? Then explain why the selectors design handles 50 (and far more) without strain.</p>
+    <details><summary>Show solution</summary><div class="solution">No — 50 threads is not where thread-per-connection design actually
+struggles; at ~1-8MB per thread that's tens to a few hundred MB, entirely
+manageable on a typical server. The strain shows up at THOUSANDS of
+connections (the C10K regime), not 50. The roadmap's "50+ concurrent
+connections without blocking" checkpoint is really testing whether you
+understand the MECHANISM (register/wait/dispatch on a single thread with
+non-blocking sockets) works correctly and doesn't stall on any one
+connection — not whether 50 specifically requires this technique over
+threading. The selectors design handles 50 (and scales far beyond it)
+because each connection costs only a registered file descriptor entry in
+the selector — no dedicated OS thread, no per-connection stack, and no
+connection's slow/idle behavior blocks the loop's ability to service any
+other connection.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Tracing dispatch</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+events = sel.select(timeout=None)
+for key, mask in events:
+    callback = key.data
+    callback(key.fileobj)
+    </div>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain what <code class="inline">key.data</code> and <code class="inline">key.fileobj</code> each represent, and why this loop body never needs to check "is this the listening socket or a client socket?"</p>
+    <details><summary>Show solution</summary><div class="solution">key.fileobj is the actual socket object that became ready (whatever was
+passed to sel.register() as the first argument). key.data is whatever
+arbitrary value was attached to that registration via the data= parameter
+— in this server, always a HANDLER FUNCTION (accept_connection for the
+listening socket, handle_client for client sockets). The loop body never
+needs an if/else on socket type because the correct handler was already
+decided and attached back at registration time — the loop just calls
+whatever function was registered for whichever socket turned out to be
+ready. This registered-callback pattern is exactly what lets the loop stay
+generic and simple regardless of how many different kinds of sockets it's
+juggling.</div></details>
+  </div>
+
+  <div class="callout checkpoint">
+    <b>Month 1 Checkpoint — comprehensive self-test:</b> this exercise closes out Month 1. Before considering the month complete, the roadmap asks you to attempt all three of the following from memory, out loud, without notes:
+    <ul>
+      <li><strong>Write a decorator, a context manager, and a generator pipeline from memory.</strong> Not from a reference — actually write all three, cold. If any of the three feels shaky, that's a direct pointer back to the decorators/context-managers/comprehensions labs earlier this month.</li>
+      <li><strong>Explain tree rotations and hash collisions out loud.</strong> Say it in plain English first (the everyday-life analogy), then give the precise technical mechanism — the same two-layer structure every lab this month has used. If you can only do one layer, you're not done yet.</li>
+      <li><strong>Async TCP server (select/selectors) handles 50+ concurrent connections without blocking.</strong> This is exactly the echo server built in this lab — can you write it from scratch, explain every registration and every dispatch, and articulate precisely why no single slow connection can freeze the others?</li>
+    </ul>
+    If all three come out cleanly without hesitation or notes, Month 1 is genuinely done — not just "read," but load-bearing knowledge you can build on in Month 2. If any one of them wobbles, that's real signal about where to spend a bit more time before moving on.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — raw sockets &amp; the selectors event loop.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 3: REGISTER / WAIT / DISPATCH LOOP */
+(function(){
+  const runBtn = document.getElementById('loop-run');
+  const resetBtn = document.getElementById('loop-reset');
+  const coreEl = document.getElementById('loop-core');
+  const stateEl = document.getElementById('loop-state');
+  const connsEl = document.getElementById('loop-conns');
+  const logEl = document.getElementById('loop-log');
+
+  const clientDefs = [
+    { name: 'Client A', readyAt: [1, 3] },
+    { name: 'Client B', readyAt: [2] },
+    { name: 'Client C', readyAt: [1, 2, 4] },
+    { name: 'Client D', readyAt: [3] },
+  ];
+  let round = 0;
+  let running = false;
+  let maxRounds = 4;
+
+  function buildConns(){
+    connsEl.innerHTML = '';
+    clientDefs.forEach((c, i)=>{
+      const item = document.createElement('div');
+      item.className = 'conn-item registered';
+      item.id = 'loop-conn-'+i;
+      item.innerHTML = `<span>${c.name} (registered, EVENT_READ)</span><span class="conn-status" id="loop-status-${i}">waiting</span>`;
+      connsEl.appendChild(item);
+    });
+  }
+  buildConns();
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function runRound(){
+    round++;
+    if(round > maxRounds){
+      stateEl.textContent = 'done';
+      coreEl.classList.remove('polling');
+      log('<b>Loop finished this demo.</b> Notice: at no point did a not-yet-ready client block the loop from servicing a ready one.');
+      running = false;
+      return;
+    }
+    stateEl.textContent = 'select()...';
+    coreEl.classList.add('polling');
+    document.querySelectorAll('.conn-item').forEach(el=>{
+      el.classList.remove('ready','dispatched');
+    });
+    log(`<b>Round ${round}: sel.select() blocks...</b> waiting for the OS to say something is ready.`);
+
+    setTimeout(()=>{
+      const readyIdx = [];
+      clientDefs.forEach((c, i)=>{
+        if(c.readyAt.includes(round)) readyIdx.push(i);
+      });
+      if(readyIdx.length === 0){
+        log('<i>No sockets ready this round (simulated quiet moment) — select() would keep blocking in reality.</i>');
+        setTimeout(runRound, 700);
+        return;
+      }
+      stateEl.textContent = `${readyIdx.length} ready`;
+      readyIdx.forEach(i=>{
+        document.getElementById('loop-conn-'+i).classList.add('ready');
+        document.getElementById('loop-status-'+i).textContent = 'READY';
+      });
+      log(`<b>select() returns:</b> ${readyIdx.map(i=>clientDefs[i].name).join(', ')} ${readyIdx.length>1?'are':'is'} ready. Everyone else stays registered, untouched, no error.`);
+
+      readyIdx.forEach((i, order)=>{
+        setTimeout(()=>{
+          document.querySelectorAll('.conn-item').forEach(el=>el.classList.remove('dispatched'));
+          document.getElementById('loop-conn-'+i).classList.add('dispatched');
+          document.getElementById('loop-status-'+i).textContent = 'handling...';
+          log(`<b>Dispatch:</b> calling the registered handler for ${clientDefs[i].name} — recv() is now guaranteed to have data.`);
+          setTimeout(()=>{
+            document.getElementById('loop-status-'+i).textContent = 'waiting';
+            document.getElementById('loop-conn-'+i).classList.remove('ready','dispatched');
+          }, 400);
+        }, order*450);
+      });
+
+      setTimeout(()=>{ runRound(); }, readyIdx.length*450 + 500);
+    }, 600);
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    round = 0;
+    buildConns();
+    logEl.innerHTML = '';
+    log('<b>Loop starts.</b> All four clients registered for EVENT_READ. Watch select() only ever report the ones actually ready.');
+    setTimeout(runRound, 500);
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    running = false;
+    round = 0;
+    buildConns();
+    coreEl.classList.remove('polling');
+    stateEl.textContent = 'idle';
+    logEl.innerHTML = '<span class="line">Reset. Click Start to watch register/wait/dispatch handle multiple simulated clients.</span>';
+  });
+})();
+</script>
+</body>
+</html>

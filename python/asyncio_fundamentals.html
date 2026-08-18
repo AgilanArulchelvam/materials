@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Asyncio Fundamentals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --loop-c:#4fc3f7; --coro-c:#7fd8a0; --task-c:#f2c14e; --bad-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .loop-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.82rem; flex-wrap:wrap;}
+  .lh-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--loop-c); color:var(--loop-c); background:rgba(79,195,247,0.08);}
+  .lh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-dec{color:var(--task-c);}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:var(--bad-c);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* event loop task queue visualization */
+  .loop-stage{display:flex; gap:1.5rem; align-items:flex-start; flex-wrap:wrap; margin:1.2rem 0;}
+  .loop-core{width:130px; height:130px; border-radius:50%; border:3px solid var(--loop-c); background:rgba(79,195,247,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.72rem; color:var(--loop-c); text-align:center; flex-shrink:0; transition:all .3s;}
+  .loop-core.spinning{animation:spin-glow 1s ease infinite;}
+  @keyframes spin-glow{0%,100%{box-shadow:0 0 0 0 rgba(79,195,247,0.4);} 50%{box-shadow:0 0 0 12px rgba(79,195,247,0);}}
+  .loop-core .lc-current{font-size:0.85rem; color:var(--ink); margin-top:0.3rem; font-weight:700;}
+  .task-queue{flex:1; min-width:220px; display:flex; flex-direction:column; gap:0.5rem;}
+  .task-item{display:flex; align-items:center; gap:0.6rem; padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.78rem; transition:all .3s;}
+  .task-item.running{border-color:var(--task-c); background:rgba(242,193,78,0.12); transform:scale(1.02);}
+  .task-item.done{opacity:0.35; text-decoration:line-through;}
+  .task-item.waiting-io{border-color:var(--coro-c); background:rgba(127,216,160,0.08);}
+  .task-bar{flex:1; height:6px; background:var(--rule); border-radius:3px; overflow:hidden;}
+  .task-bar-fill{height:100%; background:var(--task-c); width:0%; transition:width .3s linear;}
+
+  /* blocking vs non-blocking comparison */
+  .block-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.block-compare{grid-template-columns:1fr;}}
+  .block-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .block-col.bad{border-color:var(--bad-c);}
+  .block-col.good{border-color:var(--coro-c);}
+  .block-col h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .block-col.bad h4{color:var(--bad-c);} .block-col.good h4{color:var(--coro-c);}
+  .frozen-indicator{font-family:var(--mono); font-size:0.72rem; padding:0.5rem 0.8rem; border-radius:6px; margin-top:0.7rem; text-align:center;}
+  .frozen-indicator.frozen{background:rgba(255,107,107,0.15); color:var(--bad-c); border:1px solid var(--bad-c);}
+  .frozen-indicator.free{background:rgba(127,216,160,0.15); color:var(--coro-c); border:1px solid var(--coro-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--loop-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--loop-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · ASYNCIO FUNDAMENTALS</div>
+  <h1>One thread, juggling many tasks, that <em>agree to take turns</em>.</h1>
+  <p class="lede">asyncio is cooperative multitasking on a single thread: every coroutine voluntarily hands control back at each <code class="inline">await</code>, and a single event loop decides who runs next. No GIL fight, no thread-switching overhead — but the entire model collapses the moment one coroutine forgets to yield and blocks everyone else.</p>
+
+  <div class="loop-hero">
+    <div class="lh-box">event loop picks a task</div>
+    <div class="lh-arrow">runs until await ⟶</div>
+    <div class="lh-box">yields control back</div>
+    <div class="lh-arrow">loop picks the next one ⟶</div>
+    <div class="lh-box">repeat</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="eventloop">1 · The Event Loop</a>
+  <a data-target="coroutines">2 · Coroutines, Tasks &amp; Futures</a>
+  <a data-target="blocking">3 · The Blocking-Call Trap</a>
+  <a data-target="scheduling">4 · Cooperative Scheduling, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: EVENT LOOP ============ -->
+<section id="eventloop">
+  <div class="kicker">01 — The single dispatcher</div>
+  <h2>The event loop: single-threaded, cooperative multitasking</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture one air-traffic controller managing many planes with a single radio. The controller never actually flies more than one radio conversation at once — but planes spend most of their time cruising on autopilot, not needing the radio at all. The controller's job is to notice the instant a plane needs attention, handle that one exchange quickly, then move on to whichever other plane needs something next. Nothing is happening in true parallel — there's one controller, one radio — but by never sitting idle waiting on any single plane, an enormous number of flights get managed smoothly by that one person.</p>
+
+  <p>The <strong>event loop</strong> is that controller. It runs on a single thread, and its entire job is to repeatedly ask "which of my registered tasks is ready to make progress right now?", run that task until it voluntarily pauses (at an <code class="inline">await</code>), then move to the next ready task. This is called <strong>cooperative multitasking</strong> because tasks aren't forcibly interrupted the way an OS scheduler interrupts threads — each coroutine has to voluntarily yield control back at an <code class="inline">await</code> point for anything else to get a turn. If it never awaits anything, it runs to completion uninterrupted, blocking the whole loop the entire time.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> asyncio
+
+<span class="c-kw">async</span> <span class="c-kw">def</span> <span class="c-fn">main</span>():
+    <span class="c-kw">print</span>(<span class="c-str">"start"</span>)
+    <span class="c-kw">await</span> asyncio.sleep(<span class="c-num">1</span>)   <span class="c-cmt"># yields control back to the loop for 1 second</span>
+    <span class="c-kw">print</span>(<span class="c-str">"end"</span>)
+
+asyncio.run(<span class="c-fn">main</span>())        <span class="c-cmt"># creates the event loop, runs main() on it, closes the loop when done</span>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the asyncio event loop is a single-threaded scheduler that manages a set of coroutines/tasks and repeatedly selects one that is ready to run, executes it until it suspends at an await expression (typically because it is waiting on I/O or another awaitable), and then resumes a different ready task — achieving concurrency through voluntary, cooperative yielding rather than preemptive OS-level thread or process scheduling.</div>
+</section>
+
+<!-- ============ SECTION 2: COROUTINES/TASKS/FUTURES ============ -->
+<section id="coroutines">
+  <div class="kicker">02 — The three building blocks</div>
+  <h2>Coroutines, Tasks, and Futures</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a coroutine as a recipe card — written instructions for something to do, but nobody is cooking yet just because the card exists. A Task is handing that recipe to an actual cook and saying "start on this now, I'll come check on it" — it's the recipe PLUS someone actively working through it concurrently with other cooks. A Future is simply a claim ticket for a dish that isn't ready yet — "come back later and I'll have your food," with no recipe attached at all, just a promise of an eventual result.</p>
+
+  <table class="cmp">
+    <tr><th>Concept</th><th>What it is</th></tr>
+    <tr><td><strong>Coroutine</strong></td><td>The result of calling an <code class="inline">async def</code> function — a paused, not-yet-started computation. Calling it does nothing until it's awaited or scheduled.</td></tr>
+    <tr><td><strong>Task</strong></td><td>A coroutine wrapped and scheduled to run concurrently on the event loop <em>right now</em>, via <code class="inline">asyncio.create_task()</code>. This is what lets multiple coroutines actually make interleaved progress instead of running one at a time in sequence.</td></tr>
+    <tr><td><strong>Future</strong></td><td>A lower-level object representing a result that doesn't exist yet — a placeholder that will eventually be filled in (or fail with an exception). A Task is actually a subclass of Future, specifically one driven by running a coroutine.</td></tr>
+  </table>
+
+  <div class="code">
+<span class="c-kw">async</span> <span class="c-kw">def</span> <span class="c-fn">fetch</span>(name, delay):
+    <span class="c-kw">await</span> asyncio.sleep(delay)
+    <span class="c-kw">return</span> f<span class="c-str">"{name} done"</span>
+
+<span class="c-kw">async</span> <span class="c-kw">def</span> <span class="c-fn">main</span>():
+    coro = <span class="c-fn">fetch</span>(<span class="c-str">"A"</span>, <span class="c-num">2</span>)              <span class="c-cmt"># just a coroutine object — nothing running yet</span>
+    task = asyncio.create_task(<span class="c-fn">fetch</span>(<span class="c-str">"B"</span>, <span class="c-num">2</span>))   <span class="c-cmt"># scheduled NOW — starts running concurrently</span>
+
+    result_a = <span class="c-kw">await</span> coro    <span class="c-cmt"># starts running coro only now, and waits for it</span>
+    result_b = <span class="c-kw">await</span> task    <span class="c-cmt"># task was ALREADY running this whole time — likely already done</span>
+  </div>
+
+  <p>This distinction matters enormously: awaiting a bare coroutine directly runs it to completion before moving to the next line — sequential. Wrapping it in <code class="inline">create_task()</code> first schedules it to start running concurrently with whatever else the loop is doing, and you only pay for the actual wait when you later <code class="inline">await</code> the task to collect its result.</p>
+</section>
+
+<!-- ============ SECTION 3: BLOCKING TRAP ============ -->
+<section id="blocking">
+  <div class="kicker">03 — The single most common asyncio bug</div>
+  <h2>Why awaiting a blocking call defeats the entire point</h2>
+
+  <p><strong>Start here, before any code.</strong> Back to the air-traffic controller: the entire system works because the controller only ever holds the radio for brief exchanges before releasing it. Now imagine the controller gets on the radio with one plane and, instead of a quick exchange, falls asleep holding the mic key down for ten minutes. Every other plane is now completely locked out — not because they aren't ready, but because the ONE controller, the shared resource everything depends on, is unavailable to anyone. This is exactly what a blocking call inside a coroutine does to the entire event loop.</p>
+
+  <div class="block-compare">
+    <div class="block-col bad">
+      <h4>✗ Accidentally blocking</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">import</span> time
+
+<span class="c-kw">async</span> <span class="c-kw">def</span> <span class="c-fn">broken</span>():
+    <span class="c-kw">print</span>(<span class="c-str">"working..."</span>)
+    time.sleep(<span class="c-num">3</span>)        <span class="c-cmt"># BLOCKS the OS thread —
+                        # never yields to the loop!</span>
+    <span class="c-kw">print</span>(<span class="c-str">"done"</span>)
+      </div>
+      <div class="frozen-indicator frozen">Every other coroutine is frozen for 3 full seconds — the single thread running the loop is stuck inside time.sleep(), unable to do anything else at all.</div>
+    </div>
+    <div class="block-col good">
+      <h4>✓ Correctly cooperative</h4>
+      <div class="code" style="margin:0;">
+<span class="c-kw">import</span> asyncio
+
+<span class="c-kw">async</span> <span class="c-kw">def</span> <span class="c-fn">fixed</span>():
+    <span class="c-kw">print</span>(<span class="c-str">"working..."</span>)
+    <span class="c-kw">await</span> asyncio.sleep(<span class="c-num">3</span>)  <span class="c-cmt"># YIELDS control back
+                        # to the loop for 3s</span>
+    <span class="c-kw">print</span>(<span class="c-str">"done"</span>)
+      </div>
+      <div class="frozen-indicator free">Other coroutines run freely during these 3 seconds — asyncio.sleep() hands control back to the loop instead of holding the thread hostage.</div>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH ONE BLOCKING COROUTINE FREEZE EVERYTHING ELSE</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-block="bad">time.sleep(3) — blocking</button>
+      <button class="chip" data-block="good">asyncio.sleep(3) — cooperative</button>
+    </div>
+    <button class="btn" id="block-run">Run 3 coroutines ▸</button>
+    <div class="task-queue" id="block-queue" style="margin-top:1rem;"></div>
+    <div class="log" id="block-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The rule this teaches:</b> inside an <code class="inline">async def</code>, anything that can block the thread (<code class="inline">time.sleep</code>, a synchronous <code class="inline">requests.get()</code>, heavy CPU work with no await points) freezes the ENTIRE event loop, not just that one coroutine — because there is only one thread, and it's now stuck. Always use the async-native equivalent (<code class="inline">asyncio.sleep</code>, an async HTTP client) or run genuinely blocking work in a separate thread/process via <code class="inline">asyncio.to_thread()</code> / an executor.</div>
+</section>
+
+<!-- ============ SECTION 4: COOPERATIVE SCHEDULING LIVE ============ -->
+<section id="scheduling">
+  <div class="kicker">04 — Watching the loop actually switch tasks</div>
+  <h2>A real cooperative-scheduling animation</h2>
+  <p>Three tasks, each with several <code class="inline">await</code> points. Watch the event loop pick one, run it to its next <code class="inline">await</code>, then switch — never running two at once, never leaving one to finish before checking on the others.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>THREE TASKS, ONE LOOP, COOPERATIVE HAND-OFFS</span>
+      <div><button class="btn secondary" id="loop-reset">Reset</button></div>
+    </div>
+    <div class="loop-stage">
+      <div class="loop-core" id="loop-core">
+        <span>EVENT LOOP</span>
+        <span class="lc-current" id="loop-current">idle</span>
+      </div>
+      <div class="task-queue" id="loop-tasks"></div>
+    </div>
+    <button class="btn" id="loop-run">Start the loop ▸</button>
+    <div class="log" id="loop-log"></div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Coroutine vs. running it</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+async def greet():
+    print("hello")
+
+g = greet()
+print(type(g))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">&lt;class 'coroutine'&gt;
+
+Calling greet() does NOT run the function body — "hello" is never printed.
+It creates a coroutine object, a paused computation waiting to be driven
+forward by await or by being scheduled as a Task. Only awaiting it (or
+running it via asyncio.run()) actually executes the body.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Sequential await vs create_task</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+import asyncio
+
+async def work(name, seconds):
+    await asyncio.sleep(seconds)
+    return name
+
+async def main():
+    a = await work("A", 2)
+    b = await work("B", 2)
+    return a, b
+
+# roughly how long does asyncio.run(main()) take?
+    </div>
+    <details><summary>Show solution</summary><div class="solution">Roughly 4 seconds.
+
+Each `await work(...)` runs that coroutine to completion before moving to
+the next line — this is sequential, not concurrent. work("A", 2) fully
+finishes (2s) before work("B", 2) even starts (another 2s) = 4s total.
+Using asyncio.create_task() for both BEFORE awaiting either would let them
+run concurrently, taking roughly 2s total instead.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Fixing the concurrency</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Rewrite the <code class="inline">main()</code> from Problem 2 so both calls to <code class="inline">work()</code> run concurrently instead of sequentially.</p>
+    <details><summary>Show solution</summary><div class="solution">async def main():
+    task_a = asyncio.create_task(work("A", 2))
+    task_b = asyncio.create_task(work("B", 2))
+    a = await task_a
+    b = await task_b
+    return a, b
+
+Both create_task() calls schedule their coroutines to start running
+immediately/concurrently. By the time we await task_a, task_b has already
+been running in the background too — both sleeps overlap, so the whole
+thing takes roughly 2 seconds instead of 4. (asyncio.gather(work("A", 2),
+work("B", 2)) achieves the same result more concisely.)</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Spotting the blocking bug</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+import time
+import asyncio
+
+async def fetch_data():
+    print("fetching...")
+    time.sleep(2)
+    return "data"
+
+async def heartbeat():
+    while True:
+        print("heartbeat")
+        await asyncio.sleep(0.5)
+
+async def main():
+    asyncio.create_task(heartbeat())
+    result = await fetch_data()
+    print(result)
+
+# What goes wrong here, concretely?
+    </div>
+    <details><summary>Show solution</summary><div class="solution">The heartbeat task never gets to print during fetch_data()'s 2-second
+"wait" — you'd expect ~4 heartbeat prints during that window, but you get
+ZERO, because time.sleep(2) blocks the entire single thread the event loop
+runs on. heartbeat()'s await asyncio.sleep(0.5) can only resume once the
+loop gets control back, and the loop can't do anything at all while stuck
+inside fetch_data()'s time.sleep(). The fix: replace time.sleep(2) with
+await asyncio.sleep(2) (if it's genuinely just a wait) or run the real
+blocking work via `await asyncio.to_thread(blocking_function)` so it
+executes on a separate thread instead of freezing the loop's thread.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Task vs Future</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain the relationship between a Task and a Future in one or two sentences — is a Task a kind of Future, or the other way around?</p>
+    <details><summary>Show solution</summary><div class="solution">A Task IS a kind of Future — asyncio.Task is a subclass of asyncio.Future.
+A plain Future is just a placeholder for a result that will show up later
+(often set manually by lower-level code, e.g. callback-based APIs). A Task
+is a Future that is specifically driven by running a coroutine on the event
+loop to completion, automatically resolving itself with that coroutine's
+return value (or exception) once it finishes.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Predicting scheduling order</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+import asyncio
+
+async def task(name, delay):
+    print(f"{name} start")
+    await asyncio.sleep(delay)
+    print(f"{name} end")
+
+async def main():
+    await asyncio.gather(
+        task("A", 1),
+        task("B", 0.5),
+    )
+
+# In what order do the four print statements appear?
+    </div>
+    <details><summary>Show solution</summary><div class="solution">A start
+B start
+B end
+A end
+
+asyncio.gather schedules both coroutines to start running essentially
+together. Both print their "start" message immediately (no await has
+happened yet in either), then both call await asyncio.sleep(...) and yield
+control back to the loop. B's 0.5s sleep finishes first, so "B end" prints
+before A's 1s sleep finishes and prints "A end". This ordering — both
+starts immediately, then completions in delay order — is a direct
+consequence of cooperative scheduling: nothing preempts A or B mid-flight,
+they only hand off control at their own await points.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly what "cooperative" means in cooperative multitasking and what would break that cooperation, (2) the concrete difference between a coroutine object, a Task, and a Future, and (3) construct your own example of a blocking call accidentally freezing an event loop and explain why, precisely? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — asyncio fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 3: BLOCKING VS COOPERATIVE */
+(function(){
+  const chips = document.querySelectorAll('#blocking .chip');
+  const runBtn = document.getElementById('block-run');
+  const queueEl = document.getElementById('block-queue');
+  const logEl = document.getElementById('block-log');
+  let mode = 'bad';
+  let running = false;
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function buildTasks(){
+    queueEl.innerHTML = '';
+    ['Coroutine A (the sleeper)', 'Coroutine B', 'Coroutine C'].forEach((name, i)=>{
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.id = 'block-task-'+i;
+      item.innerHTML = `<span style="min-width:170px;">${name}</span><div class="task-bar"><div class="task-bar-fill" id="block-fill-${i}"></div></div><span id="block-status-${i}" style="min-width:70px; text-align:right;">idle</span>`;
+      queueEl.appendChild(item);
+    });
+  }
+  buildTasks();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      if(running) return;
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.block;
+      buildTasks();
+      logEl.innerHTML = '';
+    });
+  });
+
+  function setFill(i, pct){
+    document.getElementById('block-fill-'+i).style.width = pct+'%';
+  }
+  function setStatus(i, text){
+    document.getElementById('block-status-'+i).textContent = text;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    buildTasks();
+    logEl.innerHTML = '';
+    if(mode === 'bad'){
+      log('<span class="err"><b>Coroutine A calls time.sleep(3):</b> this BLOCKS the single OS thread — the event loop cannot check on B or C at all during this time.</span>');
+      setStatus(0, 'BLOCKING');
+      document.getElementById('block-task-0').classList.add('running');
+      let t = 0;
+      const iv = setInterval(()=>{
+        t += 100;
+        setFill(0, Math.min(100, t/30));
+        if(t >= 3000){
+          clearInterval(iv);
+          setStatus(0, 'done');
+          document.getElementById('block-task-0').classList.remove('running');
+          document.getElementById('block-task-0').classList.add('done');
+          log('<b>3 seconds later:</b> A finally finishes. Only NOW can B and C even start — they were frozen out completely, not just delayed a little.');
+          [1,2].forEach((i, idx)=>{
+            setTimeout(()=>{
+              setStatus(i, 'running');
+              document.getElementById('block-task-'+i).classList.add('running');
+              setFill(i, 100);
+              setTimeout(()=>{
+                setStatus(i, 'done');
+                document.getElementById('block-task-'+i).classList.remove('running');
+                document.getElementById('block-task-'+i).classList.add('done');
+                if(i===2){ log('<b>Total time: ~3.4s.</b> B and C were completely starved during A\'s blocking sleep — no interleaving happened at all.'); running=false; }
+              }, 200);
+            }, idx*250);
+          });
+        }
+      }, 100);
+    } else {
+      log('<b>Coroutine A calls await asyncio.sleep(3):</b> this YIELDS control back to the loop immediately — B and C can run during A\'s wait.');
+      setStatus(0, 'waiting (I/O)');
+      document.getElementById('block-task-0').classList.add('waiting-io');
+      let t = 0;
+      setTimeout(()=>{ setStatus(1,'running'); document.getElementById('block-task-1').classList.add('running'); setFill(1, 100); }, 150);
+      setTimeout(()=>{ setStatus(1,'done'); document.getElementById('block-task-1').classList.remove('running'); document.getElementById('block-task-1').classList.add('done'); log('B ran to its own completion WHILE A was still sleeping — this is the interleaving that blocking sleep prevented above.'); }, 400);
+      setTimeout(()=>{ setStatus(2,'running'); document.getElementById('block-task-2').classList.add('running'); setFill(2, 100); }, 500);
+      setTimeout(()=>{ setStatus(2,'done'); document.getElementById('block-task-2').classList.remove('running'); document.getElementById('block-task-2').classList.add('done'); log('C also finished entirely during A\'s 3-second wait.'); }, 750);
+      const iv = setInterval(()=>{
+        t += 100;
+        setFill(0, Math.min(100, t/30));
+        if(t >= 3000){
+          clearInterval(iv);
+          setStatus(0, 'done');
+          document.getElementById('block-task-0').classList.remove('waiting-io');
+          document.getElementById('block-task-0').classList.add('done');
+          log('<b>A finally resumes and finishes too.</b> Total time: ~3.0s, not 3.0 + B + C stacked sequentially — the wait was shared, not wasted.');
+          running = false;
+        }
+      }, 100);
+    }
+  });
+})();
+
+/* SECTION 4: COOPERATIVE SCHEDULING SIMULATION */
+(function(){
+  const runBtn = document.getElementById('loop-run');
+  const resetBtn = document.getElementById('loop-reset');
+  const tasksEl = document.getElementById('loop-tasks');
+  const coreEl = document.getElementById('loop-core');
+  const currentEl = document.getElementById('loop-current');
+  const logEl = document.getElementById('loop-log');
+
+  // each task: list of "runs" (units of work) then an await point, repeated
+  const taskDefs = [
+    { name: 'Task 1: fetch_user()', steps: 3 },
+    { name: 'Task 2: fetch_orders()', steps: 2 },
+    { name: 'Task 3: fetch_prefs()', steps: 4 },
+  ];
+  let taskState = [];
+  let running = false;
+
+  function buildTasks(){
+    tasksEl.innerHTML = '';
+    taskState = taskDefs.map((t, i)=>({ ...t, progress: 0, done: false }));
+    taskDefs.forEach((t, i)=>{
+      const item = document.createElement('div');
+      item.className = 'task-item';
+      item.id = 'loop-task-'+i;
+      item.innerHTML = `<span style="min-width:180px;">${t.name}</span><div class="task-bar"><div class="task-bar-fill" id="loop-fill-${i}"></div></div><span id="loop-status-${i}" style="min-width:90px; text-align:right;">waiting turn</span>`;
+      tasksEl.appendChild(item);
+    });
+  }
+  buildTasks();
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function allDone(){ return taskState.every(t=>t.done); }
+
+  function pickNext(){
+    const candidates = taskState.filter(t=>!t.done);
+    if(candidates.length===0) return null;
+    return candidates[Math.floor(Math.random()*candidates.length)];
+  }
+
+  function tick(){
+    if(allDone()){
+      coreEl.classList.remove('spinning');
+      currentEl.textContent = 'all done';
+      log('<b>All tasks complete.</b> The loop never ran two tasks at once — it just never sat idle either, always picking up whichever task was ready to make progress next.');
+      running = false;
+      return;
+    }
+    const t = pickNext();
+    const idx = taskState.indexOf(t);
+    document.querySelectorAll('.task-item').forEach(el=>el.classList.remove('running'));
+    document.getElementById('loop-task-'+idx).classList.add('running');
+    currentEl.textContent = t.name.split(':')[0];
+    t.progress++;
+    document.getElementById('loop-status-'+idx).textContent = `step ${t.progress}/${t.steps}`;
+    document.getElementById('loop-fill-'+idx).style.width = (t.progress/t.steps*100)+'%';
+    log(`<b>Loop picks ${t.name}:</b> runs step ${t.progress} of ${t.steps}, then hits an await and yields back.`);
+    if(t.progress >= t.steps){
+      t.done = true;
+      document.getElementById('loop-task-'+idx).classList.remove('running');
+      document.getElementById('loop-task-'+idx).classList.add('done');
+      document.getElementById('loop-status-'+idx).textContent = 'done';
+      log(`<b>${t.name} finished</b> — removed from the ready set.`);
+    }
+    setTimeout(tick, 750);
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    buildTasks();
+    logEl.innerHTML = '';
+    coreEl.classList.add('spinning');
+    log('<b>Loop starts:</b> it will keep picking whichever task is ready, run it to its next await, then switch — watch the highlighted task change without ever running two at once.');
+    setTimeout(tick, 500);
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    running = false;
+    buildTasks();
+    coreEl.classList.remove('spinning');
+    currentEl.textContent = 'idle';
+    logEl.innerHTML = '<span class="line">Reset. Click Start to watch the loop cooperatively switch between three tasks.</span>';
+  });
+})();
+</script>
+</body>
+</html>

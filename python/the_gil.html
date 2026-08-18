@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — The GIL &amp; Concurrency</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --token-c:#f2c14e; --thread-c:#6ea8fe; --proc-c:#7fd8a0; --io-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .gil-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.82rem; flex-wrap:wrap;}
+  .gh-token{padding:0.6rem 1rem; border-radius:999px; border:1.5px solid var(--token-c); color:var(--token-c); background:rgba(242,193,78,0.1);}
+  .gh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* GIL token timeline */
+  .lane-group{display:flex; flex-direction:column; gap:0.7rem; margin:1.2rem 0;}
+  .lane{display:flex; align-items:center; gap:0.8rem;}
+  .lane-label{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); width:110px; flex-shrink:0;}
+  .lane-track{position:relative; flex:1; height:38px; background:var(--panel-2); border:1px solid var(--rule); border-radius:8px; overflow:hidden;}
+  .seg{position:absolute; top:0; bottom:0; border-radius:2px; transition:opacity .2s;}
+  .seg.running{background:var(--token-c); opacity:0.9;}
+  .seg.waiting{background:var(--ink-dim); opacity:0.25;}
+  .seg.io{background:var(--io-c); opacity:0.55;}
+  .seg.parallel{background:var(--proc-c); opacity:0.9;}
+  .lane-time{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); width:70px; text-align:right; flex-shrink:0;}
+  .timer-readout{font-family:var(--mono); font-size:0.85rem; margin-top:1rem; display:flex; gap:1.5rem; flex-wrap:wrap;}
+  .timer-readout .tm{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2);}
+  .timer-readout .tm b{color:var(--accent);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--token-c); background:rgba(242,193,78,0.06);} .callout.def b{color:var(--token-c);}
+  .callout.info{border-left-color:var(--thread-c); background:rgba(110,168,254,0.06);} .callout.info b{color:var(--thread-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · THE GLOBAL INTERPRETER LOCK</div>
+  <h1>Only <em>one thread</em> may touch Python objects at a time — no exceptions.</h1>
+  <p class="lede">The GIL is a single lock that every thread must hold before running any Python bytecode. It exists to protect the exact reference-counting machinery from the previous lab from getting corrupted by two threads racing to update the same object's refcount. That one fact explains why threading barely helps CPU-bound Python, why it helps I/O-bound Python enormously, and why multiprocessing exists at all.</p>
+
+  <div class="gil-hero">
+    <div class="gh-token">🔑 the GIL token</div>
+    <div class="gh-arrow">held by exactly one thread ⟶</div>
+    <div class="gh-token">runs Python bytecode</div>
+    <div class="gh-arrow">releases ⟶</div>
+    <div class="gh-token">next thread takes it</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="whatisgil">1 · What the GIL Is &amp; Why</a>
+  <a data-target="cpuvsio">2 · CPU-bound vs I/O-bound</a>
+  <a data-target="threadvsproc">3 · Threading vs Multiprocessing</a>
+  <a data-target="freethreaded">4 · Free-Threaded Builds (PEP 703)</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHAT IS THE GIL ============ -->
+<section id="whatisgil">
+  <div class="kicker">01 — One lock, guarding everything</div>
+  <h2>What the GIL is, and why it exists</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a single microphone at a crowded meeting, and a strict house rule: nobody may speak unless they are physically holding the microphone. Even if ten people all have something to say at once, only one voice actually comes out of the speakers at any given moment — the microphone itself is the bottleneck, by design. It isn't there because people can't talk simultaneously in principle; it's there because the sound system can only mix one clean signal at a time without garbling everything into noise.</p>
+
+  <p>The GIL — <strong>Global Interpreter Lock</strong> — is that microphone. It's a single mutex inside the CPython interpreter, and the rule is simple: no thread may execute Python bytecode unless it currently holds the GIL. Even on an 8-core machine running 8 Python threads, only one of them is ever actually running Python code at any given instant.</p>
+
+  <p>Why build it this way at all? Recall the previous lab: every object's refcount gets incremented and decremented constantly, by ordinary code, all the time. If two threads could run Python bytecode truly simultaneously, two threads could both try to increment (or one increment while another decrements) the <em>same</em> object's refcount at the exact same instant — a classic race condition. Depending on timing, an update could get lost, leaving the refcount permanently wrong: too high (a leak — the object never gets freed) or too low (freed too early, while something still needs it — a crash or corrupted memory). The GIL sidesteps this entire class of bug with a blunt but effective rule: only one thread ever touches Python objects (and their refcounts) at a time, full stop.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WITHOUT A GIL: TWO THREADS RACING ON ONE REFCOUNT</span></div>
+    <div class="code" style="margin:0;">
+<span class="c-cmt"># Thread 1 and Thread 2 both run this on the SAME shared object at once:</span>
+<span class="c-cmt"># refcount is currently 5</span>
+
+<span class="c-cmt"># Thread 1 reads refcount (5)         Thread 2 reads refcount (5)   ← both see 5!
+# Thread 1 computes 5 + 1 = 6         Thread 2 computes 5 + 1 = 6
+# Thread 1 writes 6                   Thread 2 writes 6</span>
+
+<span class="c-cmt"># Result: refcount = 6, but TWO increments actually happened.
+# The true count should be 7. One increment was silently lost — this is
+# exactly the kind of bug the GIL exists to make structurally impossible.</span>
+    </div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the Global Interpreter Lock is a mutex internal to CPython that must be held by a thread in order for that thread to execute Python bytecode or safely manipulate Python object internals such as reference counts. It serializes execution of Python code across threads within a single process, which prevents race conditions on CPython's non-thread-safe reference-counting and object-management internals, at the cost of preventing true parallel execution of Python bytecode on multiple CPU cores within that process.</div>
+</section>
+
+<!-- ============ SECTION 2: CPU vs IO ============ -->
+<section id="cpuvsio">
+  <div class="kicker">02 — Why the GIL matters differently depending on the workload</div>
+  <h2>CPU-bound vs. I/O-bound multithreading under the GIL</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture one cashier working two registers side by side. If both lines need the cashier actively ringing up items non-stop, alternating registers doesn't speed anything up — the cashier is still doing one thing at a time, just switching who benefits from that one thing moment to moment; the total number of items rung up per minute doesn't change. But if half of "checking someone out" is spent waiting for their card to process — time where the cashier is doing <em>nothing</em> — then the cashier absolutely can hop to the other register during that dead time and get real extra work done. The difference is entirely about whether the wait is a genuine wait (nothing useful the cashier could be doing) or continuous active work.</p>
+
+  <p>CPython's threads release the GIL periodically to give other threads a turn — either after running for a while, or, crucially, whenever a thread is about to block on something outside the interpreter (a network call, a disk read, <code class="inline">time.sleep()</code>). This single behavior explains both cases:</p>
+
+  <ul style="color:#cdd0d8; max-width:72ch;">
+    <li><strong>CPU-bound work</strong> (tight number-crunching loops, image processing, parsing) constantly wants the GIL back the instant it's released — threads just take turns holding the "microphone," and since only one is ever actually computing, total wall-clock time for N threads doing CPU work is roughly the same as (often slightly worse than) doing it all sequentially in one thread, due to the overhead of switching the GIL back and forth.</li>
+    <li><strong>I/O-bound work</strong> (network requests, file reads, database calls) releases the GIL <em>while waiting</em> on the operating system to finish the actual I/O — and during that wait, another thread can pick up the GIL and make real progress. Threading genuinely helps here: the waits overlap instead of stacking up.</li>
+  </ul>
+
+  <div class="lab">
+    <div class="lab-title"><span>SIMULATE 2 WORKERS DOING THE SAME TASK, 3 DIFFERENT WAYS</span>
+      <div><button class="btn secondary" id="gil-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="cpu">CPU-bound + threading</button>
+      <button class="chip" data-mode="io">I/O-bound + threading</button>
+      <button class="chip" data-mode="mp">CPU-bound + multiprocessing</button>
+    </div>
+    <div class="lane-group" id="gil-lanes"></div>
+    <button class="btn" id="gil-run">Run ▸</button>
+    <div class="timer-readout" id="gil-readout"></div>
+    <div class="log" id="gil-log"></div>
+  </div>
+
+  <div class="callout info"><b>The core rule of thumb:</b> threading in Python helps enormously when threads spend most of their time <em>waiting</em> (I/O-bound), and helps little-to-not-at-all when threads spend most of their time <em>computing</em> (CPU-bound) — because only one thread can compute at a time regardless of how many exist.</div>
+</section>
+
+<!-- ============ SECTION 3: THREADING VS MULTIPROCESSING ============ -->
+<section id="threadvsproc">
+  <div class="kicker">03 — Two different ways to get concurrency</div>
+  <h2>Threading vs. multiprocessing, given the GIL</h2>
+
+  <p>Multiprocessing sidesteps the GIL entirely rather than working around it — because the GIL belongs to a single interpreter <em>process</em>. Spin up multiple OS processes, and each one gets its own completely separate Python interpreter, its own memory space, and its own GIL. Nothing is shared, so nothing needs a lock to protect it from other processes — they genuinely run in parallel on separate CPU cores.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> multiprocessing <span class="c-kw">import</span> Process
+<span class="c-kw">from</span> threading <span class="c-kw">import</span> Thread
+
+<span class="c-kw">def</span> <span class="c-fn">crunch_numbers</span>():
+    <span class="c-kw">return</span> sum(i*i <span class="c-kw">for</span> i <span class="c-kw">in</span> range(<span class="c-num">10_000_000</span>))
+
+<span class="c-cmt"># Threads: share memory, but only one runs Python bytecode at a time (the GIL).
+# For CPU-bound crunch_numbers(), 4 threads ≈ same wall time as 1.</span>
+threads = [Thread(target=crunch_numbers) <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(<span class="c-num">4</span>)]
+
+<span class="c-cmt"># Processes: separate memory, separate interpreter, separate GIL each.
+# For CPU-bound crunch_numbers(), 4 processes ≈ 1/4 the wall time (up to core count).</span>
+procs = [Process(target=crunch_numbers) <span class="c-kw">for</span> _ <span class="c-kw">in</span> range(<span class="c-num">4</span>)]
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>Threading</th><th>Multiprocessing</th></tr>
+    <tr><td>Memory</td><td>Shared — same address space, easy to pass data around</td><td>Separate per process — data must be explicitly serialized and copied (pickling) to share</td></tr>
+    <tr><td>GIL impact</td><td>One shared GIL — no true parallel Python bytecode execution</td><td>Each process has its own GIL — genuine parallelism across cores</td></tr>
+    <tr><td>Best for</td><td>I/O-bound work: many concurrent waits (network calls, file/database I/O)</td><td>CPU-bound work: heavy computation that can be split across cores</td></tr>
+    <tr><td>Overhead</td><td>Cheap to start, low memory per thread</td><td>Heavier to start (new interpreter per process), more memory per worker</td></tr>
+    <tr><td>Communication</td><td>Direct — shared variables (careful: still need locks for shared mutable state)</td><td>Indirect — queues, pipes, or shared memory primitives</td></tr>
+  </table>
+
+  <div class="callout def"><b>Interview-ready definition:</b> given the GIL, threading provides concurrency (interleaved progress on multiple tasks) but not parallelism (simultaneous execution) for CPU-bound Python code, because only one thread can hold the GIL and execute bytecode at any instant. Multiprocessing achieves true parallelism for CPU-bound work by running entirely separate OS processes, each with its own independent Python interpreter and therefore its own independent GIL, at the cost of higher memory overhead and the need for explicit inter-process communication instead of shared memory.</div>
+</section>
+
+<!-- ============ SECTION 4: FREE-THREADED ============ -->
+<section id="freethreaded">
+  <div class="kicker">04 — What changes if you remove the lock</div>
+  <h2>--disable-gil and free-threaded builds (PEP 703)</h2>
+
+  <p>PEP 703 introduced an official, optional build of CPython (available starting around Python 3.13) that can run <strong>without the GIL</strong> — a "free-threaded" build. At a high level: since a single global lock is what made refcounting safe across threads, removing it means CPython needs a different, more fine-grained thread-safety mechanism for its internals (more sophisticated per-object or biased reference counting schemes, essentially trading one big lock for many smaller, faster ones). The payoff is that CPU-bound multithreading could finally get real parallelism within a single process, without needing multiprocessing's memory-copying overhead.</p>
+
+  <p>This is a genuinely large, ongoing change to CPython's internals — not a simple flag flip — and it comes with real costs: single-threaded performance can regress somewhat (the more careful, per-object thread-safety bookkeeping isn't free even when there's only one thread running), and the C-extension ecosystem (numpy, etc.) needs updates to be safe under free-threading. As of this writing it's an opt-in experimental build, not the default interpreter most people run.</p>
+
+  <div class="callout info"><b>Why this connects back to everything above:</b> free-threading doesn't change what threading vs. multiprocessing are for conceptually — I/O-bound work still overlaps waits, CPU-bound work still needs genuine parallelism to speed up. What changes is that, under a free-threaded build, threading itself could eventually deliver that CPU-bound parallelism too, closing part of the gap that used to require multiprocessing.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Why the GIL exists</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain in one or two sentences, using the refcounting lab from before, exactly what would go wrong in CPython's internals if the GIL were simply removed with nothing to replace it.</p>
+    <details><summary>Show solution</summary><div class="solution">Two threads could execute Python bytecode simultaneously and both try to
+increment or decrement the SAME object's refcount at the same instant. This
+is a classic read-modify-write race: both threads could read the same old
+value, compute the same new value, and one update gets silently lost — the
+refcount ends up wrong. A refcount that's too high leaks the object
+forever; one that's too low can free an object while something still
+references it, causing a crash or memory corruption. The GIL exists
+specifically to make this race structurally impossible by ensuring only one
+thread ever touches Python objects at a time.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Predict the speedup</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A function does pure CPU-bound math with no I/O and takes 4 seconds single-threaded. You run it on 4 threads simultaneously. Roughly how long does the whole thing take wall-clock, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Roughly 16 seconds total work still gets done (4 threads x 4 seconds each
+of CPU work), but since only one thread can hold the GIL and run bytecode
+at a time, the wall-clock time to finish ALL 4 is still roughly 16 seconds
+(possibly a bit worse due to GIL hand-off/context-switch overhead) — NOT
+4 seconds. Threading gives no real speedup for CPU-bound work under the
+GIL; each thread's 4 seconds of work still has to happen one at a time.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · I/O-bound speedup</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A function makes a network call that takes 2 seconds of pure waiting (no CPU work) and takes 2 seconds single-threaded. You run it on 4 threads simultaneously, each making its own independent network call. Roughly how long does the whole thing take wall-clock?</p>
+    <details><summary>Show solution</summary><div class="solution">Roughly 2 seconds total, not 8. Each thread releases the GIL the instant
+it starts waiting on the network (blocking I/O), so all 4 threads can be
+"waiting" on their own network calls at the same time — the waits overlap
+almost completely. Only the tiny slivers of actual Python bytecode (issuing
+the request, handling the response) are serialized by the GIL, and those
+are a small fraction of the 2 seconds compared to the wait itself.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing the right tool</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You need to (a) resize 10,000 images (pure CPU work, no I/O) as fast as possible, and (b) fetch 500 URLs from an API as fast as possible. Which concurrency approach fits each, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">(a) Image resizing: multiprocessing. It's CPU-bound, so you need genuine
+parallel execution across cores, which requires separate processes (each
+with its own GIL) — threading would give no real speedup here.
+
+(b) Fetching 500 URLs: threading (or asyncio) — this is I/O-bound. The
+threads spend almost all their time waiting on network responses, during
+which the GIL is released, so many requests can be "in flight" waiting
+simultaneously. Multiprocessing would work too but is needlessly heavy
+(500 processes would be wasteful) for what is fundamentally a waiting
+problem, not a computing problem.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Mixed workload</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A single task both makes a network call AND does meaningful CPU-bound parsing of the response. If you run many of these tasks concurrently with threading, which part benefits from the concurrency and which part doesn't?</p>
+    <details><summary>Show solution</summary><div class="solution">The network-call portion benefits — while one thread is waiting on its
+network response, other threads can run (their own waits, or brief bursts
+of parsing). The CPU-bound parsing portion does NOT get parallelized — when
+multiple threads are all in their parsing phase at once, they're back to
+taking turns holding the GIL, so that part of the total work still executes
+serially regardless of thread count. This is why "I/O-bound" and
+"CPU-bound" is really a description of where a task spends its TIME, not a
+strict either/or category — many real tasks are a mix, and threading only
+helps proportionally to the I/O-bound share.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Free-threaded builds</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Why can't a free-threaded (--disable-gil) build just delete the GIL and change nothing else in CPython's internals?</p>
+    <details><summary>Show solution</summary><div class="solution">Because the GIL is precisely what made the existing simple refcounting
+scheme thread-safe. Deleting the lock with no replacement reintroduces the
+exact race condition from Problem 1 — concurrent increments/decrements on
+the same object's refcount could corrupt it. Free-threaded builds replace
+the single global lock with different, more fine-grained thread-safety
+mechanisms for reference counting and other interpreter internals (PEP
+703), which is why it's a substantial internal redesign rather than a
+one-line flag change, and why it can carry single-threaded performance
+costs and requires the C-extension ecosystem to adapt.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely which internal mechanism the GIL protects and why that mechanism needed protecting, (2) why the SAME thread count gives dramatically different wall-clock results for CPU-bound vs I/O-bound work, and (3) why multiprocessing sidesteps the GIL rather than negotiating with it? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — the gil &amp; concurrency.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: CPU vs IO vs MULTIPROCESSING VISUALIZATION */
+(function(){
+  const chips = document.querySelectorAll('#cpuvsio .chip');
+  const lanesEl = document.getElementById('gil-lanes');
+  const runBtn = document.getElementById('gil-run');
+  const resetBtn = document.getElementById('gil-reset');
+  const readoutEl = document.getElementById('gil-readout');
+  const logEl = document.getElementById('gil-log');
+
+  let mode = 'cpu';
+  let running = false;
+
+  const SCALE = 40; // px per "unit" of time
+
+  function buildLanes(){
+    lanesEl.innerHTML = '';
+    const labels = mode === 'mp' ? ['Process A', 'Process B'] : ['Thread A', 'Thread B'];
+    labels.forEach((lbl, i)=>{
+      const lane = document.createElement('div');
+      lane.className = 'lane';
+      lane.innerHTML = `<span class="lane-label">${lbl}</span><div class="lane-track" id="lane-${i}"></div><span class="lane-time" id="lane-time-${i}">0.0s</span>`;
+      lanesEl.appendChild(lane);
+    });
+  }
+  buildLanes();
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function addSeg(laneIdx, cls, left, width){
+    const track = document.getElementById('lane-'+laneIdx);
+    const seg = document.createElement('div');
+    seg.className = 'seg ' + cls;
+    seg.style.left = left+'px';
+    seg.style.width = '0px';
+    track.appendChild(seg);
+    requestAnimationFrame(()=>{ seg.style.transition = 'width .3s linear'; seg.style.width = width+'px'; });
+  }
+
+  function setTime(laneIdx, seconds){
+    document.getElementById('lane-time-'+laneIdx).textContent = seconds.toFixed(1)+'s';
+  }
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      if(running) return;
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.mode;
+      buildLanes();
+      logEl.innerHTML = '';
+      readoutEl.innerHTML = '';
+    });
+  });
+
+  function runCPU(){
+    // Threads alternate holding GIL in short slices, total serialized work = 8 units each = 16 total
+    const sliceUnits = 1;
+    const totalUnitsEach = 8;
+    let doneA = 0, doneB = 0;
+    let t = 0;
+    let turn = 0;
+    log('<b>CPU-bound, threading:</b> both threads want to compute constantly. They can only take turns holding the GIL — watch the gold segments alternate, never overlap.');
+    function step(){
+      if(doneA >= totalUnitsEach && doneB >= totalUnitsEach){
+        const total = (totalUnitsEach*2*sliceUnits*0.15).toFixed(1);
+        readoutEl.innerHTML = `<div class="tm">Sequential baseline: <b>~${total}s</b></div><div class="tm">2 threads (CPU-bound): <b>~${total}s</b></div><div class="tm">Speedup: <b>none</b> — GIL serializes it</div>`;
+        log('<b>Done.</b> Total wall time roughly equals doing both threads\' work back-to-back sequentially — no real parallelism happened.');
+        running = false;
+        return;
+      }
+      const laneIdx = turn % 2;
+      const other = (turn+1) % 2;
+      if((laneIdx===0 && doneA<totalUnitsEach) || (laneIdx===1 && doneB<totalUnitsEach)){
+        addSeg(laneIdx, 'running', t*SCALE, sliceUnits*SCALE);
+        addSeg(other, 'waiting', t*SCALE, sliceUnits*SCALE);
+        if(laneIdx===0) doneA += sliceUnits; else doneB += sliceUnits;
+        t += sliceUnits;
+        setTime(0, t*0.15); setTime(1, t*0.15);
+      }
+      turn++;
+      setTimeout(step, 220);
+    }
+    step();
+  }
+
+  function runIO(){
+    // Both threads "wait" on IO simultaneously - GIL released during wait
+    log('<b>I/O-bound, threading:</b> each thread issues a request, then releases the GIL while waiting on the network. Watch the purple "waiting on I/O" segments overlap in real time.');
+    addSeg(0, 'running', 0, 0.6*SCALE);
+    addSeg(1, 'running', 0, 0.6*SCALE);
+    setTimeout(()=>{
+      addSeg(0, 'io', 0.6*SCALE, 4*SCALE);
+      addSeg(1, 'io', 0.6*SCALE, 4*SCALE);
+      log('Both threads now waiting on I/O AT THE SAME TIME — GIL released by each, so the waits overlap instead of stacking up.');
+    }, 250);
+    setTimeout(()=>{
+      addSeg(0, 'running', 4.6*SCALE, 0.4*SCALE);
+      addSeg(1, 'running', 4.6*SCALE, 0.4*SCALE);
+      setTime(0, 5.0); setTime(1, 5.0);
+      readoutEl.innerHTML = `<div class="tm">Sequential baseline: <b>~10.0s</b></div><div class="tm">2 threads (I/O-bound): <b>~5.0s</b></div><div class="tm">Speedup: <b>~2x</b> — waits overlapped</div>`;
+      log('<b>Done.</b> Wall time is close to ONE request\'s time, not the sum of both — the overlapping wait is where the win comes from.');
+      running = false;
+    }, 900);
+  }
+
+  function runMP(){
+    log('<b>CPU-bound, multiprocessing:</b> each process has its own interpreter and its own GIL — genuine simultaneous execution, no turn-taking needed.');
+    addSeg(0, 'parallel', 0, 8*SCALE);
+    addSeg(1, 'parallel', 0, 8*SCALE);
+    setTimeout(()=>{
+      setTime(0, 1.2); setTime(1, 1.2);
+      readoutEl.innerHTML = `<div class="tm">Sequential baseline: <b>~2.4s</b></div><div class="tm">2 processes (CPU-bound): <b>~1.2s</b></div><div class="tm">Speedup: <b>~2x</b> — true parallelism</div>`;
+      log('<b>Done.</b> Both processes ran their full share of work at the same time on separate cores — real parallel speedup, unlike the threading case.');
+      running = false;
+    }, 500);
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    if(running) return;
+    running = true;
+    buildLanes();
+    logEl.innerHTML = '';
+    readoutEl.innerHTML = '';
+    if(mode === 'cpu') runCPU();
+    else if(mode === 'io') runIO();
+    else runMP();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    running = false;
+    buildLanes();
+    logEl.innerHTML = '<span class="line">Reset. Pick a mode and hit Run.</span>';
+    readoutEl.innerHTML = '';
+  });
+})();
+</script>
+</body>
+</html>

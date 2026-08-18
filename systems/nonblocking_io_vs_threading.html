@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Async I/O vs Threading vs Multiprocessing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --async-c:#4fc3f7; --thread-c:#f2c14e; --proc-c:#7fd8a0; --cost-c:#ff8a65; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .decision-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.8rem; flex-wrap:wrap;}
+  .dh-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid; }
+  .dh-box.a{border-color:var(--async-c); color:var(--async-c); background:rgba(79,195,247,0.08);}
+  .dh-box.t{border-color:var(--thread-c); color:var(--thread-c); background:rgba(242,193,78,0.08);}
+  .dh-box.p{border-color:var(--proc-c); color:var(--proc-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:240px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* memory cost visualization */
+  .cost-stage{display:flex; align-items:flex-end; gap:0.15rem; min-height:220px; margin:1.2rem 0; padding:0.5rem 0; border-bottom:1px dashed var(--rule); flex-wrap:wrap;}
+  .cost-bar{width:8px; border-radius:2px 2px 0 0; transition:height .5s ease;}
+  .cost-bar.thread{background:var(--thread-c);}
+  .cost-bar.async{background:var(--async-c);}
+  .cost-readout{display:flex; gap:2rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.85rem; margin-top:1rem;}
+  .cost-readout .cr{padding:0.7rem 1.1rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2);}
+  .cost-readout .cr.thread{border-color:var(--thread-c);} .cost-readout .cr.thread b{color:var(--thread-c);}
+  .cost-readout .cr.async{border-color:var(--async-c);} .cost-readout .cr.async b{color:var(--async-c);}
+  .slider-row{display:flex; align-items:center; gap:1rem; margin:1rem 0; font-family:var(--mono); font-size:0.82rem;}
+  input[type=range]{flex:1; accent-color:var(--accent);}
+
+  /* decision flowchart */
+  .flow-stage{display:flex; flex-direction:column; align-items:center; gap:0.8rem; margin:1.4rem 0;}
+  .flow-q{border:1.5px solid var(--rule); border-radius:12px; padding:0.9rem 1.3rem; font-family:var(--mono); font-size:0.85rem; background:var(--panel-2); text-align:center; max-width:420px;}
+  .flow-branches{display:flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;}
+  .flow-answer{border-radius:20px; padding:0.5rem 1rem; font-family:var(--mono); font-size:0.75rem; cursor:pointer; border:1.5px solid var(--rule); background:var(--panel); transition:all .2s;}
+  .flow-answer:hover{border-color:var(--accent);}
+  .flow-result{border:2px solid; border-radius:12px; padding:1.1rem 1.4rem; font-family:var(--mono); font-size:0.9rem; text-align:center; max-width:460px; margin-top:0.5rem;}
+  .flow-result.async{border-color:var(--async-c); color:var(--async-c); background:rgba(79,195,247,0.08);}
+  .flow-result.thread{border-color:var(--thread-c); color:var(--thread-c); background:rgba(242,193,78,0.08);}
+  .flow-result.proc{border-color:var(--proc-c); color:var(--proc-c); background:rgba(127,216,160,0.08);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--async-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--async-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS FUNDAMENTALS LAB · CONCURRENCY MODEL SELECTION</div>
+  <h1>Concurrent connections, CPU cores, and simplicity all pull in <em>different directions</em>.</h1>
+  <p class="lede">Async I/O, threading, and multiprocessing all "do concurrency" — but they solve genuinely different bottlenecks, and picking the wrong one either wastes engineering effort or hits a wall at scale. This lab builds the decision framework with real numbers: what an OS thread actually costs, what an asyncio Task actually costs, and the C10K problem that made the difference matter in the first place.</p>
+
+  <div class="decision-hero">
+    <div class="dh-box a">async I/O → thousands of idle connections</div>
+    <div class="dh-box t">threading → a handful of I/O tasks, simple code</div>
+    <div class="dh-box p">multiprocessing → CPU-bound work, sidesteps the GIL</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="c10k">1 · The C10K Problem</a>
+  <a data-target="costs">2 · What a Thread vs. a Task Actually Costs</a>
+  <a data-target="multiprocessing">3 · When Multiprocessing Wins</a>
+  <a data-target="threading-enough">4 · When Plain Threading Is Enough</a>
+  <a data-target="decision">5 · The Decision Framework</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: C10K ============ -->
+<section id="c10k">
+  <div class="kicker">01 — Why this question exists at all</div>
+  <h2>The C10K problem: why async I/O wins at scale</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a hotel where every single guest, no matter how quietly they're sleeping, requires their own dedicated staff member standing outside their door all night just in case they need something. That's absurd at 10 guests and catastrophic at 10,000 — you'd need 10,000 staff, most of them doing nothing but occupying payroll and hallway space. A sane hotel instead has a small night crew and a system of call buttons: when a guest actually needs something, a button lights up, and whichever free staff member is nearest handles it. The staff count scales with actual simultaneous <em>activity</em>, not total guests.</p>
+
+  <p>The <strong>C10K problem</strong> (coined in the late 1990s: "can a single server handle 10,000 concurrent connections?") is exactly this. A naive server design gives every connection its own OS thread that blocks waiting for that connection's next byte — the "dedicated staff member per door" model. At a few hundred connections this is fine. At 10,000 mostly-idle connections (a realistic number for a chat server, a long-polling API, or persistent websockets), you'd need 10,000 OS threads sitting around mostly idle, and the sheer overhead of that many threads — memory footprint, scheduler overhead from context-switching between them — becomes the actual bottleneck, even though almost none of them are doing real work at any given moment.</p>
+
+  <p>Async I/O is the call-button system: one thread, one event loop, and a much cheaper per-connection bookkeeping cost (a small data structure the loop tracks, not an entire OS thread with its own stack). The loop only "wakes up" a connection's handler when there's actually something to do — new data arrived, a write buffer drained — so idle connections cost almost nothing while they wait.</p>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the C10K problem refers to the scalability limits of a thread-per-connection server architecture once concurrent connection counts reach roughly ten thousand or more — the fixed per-thread memory and OS scheduling overhead dominates system resources even when the vast majority of connections are idle. Async I/O (event-loop-based, non-blocking) architectures solve this by handling many connections on a single thread with near-constant per-connection overhead, since idle connections consume no thread and require no context switch while waiting.</div>
+</section>
+
+<!-- ============ SECTION 2: COSTS ============ -->
+<section id="costs">
+  <div class="kicker">02 — Putting real numbers on the tradeoff</div>
+  <h2>What a thread costs vs. what an asyncio Task costs</h2>
+
+  <p>An OS thread needs its own call stack reserved up front — typically <strong>roughly 1&ndash;8&nbsp;MB</strong> of stack space by default (the exact default varies by OS and can be tuned down, but it's reserved per thread regardless of how much is actually used), plus kernel-side bookkeeping and the CPU cost of the OS scheduler context-switching between threads. An asyncio Task, by contrast, is just a Python object tracking a paused coroutine's state — on the order of <strong>a few kilobytes</strong>, with no separate OS-level stack and no OS-level context switch, because the switching happens entirely inside your single-threaded event loop.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>DRAG THE CONNECTION COUNT — WATCH MEMORY COST DIVERGE</span></div>
+    <div class="slider-row">
+      <span>concurrent connections</span>
+      <input type="range" min="10" max="20000" value="100" step="10" id="cost-slider">
+      <span id="cost-val" style="min-width:6ch;">100</span>
+    </div>
+    <div class="cost-stage" id="cost-stage"></div>
+    <div class="cost-readout">
+      <div class="cr thread">Thread-per-connection: <b id="cost-thread-mem">—</b></div>
+      <div class="cr async">Async Task-per-connection: <b id="cost-async-mem">—</b></div>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th></th><th>OS thread</th><th>asyncio Task</th></tr>
+    <tr><td>Typical memory</td><td>~1–8 MB reserved stack per thread</td><td>~a few KB of Python object state</td></tr>
+    <tr><td>Context switch</td><td>Kernel-mediated, relatively expensive at high counts</td><td>Handled entirely in-process by the event loop — much cheaper</td></tr>
+    <tr><td>Scales to</td><td>Hundreds to low thousands comfortably</td><td>Tens of thousands of mostly-idle connections comfortably</td></tr>
+    <tr><td>Failure mode at scale</td><td>Memory exhaustion and scheduler thrashing</td><td>Still bounded by single-thread CPU time for the ACTIVE work, not by idle-connection count</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 3: MULTIPROCESSING WINS ============ -->
+<section id="multiprocessing">
+  <div class="kicker">03 — A different bottleneck entirely</div>
+  <h2>When multiprocessing wins: CPU-bound work</h2>
+
+  <p>Async I/O and threading both solve the same category of problem — lots of <em>waiting</em>, cheaply. Neither helps when the bottleneck is actual <strong>computation</strong>: image processing, numeric simulation, parsing large payloads, running a machine learning inference pass. In CPython, all Python-level threads (and all coroutines running in one event loop, which is single-threaded by definition) are bound by the GIL for CPU-bound work — only one can execute Python bytecode at a time, regardless of how many exist.</p>
+
+  <p>Multiprocessing sidesteps this entirely by using separate OS processes, each with its own Python interpreter and therefore its own independent GIL. Splitting a CPU-bound workload across N processes on an N-core machine can deliver close to an N-times speedup, something neither async I/O nor plain threading can ever provide for genuinely CPU-bound work in CPython.</p>
+
+  <table class="cmp">
+    <tr><th>Workload shape</th><th>Right tool</th><th>Why</th></tr>
+    <tr><td>10,000 mostly-idle long-lived connections</td><td>Async I/O</td><td>Near-zero per-connection cost while idle; C10K-scale concurrency on one thread</td></tr>
+    <tr><td>Resizing 50,000 images</td><td>Multiprocessing</td><td>CPU-bound; needs genuine parallel execution across cores, GIL makes threads/async useless here</td></tr>
+    <tr><td>A handful of concurrent API calls in a small internal script</td><td>Plain threading</td><td>Simple, "good enough" concurrency without asyncio's added structure</td></tr>
+  </table>
+</section>
+
+<!-- ============ SECTION 4: THREADING IS ENOUGH ============ -->
+<section id="threading-enough">
+  <div class="kicker">04 — When the "better" tool is the wrong choice</div>
+  <h2>When plain threading is still the right call</h2>
+
+  <p>Async I/O wins at scale, but scale isn't free — every function in the call path needs to be <code class="inline">async def</code>, every library you call needs an async-compatible version (or a wrapped executor call), and debugging a stalled event loop is a different, less familiar skill than debugging a stalled thread. For a small, fixed number of I/O-bound tasks — say, five to twenty concurrent API calls in an internal script or a lightly-loaded background job — plain <code class="inline">threading.Thread</code> gets nearly all of the benefit (the waits still overlap) with dramatically less code complexity and no need to rewrite your entire call stack as async.</p>
+
+  <div class="code">
+<span class="c-cmt"># Plain threading: simple, correct, entirely adequate for ~10 concurrent I/O calls</span>
+<span class="c-kw">from</span> concurrent.futures <span class="c-kw">import</span> ThreadPoolExecutor
+<span class="c-kw">import</span> requests
+
+urls = [<span class="c-str">"https://api.example.com/a"</span>, <span class="c-str">"https://api.example.com/b"</span>, ...]  <span class="c-cmt"># ~10 URLs</span>
+
+<span class="c-kw">with</span> ThreadPoolExecutor(max_workers=<span class="c-num">10</span>) <span class="c-kw">as</span> pool:
+    results = list(pool.map(requests.get, urls))
+<span class="c-cmt"># No event loop, no async/await threaded through every function — just works.</span>
+  </div>
+
+  <p>The moment that number grows into the hundreds or thousands, or the service needs to hold many long-lived idle connections (websockets, SSE, long polling), the thread overhead from Section 2 starts to actually matter, and that's the signal to reach for async I/O instead — not "async is always better," but "async is better once the connection count makes per-thread overhead the bottleneck."</p>
+</section>
+
+<!-- ============ SECTION 5: DECISION FRAMEWORK ============ -->
+<section id="decision">
+  <div class="kicker">05 — Putting it all together</div>
+  <h2>The decision framework, interactively</h2>
+  <p>Answer each question about your workload and see which approach the framework points to — this mirrors the actual reasoning an interviewer wants to hear walked out loud.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WALK THE DECISION TREE</span><button class="btn secondary" id="flow-reset">Start over</button></div>
+    <div class="flow-stage" id="flow-stage"></div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Each is scenario-based — decide which approach fits, and justify it the way you would out loud in an interview.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Chat server</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're building a chat server that needs to hold open up to 50,000 simultaneous websocket connections, most of them idle at any given moment (users not actively typing). Which approach, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Async I/O. This is the textbook C10K scenario: tens of thousands of
+mostly-idle, long-lived connections. Thread-per-connection would require
+50,000 OS threads reserving 1-8MB of stack space each — tens of gigabytes
+of memory just for idle connections, plus severe OS scheduler overhead.
+An event loop tracks each connection as a lightweight Task costing a few
+KB, and only does work when a connection actually has something to send or
+receive.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Batch image processing</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You need to resize and compress 200,000 uploaded images as fast as possible on a 16-core machine. Which approach, and why not the alternatives?</p>
+    <details><summary>Show solution</summary><div class="solution">Multiprocessing. This is purely CPU-bound work with no I/O waiting to
+overlap. Async I/O gives zero benefit here — there's no waiting to hide,
+just computation, and it all runs on one thread anyway. Threading also
+gives no real speedup because the GIL means only one thread executes
+Python bytecode at a time. Multiprocessing, with one process per core (up
+to ~16 worker processes), gets each its own interpreter and GIL, achieving
+close to a 16x speedup by genuinely parallelizing the CPU work.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Internal reporting script</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You write a script that runs nightly, calling 8 different internal APIs to build a report, then emails it. Total run time matters a little but not critically. Which approach, and why might "the theoretically best" option be the wrong practical choice here?</p>
+    <details><summary>Show solution</summary><div class="solution">Plain threading (e.g. ThreadPoolExecutor with 8 workers). Async I/O could
+technically do this too and might shave a small amount of overhead, but for
+only 8 I/O-bound calls in a one-off nightly script, the added complexity of
+threading async/await through the whole codebase, choosing async-compatible
+HTTP libraries, etc. isn't worth it. This is precisely the "simplicity
+outweighs asyncio's added complexity" case — the theoretically most
+scalable tool is not automatically the right engineering choice when the
+scale doesn't demand it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Mixed workload</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A web service handles incoming API requests (I/O-bound: mostly waiting on a database) but one specific endpoint does heavy CPU-bound data transformation before responding. How would you architect the concurrency here?</p>
+    <details><summary>Show solution</summary><div class="solution">Use async I/O for the main request-handling path (it's the dominant
+workload and benefits from cheap, high concurrency on database-bound
+requests), but offload the CPU-bound endpoint's heavy transformation to a
+separate process pool (e.g. via a ProcessPoolExecutor submitted from
+within the async handler, or a background worker queue like Celery/RQ)
+rather than running it inline on the event loop's single thread. Running
+heavy CPU work directly inside an async handler would block the entire
+event loop for every other concurrent request during that computation —
+combining the two wrong ways can be worse than picking either one
+consistently.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Justifying against a skeptical interviewer</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An interviewer pushes back: "Why not just always use async I/O for everything — isn't it strictly better than threading?" Give a concise rebuttal.</p>
+    <details><summary>Show solution</summary><div class="solution">No — async I/O is better specifically for high-concurrency I/O-bound
+workloads, not universally "better." It requires an async-compatible
+ecosystem end-to-end (every blocking call in the path must be replaced or
+offloaded, or it silently freezes the entire event loop — see the asyncio
+fundamentals lab's blocking-call trap), adds cognitive overhead (async/await
+threaded through the whole call stack), and provides zero benefit for
+CPU-bound work (still limited to one thread of Python execution) or for
+small, simple I/O workloads where thread overhead was never the bottleneck
+in the first place. The right choice depends on where the actual bottleneck
+is: connection count and per-connection overhead point to async; raw
+computation points to multiprocessing; a small number of I/O waits with a
+premium on simplicity points to plain threading.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Estimating the threading ceiling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the ~1-8MB-per-thread figure from this lab, roughly how much memory would 5,000 thread-per-connection workers reserve for stack space alone, and what does that tell you about where the C10K problem actually bites?</p>
+    <details><summary>Show solution</summary><div class="solution">At the low end (~1MB/thread): ~5GB. At the high end (~8MB/thread): ~40GB
+— just for reserved stack space, before counting any actual per-connection
+application state, socket buffers, or the OS's own per-thread bookkeeping.
+This tells you the wall isn't purely about CPU capacity to handle 5,000
+connections' worth of traffic — it's specifically the FIXED, mostly-wasted
+overhead of committing a full thread stack to every connection regardless
+of how idle it is, which is exactly the inefficiency async I/O's few-KB
+Tasks are designed to eliminate.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the C10K problem and why thread-per-connection specifically breaks down at that scale, (2) roughly how many times more memory a thread costs versus an asyncio Task and why that gap exists, and (3) a concrete workload where reaching for async I/O would actually be the WRONG choice? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — async i/o vs threading vs multiprocessing, systems fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: COST VISUALIZATION */
+(function(){
+  const slider = document.getElementById('cost-slider');
+  const valEl = document.getElementById('cost-val');
+  const stageEl = document.getElementById('cost-stage');
+  const threadMemEl = document.getElementById('cost-thread-mem');
+  const asyncMemEl = document.getElementById('cost-async-mem');
+
+  const THREAD_MB = 2; // assume 2MB average per thread for the estimate
+  const ASYNC_KB = 4;  // assume 4KB per Task
+
+  function render(){
+    const n = parseInt(slider.value, 10);
+    valEl.textContent = n.toLocaleString();
+    const threadMB = n * THREAD_MB;
+    const asyncMB = (n * ASYNC_KB) / 1024;
+    threadMemEl.textContent = threadMB >= 1024 ? (threadMB/1024).toFixed(1)+' GB' : threadMB.toLocaleString()+' MB';
+    asyncMemEl.textContent = asyncMB >= 1024 ? (asyncMB/1024).toFixed(2)+' GB' : asyncMB.toFixed(1)+' MB';
+
+    // render proportional bars (capped visual height, log-ish scale for legibility)
+    stageEl.innerHTML = '';
+    const maxBars = 60;
+    const barCount = Math.min(maxBars, Math.max(4, Math.round(Math.log2(n+1)*4)));
+    const threadHeight = Math.min(200, 20 + Math.log2(threadMB+1)*14);
+    const asyncHeight = Math.min(200, 10 + Math.log2(asyncMB+1)*10);
+    for(let i=0;i<barCount;i++){
+      const bt = document.createElement('div');
+      bt.className = 'cost-bar thread';
+      bt.style.height = threadHeight+'px';
+      stageEl.appendChild(bt);
+    }
+    const spacer = document.createElement('div');
+    spacer.style.width = '1.5rem';
+    stageEl.appendChild(spacer);
+    for(let i=0;i<barCount;i++){
+      const ba = document.createElement('div');
+      ba.className = 'cost-bar async';
+      ba.style.height = asyncHeight+'px';
+      stageEl.appendChild(ba);
+    }
+  }
+  slider.addEventListener('input', render);
+  render();
+})();
+
+/* SECTION 5: DECISION FLOWCHART */
+(function(){
+  const stageEl = document.getElementById('flow-stage');
+  const resetBtn = document.getElementById('flow-reset');
+
+  function renderQ1(){
+    stageEl.innerHTML = `
+      <div class="flow-q">Is the bottleneck mostly CPU computation, or mostly waiting on I/O (network/disk/database)?</div>
+      <div class="flow-branches">
+        <button class="flow-answer" data-next="cpu">Mostly CPU-bound</button>
+        <button class="flow-answer" data-next="io-count">Mostly I/O-bound (waiting)</button>
+      </div>`;
+    bind();
+  }
+  function renderCPU(){
+    stageEl.innerHTML = `
+      <div class="flow-q">Bottleneck: CPU-bound computation</div>
+      <div class="flow-result proc"><b>→ Multiprocessing.</b> The GIL limits threads/async to one Python bytecode executor at a time — only separate processes (each with their own interpreter + GIL) give genuine parallel speedup on multiple cores.</div>
+      <button class="flow-answer" data-next="restart" style="margin-top:1rem;">Try a different answer</button>`;
+    bind();
+  }
+  function renderIOCount(){
+    stageEl.innerHTML = `
+      <div class="flow-q">Bottleneck: I/O-bound (waiting). Roughly how many concurrent I/O tasks/connections?</div>
+      <div class="flow-branches">
+        <button class="flow-answer" data-next="io-small">A small, fixed number (roughly &lt; 50)</button>
+        <button class="flow-answer" data-next="io-large">Hundreds to tens of thousands, especially long-lived/idle connections</button>
+      </div>`;
+    bind();
+  }
+  function renderIOSmall(){
+    stageEl.innerHTML = `
+      <div class="flow-q">I/O-bound, small fixed count</div>
+      <div class="flow-result thread"><b>→ Plain threading.</b> At this scale, per-thread overhead (1-8MB stack) is trivial in absolute terms, and threading.Thread / ThreadPoolExecutor gives nearly all of async's benefit without needing async/await threaded through your whole codebase.</div>
+      <button class="flow-answer" data-next="restart" style="margin-top:1rem;">Try a different answer</button>`;
+    bind();
+  }
+  function renderIOLarge(){
+    stageEl.innerHTML = `
+      <div class="flow-q">I/O-bound, large or long-lived-idle connection count</div>
+      <div class="flow-result async"><b>→ Async I/O.</b> This is the C10K regime — per-thread overhead (memory + OS context-switching) would dominate at this scale. An event loop's few-KB-per-Task cost keeps thousands of mostly-idle connections cheap.</div>
+      <button class="flow-answer" data-next="restart" style="margin-top:1rem;">Try a different answer</button>`;
+    bind();
+  }
+
+  function bind(){
+    stageEl.querySelectorAll('[data-next]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        const next = btn.dataset.next;
+        if(next === 'cpu') renderCPU();
+        else if(next === 'io-count') renderIOCount();
+        else if(next === 'io-small') renderIOSmall();
+        else if(next === 'io-large') renderIOLarge();
+        else if(next === 'restart') renderQ1();
+      });
+    });
+  }
+
+  resetBtn.addEventListener('click', renderQ1);
+  renderQ1();
+})();
+</script>
+</body>
+</html>

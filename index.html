@@ -69,7 +69,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Twenty-five labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Thirty-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, and relational databases — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -78,7 +78,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Python Internals</h2>
-      <span class="count">10 labs</span>
+      <span class="count">13 labs</span>
     </div>
     <div class="cards">
       <a class="card python" href="python/memory_and_scoping.html">
@@ -141,13 +141,31 @@
         <p>The exception hierarchy, when a custom exception is actually warranted, what each try/except/else/finally block is for, and preserving context with raise X from Y.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card python" href="python/cpython_internals.html">
+        <span class="tag">Refcounting &amp; Generational GC</span>
+        <h3>CPython Internals</h3>
+        <p>Watch an object's refcount change live, then watch a reference cycle that refcounting alone can never collect — until the generational GC steps in.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/the_gil.html">
+        <span class="tag">The Global Interpreter Lock</span>
+        <h3>The GIL</h3>
+        <p>Why the GIL exists, why it stalls CPU-bound threads but not I/O-bound ones, and what changes with free-threaded (PEP 703) builds.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card python" href="python/asyncio_fundamentals.html">
+        <span class="tag">Event Loop, Coroutines &amp; Tasks</span>
+        <h3>asyncio Fundamentals</h3>
+        <p>A live cooperative-scheduling animation of the event loop switching between tasks — and the exact moment a blocking call inside async code freezes everything.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Data Structures &amp; Algorithms</h2>
-      <span class="count">7 labs</span>
+      <span class="count">8 labs</span>
     </div>
     <div class="cards">
       <a class="card dsa" href="dsa/big_o_and_linked_lists.html">
@@ -192,13 +210,19 @@
         <p>The array and the tree, side by side, updating in lockstep as sift-up and sift-down swap elements — plus why building a heap is O(n), not O(n log n).</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card dsa" href="dsa/raw_sockets_event_loop.html">
+        <span class="tag">Survival Exercise — selectors</span>
+        <h3>Raw Sockets &amp; the Event Loop</h3>
+        <p>A complete runnable selectors-based echo server: blocking vs non-blocking sockets, and the register/wait/dispatch loop asyncio is built on top of.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">5 labs</span>
+      <span class="count">6 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -231,13 +255,19 @@
         <p>Why geographic proximity cuts latency, an animated cache hit/miss flow with origin fallback, and why cache invalidation is a genuinely hard distributed problem.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/nonblocking_io_vs_threading.html">
+        <span class="tag">System Design — Concurrency Model</span>
+        <h3>Non-Blocking I/O vs Threading</h3>
+        <p>When async I/O wins on scale (the C10K problem), when multiprocessing wins by sidestepping the GIL, and when plain threading is still the simpler right call.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">3 labs</span>
+      <span class="count">4 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -256,6 +286,12 @@
         <span class="tag">Normalization — 3NF &amp; ER Modeling</span>
         <h3>Normalization: 3NF &amp; ER Modeling</h3>
         <p>No transitive dependencies, when denormalization is a deliberate trade-off, and modeling entities/attributes/relationships before a single table exists.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/sql_vs_nosql.html">
+        <span class="tag">Schema-on-Write vs Schema-on-Read</span>
+        <h3>SQL vs NoSQL</h3>
+        <p>Where relational (ACID, joins) wins, where document/key-value (flexible schema, horizontal scale) wins, and the real consistency trade-offs between them.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -314,7 +350,7 @@
 
 </main>
 
-<footer>materials/ · twenty-five standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · thirty-one standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

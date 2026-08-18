@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — SQL vs NoSQL</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --sql-c:#6ea8fe; --nosql-c:#7fd8a0; --write-c:#f2c14e; --read-c:#c792ea; --accent:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(110,168,254,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .schema-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.8rem; flex-wrap:wrap;}
+  .sh-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .sh-box.sql{border-color:var(--sql-c); color:var(--sql-c); background:rgba(110,168,254,0.08);}
+  .sh-box.nosql{border-color:var(--nosql-c); color:var(--nosql-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:#ff6b6b; color:#1a0e0e;}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:230px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .log .err{color:#ff6b6b;}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* schema on write vs read visualization */
+  .schema-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:720px){.schema-compare{grid-template-columns:1fr;}}
+  .schema-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .schema-col.write{border-color:var(--sql-c);}
+  .schema-col.read{border-color:var(--nosql-c);}
+  .schema-col h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .schema-col.write h4{color:var(--sql-c);} .schema-col.read h4{color:var(--nosql-c);}
+  .doc-block{font-family:var(--mono); font-size:0.78rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:0.7rem 0.9rem; margin-bottom:0.5rem; white-space:pre; transition:all .3s;}
+  .doc-block.rejected{border-color:#ff6b6b; animation:flashbad2 .6s ease;}
+  @keyframes flashbad2{0%{box-shadow:none;} 30%{box-shadow:0 0 0 4px rgba(255,107,107,0.3);} 100%{box-shadow:none;}}
+  .doc-block.accepted{border-color:var(--nosql-c);}
+
+  /* consistency spectrum */
+  .spectrum{position:relative; height:60px; margin:1.4rem 0; background:var(--panel-2); border:1.5px solid var(--rule); border-radius:12px; display:flex; align-items:center; padding:0 1.2rem;}
+  .spectrum-track{flex:1; height:6px; background:linear-gradient(90deg, var(--sql-c), var(--nosql-c)); border-radius:3px; position:relative;}
+  .spectrum-marker{position:absolute; top:50%; width:20px; height:20px; border-radius:50%; background:var(--ink); border:3px solid var(--bg); transform:translate(-50%,-50%); transition:left .4s ease; box-shadow:0 0 0 2px var(--accent);}
+  .spectrum-labels{display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); margin-top:0.4rem;}
+
+  .join-vs-embed{display:flex; gap:1.5rem; flex-wrap:wrap; margin:1.2rem 0;}
+  .jve-col{flex:1; min-width:260px; border:1.5px solid var(--rule); border-radius:12px; padding:1rem;}
+  .jve-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; margin:0 0 0.6rem; color:var(--ink-dim);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--sql-c); background:rgba(110,168,254,0.06);} .callout.def b{color:var(--sql-c);}
+  .callout.info{border-left-color:var(--nosql-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--nosql-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · SQL vs NoSQL</div>
+  <h1>The real question isn't which database is <em>better</em> — it's which one lies about your data less.</h1>
+  <p class="lede">The normalization work in the previous labs assumed a relational schema was the right starting point. This lab asks when that assumption is even correct: schema-on-write vs. schema-on-read, where ACID and joins actually earn their cost, and where flexible schemas and horizontal scale win instead — with the real consistency and query-flexibility trade-offs made concrete, not just asserted.</p>
+
+  <div class="schema-hero">
+    <div class="sh-box sql">SQL: schema enforced at WRITE time</div>
+    <div class="sh-box nosql">NoSQL: schema (if any) enforced at READ time</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="schematime">1 · Schema-on-Write vs Schema-on-Read</a>
+  <a data-target="relational-wins">2 · Where Relational Wins</a>
+  <a data-target="nosql-wins">3 · Where Document/Key-Value Wins</a>
+  <a data-target="tradeoffs">4 · Consistency &amp; Query Flexibility</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SCHEMA ON WRITE VS READ ============ -->
+<section id="schematime">
+  <div class="kicker">01 — When does "the shape of the data" get decided?</div>
+  <h2>Schema-on-write vs. schema-on-read</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about two different ways to organize a filing cabinet. One approach: before you file a single sheet of paper, you design labeled folders with fixed categories — "invoices," "receipts," "contracts" — and every new document must be trimmed, stamped, and slotted to fit one of those folders, or it gets rejected at the door. The other approach: you just throw every document into one big box as it arrives, however it's shaped, and only when someone actually needs to find something do they dig through the box and figure out on the spot what category a given paper falls into.</p>
+
+  <p>That's schema-on-write versus schema-on-read. A relational database enforces its schema <strong>at write time</strong> — the moment you try to insert a row, the database checks it against the table's fixed columns and types (from the tables-and-keys lab) and rejects anything that doesn't fit. A document database (like MongoDB) or key-value store typically enforces little to no schema at write time — you can insert wildly differently-shaped documents into the same collection — and any "shape" gets imposed later, at read time, by whatever code is doing the reading and deciding how to interpret each document's fields.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY INSERTING MISMATCHED DATA INTO BOTH MODELS</span></div>
+    <div class="schema-compare">
+      <div class="schema-col write">
+        <h4>SQL table (schema-on-write): users(id, name, email)</h4>
+        <div id="sql-rows">
+          <div class="doc-block accepted">{id: 1, name: "Ada", email: "ada@example.com"}</div>
+        </div>
+        <button class="btn" id="sql-try-valid">Insert (id:2, name:"Grace", email:"g@ex.com")</button>
+        <button class="btn danger" id="sql-try-invalid">Insert (id:3, name:"Rex", phone:"555-0100")</button>
+      </div>
+      <div class="schema-col read">
+        <h4>Document collection (schema-on-read): users</h4>
+        <div id="doc-rows">
+          <div class="doc-block accepted">{_id: 1, name: "Ada", email: "ada@example.com"}</div>
+        </div>
+        <button class="btn" id="doc-try-valid">Insert {name:"Grace", email:"g@ex.com"}</button>
+        <button class="btn" id="doc-try-invalid">Insert {name:"Rex", phone:"555-0100"}</button>
+      </div>
+    </div>
+    <div class="log" id="schema-log"><span class="line">Try inserting a document with a completely different shape (no email, has phone instead) into both models and see what each one does.</span></div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> schema-on-write means the data's structure (columns, types, constraints) is validated and enforced by the database at the moment of insertion, guaranteeing every stored record conforms to a known shape. Schema-on-read means the database imposes little or no structure at write time, storing data in a flexible format (commonly JSON-like documents), and structural assumptions are instead applied by application code whenever the data is later read and interpreted.</div>
+</section>
+
+<!-- ============ SECTION 2: RELATIONAL WINS ============ -->
+<section id="relational-wins">
+  <div class="kicker">02 — Where the relational model earns its cost</div>
+  <h2>Where relational (ACID, joins) wins</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a bank transferring $100 from your checking account to your savings account. This absolutely must NOT be allowed to half-happen — money leaving checking without arriving in savings (or vice versa) would either destroy value or create it from nothing. You need an operation that is truly all-or-nothing, and that stays correct even if the power goes out mid-transfer, and that behaves correctly even if a thousand other transfers are happening on the same accounts at the same instant.</p>
+
+  <p>That's exactly what relational databases are built to guarantee via <strong>ACID</strong> transactions: <strong>A</strong>tomicity (all-or-nothing — the transfer either fully happens or fully doesn't), <strong>C</strong>onsistency (the database moves between valid states — you never see a checking account debited with no matching savings credit), <strong>I</strong>solation (concurrent transactions don't see each other's half-finished work), and <strong>D</strong>urability (once committed, it survives a crash). Multi-table transactions with strong ACID guarantees are the relational model's signature strength — exactly the strength financial systems, inventory systems, and anything else where correctness beats raw throughput lean on.</p>
+
+  <p>The other relational strength is <strong>joins</strong> — the ability to combine normalized tables (recall the normalization labs: splitting data to eliminate redundancy) back together on demand, flexibly, for whatever query you need right now. A relational schema doesn't commit up front to exactly how data will be queried later; joins let you ask new questions across the same normalized data without restructuring anything.</p>
+
+  <div class="code">
+<span class="c-kw">BEGIN TRANSACTION</span>;
+  <span class="c-kw">UPDATE</span> accounts <span class="c-kw">SET</span> balance = balance - <span class="c-num">100</span> <span class="c-kw">WHERE</span> id = <span class="c-num">1</span>;  <span class="c-cmt">-- checking</span>
+  <span class="c-kw">UPDATE</span> accounts <span class="c-kw">SET</span> balance = balance + <span class="c-num">100</span> <span class="c-kw">WHERE</span> id = <span class="c-num">2</span>;  <span class="c-cmt">-- savings</span>
+<span class="c-kw">COMMIT</span>;
+<span class="c-cmt">-- If anything fails between BEGIN and COMMIT, the ENTIRE transaction rolls
+-- back — the database guarantees you never end up in a state where only
+-- one of the two UPDATEs took effect.</span>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> ACID (Atomicity, Consistency, Isolation, Durability) is the set of guarantees a relational transaction provides: a transaction's operations either all succeed or all roll back together, the database only ever transitions between valid states, concurrent transactions are isolated from each other's intermediate states, and committed changes survive subsequent failures. This makes relational databases the strong default for workloads requiring strict multi-row/multi-table correctness, such as financial transfers or inventory adjustments.</div>
+</section>
+
+<!-- ============ SECTION 3: NOSQL WINS ============ -->
+<section id="nosql-wins">
+  <div class="kicker">03 — Where flexibility and scale matter more than joins</div>
+  <h2>Where document/key-value wins: flexible schema, horizontal scale</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a product catalog for an online marketplace selling everything from books to bicycles to houseplants. A book has an ISBN and a page count; a bicycle has a frame size and a wheel diameter; a houseplant has a light requirement and a watering schedule. Forcing all of these into one rigid relational table means either a table with fifty mostly-NULL columns, or a maze of sub-tables joined together for every single product type. A document database just lets each product be its own self-contained JSON-like document with whatever fields actually apply to it — no schema migration needed every time a new product category is added.</p>
+
+  <p>The other major NoSQL strength is <strong>horizontal scalability</strong> by design. Because most document/key-value stores don't need cross-document joins or multi-row ACID transactions as their primary access pattern, individual documents can be partitioned ("sharded") across many machines with minimal coordination between them — reading or writing document #47291 only ever needs to talk to whichever single shard holds it. Relational databases can be sharded too, but joins across shard boundaries and cross-shard transactions are expensive and awkward precisely because the relational model assumes related data might need to be queried together.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>EMBED-DON'T-JOIN: THE DOCUMENT-MODEL DEFAULT</span></div>
+    <div class="join-vs-embed">
+      <div class="jve-col">
+        <h4>Relational: normalized, joined at query time</h4>
+        <div class="code" style="margin:0;">
+<span class="c-cmt">-- orders and order_items are separate tables</span>
+<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> orders
+<span class="c-kw">JOIN</span> order_items <span class="c-kw">ON</span> order_items.order_id = orders.id
+<span class="c-kw">WHERE</span> orders.id = <span class="c-num">42</span>;
+        </div>
+      </div>
+      <div class="jve-col">
+        <h4>Document: embedded, one read, no join needed</h4>
+        <div class="code" style="margin:0;">
+{
+  _id: <span class="c-num">42</span>,
+  customer: <span class="c-str">"Ada"</span>,
+  items: [
+    {product: <span class="c-str">"Widget"</span>, qty: <span class="c-num">3</span>},
+    {product: <span class="c-str">"Gadget"</span>, qty: <span class="c-num">1</span>}
+  ]
+}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout info"><b>Interview-ready definition:</b> document and key-value stores prioritize flexible, per-record schemas (each record can have a different shape without a database-level migration) and horizontal scalability (partitioning data across many machines by key, since most access patterns don't require cross-partition joins or transactions). This makes them a strong fit for high-volume, high-variability data where write throughput and horizontal scale matter more than complex multi-entity consistency guarantees.</div>
+</section>
+
+<!-- ============ SECTION 4: TRADEOFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">04 — What you actually give up</div>
+  <h2>The real trade-offs: consistency models and query flexibility</h2>
+
+  <p>Many distributed NoSQL systems relax strict consistency in exchange for availability and partition tolerance (the CAP theorem's central trade-off) — offering <strong>eventual consistency</strong> instead of the immediate, strict consistency a single-node relational database naturally provides. Eventual consistency means: after a write, different replicas of the data might briefly disagree, but will converge to the same value given enough time with no further writes. This is a real, felt trade-off — a user could write a value and, for a brief window, read back a stale one from a different replica.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SLIDE ALONG THE CONSISTENCY SPECTRUM</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-cmode="sql">Single-node relational</button>
+      <button class="chip" data-cmode="strong-nosql">Distributed, strong consistency mode</button>
+      <button class="chip" data-cmode="eventual">Distributed, eventual consistency</button>
+    </div>
+    <div class="spectrum">
+      <div class="spectrum-track"><div class="spectrum-marker" id="spec-marker"></div></div>
+    </div>
+    <div class="spectrum-labels"><span>strict / immediate</span><span>eventual / relaxed</span></div>
+    <div class="log" id="spec-log"></div>
+  </div>
+
+  <p>Query flexibility is the other side of the same coin: SQL's declarative query language plus joins let you ask essentially any question across your normalized schema after the fact, without redesigning storage. Most NoSQL systems trade that away for speed and scale — queries often need to be at least partially anticipated by how you chose to shard/partition and structure documents up front (denormalizing, embedding related data together specifically because you expect to read it together). Asking an unanticipated cross-document question later can be significantly harder or require a separate analytics pipeline.</p>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Relational (SQL)</th><th>Document / Key-Value (NoSQL)</th></tr>
+    <tr><td>Schema enforcement</td><td>On write, strict</td><td>On read, flexible (often none at write time)</td></tr>
+    <tr><td>Transactions</td><td>Strong multi-row/table ACID, standard</td><td>Often limited to single-document atomicity by default</td></tr>
+    <tr><td>Consistency</td><td>Strong/immediate (single-node default)</td><td>Often eventual in distributed deployments (tunable in some systems)</td></tr>
+    <tr><td>Query flexibility</td><td>High — arbitrary joins, ad hoc queries</td><td>Lower — access patterns often need to be anticipated in the data model</td></tr>
+    <tr><td>Horizontal scaling</td><td>Possible but harder (joins/transactions complicate sharding)</td><td>Designed in from the start for many systems</td></tr>
+    <tr><td>Best fit</td><td>Correctness-critical, relationally-rich data (finance, inventory)</td><td>High-volume, variably-shaped, scale-first data (catalogs, event logs, sessions)</td></tr>
+  </table>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the SQL-vs-NoSQL decision is fundamentally a trade-off between the relational model's strong consistency, rich transactional guarantees, and flexible ad hoc query power on one side, and NoSQL's flexible per-record schema, simpler horizontal partitioning, and often-relaxed (eventual) consistency on the other — with the right choice determined by which set of guarantees the actual workload needs, not by which technology is newer or more fashionable.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Identifying schema timing</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team stores JSON blobs in a database with no fixed columns, and their application code checks <code class="inline">if "phone" in record</code> before using that field. Is this schema-on-write or schema-on-read, and where does the "schema" actually live?</p>
+    <details><summary>Show solution</summary><div class="solution">Schema-on-read. The database itself enforces essentially no structure at
+insert time — any shape of JSON is accepted. The "schema" — the assumptions
+about what fields exist and what they mean — lives entirely in the
+application code that reads and interprets the records, which is exactly
+why that code has to defensively check `if "phone" in record` rather than
+trusting the field is always present.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing for a banking ledger</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're building the core ledger for a banking app: transfers between accounts must never partially apply, and you need historical reporting that joins transactions against accounts, customers, and branches. Which model, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Relational (SQL). Two requirements point directly at it: "must never
+partially apply" is exactly what ACID atomicity guarantees, and joining
+across transactions/accounts/customers/branches for reporting is exactly
+what the relational model's joins are built for. A document store would
+require either denormalizing (duplicating data across documents, risking
+inconsistency) or expensive application-level joins to answer the same
+reporting questions.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing for a product catalog</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're building a catalog for a marketplace with wildly different product types (electronics, clothing, furniture, digital downloads), expecting rapid addition of new product categories with different attributes, and needing to scale to tens of millions of listings. Which model, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Document (NoSQL). The core pain point — wildly varying attributes per
+product type, with new categories added frequently — is exactly what
+schema-on-read flexibility solves without constant migrations. The scale
+requirement (tens of millions of listings) also favors a model designed for
+horizontal partitioning by key (e.g. product ID) from the start, without
+needing cross-product joins as the primary access pattern.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Eventual consistency in practice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user updates their profile picture on a distributed document database. Two seconds later, a friend viewing their profile from a different region briefly still sees the old picture. Is this a bug? Explain using the vocabulary from this lab.</p>
+    <details><summary>Show solution</summary><div class="solution">Not necessarily a bug — this is the expected, documented behavior of
+eventual consistency. The write was applied to one replica (or a subset)
+immediately, but it takes some time to propagate to every replica across
+regions. Given enough time with no further writes, all replicas converge to
+the same value ("eventual" consistency) — the friend briefly reading a
+stale value from a different, not-yet-updated replica is the trade-off the
+system deliberately made in exchange for availability and horizontal
+scale across regions, not an error condition.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Query flexibility trade-off</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team stores user activity as one document per user, embedding their entire event history as a nested array, because their app almost always reads "give me everything for user X." Six months later, a new requirement appears: "find every user who did event type Y in the last hour, across ALL users." Why is this suddenly hard, and what does it reveal about the trade-off made earlier?</p>
+    <details><summary>Show solution</summary><div class="solution">The original design optimized specifically for "read everything for ONE
+user" by embedding and partitioning by user — which is fast and simple for
+exactly that access pattern. But "find all users who did event Y" is a
+cross-document query cutting against the partitioning key entirely; it
+either requires scanning every user's document (slow, doesn't scale) or a
+separate index/analytics system built specifically for this new access
+pattern. This reveals the core query-flexibility trade-off from this lab:
+NoSQL's performance and scale advantages come from anticipating access
+patterns up front in the data model, and un-anticipated query shapes are
+exactly where that choice is repaid with difficulty — a relational schema
+with proper indexes could have answered the new question without a
+redesign, at the cost of the original "read everything for one user" query
+being relatively more expensive (a join) instead of a single document
+fetch.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Hybrid reasoning</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A large e-commerce company uses a relational database for orders/payments and a document database for the product catalog and session data. Justify this hybrid approach rather than picking one system for everything.</p>
+    <details><summary>Show solution</summary><div class="solution">Different subsystems have genuinely different requirements. Orders and
+payments need strict ACID transactions (a payment must never partially
+apply) and benefit from joins across customers/orders/inventory for
+reporting and correctness checks — a strong fit for relational. The product
+catalog has highly variable per-product attributes and needs to scale to
+huge read volume with mostly single-item lookups — a strong fit for a
+flexible-schema, horizontally-scaled document store. Session data is
+high-volume, short-lived, simple key-value shaped data with no need for
+joins or strict multi-row transactions — another strong fit for a
+key-value/document store. Using one database technology for every
+subsystem regardless of its actual access pattern would mean accepting
+unnecessary trade-offs somewhere; the hybrid approach lets each subsystem's
+storage match its actual consistency and query needs.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the concrete difference between schema-on-write and schema-on-read and where the "schema" ends up living in each case, (2) a scenario where ACID transactions are non-negotiable and one where eventual consistency is an acceptable trade-off, and (3) why query flexibility and horizontal scalability tend to pull in opposite directions? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — sql vs nosql, database fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: SCHEMA ON WRITE VS READ */
+(function(){
+  const sqlValidBtn = document.getElementById('sql-try-valid');
+  const sqlInvalidBtn = document.getElementById('sql-try-invalid');
+  const docValidBtn = document.getElementById('doc-try-valid');
+  const docInvalidBtn = document.getElementById('doc-try-invalid');
+  const sqlRows = document.getElementById('sql-rows');
+  const docRows = document.getElementById('doc-rows');
+  const logEl = document.getElementById('schema-log');
+  let sqlNextId = 2;
+  let docNextId = 2;
+
+  function log(msg, isErr){
+    const p = document.createElement('div'); p.className = 'line fadein' + (isErr ? '' : '');
+    p.innerHTML = isErr ? `<span class="err">${msg}</span>` : msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  sqlValidBtn.addEventListener('click', ()=>{
+    const d = document.createElement('div');
+    d.className = 'doc-block accepted fadein';
+    d.textContent = `{id: ${sqlNextId}, name: "Grace", email: "g@ex.com"}`;
+    sqlRows.appendChild(d);
+    log(`<b>INSERT accepted:</b> matches the fixed schema (id, name, email) — SQL enforces this AT WRITE TIME.`);
+    sqlNextId++;
+  });
+  sqlInvalidBtn.addEventListener('click', ()=>{
+    const d = document.createElement('div');
+    d.className = 'doc-block rejected fadein';
+    d.textContent = `{id: 3, name: "Rex", phone: "555-0100"}  ✗ REJECTED`;
+    sqlRows.appendChild(d);
+    log(`<b>INSERT REJECTED:</b> "phone" is not a column in this table's schema, and "email" (required) is missing. The database refuses this write outright — schema-on-write catches the mismatch immediately.`, true);
+    setTimeout(()=>{ d.remove(); }, 2200);
+  });
+  docValidBtn.addEventListener('click', ()=>{
+    const d = document.createElement('div');
+    d.className = 'doc-block accepted fadein';
+    d.textContent = `{_id: ${docNextId}, name: "Grace", email: "g@ex.com"}`;
+    docRows.appendChild(d);
+    log(`<b>Insert accepted:</b> shape matches the existing documents, but nothing REQUIRED that — it's just coincidentally similar.`);
+    docNextId++;
+  });
+  docInvalidBtn.addEventListener('click', ()=>{
+    const d = document.createElement('div');
+    d.className = 'doc-block accepted fadein';
+    d.textContent = `{_id: ${docNextId}, name: "Rex", phone: "555-0100"}`;
+    docRows.appendChild(d);
+    log(`<b>Insert ALSO accepted</b> — completely different shape (no email, has phone instead), and the document store doesn't care at write time. Any code reading this collection later must handle BOTH shapes — the "schema" is enforced (or not) entirely by that reading code, not by the database. This is schema-on-read.`);
+    docNextId++;
+  });
+})();
+
+/* SECTION 4: CONSISTENCY SPECTRUM */
+(function(){
+  const chips = document.querySelectorAll('#tradeoffs .chip');
+  const marker = document.getElementById('spec-marker');
+  const logEl = document.getElementById('spec-log');
+  const positions = { sql: 8, 'strong-nosql': 50, eventual: 92 };
+  const messages = {
+    sql: 'Single-node relational: one copy of the truth, no replication lag to reason about — reads always reflect the most recent committed write.',
+    'strong-nosql': 'Distributed system configured for strong consistency: reads are guaranteed to reflect the latest write, but this typically costs latency/availability (often requires a quorum of replicas to agree before responding).',
+    eventual: 'Distributed system with eventual consistency: writes propagate to replicas asynchronously. A read moments after a write MAY return stale data from a replica that hasn\'t caught up yet — but all replicas converge given enough time with no further writes.'
+  };
+  function render(mode){
+    marker.style.left = positions[mode] + '%';
+    logEl.innerHTML = `<div class="line fadein">${messages[mode]}</div>`;
+  }
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.cmode);
+    });
+  });
+  render('sql');
+})();
+</script>
+</body>
+</html>

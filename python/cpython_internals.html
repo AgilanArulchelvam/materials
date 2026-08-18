@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — CPython Internals: Refcounting &amp; GC</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --ref-c:#7fd8a0; --cycle-c:#ff6b6b; --gc-c:#c792ea; --gen-c:#f2c14e; --accent:#4fc3f7;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:19ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .ref-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.82rem; flex-wrap:wrap;}
+  .rh-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--ref-c); color:var(--ref-c); background:rgba(127,216,160,0.08);}
+  .rh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(79,195,247,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:980px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#f2c14e;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#0b0d11; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--cycle-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.35; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:220px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* refcount visualization */
+  .refcount-stage{display:flex; align-items:center; justify-content:center; gap:2.5rem; flex-wrap:wrap; padding:1.5rem 0;}
+  .obj-circle{width:120px; height:120px; border-radius:50%; border:3px solid var(--ref-c); background:rgba(127,216,160,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); transition:all .3s ease;}
+  .obj-circle .oc-label{font-size:0.68rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em;}
+  .obj-circle .oc-count{font-size:2.4rem; font-weight:700; color:var(--ref-c); transition:all .25s ease;}
+  .obj-circle.pulse{animation:pulse-ref .4s ease;}
+  @keyframes pulse-ref{0%{transform:scale(1);} 40%{transform:scale(1.15); box-shadow:0 0 0 10px rgba(127,216,160,0.25);} 100%{transform:scale(1);}}
+  .obj-circle.zero{border-color:var(--cycle-c); background:rgba(255,107,107,0.1);}
+  .obj-circle.zero .oc-count{color:var(--cycle-c);}
+  .ref-arrows{display:flex; flex-direction:column; gap:0.5rem; font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); max-width:220px;}
+  .ref-slot{padding:0.4rem 0.7rem; border:1px solid var(--rule); border-radius:6px; background:var(--panel-2); transition:all .3s;}
+  .ref-slot.gone{opacity:0.25; text-decoration:line-through;}
+
+  /* cycle diagram */
+  .cycle-stage{display:flex; align-items:center; justify-content:center; gap:0; padding:2rem 0; position:relative; min-height:220px;}
+  .cycle-node{width:110px; height:110px; border-radius:14px; border:2px solid var(--cycle-c); background:rgba(255,107,107,0.08); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.78rem; color:var(--cycle-c); position:relative; z-index:2; transition:all .4s ease;}
+  .cycle-node .cn-rc{font-size:1.3rem; font-weight:700; margin-top:0.2rem;}
+  .cycle-svg{position:absolute; top:0; left:0; width:100%; height:100%; z-index:1; pointer-events:none;}
+  .cycle-node.collected{opacity:0; transform:scale(0.5); border-color:var(--gc-c);}
+  .cycle-node.gc-swept{border-color:var(--gc-c); background:rgba(199,146,234,0.15); color:var(--gc-c);}
+
+  /* generational GC */
+  .gen-stage{display:flex; gap:1rem; margin:1.2rem 0; flex-wrap:wrap;}
+  .gen-box{flex:1; min-width:150px; border:1.5px solid var(--rule); border-radius:12px; padding:1rem; background:var(--panel-2);}
+  .gen-box h4{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem; color:var(--ink-dim);}
+  .gen-box.gen0 h4{color:var(--gen-c);} .gen-box.gen1 h4{color:var(--ref-c);} .gen-box.gen2 h4{color:var(--gc-c);}
+  .gen-obj{display:inline-flex; width:26px; height:26px; border-radius:6px; margin:2px; align-items:center; justify-content:center; font-size:0.65rem; font-family:var(--mono); border:1.5px solid var(--rule); background:var(--panel); transition:all .3s;}
+  .gen-obj.alive{border-color:var(--gen-c); color:var(--gen-c);}
+  .gen-obj.dead{opacity:0.15; text-decoration:line-through;}
+  .gen-meta{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#0b0d11; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(79,195,247,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--gen-c); background:rgba(242,193,78,0.06);} .callout.def b{color:var(--gen-c);}
+  .callout.warn{border-left-color:var(--cycle-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--cycle-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> PYTHON INTERNALS LAB · CPYTHON MEMORY MODEL</div>
+  <h1>Every Python object carries its own <em>body count</em> of who's pointing at it.</h1>
+  <p class="lede">CPython decides when to free an object almost entirely by counting references to it. That single idea — reference counting — explains why deleting a variable doesn't always free memory, why two objects can leak forever by only pointing at each other, and why CPython bothers running a second, smarter garbage collector on top.</p>
+
+  <div class="ref-hero">
+    <div class="rh-box">obj created → refcount = 1</div>
+    <div class="rh-arrow">+1 ref each time ⟶</div>
+    <div class="rh-box">refcount = 0 ⟶ freed immediately</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="refcounting">1 · Reference Counting</a>
+  <a data-target="cycles">2 · Reference Cycles</a>
+  <a data-target="generational">3 · The Generational GC</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: REFCOUNTING ============ -->
+<section id="refcounting">
+  <div class="kicker">01 — CPython's default memory strategy</div>
+  <h2>Reference counting and object lifetime</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a library book with a little card in the back listing everyone currently checked out on it — not one person, but a shared count of how many people currently have it borrowed simultaneously (imagine unlimited photocopied cards floating around, each one a "hold" on the same physical book). Every time someone else creates a hold on the book, the librarian bumps the number on the card up by one. Every time someone returns their hold, it goes down by one. The instant that number hits zero — nobody, anywhere, still holds the book — the librarian pulps it and reuses the paper. Nobody has to remember to check; the count itself is the signal.</p>
+
+  <p>That is exactly what CPython does with every object in memory. Every object has a hidden integer field — its <strong>reference count</strong> — tracking how many places currently refer to it: variables, list elements, dict values, other objects' attributes, function argument bindings, all of it. Assigning a name creates a reference and bumps the count. Deleting a name, reassigning it, letting a function's local variables go out of scope, or removing something from a container all drop a reference and decrement the count. The moment an object's refcount reaches zero, CPython frees it <strong>immediately</strong> — not on some later pass, not eventually, right then, deterministically.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> sys
+
+x = [<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>]
+<span class="c-fn">sys</span>.getrefcount(x)   <span class="c-out">→ 2   (one for the name "x", one for the temporary argument
+                       reference getrefcount() itself creates while it's running)</span>
+
+y = x                    <span class="c-cmt"># y now ALSO refers to the same list object</span>
+<span class="c-fn">sys</span>.getrefcount(x)   <span class="c-out">→ 3   (x, y, and the temporary call argument)</span>
+
+<span class="c-kw">del</span> y                    <span class="c-cmt"># drop y's reference</span>
+<span class="c-fn">sys</span>.getrefcount(x)   <span class="c-out">→ 2   (back down — y is gone)</span>
+
+<span class="c-kw">del</span> x                    <span class="c-cmt"># refcount drops to 0 (ignoring the temporary call ref) → list freed immediately</span>
+  </div>
+
+  <p><code class="inline">sys.getrefcount(obj)</code> is the direct, observable window into this mechanism — it's always at least 1 higher than you'd naively expect, because passing <code class="inline">obj</code> into <code class="inline">getrefcount()</code> itself creates one more temporary reference for the duration of the call.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH A REFCOUNT CHANGE LIVE AS YOU ADD/REMOVE REFERENCES</span>
+      <div><button class="btn secondary" id="rc-reset">Reset</button></div>
+    </div>
+    <div class="refcount-stage">
+      <div class="ref-arrows" id="rc-slots"></div>
+      <div class="obj-circle" id="rc-circle">
+        <span class="oc-label">the list [1, 2, 3]</span>
+        <span class="oc-count" id="rc-count">1</span>
+      </div>
+    </div>
+    <div class="lookup-controls">
+      <button class="btn" id="rc-add">y = x  (add a reference)</button>
+      <button class="btn secondary" id="rc-add2">z = x  (add another)</button>
+      <button class="btn secondary" id="rc-del">del y  (drop a reference)</button>
+      <button class="btn danger" id="rc-delall">del all remaining refs</button>
+    </div>
+    <div class="log" id="rc-log"><span class="line">Object starts alive with refcount=1 (the name "x"). Add names pointing at it, then delete them, and watch the count track it exactly.</span></div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> reference counting is a memory-management scheme in which every object stores a count of the references currently pointing to it; the count is incremented on each new binding and decremented on each removal, and the object is deallocated deterministically the instant the count reaches zero. CPython's implementation is <code class="inline">Py_INCREF</code>/<code class="inline">Py_DECREF</code> on the object's <code class="inline">ob_refcnt</code> field, called automatically by the interpreter around essentially every operation that creates or destroys a reference.</div>
+</section>
+
+<!-- ============ SECTION 2: REFERENCE CYCLES ============ -->
+<section id="cycles">
+  <div class="kicker">02 — The hole in pure refcounting</div>
+  <h2>Reference cycles: the case refcounting alone can never solve</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture two people, each holding the other's IOU. Person A owes person B, and person B owes person A — the exact same amount, cancelling out. Nobody outside this pair owes either of them anything, and neither owes anything to anyone outside the pair. In any sane accounting, this debt should just be torn up: it nets to nothing. But if your only rule is "a debt gets forgiven when the last outstanding IOU against you is cleared," these two IOUs will point at each other forever — each one keeps the other "not yet forgiven," even though, from the outside, the whole arrangement is completely irrelevant and could vanish with zero consequence.</p>
+
+  <p>That's a reference cycle. Two (or more) objects hold references to each other, and nothing outside the group holds a reference to any of them. Refcounting only asks "does my count equal zero" for each object in isolation — and in a cycle, it never does, because each object is still being kept "alive" by the other member of the cycle, even though the whole group together is garbage.</p>
+
+  <div class="code">
+<span class="c-kw">class</span> <span class="c-fn">Node</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(<span class="c-self">self</span>, name):
+        <span class="c-self">self</span>.name = name
+        <span class="c-self">self</span>.partner = <span class="c-kw">None</span>
+
+a = <span class="c-fn">Node</span>(<span class="c-str">"A"</span>)          <span class="c-cmt"># a.refcount = 1 (the name "a")</span>
+b = <span class="c-fn">Node</span>(<span class="c-str">"B"</span>)          <span class="c-cmt"># b.refcount = 1 (the name "b")</span>
+
+a.partner = b            <span class="c-cmt"># b.refcount = 2 (name "b" AND a.partner)</span>
+b.partner = a            <span class="c-cmt"># a.refcount = 2 (name "a" AND b.partner)</span>
+
+<span class="c-kw">del</span> a                    <span class="c-cmt"># a.refcount drops to 1 — NOT zero, b.partner still points to it</span>
+<span class="c-kw">del</span> b                    <span class="c-cmt"># b.refcount drops to 1 — NOT zero, a.partner still points to it</span>
+
+<span class="c-cmt"># both names are gone. Nothing in the entire rest of the program can reach
+# either object anymore. But each object's refcount is 1, not 0 — each is
+# kept alive purely by the other half of the cycle. Pure refcounting will
+# NEVER free these two objects; they leak for the life of the process.</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>BUILD THE CYCLE, DELETE THE NAMES, WATCH REFCOUNTING GET STUCK</span>
+      <div><button class="btn secondary" id="cyc-reset">Reset</button></div>
+    </div>
+    <div class="cycle-stage" id="cyc-stage">
+      <svg class="cycle-svg" id="cyc-svg" role="img" aria-label="Two nodes A and B with arrows pointing at each other, forming a reference cycle"></svg>
+      <div class="cycle-node" id="cyc-a" style="margin-right:5rem;"><span>Node A</span><span class="cn-rc" id="cyc-a-rc">1</span></div>
+      <div class="cycle-node" id="cyc-b"><span>Node B</span><span class="cn-rc" id="cyc-b-rc">1</span></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="btn" id="cyc-link">a.partner = b; b.partner = a</button>
+      <button class="btn secondary" id="cyc-del">del a; del b</button>
+      <button class="btn" id="cyc-gc" disabled>Run generational GC ▸</button>
+    </div>
+    <div class="log" id="cyc-log"><span class="line">Create two nodes, link them into a cycle, then delete both outside names. Watch each refcount get stuck at 1 — pure refcounting cannot help. Then trigger the generational GC to see it actually get collected.</span></div>
+  </div>
+
+  <div class="callout warn"><b>Why this genuinely can't be fixed by "better" refcounting:</b> the problem isn't a bug in the algorithm — it's structural. Refcounting only ever asks a purely local question ("is my own count zero?"), and a cycle is a case where the true answer requires a <em>global</em> question ("is this whole connected group of objects reachable from anything outside itself?"). No amount of per-object bookkeeping can answer a question about the whole graph's shape — you need something that can walk the graph and look for cycles unreachable from the outside. That something is a separate garbage collector.</div>
+</section>
+
+<!-- ============ SECTION 3: GENERATIONAL GC ============ -->
+<section id="generational">
+  <div class="kicker">03 — The cycle-detector on top of refcounting</div>
+  <h2>The generational garbage collector, conceptually</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about how a busy inbox actually behaves: the overwhelming majority of emails that will ever be deleted get deleted within the first day or two of arriving — a promo, a one-time code, a "your order shipped" notice. Emails that survive a full month tend to keep surviving for a very long time after that — they're the ones you actually kept on purpose. If you had to re-scan your <em>entire</em> inbox history every single day looking for things to clean up, you'd waste enormous effort re-checking old mail you already decided to keep, over and over. It's far more efficient to check the newest stuff constantly (that's where the deletions are happening) and only occasionally sweep through the old, already-vetted stuff.</p>
+
+  <p>CPython's cycle-detecting garbage collector is built on exactly that observed pattern, sometimes called the "generational hypothesis": <strong>most objects die young.</strong> Short-lived temporaries, loop variables, intermediate results — the vast majority of objects are created and become garbage within a very short time. Objects that survive one collection pass are statistically far more likely to keep living a long time (a module-level constant, a long-lived cache, a class definition). So instead of scanning every live object on every pass, CPython groups objects into three <strong>generations</strong> — 0 (newest), 1, and 2 (oldest) — and scans generation 0 far more often than generation 1, and generation 1 far more often than generation 2. Any object that survives a collection of its current generation gets "promoted" up to the next one.</p>
+
+  <p>This generational GC's actual job is narrow and specific: it only exists to find and break <strong>reference cycles</strong> among container-like objects (things that can hold other objects — lists, dicts, class instances, etc.). It periodically walks these objects looking for groups that reference each other but are unreachable from anywhere outside the group — exactly the Node-A/Node-B situation above — and frees the whole unreachable group at once. Everything else, the vast majority of memory management, is still handled the instant it happens by plain reference counting; the generational GC is a periodic safety net specifically for cycles, not the primary mechanism.</p>
+
+  <div class="code">
+<span class="c-kw">import</span> gc
+
+gc.get_threshold()      <span class="c-out">→ (700, 10, 10)
+  # gen 0 collected after ~700 new allocations since the last gen-0 sweep
+  # gen 1 collected after 10 gen-0 sweeps have happened
+  # gen 2 collected after 10 gen-1 sweeps have happened</span>
+
+gc.collect()             <span class="c-cmt"># force a full collection right now — this is what finally frees a-b's cycle</span>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH OBJECTS SURVIVE PASSES AND GET PROMOTED BETWEEN GENERATIONS</span>
+      <div><button class="btn secondary" id="gen-reset">Reset</button></div>
+    </div>
+    <div class="gen-stage">
+      <div class="gen-box gen0"><h4>Generation 0 (newest)</h4><div id="gen0-objs"></div><div class="gen-meta">scanned very frequently — most garbage is found and freed right here</div></div>
+      <div class="gen-box gen1"><h4>Generation 1</h4><div id="gen1-objs"></div><div class="gen-meta">scanned less often — survivors of several gen-0 sweeps</div></div>
+      <div class="gen-box gen2"><h4>Generation 2 (oldest)</h4><div id="gen2-objs"></div><div class="gen-meta">scanned rarely — long-lived objects, including our stuck cycle once it lands here</div></div>
+    </div>
+    <button class="btn" id="gen-sweep">Run a gen-0 collection pass ▸</button>
+    <div class="log" id="gen-log"><span class="line">Each pass: dead objects (no external refs, no cycle) are freed immediately. Survivors get promoted one generation up. Watch how quickly gen 0 empties out compared to gen 2.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Question</th><th>Answer</th></tr>
+    <tr><td>What does refcounting alone miss?</td><td>Reference cycles — groups of objects that reference each other but nothing external references the group</td></tr>
+    <tr><td>What does the generational GC actually scan for?</td><td>Unreachable cycles among container objects — it doesn't re-check everything refcounting already handles</td></tr>
+    <tr><td>Why "generational"?</td><td>Most objects die young — scanning new objects far more often than old ones matches where garbage actually accumulates</td></tr>
+    <tr><td>What happens to a survivor?</td><td>It's promoted to the next-older generation, which is scanned less frequently going forward</td></tr>
+  </table>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the generational garbage collector is a cycle-detecting collector that operates on top of (not instead of) reference counting. It partitions tracked container objects into three generations based on survival count, and collects younger generations more frequently than older ones under the generational hypothesis that most objects become garbage shortly after creation. It exists specifically to reclaim reference cycles, which are unreachable-but-nonzero-refcount object graphs that pure reference counting can never free on its own.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Basic refcount tracing</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+import sys
+
+a = {"x": 1}
+b = a
+c = [a]
+print(sys.getrefcount(a))
+del b
+print(sys.getrefcount(a))
+    </div>
+    <details><summary>Show solution</summary><div class="solution">4
+3
+
+After a, b=a, c=[a]: references are the name "a", the name "b", the list
+element inside c, plus the temporary argument reference getrefcount()
+itself creates — that's 4. After `del b`, one binding is removed, dropping
+it to 3 (a, c's element, and the temporary call reference).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Spotting a cycle</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Parent:
+    def __init__(self):
+        self.child = None
+
+class Child:
+    def __init__(self, parent):
+        self.parent = parent
+        parent.child = self
+
+p = Parent()
+c = Child(p)
+del p
+del c
+    </div>
+    <details><summary>Show solution</summary><div class="solution">This is a reference cycle. Child holds self.parent pointing at the Parent
+object, and Parent.__init__ was never called with a chance to set
+self.child — but Child's __init__ sets parent.child = self, so the Parent
+object ends up pointing back at the Child. After `del p` and `del c`,
+neither object's refcount reaches zero (each is still referenced by the
+other), even though nothing outside the pair can reach either one anymore.
+This exact "parent points at child, child points back at parent" shape is
+one of the most common real-world reference cycles — e.g. in tree/GUI
+widget hierarchies with back-pointers to a parent node.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Why isn't this a cycle</span>
+    <div class="code" style="margin:0.6rem 0 0;">
+class Node:
+    def __init__(self, value):
+        self.value = value
+        self.next = None
+
+a = Node(1)
+b = Node(2)
+a.next = b
+del a
+    </div>
+    <details><summary>Show solution</summary><div class="solution">Not a cycle — this is a normal, refcounting-solvable chain. a.next points
+at b (so b.refcount = 2: the name "b" and a.next). When `del a` runs,
+a.refcount drops to 0 immediately (nothing else pointed at a), so a is
+freed right away. Freeing a also removes a.next's reference to b, dropping
+b.refcount from 2 to 1 (just the name "b" remains). b is still reachable
+and correctly still alive. Nothing points back from b to a, so there's no
+cycle and no need for the generational GC here at all.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Generational promotion</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A module-level cache dictionary is created when your program starts and lives for the entire run of the program. After the program has been running a while, which generation is it most likely sitting in, and why does that matter for GC performance?</p>
+    <details><summary>Show solution</summary><div class="solution">Generation 2 (the oldest). Every time it survives a collection pass of its
+current generation, it gets promoted upward — gen 0 to gen 1, gen 1 to gen
+2. Since it lives for the whole program, it eventually survives enough
+passes to land in gen 2, which is scanned the least often. This matters
+because it means CPython isn't wasting cycles repeatedly re-scanning this
+long-lived, clearly-still-needed object on every gen-0 pass — the
+generational design specifically avoids that waste by trusting that
+objects which have already proven long-lived will likely keep being
+long-lived.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · gc.collect() and __del__</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two objects in a cycle each define a <code class="inline">__del__</code> method that prints a message. You call <code class="inline">gc.collect()</code>. Will the messages print immediately, in a predictable order relative to each other, and why might this matter in practice?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, gc.collect() will find the unreachable cycle and finalize both
+objects, so both __del__ messages will print. But the ORDER between the two
+is not guaranteed to be meaningful/predictable the way it would be for a
+simple non-cyclic chain, because the collector has to break the cycle
+somehow before either object can be safely finalized, and which one "goes
+first" is an implementation detail of how the cycle is unwound. This is
+exactly why relying on __del__ side effects (like releasing a lock or
+closing a file) is risky for objects that might end up in cycles — prefer
+explicit cleanup (context managers, `close()` methods) over depending on
+finalization order.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 6 · Refcount vs is-alive</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">True or false: "if an object's refcount is greater than zero, something in my program can still reach it." Explain using the cycle example from this lab.</p>
+    <details><summary>Show solution</summary><div class="solution">False. A refcount greater than zero only means SOMETHING holds a reference
+— it says nothing about whether that something is itself reachable from
+your program's actual roots (global names, the call stack, etc). In the
+Node A / Node B cycle, after deleting both outside names, each node's
+refcount is 1 — not zero — but neither is reachable from anywhere your
+running program could actually get to. "Refcount > 0" means "not provably
+garbage by the cheap local check"; it does not mean "definitely still
+useful." This exact gap between the two is the entire reason the
+generational GC needs to exist.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly what event causes CPython to free an object under pure refcounting, (2) construct your own two-object reference cycle from memory and explain why refcounting gets stuck on it, and (3) why "generational" is the right word for the cycle-detecting GC's strategy? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — cpython internals: refcounting &amp; gc.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: REFCOUNT LIVE DEMO */
+(function(){
+  const circle = document.getElementById('rc-circle');
+  const countEl = document.getElementById('rc-count');
+  const slotsEl = document.getElementById('rc-slots');
+  const addBtn = document.getElementById('rc-add');
+  const add2Btn = document.getElementById('rc-add2');
+  const delBtn = document.getElementById('rc-del');
+  const delAllBtn = document.getElementById('rc-delall');
+  const resetBtn = document.getElementById('rc-reset');
+  const logEl = document.getElementById('rc-log');
+
+  let names = ['x'];
+
+  function render(){
+    countEl.textContent = names.length;
+    slotsEl.innerHTML = names.map(n => `<div class="ref-slot">${n} → object</div>`).join('');
+    circle.classList.toggle('zero', names.length === 0);
+  }
+  function pulse(){
+    circle.classList.remove('pulse');
+    void circle.offsetWidth;
+    circle.classList.add('pulse');
+  }
+  function log(msg){
+    const p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  addBtn.addEventListener('click', ()=>{
+    if(names.includes('y')) return;
+    names.push('y'); render(); pulse();
+    log(`<b>y = x:</b> a new name binds to the same object → refcount ${names.length-1} → ${names.length}.`);
+    add2Btn.disabled = names.includes('z');
+  });
+  add2Btn.addEventListener('click', ()=>{
+    if(names.includes('z')) return;
+    names.push('z'); render(); pulse();
+    log(`<b>z = x:</b> another new binding → refcount ${names.length-1} → ${names.length}.`);
+  });
+  delBtn.addEventListener('click', ()=>{
+    if(names.length <= 1 && names[0] !== 'x'){}
+    const target = names.includes('z') ? 'z' : (names.includes('y') ? 'y' : null);
+    if(!target){ log(`<b>Nothing left to delete</b> except "x" itself — use "del all remaining refs" to finish it off.`); return; }
+    names = names.filter(n => n !== target);
+    render(); pulse();
+    log(`<b>del ${target}:</b> that binding is removed → refcount drops to ${names.length}.`);
+  });
+  delAllBtn.addEventListener('click', ()=>{
+    if(names.length === 0){ log('Already at refcount 0 — object was already freed.'); return; }
+    names = [];
+    render();
+    circle.classList.add('pulse');
+    log(`<b>del x (and any remaining names):</b> refcount hits 0 → CPython frees the object IMMEDIATELY, deterministically, right here — no waiting for a GC pass.`);
+  });
+  resetBtn.addEventListener('click', ()=>{
+    names = ['x'];
+    render();
+    logEl.innerHTML = '<span class="line">Reset. Object starts alive with refcount=1 (the name "x").</span>';
+  });
+  render();
+})();
+
+/* SECTION 2: REFERENCE CYCLE */
+(function(){
+  const svg = document.getElementById('cyc-svg');
+  const nodeA = document.getElementById('cyc-a');
+  const nodeB = document.getElementById('cyc-b');
+  const rcA = document.getElementById('cyc-a-rc');
+  const rcB = document.getElementById('cyc-b-rc');
+  const linkBtn = document.getElementById('cyc-link');
+  const delBtn = document.getElementById('cyc-del');
+  const gcBtn = document.getElementById('cyc-gc');
+  const resetBtn = document.getElementById('cyc-reset');
+  const logEl = document.getElementById('cyc-log');
+
+  let state = { linked:false, namesDeleted:false, collected:false };
+
+  function drawArrows(){
+    svg.innerHTML = '';
+    if(!state.linked || state.collected) return;
+    const ns = 'http://www.w3.org/2000/svg';
+    const defs = document.createElementNS(ns, 'defs');
+    defs.innerHTML = `<marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#ff6b6b"></path></marker>`;
+    svg.appendChild(defs);
+    const top = document.createElementNS(ns,'path');
+    top.setAttribute('d', 'M 155 85 Q 225 45 300 85');
+    top.setAttribute('stroke', '#ff6b6b'); top.setAttribute('stroke-width','2'); top.setAttribute('fill','none');
+    top.setAttribute('marker-end','url(#arrowhead)');
+    svg.appendChild(top);
+    const bot = document.createElementNS(ns,'path');
+    bot.setAttribute('d', 'M 300 135 Q 225 175 155 135');
+    bot.setAttribute('stroke', '#ff6b6b'); bot.setAttribute('stroke-width','2'); bot.setAttribute('fill','none');
+    bot.setAttribute('marker-end','url(#arrowhead)');
+    svg.appendChild(bot);
+  }
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  linkBtn.addEventListener('click', ()=>{
+    if(state.linked) return;
+    state.linked = true;
+    rcA.textContent = '2'; rcB.textContent = '2';
+    drawArrows();
+    log('<b>a.partner = b; b.partner = a:</b> each node now holds a reference to the other. Both refcounts go from 1 to 2 (the outside name PLUS the incoming reference from its partner).');
+    linkBtn.disabled = true;
+  });
+
+  delBtn.addEventListener('click', ()=>{
+    if(!state.linked || state.namesDeleted) return;
+    state.namesDeleted = true;
+    rcA.textContent = '1'; rcB.textContent = '1';
+    log('<b>del a; del b:</b> both outside names are gone. Each refcount drops from 2 to 1 — NOT zero. Node A is kept alive only by Node B\'s reference, and vice versa. Nothing outside this pair can reach either one, but pure refcounting sees two non-zero counts and does nothing. This is a permanent leak until something else intervenes.');
+    delBtn.disabled = true;
+    gcBtn.disabled = false;
+  });
+
+  gcBtn.addEventListener('click', ()=>{
+    if(state.collected) return;
+    state.collected = true;
+    nodeA.classList.add('gc-swept');
+    nodeB.classList.add('gc-swept');
+    log('<b>gc.collect() runs:</b> the generational collector walks container objects looking for groups unreachable from outside themselves. It finds A and B reference each other but nothing external reaches either — it breaks the cycle and frees both.');
+    setTimeout(()=>{
+      nodeA.classList.add('collected');
+      nodeB.classList.add('collected');
+      log('<b>Both nodes freed.</b> This is precisely the gap pure refcounting cannot close on its own — a periodic, graph-aware sweep was required.');
+    }, 700);
+    gcBtn.disabled = true;
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    state = { linked:false, namesDeleted:false, collected:false };
+    rcA.textContent = '1'; rcB.textContent = '1';
+    nodeA.className = 'cycle-node'; nodeA.style.marginRight = '5rem';
+    nodeB.className = 'cycle-node';
+    drawArrows();
+    linkBtn.disabled = false; delBtn.disabled = false; gcBtn.disabled = true;
+    logEl.innerHTML = '<span class="line">Reset. Create two nodes, link them into a cycle, then delete both outside names.</span>';
+  });
+})();
+
+/* SECTION 3: GENERATIONAL GC */
+(function(){
+  const gen0El = document.getElementById('gen0-objs');
+  const gen1El = document.getElementById('gen1-objs');
+  const gen2El = document.getElementById('gen2-objs');
+  const sweepBtn = document.getElementById('gen-sweep');
+  const resetBtn = document.getElementById('gen-reset');
+  const logEl = document.getElementById('gen-log');
+
+  let nextId = 1;
+  let gens = [[], [], []]; // gen0, gen1, gen2
+  let pass = 0;
+
+  function spawnGen0(n){
+    for(let i=0;i<n;i++){
+      gens[0].push({ id: nextId++, alive: Math.random() > 0.55 });
+    }
+  }
+  spawnGen0(6);
+
+  function render(){
+    [gen0El, gen1El, gen2El].forEach((el, gi)=>{
+      el.innerHTML = gens[gi].map(o => `<span class="gen-obj ${o.alive ? 'alive':'dead'}">#${o.id}</span>`).join('') || '<span style="font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim);">empty</span>';
+    });
+  }
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  sweepBtn.addEventListener('click', ()=>{
+    pass++;
+    const before0 = gens[0].length;
+    const dead0 = gens[0].filter(o=>!o.alive).length;
+    const survivors0 = gens[0].filter(o=>o.alive);
+    gens[0] = [];
+    gens[1] = gens[1].concat(survivors0);
+    log(`<b>Gen-0 pass #${pass}:</b> scanned ${before0} objects, freed ${dead0} dead ones immediately, promoted ${survivors0.length} survivor(s) up to generation 1.`);
+
+    if(pass % 3 === 0){
+      const survivors1 = gens[1].filter(o=>o.alive);
+      const dead1 = gens[1].length - survivors1.length;
+      gens[1] = [];
+      gens[2] = gens[2].concat(survivors1);
+      log(`<b>Threshold reached — gen-1 also collected:</b> freed ${dead1}, promoted ${survivors1.length} up to generation 2 (rarely scanned from here on).`);
+    }
+    spawnGen0(3 + Math.floor(Math.random()*3));
+    render();
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    gens = [[], [], []];
+    pass = 0; nextId = 1;
+    spawnGen0(6);
+    render();
+    logEl.innerHTML = '<span class="line">Reset. Fresh batch of objects in generation 0 — most will die young.</span>';
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
