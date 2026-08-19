@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Audit Trail Schema</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --log-c:#f2c14e; --replay-c:#4fc3f7; --status-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--log-c); color:var(--log-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--replay-c); color:var(--replay-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--status-c); color:var(--status-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--status-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* replay timeline */
+  .replay-row{display:flex; align-items:center; gap:0.8rem; margin:0.5rem 0; padding:0.6rem 0.8rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.78rem; opacity:0.3; transition:all .35s ease;}
+  .replay-row.active{opacity:1; border-color:var(--replay-c); box-shadow:0 0 10px rgba(79,195,247,0.25);}
+  .replay-row .rstatus{font-size:0.68rem; padding:0.2rem 0.5rem; border-radius:12px; border:1px solid var(--rule);}
+  .replay-row .rstatus.success{border-color:var(--status-c); color:var(--status-c);}
+  .replay-row .rstatus.error{border-color:var(--bad-c); color:var(--bad-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--status-c);} .dc-col.b h4{color:var(--status-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.log{border-left-color:var(--log-c); background:rgba(242,193,78,0.06);} .callout.log b{color:var(--log-c);}
+  .callout.replay{border-left-color:var(--replay-c); background:rgba(79,195,247,0.06);} .callout.replay b{color:var(--replay-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · AUDIT TRAIL SCHEMA</div>
+  <h1>If a tool call goes wrong at 3am, the audit trail is the only witness that was there.</h1>
+  <p class="lede">Every lab this month has trusted tool calls to just work: <code class="inline">deterministic_parsing.html</code> validates them, <code class="inline">loop_termination_logic.html</code> bounds them, but nothing yet has recorded them permanently. This lab builds the schema that logs every single tool call's inputs, outputs, and outcome — not for the agent's benefit, but for a HUMAN's, debugging a failure hours or days after the fact, with nothing to go on except what got written down.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Logging every call's real inputs and outputs, not a summary</div>
+    <div class="pipe-label b">A schema precise enough to replay a failed session</div>
+    <div class="pipe-label c">Status, timing, and what each column earns its place for</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="schema">1 · Logging Every Tool Call's Inputs &amp; Outputs</a>
+  <a data-target="replay">2 · Schema Supporting Replay &amp; Debugging</a>
+  <a data-target="live">3 · Replay a Failed Session, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: LOGGING SCHEMA ============ -->
+<section id="schema">
+  <div class="kicker">01 — A summary tells you something happened. Full inputs and outputs tell you WHY.</div>
+  <h2>Logging every tool call's inputs and outputs</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Think about an airplane's black box. It doesn't record "the flight was mostly normal, with one minor anomaly around minute 40" — it records literally every instrument reading, every control input, every radio transmission, continuously, for the entire flight. The reason isn't paranoia: when something goes wrong, investigators don't know in advance which detail will turn out to matter, so a summary written by someone who didn't yet know what would go wrong is exactly the wrong thing to have. An audit trail for tool calls needs the same posture — record the actual data, not someone's guess at what might later seem relevant.</p>
+
+  <p>Here's the core table, one row per tool call:</p>
+
+  <div class="code"><span class="c-kw">CREATE TABLE</span> tool_call_audit (
+    call_id         <span class="c-kw">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    agent_id        <span class="c-kw">UUID NOT NULL</span>,                <span class="c-cmt">-- which agent/session made this call</span>
+    conversation_id <span class="c-kw">UUID REFERENCES</span> conversations(conversation_id),
+    tool_name       <span class="c-kw">TEXT NOT NULL</span>,
+    input_params    <span class="c-kw">JSONB NOT NULL</span>,               <span class="c-cmt">-- the FULL arguments object, exactly as validated</span>
+    output_result   <span class="c-kw">JSONB</span>,                        <span class="c-cmt">-- the FULL result, or NULL if the call never completed</span>
+    status          <span class="c-kw">TEXT NOT NULL CHECK</span> (status <span class="c-kw">IN</span>
+                        (<span class="c-str">'success'</span>, <span class="c-str">'tool_error'</span>, <span class="c-str">'validation_error'</span>, <span class="c-str">'timeout'</span>)),
+    error_detail    <span class="c-kw">TEXT</span>,                         <span class="c-cmt">-- populated only when status != 'success'</span>
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    duration_ms     <span class="c-kw">INT NOT NULL</span>
+);
+
+<span class="c-cmt">-- one real row, a validation failure caught before execution</span>
+<span class="c-kw">INSERT INTO</span> tool_call_audit
+    (agent_id, conversation_id, tool_name, input_params, output_result, status, error_detail, started_at, duration_ms)
+<span class="c-kw">VALUES</span> (
+    <span class="c-str">'agent-77f2'</span>, <span class="c-str">'conv-88a1'</span>, <span class="c-str">'search_flights'</span>,
+    <span class="c-str">'{"origin": "SFO", "destination": "JFK", "cabin_class": "luxury"}'</span>::<span class="c-kw">jsonb</span>,
+    <span class="c-kw">NULL</span>,
+    <span class="c-str">'validation_error'</span>,
+    <span class="c-str">"'luxury' is not one of ['economy','business','first'] at $.cabin_class"</span>,
+    <span class="c-str">'2026-08-19 14:02:11+00'</span>, <span class="c-num">4</span>
+);</div>
+
+  <p>Notice <code class="inline">input_params</code> and <code class="inline">output_result</code> are <code class="inline">JSONB</code>, storing the <strong>entire</strong> arguments object and the <strong>entire</strong> result — not a truncated string, not a hand-picked subset of "the fields that seemed important." This directly mirrors <code class="inline">json_schema_tool_specs.html</code> and <code class="inline">deterministic_parsing.html</code>'s own approach: those labs validate and parse the FULL structured object, never a lossy summary of it — and the audit trail's whole job is to preserve exactly what those steps actually saw, unmodified.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Storing a summary ("called search_flights, failed")</h4>
+      <p>Tells you something happened, roughly when, and roughly what kind of thing it was. Does NOT tell you which specific argument was wrong, what value was actually passed, or what the tool's exact error message said — every one of which might be exactly what a debugging session six hours later needs, and none of which can be recovered after the fact if it was never written down.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Storing the full input_params and output_result</h4>
+      <p>Preserves the EXACT arguments object that was validated (or that failed validation) and the EXACT result (or error) the tool produced — nothing paraphrased, nothing dropped. A debugging session later can see precisely what happened, because the row IS what happened, not someone's earlier guess at what would matter about it.</p>
+    </div>
+  </div>
+
+  <p>Why store the full objects rather than just a summary column like <code class="inline">notes TEXT</code>? Because at write time — the moment a tool call happens — nobody yet knows which detail will turn out to matter for a debugging session that might happen hours, days, or never. A summary is a decision made too early, by someone (or some code) that doesn't yet know what the eventual question will be. The full <code class="inline">input_params</code>/<code class="inline">output_result</code> objects defer that decision: whatever ends up mattering is already there, because everything is there.</p>
+
+  <div class="callout log"><b>Interview-ready definition:</b> an audit trail schema for tool calls logs one row per call containing the caller's identity (<code class="inline">agent_id</code>), the tool invoked, the FULL <code class="inline">input_params</code> and <code class="inline">output_result</code> as structured JSON (not a truncated or hand-summarized version of either), an explicit <code class="inline">status</code> distinguishing different failure kinds, and timing data. Storing complete inputs and outputs rather than a summary is a deliberate choice to defer the "what matters" decision away from write time — when nobody yet knows what a future debugging session will actually need — to read time, when the full data is still there to answer whatever question actually comes up.</div>
+</section>
+
+<!-- ============ SECTION 2: REPLAY & DEBUGGING ============ -->
+<section id="replay">
+  <div class="kicker">02 — A log you can only READ is different from a log you can RUN</div>
+  <h2>Schema supporting replay and debugging</h2>
+
+  <p><strong>Start here, before the schema extension.</strong> Think about the difference between a restaurant's handwritten note "the soufflé collapsed" and a chef's actual RECIPE with exact measurements and timing — the note tells you a fact; the recipe lets you literally attempt the dish again, this time watching for where it goes wrong. A log that tells you a tool call failed is the note. A log precise enough that you could feed its <code class="inline">input_params</code> back into the SAME tool and watch it fail (or now succeed, if the underlying cause was fixed) the same way — that's the recipe. Replay support is exactly the difference between those two.</p>
+
+  <p>Section 1's schema already has almost everything needed for this — the discipline is making sure nothing is missing. A row supports replay only if it captures EVERYTHING that could have influenced the outcome:</p>
+
+  <table class="cmp">
+    <tr><th>What's needed for replay</th><th>Where it lives in section 1's schema</th><th>What breaks if it's missing</th></tr>
+    <tr><td>The exact call that was made</td><td><code>tool_name</code> + <code>input_params</code> (full JSONB)</td><td>Without the FULL arguments, you can't re-issue the identical call — you'd be guessing at what was actually passed, defeating the entire point of a replay</td></tr>
+    <tr><td>What the tool actually returned or failed with</td><td><code>output_result</code> + <code>status</code> + <code>error_detail</code></td><td>Without knowing the ORIGINAL outcome, you have nothing to compare a replay attempt's result against — "did it fail the same way, or differently?" is unanswerable</td></tr>
+    <tr><td>Ordering relative to other calls in the same session</td><td><code>conversation_id</code> + <code>started_at</code></td><td>A tool call rarely happens in isolation — if an earlier call in the same session changed some external state (e.g. created a booking) that this call then depended on, replaying THIS call alone, out of order, could behave completely differently than it did originally</td></tr>
+    <tr><td>Which agent/session context was active</td><td><code>agent_id</code></td><td>Different agents (or the same agent with different configuration) might handle identical arguments differently — without knowing WHO made the call, a replay might use the wrong logic entirely</td></tr>
+  </table>
+
+  <p>This connects directly to a broader idea worth naming, even briefly: storing a complete, ordered sequence of exactly what happened — rather than only the current state something ended up in — is the same underlying principle behind <strong>event sourcing</strong> (storing state as a sequence of events, so any past state can be reconstructed by replaying events from the beginning). This audit trail isn't a full event-sourced system in its own right, but it borrows event sourcing's central insight: if you record the actual sequence of things that happened, in enough detail and in the right order, you can reconstruct — or literally re-attempt — what happened later, in a way a system that only ever stored "current state" fundamentally cannot.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE SESSION'S TOOL CALLS, IN ORDER — ENOUGH TO REPLAY THE FAILURE</span>
+      <div><button class="btn secondary" id="replay-reset">Reset</button></div>
+    </div>
+    <div id="replay-rows"></div>
+    <button class="btn" id="replay-run">Step through this session's audit trail ▸</button>
+  </div>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> it's tempting to log <code class="inline">output_result</code> only on success and skip it entirely on failure ("there's no result, so why store anything?"). But a FAILED call often has genuinely useful output too — a partial response before a timeout, an HTTP status code and response body from a downstream API that rejected the call, or the specific validation error from <code class="inline">deterministic_parsing.html</code>'s pipeline. <code class="inline">error_detail</code> exists specifically to capture this — leaving it null on every failure throws away exactly the detail a debugging session needs most, on exactly the rows where debugging is most likely to happen.</div>
+
+  <div class="callout replay"><b>Interview-ready definition:</b> an audit trail schema supports replay and debugging when its rows capture not just that a call happened, but everything needed to reconstruct or re-attempt it: the complete input arguments, the complete result or error, the calling agent's identity, and the call's position in a larger ordered sequence (via <code class="inline">conversation_id</code> and <code class="inline">started_at</code>) relative to other calls that may have changed relevant external state beforehand. This mirrors event sourcing's core principle at a smaller scale — a detailed, ordered record of what actually happened lets you reconstruct or replay past behavior in a way a system that only stores current state cannot, without requiring the audit trail itself to be a full event-sourced system.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE REPLAY ============ -->
+<section id="live">
+  <div class="kicker">03 — Reading the audit trail the way a debugging session actually would</div>
+  <h2>Replay a failed session, live</h2>
+
+  <p><strong>Start here, before running it.</strong> Below is one real session's <code class="inline">tool_call_audit</code> rows, in the order <code class="inline">started_at</code> puts them. Step through them one at a time, exactly as a human debugging a "the user's flight booking failed" ticket would — watch for the specific row where things went wrong, and notice what the FULL <code class="inline">input_params</code> on that row reveals that a summary never would have.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SESSION agent-77f2 / conv-88a1 — 4 TOOL CALLS, ONE FAILURE</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="live-run">Step through the audit trail ▸</button>
+    <div class="log" id="live-log"><span class="line">Click to walk through this session's tool_call_audit rows in order, the way a real debugging session would.</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice as you step through:</b> the failure at step 3 is fully explained by that ONE row's <code class="inline">input_params</code> and <code class="inline">error_detail</code> — no guessing required, no need to ask the user "what did you actually type," no need to reproduce the bug live. This is the entire point of storing full inputs and outputs rather than a summary: the row that failed is, by itself, sufficient evidence for what went wrong.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a query to find every call that failed validation in the last hour</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's schema, write a query that finds every <code class="inline">validation_error</code> call in the last hour, and explain why an index on <code class="inline">(status, started_at)</code> — not just <code class="inline">started_at</code> alone — would make this query efficient at scale, using the leftmost-prefix reasoning from <code class="inline">database/indexing.html</code>.</p>
+    <details><summary>Show solution</summary><div class="solution">SELECT * FROM tool_call_audit
+WHERE status = 'validation_error'
+  AND started_at >= now() - INTERVAL '1 hour'
+ORDER BY started_at DESC;
+
+An index on started_at ALONE would let Postgres narrow to the last hour
+efficiently, but it would still have to scan every row in that window
+and check status = 'validation_error' against each one individually --
+if validation errors are a small fraction of total call volume (which
+they typically are), most of the rows scanned in that time window get
+discarded after the check, wasted work.
+
+An index on (status, started_at) matches the query's EQUALITY filter
+(status) as the leading column, followed by the RANGE filter
+(started_at) -- exactly the leftmost-prefix shape database/indexing.html
+established: Postgres narrows directly to just the validation_error rows
+first, then range-scans only WITHIN that already-narrow set for the last
+hour, touching far fewer rows overall than scanning the full time window
+and filtering status afterward. This is the same principle
+conversation_history_schema.html applied to (conversation_id, branch_id,
+turn_number DESC) -- put the equality-filtered column(s) first, the
+range/sort column after, so the index does the narrowing instead of the
+database doing it in application-visible filtering after the fact.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding what NOT to log</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 argues for storing FULL inputs and outputs. Does this mean literally every field of every argument should always be stored verbatim, with no exceptions? Name one realistic case where storing the full, raw value would be a mistake, and what you'd do instead.</p>
+    <details><summary>Show solution</summary><div class="solution">No -- "store the full input/output" is the right DEFAULT, but it has a
+real exception: fields containing sensitive data (a credit card number,
+a password, a government ID number passed as a tool argument) shouldn't
+be stored in plaintext in an audit table that may be read by many
+engineers debugging unrelated issues, retained indefinitely, and
+potentially included in backups or replicated to less-secured
+environments. Storing raw sensitive values here would trade one real
+problem (losing debugging fidelity) for a different, often worse one
+(a data-security and compliance liability sitting in a table specifically
+designed to be broadly readable for debugging purposes).
+
+What to do instead: redact or tokenize specific known-sensitive fields
+before writing input_params (e.g. store "**** **** **** 4242" instead of
+a full card number, or a reference token that can be looked up
+separately under stricter access control if truly needed), while still
+storing everything ELSE in that same call's arguments in full. This
+preserves section 1's core benefit (full context for debugging almost
+everything about the call) while not turning the audit trail itself into
+a sensitive-data exposure. The general principle: "store everything" is
+the right default for data whose future debugging value is genuinely
+unknown at write time, but it's not a blanket rule that overrides every
+other constraint (security, compliance, storage cost at extreme scale) --
+those are separate, real considerations layered on top of the default,
+not disproofs of it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing an audit trail that looks complete but can't actually replay</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team implements section 1's schema correctly — full <code class="inline">input_params</code>, full <code class="inline">output_result</code>, accurate <code class="inline">status</code> — but omits <code class="inline">conversation_id</code> and <code class="inline">started_at</code> entirely, reasoning "each row is already self-contained, why do we need ordering?" Using section 2's replay requirements, what specifically breaks?</p>
+    <details><summary>Show solution</summary><div class="solution">Each ROW is self-contained in the sense that you can see exactly what
+that ONE call's arguments and result were -- but replay often isn't
+about one call in isolation, it's about reproducing a SEQUENCE of calls
+where an earlier one changed state a later one depends on. Section 2's
+table names this directly: without conversation_id and started_at, you
+can't tell WHICH other calls happened in the same session, or in what
+ORDER -- so if a booking-confirmation call failed specifically because an
+earlier seat-selection call in the SAME session had already consumed the
+last available seat, that causal relationship is invisible. Each row on
+its own looks like an unexplained failure; only the ORDERED SEQUENCE of
+calls in that specific session reveals why.
+
+Concretely: imagine two DIFFERENT sessions both called search_flights
+with identical input_params and got different output_results, because
+one session's earlier calls had changed some shared external state (e.g.
+available seat inventory) between the two searches. Without
+conversation_id grouping calls into sessions and started_at ordering them
+within a session, there's no way to distinguish "these two identical-
+looking calls behaved differently because of unrelated global state
+changes over time" from "the tool is nondeterministic" -- the omitted
+columns are exactly what would let you tell those two very different
+explanations apart. Self-contained rows answer "what happened in THIS
+call" perfectly; they cannot answer "why did this call's outcome depend
+on what came before it" without ordering and session-grouping data.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Connecting duration_ms to loop_termination_logic's timeout mechanism</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">loop_termination_logic.html</code>'s per-step timeout mechanism, how would a <code class="inline">status = 'timeout'</code> row's <code class="inline">duration_ms</code> value relate to that lab's <code class="inline">step_timeout_seconds</code> parameter, and why is logging the actual duration still useful even though you already know it hit the timeout?</p>
+    <details><summary>Show solution</summary><div class="solution">A status = 'timeout' row's duration_ms should be very close to (at or
+just past) step_timeout_seconds * 1000 -- since loop_termination_logic's
+asyncio.wait_for(..., timeout=step_timeout_seconds) is precisely what
+determined the call was abandoned, the recorded duration reflects
+approximately that same budget having elapsed before the call was cut
+off, not the tool's true (unknown, since it never got to finish)
+completion time.
+
+Logging the actual duration is still useful for a few real reasons
+even though "it timed out" is already known from status alone: (1) it
+lets you distinguish a call that timed out almost immediately (duration_ms
+much smaller than the configured budget, suggesting something OTHER than
+a hung external call, e.g. a bug that immediately blocks) from one that
+ran right up against the full budget (suggesting a genuinely slow or
+hung downstream dependency, matching loop_termination_logic's original
+motivating scenario); (2) it lets you audit whether step_timeout_seconds
+itself is well-tuned across many rows -- if timeouts consistently fire at
+exactly 90% of the configured budget across hundreds of calls to the SAME
+tool, that's a strong, data-backed signal the budget might be set too
+tight for that tool's normal (non-hung) behavior, which is a genuinely
+different, more actionable finding than "this tool sometimes times out"
+alone would tell you.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about the trade-off between granularity and storage growth</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A system logs one <code class="inline">tool_call_audit</code> row per call and runs millions of calls per day. Using the reasoning from <code class="inline">database/time_series_schema.html</code>'s retention/downsampling pattern, propose a retention strategy that keeps full replay fidelity for RECENT calls without keeping every row forever at full detail.</p>
+    <details><summary>Show solution</summary><div class="solution">This is structurally the same trade-off time_series_schema.html covered
+for sensor data: keep full-fidelity raw rows for a bounded RECENT window
+(where replay/debugging value is highest -- most debugging happens
+within hours or days of an incident, not months later), and age older
+rows into a coarser, smaller-footprint form rather than deleting them
+outright or keeping every row at full detail forever.
+
+A concrete strategy: keep tool_call_audit rows at full fidelity (complete
+input_params and output_result JSONB) for, say, 30 days -- long enough to
+cover the overwhelming majority of real debugging requests, which
+reference recent activity. Past 30 days, roll rows into a coarser
+SUMMARY table (call counts per tool per day, error-rate percentages,
+average duration_ms) that preserves AGGREGATE trends (useful for "has
+this tool's error rate been rising over the last 6 months" questions)
+without keeping every individual call's full JSONB payload indefinitely
+-- exactly time_series_schema.html's raw-to-per-minute-to-per-hour
+downsampling pattern, applied here to audit rows instead of sensor
+readings, aging from "every call in full detail" to "an hourly/daily
+rollup" rather than to progressively coarser TIME buckets of the same
+metric.
+
+The trade-off being made explicit: this deliberately sacrifices full
+REPLAY capability for calls older than the retention window (you can no
+longer literally re-attempt a specific 4-month-old call, since its exact
+input_params are gone) in exchange for bounded storage growth -- a
+reasonable trade specifically because section 2's replay use case is
+overwhelmingly a RECENT-past concern in practice, not a need to replay
+arbitrary historical calls indefinitely. Whether 30 days is the right
+window (versus 7, or 90) is a product/compliance decision, not something
+the schema itself dictates -- but SOME bounded full-fidelity window,
+with a coarser fallback beyond it, is the general shape any
+audit-trail-at-scale needs.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the <code class="inline">tool_call_audit</code> table's DDL from memory including the status CHECK constraint, (2) explain precisely why storing a summary instead of full inputs/outputs loses debugging value nobody can predict in advance, and (3) name the four specific fields section 2 requires for replay and what breaks if each is individually missing? This audit trail is exactly the kind of record <code class="inline">function_calling_loop_practice.html</code>'s guided walkthrough is implicitly producing at every step — worth noticing which of that lab's visible state would map to which column here.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — audit trail schema.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: REPLAY ROW STEPPER */
+(function(){
+  var rowsEl = document.getElementById("replay-rows");
+  var runBtn = document.getElementById("replay-run");
+  var resetBtn = document.getElementById("replay-reset");
+  var idx = 0;
+
+  var ROWS = [
+    {tool:"search_flights", status:"success", detail:'input_params: {"origin":"SFO","destination":"JFK","date":"2026-09-02"} → output_result: 4 flights found'},
+    {tool:"select_seat", status:"success", detail:'input_params: {"flight_id":"UA118","seat":"14C"} → output_result: seat held for 10 minutes'},
+    {tool:"confirm_booking", status:"tool_error", detail:'input_params: {"flight_id":"UA118","seat":"14C","payment_token":"tok_9f2"} → error_detail: "seat 14C no longer available — hold expired"'},
+    {tool:"select_seat", status:"success", detail:'input_params: {"flight_id":"UA118","seat":"16A"} → output_result: seat held for 10 minutes (retry, after the hold expired)'}
+  ];
+
+  function render(){
+    rowsEl.innerHTML = "";
+    ROWS.forEach(function(row, i){
+      var el = document.createElement("div");
+      el.className = "replay-row" + (i < idx ? " active" : "");
+      var statusClass = row.status === "success" ? "success" : "error";
+      el.innerHTML = '<span>' + (i+1) + '. <b>' + row.tool + '</b></span><span class="rstatus ' + statusClass + '">' + row.status + '</span><span style="color:var(--ink-dim); font-size:0.72rem;">' + (i < idx ? row.detail : "···") + '</span>';
+      rowsEl.appendChild(el);
+    });
+  }
+
+  runBtn.addEventListener("click", function(){
+    if(idx >= ROWS.length){ idx = 0; }
+    idx++;
+    render();
+    if(idx >= ROWS.length){
+      runBtn.textContent = "Session replayed — click to restart";
+    } else {
+      runBtn.textContent = "Step through this session's audit trail ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    runBtn.textContent = "Step through this session's audit trail ▸";
+    render();
+  });
+
+  render();
+})();
+
+/* SECTION 3: LIVE DEBUG WALKTHROUGH */
+(function(){
+  var runBtn = document.getElementById("live-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var idx = 0;
+  var busy = false;
+
+  var STEPS = [
+    {ok:true, text:'<b>Row 1 (14:02:05):</b> search_flights — status: success. input_params: origin=SFO, destination=JFK, date=2026-09-02. output_result: 4 flights found. Nothing unusual — this is where the session started.'},
+    {ok:true, text:'<b>Row 2 (14:02:31):</b> select_seat — status: success. input_params: flight_id=UA118, seat=14C. output_result: seat held for 10 minutes. Still normal — a seat was successfully reserved.'},
+    {ok:false, text:'<b>Row 3 (14:14:02):</b> confirm_booking — status: tool_error. input_params: flight_id=UA118, seat=14C, payment_token=tok_9f2. error_detail: "seat 14C no longer available — hold expired." <b style="color:var(--bad-c);">Found it.</b> Row 3\'s started_at is 11m26s after row 2\'s — well past the 10-minute hold from row 2\'s output_result. The full input_params and error_detail together explain EXACTLY what happened: the user (or the agent) took too long between selecting the seat and confirming, and the hold silently expired.'},
+    {ok:true, text:'<b>Row 4 (14:14:40):</b> select_seat — status: success. A retry, correctly re-selecting a NEW seat (16A) after the failure. The session recovered — but only because this row exists to confirm it did.'},
+    {ok:true, text:'<b style="color:var(--status-c);">Diagnosis complete.</b> No need to ask the user what happened, no need to reproduce the bug live — the audit trail\'s full input_params and error_detail on row 3, read together with rows 1-2-4\'s timestamps, is sufficient evidence on its own. This is section 1\'s core argument made concrete: a summary like "booking failed" would never have revealed the 10-minute hold-expiry timing that a debugging session actually needed.'}
+  ];
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + (step.ok ? "ok" : "bad");
+    p.innerHTML = step.text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener("click", function(){
+    if(idx === 0){ logEl.innerHTML = ""; }
+    if(idx >= STEPS.length){ return; }
+    log(STEPS[idx]);
+    idx++;
+    if(idx >= STEPS.length){
+      runBtn.disabled = true;
+      runBtn.textContent = "Session fully replayed";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    runBtn.disabled = false;
+    runBtn.textContent = "Step through the audit trail ▸";
+    logEl.innerHTML = '<span class="line">Click to walk through this session\'s tool_call_audit rows in order, the way a real debugging session would.</span>';
+  });
+})();
+</script>
+</body>
+</html>

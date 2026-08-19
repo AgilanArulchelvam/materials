@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Deterministic Parsing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --json-c:#7fd8a0; --regex-c:#ff6b6b; --retry-c:#c792ea; --accent:#4fc3f7; --bad-c:#ff6b6b; --warn-c:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,107,107,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--json-c); color:var(--json-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--regex-c); color:var(--regex-c); background:rgba(255,107,107,0.08);}
+  .pipe-label.c{border-color:var(--retry-c); color:var(--retry-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(79,195,247,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#0c1420; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:360px; overflow-y:auto;}
+  .log .line{margin:0.4rem 0; padding:0.5rem 0.7rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--json-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);}
+  .log .line.warn{border-left-color:var(--warn-c); background:rgba(242,193,78,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#0c1420; border-color:var(--accent); font-weight:600;}
+  .chip.bad-chip.active{background:var(--bad-c); border-color:var(--bad-c); color:#1a0e0e;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--regex-c);} .dc-col.a h4{color:var(--regex-c);}
+  .dc-col.b{border-color:var(--json-c);} .dc-col.b h4{color:var(--json-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(79,195,247,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.json{border-left-color:var(--json-c); background:rgba(127,216,160,0.06);} .callout.json b{color:var(--json-c);}
+  .callout.retry{border-left-color:var(--retry-c); background:rgba(199,146,234,0.06);} .callout.retry b{color:var(--retry-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · DETERMINISTIC PARSING</div>
+  <h1>The model's output claiming to be a tool call is just text. Parse it like text that might lie.</h1>
+  <p class="lede">react_pattern.html's loop used a regex to pull an action out of the model's raw text — and flagged that a malformed match raises loudly rather than guessing. This lab goes one level deeper: when a model supports native structured tool-calling, its output usually arrives as an actual JSON payload, not text to pattern-match at all — and parsing it should mean a real JSON parser plus schema validation, never regex pattern-matching on the surrounding text. This lab shows exactly where regex breaks on a valid call, and what to do when the JSON itself is malformed.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Real JSON parser + schema — not regex-guessing</div>
+    <div class="pipe-label b">Where regex silently breaks on a valid, differently-formatted call</div>
+    <div class="pipe-label c">Malformed output — catch it, don't crash the loop</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="strict">1 · Strict Parsing, Not Regex-Guessing</a>
+  <a data-target="malformed">2 · Handling Malformed Tool-Call Output</a>
+  <a data-target="live">3 · Parse &amp; Validate, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: STRICT PARSING ============ -->
+<section id="strict">
+  <div class="kicker">01 — A JSON parser either succeeds structurally, or it doesn't — a regex just guesses</div>
+  <h2>Strict parsing, not regex-guessing</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about the difference between a customs officer who checks your passport against an actual database record (does this document, structurally and cryptographically, match a real issued passport) versus one who just eyeballs whether it "looks like" a passport — right color, right approximate shape, a photo roughly where a photo should be. The second approach works fine for anything that happens to look normal, and fails in bizarre, hard-to-predict ways the moment something legitimate looks slightly unusual, or something illegitimate happens to look convincingly normal. A JSON parser is the first officer: it checks REAL STRUCTURE. A regex scanning free text for something that "looks like" a tool call is the second.</p>
+
+  <p><code class="inline">react_pattern.html</code>'s loop parsed a tool call out of freeform text the model generated ("Thought: ... / Action: lookup(...)") using a regex, because the model was producing plain prose with an embedded action, not a dedicated structured field. But when a model supports native tool-calling (the mode most production agent frameworks actually use), the model's API response includes a DEDICATED, already-separated field containing the tool call as real JSON — there's no free text to regex-match against at all, and treating it as if there were is a design mistake, not just a stylistic preference.</p>
+
+  <div class="code"><span class="c-cmt"># WRONG: regex-scanning for something that looks like a call,</span>
+<span class="c-cmt"># even when the model already gives you a structured field</span>
+<span class="c-kw">import</span> re
+match = re.search(<span class="c-str">r'search_flights\((.*?)\)'</span>, model_output_text)
+<span class="c-kw">if</span> match:
+    raw_args = match.group(<span class="c-num">1</span>)  <span class="c-cmt"># now what? this is a STRING, not parsed data</span>
+
+<span class="c-cmt"># RIGHT: read the structured field the model API already gives you,</span>
+<span class="c-cmt"># then parse ITS argument string with a real JSON parser</span>
+<span class="c-kw">import</span> json
+<span class="c-kw">from</span> jsonschema <span class="c-kw">import</span> validate, ValidationError
+
+tool_call = response.tool_calls[<span class="c-num">0</span>]           <span class="c-cmt"># a dedicated field, not scraped from prose</span>
+<span class="c-kw">try</span>:
+    arguments = json.loads(tool_call.arguments_json)  <span class="c-cmt"># REAL JSON parser</span>
+    validate(instance=arguments, schema=SEARCH_FLIGHTS_SCHEMA)  <span class="c-cmt"># REAL schema check</span>
+<span class="c-kw">except</span> (json.JSONDecodeError, ValidationError) <span class="c-kw">as</span> e:
+    <span class="c-cmt"># section 2 -- this is the expected, handled path, not a crash</span>
+    handle_malformed_call(tool_call, e)</div>
+
+  <p>The difference isn't cosmetic. A JSON parser understands nested structure, string escaping, whitespace, and key ordering the way the JSON specification actually defines them — it either successfully parses the ENTIRE structure, or it raises a precise error naming exactly where parsing failed. A regex has no concept of "structure" at all; it matches a pattern of characters, and any input that's semantically identical but shaped even slightly differently — extra whitespace, a different key order, a nested object where the regex expected a flat one — can silently fail to match, with no signal that anything went wrong beyond "the regex didn't match."</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Regex extraction (fragile)</h4>
+      <p>Matches a specific TEXTUAL SHAPE the author anticipated. A semantically valid call formatted even slightly differently — different whitespace, a reordered argument, an extra nesting level — can fail to match with no diagnostic beyond "no match." The regex has no model of what JSON actually is; it's pattern-matching characters.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Real JSON parser + schema validation (robust)</h4>
+      <p>Understands actual JSON structure regardless of superficial formatting differences — whitespace, key order, and nesting are all handled correctly because the parser implements the real JSON grammar. A parse failure means the JSON is GENUINELY malformed, not just shaped differently than one regex author anticipated — and a schema check (from <code class="inline">json_schema_tool_specs.html</code>) catches everything the JSON grammar itself can't (wrong types, missing fields, bad enum values) with a precise, structured error.</p>
+    </div>
+  </div>
+
+  <div class="callout json"><b>Interview-ready definition:</b> deterministic parsing of a model's tool-call output means feeding the model's structured tool-call payload through an actual JSON parser and validating the result against the tool's JSON Schema — never extracting arguments via regex pattern-matching on raw text when a structured field is available. A JSON parser either successfully parses the full, real structure or raises a precise error naming exactly where it failed; a regex only recognizes the specific textual shapes its pattern was written to anticipate, and silently fails to match anything else, even a call that is semantically perfectly valid.</div>
+</section>
+
+<!-- ============ SECTION 2: HANDLING MALFORMED OUTPUT ============ -->
+<section id="malformed">
+  <div class="kicker">02 — Not valid JSON, or valid JSON that fails the schema — both are expected, both are recoverable</div>
+  <h2>Handling malformed tool-call output</h2>
+
+  <p><strong>Start here, before the code.</strong> Think about a form-processing clerk who receives a form that's torn, missing a required field, or has "N/A" scrawled where a number should be. A bad clerk either throws the whole stack of forms away because ONE was bad, or forges a plausible-looking value to make the bad form "work." A good clerk sets the bad form aside, writes a specific note about what's wrong with it, and sends it back to whoever submitted it with a chance to fix it — without disrupting processing of every OTHER form in the stack. An agent loop needs to be the good clerk: a malformed tool call is an expected, survivable event, not a reason to crash the entire loop.</p>
+
+  <p>There are two genuinely different failure shapes here, and they need different handling:</p>
+
+  <div class="code"><span class="c-kw">async def</span> <span class="c-fn">parse_and_validate_call</span>(tool_call, schema: <span class="c-fn">dict</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-cmt"># FAILURE SHAPE 1: not valid JSON at all -- the parser itself chokes</span>
+    <span class="c-kw">try</span>:
+        arguments = json.loads(tool_call.arguments_json)
+    <span class="c-kw">except</span> json.JSONDecodeError <span class="c-kw">as</span> e:
+        <span class="c-kw">return</span> {
+            <span class="c-str">"status"</span>: <span class="c-str">"parse_error"</span>,
+            <span class="c-str">"feedback"</span>: <span class="c-fn">f"Your tool call was not valid JSON: {e}. Re-emit it as valid JSON."</span>
+        }
+
+    <span class="c-cmt"># FAILURE SHAPE 2: valid JSON, but it doesn't match the tool's schema</span>
+    <span class="c-kw">try</span>:
+        validate(instance=arguments, schema=schema)
+    <span class="c-kw">except</span> ValidationError <span class="c-kw">as</span> e:
+        <span class="c-kw">return</span> {
+            <span class="c-str">"status"</span>: <span class="c-str">"schema_error"</span>,
+            <span class="c-str">"feedback"</span>: <span class="c-fn">f"Your call was valid JSON but failed validation: {e.message} at {e.json_path}."</span>
+        }
+
+    <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"ok"</span>, <span class="c-str">"arguments"</span>: arguments}
+
+<span class="c-cmt"># in the agent loop: feed the SPECIFIC feedback back to the model as an</span>
+<span class="c-cmt"># observation, and let it retry -- exactly like an Observation in react_pattern.html</span>
+outcome = <span class="c-kw">await</span> parse_and_validate_call(tool_call, SEARCH_FLIGHTS_SCHEMA)
+<span class="c-kw">if</span> outcome[<span class="c-str">"status"</span>] != <span class="c-str">"ok"</span>:
+    transcript += <span class="c-fn">f"Observation: {outcome['feedback']}\n"</span>   <span class="c-cmt"># model sees exactly what was wrong</span>
+<span class="c-kw">else</span>:
+    result = execute_tool(outcome[<span class="c-str">"arguments"</span>])</div>
+
+  <p>The critical design choice: BOTH failure paths return a structured result describing exactly what went wrong, rather than raising an uncaught exception that would crash the calling loop. That structured feedback then gets fed back to the model as the NEXT observation — the same Thought → Action → Observation mechanism <code class="inline">react_pattern.html</code> already established, just with the observation, this time, being "here's specifically why your last call didn't work" rather than a tool's normal result. The model gets a genuine chance to self-correct on its next turn, informed by a precise error rather than silence.</p>
+
+  <table class="cmp">
+    <tr><th>Response to malformed output</th><th>What happens</th><th>Why it's the wrong (or right) default</th></tr>
+    <tr><td>Crash the whole agent loop</td><td>One bad tool call ends the entire session, discarding all prior progress</td><td>Wrong — treats a routine, expected event (the model occasionally generating a bad call) as a fatal, unrecoverable one</td></tr>
+    <tr><td>Silently guess/coerce a "close enough" value</td><td>e.g. treating a missing field as some hardcoded default nobody actually chose</td><td>Wrong — the tool executes with data nobody validated, which can silently do the wrong thing without ever surfacing an error at all</td></tr>
+    <tr><td>Catch it, return structured feedback, let the model retry</td><td>The loop continues; the model's next Thought incorporates specifically what was wrong</td><td>Right — matches this lab's approach and <code class="inline">react_pattern.html</code>'s existing Observation mechanism exactly</td></tr>
+  </table>
+
+  <div class="callout warn"><b>One more thing this needs: a bound.</b> Retrying forever on a model that keeps generating malformed calls is its own failure mode — this is exactly why <code class="inline">loop_termination_logic.html</code>'s max-steps cap matters here too, not just for "the task is taking too many steps" in general. A parse/validation retry still counts as a step, so a model stuck generating bad JSON repeatedly still terminates the loop eventually, rather than looping forever on retries that were meant to be a recovery mechanism, not an infinite one.</div>
+
+  <div class="callout retry"><b>Interview-ready definition:</b> handling malformed tool-call output means catching both failure shapes — output that isn't valid JSON at all, and output that's valid JSON but fails schema validation — as expected, structured outcomes rather than letting either raise an uncaught exception that crashes the agent loop. The specific error (what failed to parse, or which schema constraint was violated and where) is fed back to the model as its next observation, giving it a genuine chance to self-correct on a subsequent attempt, bounded by the same step/retry limits that prevent any other kind of runaway loop.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE PARSE + VALIDATE ============ -->
+<section id="live">
+  <div class="kicker">03 — Pre-populated examples, parsed and validated exactly as section 2 describes</div>
+  <h2>Parse and validate a tool-call payload, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Each example below is a candidate "model output" for a call to <code class="inline">search_flights</code> (using the exact schema from <code class="inline">json_schema_tool_specs.html</code>). Some are well-formed, some are subtly reformatted-but-still-valid JSON that a naive regex would miss, and some are genuinely malformed in different ways. Pick one and run it through the real parse-then-validate pipeline.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PARSE + VALIDATE A MODEL "TOOL CALL" PAYLOAD</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-ex="clean">Clean JSON — compact, single line</button>
+      <button class="chip" data-ex="reformatted">Reformatted JSON — multi-line, reordered keys (regex would miss this)</button>
+      <button class="chip bad-chip" data-ex="notjson">Not valid JSON — trailing comma</button>
+      <button class="chip bad-chip" data-ex="prosewrapped">Valid JSON wrapped in prose ("Sure! Here's the call: {...}")</button>
+      <button class="chip bad-chip" data-ex="schemafail">Valid JSON, fails schema (bad enum value)</button>
+    </div>
+    <button class="btn" id="live-run">Run: parse then validate ▸</button>
+    <div class="log" id="live-log"><span class="line">Pick an example, then run it through the real pipeline: JSON.parse first, schema validation second.</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the "reformatted JSON" example is semantically IDENTICAL to the clean example — same keys, same values — just formatted differently (multi-line, different key order). A real JSON parser handles it exactly as well as the compact version, because JSON's grammar doesn't care about whitespace or key order. A regex written against one specific textual shape very often would NOT handle it — this is precisely the fragility <code class="inline">react_pattern.html</code>'s Problem 2 flagged for a missing-parentheses case, generalized here to a case that's actually perfectly valid.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a regex that would break on valid input</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone writes <code class="inline">re.search(r'\{"origin":\s*"(\w+)",\s*"destination":\s*"(\w+)"\}', text)</code> to extract a call, assuming <code class="inline">origin</code> always comes first. Give a concrete, valid JSON payload this regex would fail to match, and explain exactly why.</p>
+    <details><summary>Show solution</summary><div class="solution">{"destination": "JFK", "origin": "SFO"}
+
+This is completely valid JSON -- object key order carries no semantic
+meaning in the JSON specification, so a payload with destination listed
+BEFORE origin represents the exact same data as one with origin first.
+But the regex's literal pattern hardcodes the sequence "origin" then
+"destination" in that specific textual order -- re.search looks for that
+EXACT character sequence, and a reordered object simply doesn't contain
+it anywhere in the string, so the match fails silently (returns None),
+even though the underlying JSON is perfectly parseable and perfectly
+valid.
+
+A real JSON parser (json.loads) would parse either ordering into an
+identical Python dict, {"origin": "SFO", "destination": "JFK"} ==
+{"destination": "JFK", "origin": "SFO"} evaluates to True -- because a
+parser operates on the JSON grammar's actual structure (a set of
+key-value pairs), not a specific textual sequence of characters. This is
+exactly section 1's point made concrete: any model that happens to
+generate its JSON with keys in a different order (which is entirely
+normal and unpredictable across different model providers, prompts, or
+even different calls from the SAME model) breaks a regex written against
+one anticipated ordering, for no real reason.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Distinguishing the two failure shapes in a specific case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A model generates: <code class="inline">{"origin": "SFO" "destination": "JFK"}</code> (missing comma between the two key-value pairs). Using section 2's <code class="inline">parse_and_validate_call</code>, which failure shape does this hit, and what does the returned feedback actually say?</p>
+    <details><summary>Show solution</summary><div class="solution">This hits FAILURE SHAPE 1 (parse_error), not failure shape 2. The
+missing comma between "SFO" and "destination" makes this string
+malformed at the JSON GRAMMAR level -- json.loads(...) itself raises a
+json.JSONDecodeError before validation against the schema is ever
+reached, because there is no valid parsed object yet to check the schema
+against at all. The code's structure enforces this ordering naturally:
+the try/except around json.loads() catches this error and returns
+immediately with status "parse_error", never reaching the second
+try/except block that validates against the schema.
+
+The feedback returned would be something like: "Your tool call was not
+valid JSON: Expecting ',' delimiter: line 1 column 17 (char 16). Re-emit
+it as valid JSON." -- note this message is about JSON SYNTAX (a missing
+delimiter at a specific character position), not about schema semantics
+(a missing field, a bad enum value) -- because the failure happened
+before parsing even succeeded, there's no way for the schema validator to
+have anything meaningful to say about IT yet. This distinction matters
+for writing good feedback: the model needs to know it's a SYNTAX problem
+here, not a semantic one, so its retry focuses on fixing JSON grammar
+(add the comma) rather than reconsidering which values to pass.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding what to do with a call wrapped in explanatory prose</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A model using a plain-text (non-native-tool-calling) interface generates: <code class="inline">"Sure, I'll search for that! {"origin": "SFO", "destination": "JFK"} Let me know if you need anything else."</code> — valid JSON, but embedded in surrounding prose rather than isolated. Does section 1's "use a real JSON parser, not regex" advice fully solve this case on its own?</p>
+    <details><summary>Show solution</summary><div class="solution">Not entirely on its own -- this is a genuinely different sub-problem
+worth naming explicitly. json.loads() run directly on the ENTIRE string
+("Sure, I'll search...") would itself raise a JSONDecodeError, because
+the full string is not valid JSON -- it's prose WITH a JSON object
+embedded partway through it. A real JSON parser doesn't magically locate
+a JSON object floating inside arbitrary surrounding text any more than a
+regex would; it expects the ENTIRE input it's given to itself be valid
+JSON.
+
+The practical fix in this scenario is architectural, not just about
+which parsing tool to use: prefer a model interface that returns tool
+calls in a DEDICATED structured field (native tool-calling, as section 1
+recommends) rather than free-form text a call happens to be embedded in
+at all -- that sidesteps this problem entirely, since there's no prose to
+extract from in the first place. If a dedicated field genuinely isn't
+available, a narrow, well-tested extraction step (finding the outermost
+matching {...} braces, NOT a general-purpose regex trying to also
+capture the argument structure itself) can isolate the JSON substring
+first, and json.loads() is then run on exactly that isolated substring,
+not the surrounding prose -- the JSON PARSING step itself still stays
+strict and real, it's just preceded by a narrower isolation step whose
+only job is finding where the JSON starts and ends, not interpreting its
+contents.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about retry feedback quality</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two implementations both catch a schema validation failure and feed something back to the model. Implementation A's feedback is <code class="inline">"Observation: Error - invalid arguments"</code>. Implementation B's is <code class="inline">"Observation: 'luxury' is not one of ['economy','business','first'] at $.cabin_class"</code>. Using <code class="inline">react_pattern.html</code>'s reasoning about what the model needs to self-correct, why does B give the model a real chance to fix itself and A mostly doesn't?</p>
+    <details><summary>Show solution</summary><div class="solution">react_pattern.html established that the ENTIRE transcript -- including
+every Observation -- is the model's only form of memory across loop
+steps; it has no other way to "know" what happened except what's
+physically present in the next prompt. Implementation A's feedback tells
+the model only that SOMETHING was wrong, with zero information about
+WHAT -- the model's next Thought has no principled way to decide what to
+change, since "invalid arguments" doesn't distinguish between a bad
+enum value, a missing field, a wrong type, or an out-of-range number.
+Left with nothing to go on, the model's most likely next move is either
+to regenerate an ALMOST identical call (having no signal about what to
+change) or to guess blindly at what might be wrong, neither of which
+reliably converges toward success.
+
+Implementation B's feedback names the EXACT field ($.cabin_class), the
+EXACT value that was rejected ('luxury'), and the EXACT set of values
+that would have been accepted (['economy','business','first']) -- this
+is precise enough that the model's next Thought can directly reason
+"cabin_class must be one of those three; the user didn't specify, so I
+should either omit it (letting the schema's default apply) or pick the
+closest reasonable match," and generate a corrected call with a real,
+grounded reason to expect success this time. This mirrors exactly why
+json_schema_tool_specs.html's ValidationError messages name the specific
+field and violated constraint rather than just saying "invalid" -- good
+error feedback is precise enough to be ACTIONABLE by whoever (or
+whatever) receives it, not just present.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Applying async_tool_job_queue_design's retry-budget lesson to parsing retries</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the bounded-retry-then-DLQ pattern from <code class="inline">backend/async_tool_job_queue_design.html</code>, what should an agent loop do if a model generates malformed tool-call JSON THREE times in a row for the same logical request, even after receiving section 2's precise feedback each time?</p>
+    <details><summary>Show solution</summary><div class="solution">The same structural answer as async_tool_job_queue_design's job
+failures: bound the retries, then stop retrying and surface the failure
+explicitly rather than looping indefinitely. Concretely, this means
+tracking a retry count specifically for PARSE/VALIDATION failures on
+this particular tool-call attempt (separate from, but composed with, the
+loop's overall max_steps budget from loop_termination_logic.html), and
+once that count is exhausted -- say, 3 consecutive malformed attempts for
+the same call -- the loop should stop asking the model to retry THIS
+specific call and instead do something else entirely: abandon this tool
+call and let the model reason about an alternative approach in its next
+Thought, or surface an explicit "I was unable to construct a valid call
+to search_flights after multiple attempts" message rather than silently
+looping forever.
+
+This mirrors the job queue's dead-letter-queue reasoning directly: a
+job (here, a tool call) that keeps failing despite retries with
+feedback is signaling something more fundamentally wrong than a
+transient, one-off mistake -- continuing to retry it identically, with
+the SAME kind of feedback that already failed to fix it twice, wastes
+loop steps and model calls without a principled reason to expect the
+third attempt succeeds where the first two didn't. Unlike the job
+queue's DLQ (which preserves a failed job for LATER human inspection),
+an agent loop's version of this is usually more immediate: surface the
+repeated failure to whoever is consuming the agent's output right now,
+since there's no async "worker comes back to it later" step available
+mid-conversation the way there is for a background job queue.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write a real regex-based extraction and demonstrate a valid JSON payload it fails to match, purely from reformatting, (2) sketch the two-tier try/except structure that separates a JSON parse failure from a schema validation failure, and (3) explain why the retry feedback fed back to the model needs to be specific enough to be actionable, not just "something failed"? The next lab, <code class="inline">loop_termination_logic.html</code>, is exactly where the "how many retries before we give up" bound this lab kept referencing gets formalized properly.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — deterministic parsing.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: PARSE + VALIDATE DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-ex]");
+  var runBtn = document.getElementById("live-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var selected = "clean";
+
+  var SCHEMA_ENUM = ["economy", "business", "first"];
+
+  var EXAMPLES = {
+    clean: {
+      label: '{"origin": "SFO", "destination": "JFK", "cabin_class": "business"}',
+      run: function(){
+        var steps = [];
+        steps.push({ok:true, text:"json.loads(...) — parses cleanly. No syntax errors."});
+        var obj = {origin:"SFO", destination:"JFK", cabin_class:"business"};
+        steps.push({ok:true, text:"Schema check — required fields present, types correct, cabin_class in enum. <b>VALID.</b>"});
+        return steps;
+      }
+    },
+    reformatted: {
+      label: '{\n  "destination": "JFK",\n  "origin": "SFO",\n  "cabin_class": "business"\n}  — reordered keys, multi-line',
+      run: function(){
+        return [
+          {ok:true, text:"json.loads(...) — parses cleanly. JSON grammar has no concept of key ORDER, so this multi-line, reordered payload is structurally identical to the compact example."},
+          {ok:true, text:"Schema check — same fields, same values as the clean example, just written differently. <b>VALID.</b>"},
+          {ok:true, text:'<b>Note:</b> a regex written to expect "origin" before "destination" on one line would very likely have FAILED to match this — but the real parser handles it identically to the compact version, because it operates on structure, not literal text shape.'}
+        ];
+      }
+    },
+    notjson: {
+      label: '{"origin": "SFO", "destination": "JFK",}  — trailing comma',
+      run: function(){
+        return [
+          {ok:false, text:"json.loads(...) — <b>raises JSONDecodeError</b>: Expecting property name enclosed in double quotes (trailing comma is not valid JSON, unlike some looser formats)."},
+          {ok:false, text:'<b>FAILURE SHAPE 1 — parse_error.</b> Schema validation is never reached; there is no parsed object yet to check it against. Feedback returned: "Your tool call was not valid JSON: trailing comma. Re-emit it as valid JSON."'}
+        ];
+      }
+    },
+    prosewrapped: {
+      label: '"Sure! Here\'s the call: {"origin": "SFO", "destination": "JFK"} Let me know if you need anything else."',
+      run: function(){
+        return [
+          {ok:false, text:"json.loads(...) run on the FULL string — <b>raises JSONDecodeError</b> immediately (\"Sure! Here's...\" is not valid JSON at all, regardless of the valid object embedded partway through it)."},
+          {ok:false, text:"<b>FAILURE SHAPE 1 — parse_error</b>, but for a structurally different reason than a syntax typo: the whole payload isn't JSON, only a SUBSTRING of it is. Per Practice Problem 3, the real fix here is architectural — prefer a model interface with a dedicated structured tool-call field so there's no prose to parse around in the first place."}
+        ];
+      }
+    },
+    schemafail: {
+      label: '{"origin": "SFO", "destination": "JFK", "cabin_class": "luxury"}',
+      run: function(){
+        return [
+          {ok:true, text:"json.loads(...) — parses cleanly. Valid JSON syntax."},
+          {ok:false, text:'Schema check — cabin_class = "luxury" is <b>not in</b> ' + JSON.stringify(SCHEMA_ENUM) + '.'},
+          {ok:false, text:'<b>FAILURE SHAPE 2 — schema_error.</b> Feedback returned: "Your call was valid JSON but failed validation: \'luxury\' is not one of [\'economy\',\'business\',\'first\'] at $.cabin_class." — precise enough for the model to self-correct on retry.'}
+        ];
+      }
+    }
+  };
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + (step.ok ? "ok" : "bad");
+    p.innerHTML = step.text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.ex;
+    });
+  });
+
+  runBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    var ex = EXAMPLES[selected];
+    var header = document.createElement("div");
+    header.className = "line fadein";
+    header.innerHTML = "<b>Model output:</b> " + ex.label;
+    logEl.appendChild(header);
+    ex.run().forEach(function(step){ log(step); });
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = '<span class="line">Pick an example, then run it through the real pipeline: JSON.parse first, schema validation second.</span>';
+  });
+})();
+</script>
+</body>
+</html>

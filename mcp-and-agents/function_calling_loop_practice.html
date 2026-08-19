@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Function-Calling Loop Practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --schema-c:#4fc3f7; --parse-c:#7fd8a0; --exec-c:#f2c14e; --done-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--schema-c); color:var(--schema-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--parse-c); color:var(--parse-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--exec-c); color:var(--exec-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.d{border-color:var(--done-c); color:var(--done-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* tool + question setup cards */
+  .setup-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:0.9rem; margin:1.2rem 0;}
+  .setup-card{border:1.5px solid var(--rule); border-radius:10px; padding:1rem 1.1rem; background:var(--panel-2);}
+  .setup-card h5{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin:0 0 0.5rem;}
+  .setup-card p, .setup-card .code{margin:0; font-size:0.82rem;}
+
+  /* stage tracker for the loop */
+  .stage-tracker{display:flex; gap:0.5rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .stage-pill{font-family:var(--mono); font-size:0.7rem; padding:0.5rem 0.8rem; border-radius:20px; border:1.5px solid var(--rule); color:var(--ink-dim); transition:all .3s ease;}
+  .stage-pill.done{border-color:var(--done-c); color:var(--done-c); background:rgba(199,146,234,0.1);}
+  .stage-pill.active{border-color:var(--accent); color:var(--accent); background:rgba(255,138,101,0.1); box-shadow:0 0 10px rgba(255,138,101,0.2);}
+
+  /* step panel */
+  .step-panel{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.3rem; margin:1.2rem 0; min-height:120px;}
+  .step-panel h5{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem; color:var(--accent);}
+  .step-panel .empty-note{color:var(--ink-dim); font-size:0.85rem; font-style:italic;}
+  .step-panel .ok-line{color:var(--parse-c);}
+  .step-panel .bad-line{color:var(--bad-c);}
+
+  /* transcript so far, kept visible */
+  .transcript{font-family:var(--mono); font-size:0.78rem; background:var(--panel-2); border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:1.2rem 0; max-height:260px; overflow-y:auto; white-space:pre-wrap; color:#cdd0d8;}
+  .transcript .t-empty{color:var(--ink-dim); font-style:italic;}
+
+  .step-counter-row{display:flex; align-items:center; gap:1rem; margin:0.6rem 0 1rem; flex-wrap:wrap;}
+  .step-counter{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.8rem; border-radius:8px; border:1px solid var(--rule); background:var(--panel-2); color:var(--ink-dim);}
+  .step-counter b{color:var(--exec-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.done{border-left-color:var(--done-c); background:rgba(199,146,234,0.06);} .callout.done b{color:var(--done-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · PRACTICE — RAW FUNCTION-CALLING LOOP END TO END</div>
+  <h1>Everything from this week, run end to end, on one real question.</h1>
+  <p class="lede">This is not new instructional content — it's a synthesis exercise tying together <code class="inline">json_schema_tool_specs.html</code>'s validation, <code class="inline">deterministic_parsing.html</code>'s parse-then-validate discipline, and <code class="inline">loop_termination_logic.html</code>'s done-signal/max-steps mechanics into one complete, runnable function-calling loop. Given a small calculator tool and a question that genuinely needs 2-3 tool calls to answer, this lab steps through the FULL loop — generate, validate, parse, execute, feed back, repeat — with the entire state visible at every step.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">1 · Model generates a tool call</div>
+    <div class="pipe-label b">2 · Validate against JSON Schema, parse deterministically</div>
+    <div class="pipe-label c">3 · Execute (simulated), feed the result back</div>
+    <div class="pipe-label d">4 · Repeat until done signal or max steps</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="setup">1 · The Tool, the Schema &amp; the Question</a>
+  <a data-target="loop">2 · Run the Full Loop, Step by Step</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SETUP ============ -->
+<section id="setup">
+  <div class="kicker">01 — What the loop has to work with, before running a single step</div>
+  <h2>The tool, the schema, and the question</h2>
+
+  <p><strong>Do this before running the loop below.</strong> Read the tool's schema and the question first, and predict on paper: how many tool calls will this question actually require? What arguments would each call need? Would any call plausibly fail validation the first time? Then run the loop in section 2 and check your predictions against what actually happens at each step.</p>
+
+  <div class="setup-grid">
+    <div class="setup-card">
+      <h5>The tool — calculate</h5>
+      <div class="code">{
+  "name": "calculate",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "operation": {
+        "type": "string",
+        "enum": ["add","subtract","multiply","divide"]
+      },
+      "a": {"type": "number"},
+      "b": {"type": "number"}
+    },
+    "required": ["operation","a","b"]
+  }
+}</div>
+    </div>
+    <div class="setup-card">
+      <h5>The user's question</h5>
+      <p>"A team of 7 people split a $1,240 dinner bill evenly, then each person adds a 18% tip on their own share. What does each person pay in total?"</p>
+    </div>
+    <div class="setup-card">
+      <h5>Why this needs multiple calls</h5>
+      <p>The tip calculation (step 2) needs each person's SHARE (step 1's result) as an input — it cannot be computed until step 1 actually returns, the same hard data dependency <code class="inline">react_pattern.html</code>'s capital-then-population example established. This question genuinely can't be answered in one call.</p>
+    </div>
+    <div class="setup-card">
+      <h5>max_steps for this run</h5>
+      <p><code class="inline">max_steps = 5</code> — comfortably above the 3 calls this question actually needs (per_person = 1240 ÷ 7; tip = per_person × 0.18; total = per_person + tip), giving headroom without being so loose it stops functioning as a real safety net.</p>
+    </div>
+  </div>
+
+  <div class="callout">This setup deliberately includes one imperfection: the model's FIRST attempt at step 2 passes <code class="inline">"operation": "percent"</code> — not a valid value in the tool's <code class="inline">enum</code>. Predict what should happen when that gets validated, before section 2 shows you.</div>
+</section>
+
+<!-- ============ SECTION 2: RUN THE LOOP ============ -->
+<section id="loop">
+  <div class="kicker">02 — Generate → validate → parse → execute → feed back, exactly as specified this week</div>
+  <h2>Run the full loop, step by step</h2>
+
+  <p><strong>Start here, before clicking.</strong> Each click advances the loop by exactly one sub-stage — not a whole tool call at once — so you can see precisely where validation would catch a bad call, where parsing succeeds, and where the loop's termination check runs. The step counter and the running transcript are both visible throughout, exactly the "full state visible at every step" this lab promises.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RUN THE LOOP — ONE SUB-STAGE AT A TIME</span>
+      <div><button class="btn secondary" id="loop-reset">Reset</button></div>
+    </div>
+    <div class="step-counter-row">
+      <span class="step-counter">Loop step: <b id="step-count">0</b> / 5 (max_steps)</span>
+      <span class="step-counter">Status: <b id="loop-status">running</b></span>
+    </div>
+    <div class="stage-tracker" id="stage-tracker">
+      <span class="stage-pill" id="pill-gen">Generate</span>
+      <span class="stage-pill" id="pill-val">Validate schema</span>
+      <span class="stage-pill" id="pill-parse">Parse</span>
+      <span class="stage-pill" id="pill-exec">Execute</span>
+      <span class="stage-pill" id="pill-check">Check done / max_steps</span>
+    </div>
+    <button class="btn" id="loop-next">Run next sub-stage ▸</button>
+    <div class="step-panel" id="step-panel"><span class="empty-note">Click "Run next sub-stage" to start with the model generating its first tool call.</span></div>
+    <h3 style="margin-top:1.6rem;">Running transcript (this is the model's only memory across steps — per react_pattern.html)</h3>
+    <div class="transcript" id="transcript"><span class="t-empty">Question: A team of 7 people split a $1,240 dinner bill evenly, then each person adds a 18% tip on their own share. What does each person pay in total?</span></div>
+  </div>
+
+  <div class="callout done"><b>Interview-ready definition:</b> a complete function-calling loop repeats, until a done signal or max_steps: the model generates a candidate tool call from the current transcript; that call is validated against the tool's JSON Schema (<code class="inline">json_schema_tool_specs.html</code>); if valid, its arguments are parsed with a real JSON parser, never regex (<code class="inline">deterministic_parsing.html</code>); if invalid — either not valid JSON or failing schema validation — specific, structured feedback is appended to the transcript as the next Observation instead of crashing the loop; if valid, the tool executes and its result is appended as an Observation; and the loop checks for an explicit done signal or an exhausted step budget (<code class="inline">loop_termination_logic.html</code>) before deciding whether to run again. Every one of these sub-stages is necessary — skipping validation lets a malformed call reach execution, skipping the parse discipline reintroduces regex fragility, and skipping the termination check risks a runaway loop.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">One level past the loop above</div>
+  <h2>Practice problems</h2>
+  <p>These ask you to reason across all three of this week's core labs at once, not just recall one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining why the "percent" enum failure didn't crash the loop</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">deterministic_parsing.html</code>'s two-failure-shape reasoning, which specific failure shape did the step 2 <code class="inline">"operation": "percent"</code> attempt hit, and why does the loop's transcript show a corrective Observation rather than an exception?</p>
+    <details><summary>Show solution</summary><div class="solution">This hits FAILURE SHAPE 2 (schema_error), not failure shape 1. The
+generated payload {"operation": "percent", "a": ..., "b": ...} is
+perfectly valid JSON syntactically -- json.loads() would parse it without
+any error at all. The failure is semantic: "percent" is not one of the
+values in the operation field's enum (["add","subtract","multiply",
+"divide"]), so schema validation (json_schema_tool_specs.html) rejects it
+AFTER a successful parse, not instead of one.
+
+The loop's transcript shows a corrective Observation rather than an
+uncaught exception because this is exactly the structured-feedback path
+deterministic_parsing.html's parse_and_validate_call establishes: a
+schema_error result returns specific feedback ("'percent' is not one of
+['add','subtract','multiply','divide'] at $.operation") that gets
+appended to the transcript as the next Observation, giving the model a
+genuine, precise reason to retry with a valid operation name on its next
+Thought -- rather than the whole loop crashing on a bad enum value the
+same way json_schema_tool_specs.html's live demo showed a "luxury"
+cabin_class getting caught before ever reaching a tool.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing exactly which max_steps budget this specific run consumes</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">This lab's question needs 3 successful tool calls, but step 2's first attempt failed validation and had to retry. Using <code class="inline">loop_termination_logic.html</code>'s reasoning, does the failed attempt at step 2 count against <code class="inline">max_steps = 5</code>, and how many total loop iterations does this full run actually consume?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes -- per loop_termination_logic.html's own Practice Problem 5, a parse/
+validation-failure retry is just another iteration of the SAME loop body,
+so it consumes one unit of the max_steps budget exactly like a
+successful tool call does. This run's full iteration count: step 1
+(per_person calculation, succeeds first try) = 1 iteration; step 2's
+FAILED "percent" attempt = 1 iteration; step 2's CORRECTED retry with a
+valid operation = 1 more iteration; step 3 (final total, succeeds) = 1
+iteration; plus one final iteration where the model emits its Final
+Answer instead of another action = 1 iteration. Total: 5 iterations used
+out of the max_steps = 5 budget.
+
+This is a genuinely useful trace to notice: this run finishes with ZERO
+steps to spare, entirely because of ONE validation failure along the way
+-- if the model had gotten operation wrong a second time too, this run
+would have hit max_steps_exceeded before ever reaching a Final Answer,
+despite the underlying task only strictly needing 3 tool calls. This is
+exactly why loop_termination_logic.html's Practice Problem 1 argued for
+setting max_steps meaningfully ABOVE the typical-case step count, not
+merely equal to it -- a cap set at exactly 3 for this task would have
+left zero room for even one recoverable mistake.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about what the model actually "sees" going into step 3</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">By the time the model generates its step 3 tool call, what EXACTLY is in its prompt — and using <code class="inline">react_pattern.html</code>'s statelessness reasoning, explain why the failed "percent" attempt from step 2 is still part of that prompt even though it never executed.</p>
+    <details><summary>Show solution</summary><div class="solution">By step 3, the model's prompt is the ENTIRE running transcript
+accumulated so far: the original question, step 1's Thought/Action/
+Observation (per_person = 177.14), step 2's FAILED attempt (Action:
+calculate(operation="percent", ...), Observation: the schema validation
+error naming exactly what was wrong), step 2's CORRECTED retry
+(Action: calculate(operation="multiply", a=177.14, b=0.18), Observation:
+31.89), and now the model is being asked to generate its next step from
+all of that combined history.
+
+Per react_pattern.html's core statelessness point -- each call to the
+model is a fresh, independent request with no built-in memory between
+calls -- the failed "percent" attempt has to be PHYSICALLY PRESENT in the
+transcript for the model to have any awareness it ever happened at all,
+even though that specific attempt never actually executed against the
+real tool. This might look wasteful (why keep a failed attempt around?)
+but it's exactly what lets the model avoid repeating the SAME mistake --
+if the failed attempt and its corrective feedback were silently dropped
+from the transcript instead of retained, the model would have no way to
+"remember" it already tried "percent" and been told that's invalid,
+and could plausibly generate the exact same wrong enum value again on a
+later, unrelated call to the same tool.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Deciding what should happen if execute_tool itself raised, not validation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose step 1's <code class="inline">calculate(operation="divide", a=1240, b=0)</code> call passes schema validation (0 is a valid number) but the actual execution raises a division-by-zero error INSIDE the tool. Is this the same failure shape as the "percent" enum case, and how should the loop's Observation differ?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- this is a genuinely different failure point than either of
+deterministic_parsing.html's two shapes (which are both about PARSING/
+VALIDATING the call itself, before execution). This is an EXECUTION-time
+failure: the call was syntactically valid JSON AND passed schema
+validation (a=1240, b=0 are both legitimate numbers -- nothing in this
+tool's schema declares b must be nonzero, since JSON Schema's numeric
+constraints don't naturally express "not equal to zero" the way enum or
+minimum/maximum do), but the underlying operation itself is mathematically
+undefined once it actually runs.
+
+The loop should handle this the same STRUCTURAL way as
+deterministic_parsing.html's two failure shapes, even though it's a
+third, distinct kind of failure: catch the exception explicitly (never
+let an uncaught ZeroDivisionError crash the whole loop), and feed a
+specific, actionable Observation back -- "Observation: Error - division
+by zero (a=1240, b=0)" -- rather than crashing or silently returning some
+placeholder value like 0 or null that the model might mistake for a real
+result. This mirrors react_pattern.html's own Practice Problem 5, which
+established exactly this pattern (wrap the tool call, feed the error back
+as an Observation) for a lookup tool finding no results -- the same
+posture generalizes cleanly to a calculator tool hitting an undefined
+operation. The deeper lesson: schema validation catches malformed CALLS,
+but it cannot catch every way a syntactically and structurally valid call
+might still fail once it actually runs -- execution-time error handling
+is a separate, additional layer the loop still needs on top of schema
+validation, not a replacement for it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the loop's exit condition for this specific question</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Once step 3 successfully computes the final total ($209.03), what specifically should the model's NEXT generated output look like for the loop to terminate via the done signal rather than continuing toward max_steps? Write the actual shape.</p>
+    <details><summary>Show solution</summary><div class="solution">Following loop_termination_logic.html's exact mechanism, the model's
+next output should contain "Final Answer:" instead of another Action --
+concretely, something like:
+
+Thought: I now have per_person ($177.14), the tip on that share
+($31.89), and the total per person ($209.03). I have everything needed
+to answer the original question.
+Final Answer: Each of the 7 people pays $209.03 in total (a $177.14
+share of the bill plus an $31.89 18% tip on their own share).
+
+The loop's termination check (loop_termination_logic.html's "if 'Final
+Answer:' in model_output: return ...") fires the moment this specific
+string appears in the model's output -- at this point the loop has used
+5 of its 5 max_steps budget (per Problem 2's trace), so this Final Answer
+needs to arrive on EXACTLY this iteration for the run to terminate via
+the done signal rather than via max_steps_exceeded. This is a genuinely
+tight margin worth noticing: if the model had instead generated one more
+unnecessary tool call here (say, re-verifying the arithmetic with a
+redundant call) before finally emitting its Final Answer, THIS run would
+have hit max_steps_exceeded with a correct answer sitting one step away
+but never reached -- a concrete illustration of why loop_termination_logic's
+Problem 1 argued for headroom above the typical case, and why an
+unnecessary extra step (echoing react_pattern.html's Problem 4 on
+ReAct's adaptivity not always paying off) has a real cost measured in
+exactly this kind of margin.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> without looking back, can you state what each of the loop's 5 sub-stages does in one sentence, and explain — using this specific dinner-bill example — why the failed "percent" attempt still counts against max_steps, why it stays in the transcript even though it never executed, and what execution-time errors (as opposed to validation-time errors) still require separate handling? If any feels shaky, that's the part to revisit — and since this lab intentionally didn't teach anything new, a shaky spot means revisiting <code class="inline">json_schema_tool_specs.html</code>, <code class="inline">deterministic_parsing.html</code>, or <code class="inline">loop_termination_logic.html</code> directly, not this one.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — function-calling loop practice.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: FULL LOOP STEPPER */
+(function(){
+  var nextBtn = document.getElementById("loop-next");
+  var resetBtn = document.getElementById("loop-reset");
+  var panel = document.getElementById("step-panel");
+  var transcriptEl = document.getElementById("transcript");
+  var stepCountEl = document.getElementById("step-count");
+  var loopStatusEl = document.getElementById("loop-status");
+  var pills = ["pill-gen", "pill-val", "pill-parse", "pill-exec", "pill-check"];
+  var idx = 0;
+  var loopStep = 0;
+  var transcriptText = "Question: A team of 7 people split a $1,240 dinner bill evenly, then each person adds a 18% tip on their own share. What does each person pay in total?\n";
+
+  function setPills(activeIdx, doneUpTo){
+    pills.forEach(function(id, i){
+      var el = document.getElementById(id);
+      el.classList.remove("active", "done");
+      if(i < doneUpTo) el.classList.add("done");
+      if(i === activeIdx) el.classList.add("active");
+    });
+  }
+
+  function appendTranscript(text){
+    transcriptText += text;
+    transcriptEl.textContent = transcriptText;
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+  }
+
+  function setPanel(html){
+    panel.innerHTML = html;
+  }
+
+  // Each entry is one SUB-STAGE. A full tool-call cycle is 5 sub-stages
+  // (generate, validate, parse, execute, check) except the final one
+  // (generate + check for Final Answer only, no tool call).
+  var STAGES = [
+    // ---- LOOP STEP 1: per_person = 1240 / 7 ----
+    function gen1(){
+      loopStep = 1;
+      stepCountEl.textContent = loopStep;
+      setPills(0, 0);
+      setPanel("<h5>Generate (loop step 1)</h5><p style='font-size:0.85rem;'>Model reasons: \"I need each person's share of the $1,240 bill before I can compute tips.\" Generates a candidate tool call:</p><div class='code'>Thought: First find each person's share of the bill.\nAction: calculate({\"operation\":\"divide\",\"a\":1240,\"b\":7})</div>");
+    },
+    function val1(){
+      setPills(1, 1);
+      setPanel("<h5>Validate against JSON Schema (loop step 1)</h5><p class='ok-line' style='font-size:0.85rem;'>required: operation, a, b — all present. operation=\"divide\" is in the enum. a and b are both valid numbers. <b>VALID</b> — per json_schema_tool_specs.html, this passes before the tool ever executes.</p>");
+    },
+    function parse1(){
+      setPills(2, 2);
+      setPanel("<h5>Parse deterministically (loop step 1)</h5><p class='ok-line' style='font-size:0.85rem;'>json.loads(...) on the arguments string — real JSON parser, not regex. Parses cleanly to {\"operation\":\"divide\",\"a\":1240,\"b\":7}. Per deterministic_parsing.html, this succeeds regardless of exact whitespace/formatting the model happened to use.</p>");
+    },
+    function exec1(){
+      setPills(3, 3);
+      setPanel("<h5>Execute (simulated) (loop step 1)</h5><p style='font-size:0.85rem;'>calculate(divide, 1240, 7) → <b>177.14</b> (rounded). Result appended to the transcript as the next Observation.</p>");
+      appendTranscript("Thought: First find each person's share of the bill.\nAction: calculate({\"operation\":\"divide\",\"a\":1240,\"b\":7})\nObservation: 177.14\n");
+    },
+    function check1(){
+      setPills(4, 4);
+      loopStatusEl.textContent = "running";
+      setPanel("<h5>Check: done signal or max_steps? (loop step 1)</h5><p style='font-size:0.85rem;'>No \"Final Answer:\" in this step's output. 1 of 5 max_steps used. <b>Loop continues.</b></p>");
+    },
+
+    // ---- LOOP STEP 2 (FAILS): "percent" not in enum ----
+    function gen2(){
+      loopStep = 2;
+      stepCountEl.textContent = loopStep;
+      setPills(0, 0);
+      setPanel("<h5>Generate (loop step 2, attempt 1)</h5><p style='font-size:0.85rem;'>Model reasons: \"Now apply the 18% tip.\" Generates a candidate call using a value the tool's schema does not define:</p><div class='code'>Thought: Now apply the 18% tip to each person's share.\nAction: calculate({\"operation\":\"percent\",\"a\":177.14,\"b\":18})</div>");
+    },
+    function val2(){
+      setPills(1, 1);
+      setPanel("<h5>Validate against JSON Schema (loop step 2, attempt 1)</h5><p class='bad-line' style='font-size:0.85rem;'>required fields present, types correct — but <b>\"percent\" is not in enum [\"add\",\"subtract\",\"multiply\",\"divide\"]</b>. <b>REJECTED before execution</b> — the tool is never called with this payload.</p>");
+    },
+    function feedback2(){
+      setPills(1, 1);
+      setPanel("<h5>Malformed output handling (loop step 2, attempt 1)</h5><p style='font-size:0.85rem;'>Per deterministic_parsing.html's schema_error path: specific, structured feedback is fed back as the Observation — NOT a crash.</p><div class='code'>Observation: Error - 'percent' is not one of ['add','subtract','multiply','divide'] at $.operation. Re-emit a valid call.</div>");
+      appendTranscript("Thought: Now apply the 18% tip to each person's share.\nAction: calculate({\"operation\":\"percent\",\"a\":177.14,\"b\":18})\nObservation: Error - 'percent' is not one of ['add','subtract','multiply','divide'] at $.operation. Re-emit a valid call.\n");
+    },
+    function check2(){
+      setPills(4, 1);
+      setPanel("<h5>Check: done signal or max_steps? (loop step 2, attempt 1)</h5><p style='font-size:0.85rem;'>No Final Answer. This failed attempt still counts as one iteration — 2 of 5 max_steps used. <b>Loop continues</b> — the model gets a genuine retry, informed by the precise error above.</p>");
+    },
+
+    // ---- LOOP STEP 3: retry with multiply ----
+    function gen3(){
+      loopStep = 3;
+      stepCountEl.textContent = loopStep;
+      setPills(0, 0);
+      setPanel("<h5>Generate (loop step 2, attempt 2 — retry)</h5><p style='font-size:0.85rem;'>Model incorporates the precise feedback and retries with a valid enum value, expressing 18% as a multiplication:</p><div class='code'>Thought: The schema doesn't support \"percent\" directly — express the 18% tip as a multiplication by 0.18 instead.\nAction: calculate({\"operation\":\"multiply\",\"a\":177.14,\"b\":0.18})</div>");
+    },
+    function val3(){
+      setPills(1, 1);
+      setPanel("<h5>Validate against JSON Schema (loop step 2, attempt 2)</h5><p class='ok-line' style='font-size:0.85rem;'>operation=\"multiply\" is in the enum. a and b are valid numbers. <b>VALID.</b></p>");
+    },
+    function parse3(){
+      setPills(2, 2);
+      setPanel("<h5>Parse deterministically (loop step 2, attempt 2)</h5><p class='ok-line' style='font-size:0.85rem;'>json.loads(...) parses cleanly to {\"operation\":\"multiply\",\"a\":177.14,\"b\":0.18}.</p>");
+    },
+    function exec3(){
+      setPills(3, 3);
+      setPanel("<h5>Execute (simulated) (loop step 2, attempt 2)</h5><p style='font-size:0.85rem;'>calculate(multiply, 177.14, 0.18) → <b>31.89</b> (rounded, the tip amount).</p>");
+      appendTranscript("Thought: The schema doesn't support \"percent\" directly — express the 18% tip as a multiplication by 0.18 instead.\nAction: calculate({\"operation\":\"multiply\",\"a\":177.14,\"b\":0.18})\nObservation: 31.89\n");
+    },
+    function check3(){
+      setPills(4, 4);
+      setPanel("<h5>Check: done signal or max_steps? (loop step 2, attempt 2)</h5><p style='font-size:0.85rem;'>No Final Answer yet — still need the total. 3 of 5 max_steps used. <b>Loop continues.</b></p>");
+    },
+
+    // ---- LOOP STEP 4: total = 177.14 + 31.89 ----
+    function gen4(){
+      loopStep = 4;
+      stepCountEl.textContent = loopStep;
+      setPills(0, 0);
+      setPanel("<h5>Generate (loop step 3)</h5><p style='font-size:0.85rem;'>Model reasons: \"Add the share and the tip for the final total.\"</p><div class='code'>Thought: Add the per-person share and the tip to get the total each person pays.\nAction: calculate({\"operation\":\"add\",\"a\":177.14,\"b\":31.89})</div>");
+    },
+    function val4(){
+      setPills(1, 1);
+      setPanel("<h5>Validate against JSON Schema (loop step 3)</h5><p class='ok-line' style='font-size:0.85rem;'>operation=\"add\" is in the enum. Both values are valid numbers. <b>VALID.</b></p>");
+    },
+    function parse4(){
+      setPills(2, 2);
+      setPanel("<h5>Parse deterministically (loop step 3)</h5><p class='ok-line' style='font-size:0.85rem;'>json.loads(...) parses cleanly to {\"operation\":\"add\",\"a\":177.14,\"b\":31.89}.</p>");
+    },
+    function exec4(){
+      setPills(3, 3);
+      setPanel("<h5>Execute (simulated) (loop step 3)</h5><p style='font-size:0.85rem;'>calculate(add, 177.14, 31.89) → <b>209.03</b> — the final per-person total.</p>");
+      appendTranscript("Thought: Add the per-person share and the tip to get the total each person pays.\nAction: calculate({\"operation\":\"add\",\"a\":177.14,\"b\":31.89})\nObservation: 209.03\n");
+    },
+    function check4(){
+      setPills(4, 4);
+      setPanel("<h5>Check: done signal or max_steps? (loop step 3)</h5><p style='font-size:0.85rem;'>No Final Answer yet — the model has the number but hasn't reported it. 4 of 5 max_steps used. <b>Loop continues — one step of budget left.</b></p>");
+    },
+
+    // ---- LOOP STEP 5: Final Answer ----
+    function gen5(){
+      loopStep = 5;
+      stepCountEl.textContent = loopStep;
+      setPills(0, 0);
+      setPanel("<h5>Generate (loop step 4 — final)</h5><p style='font-size:0.85rem;'>Model now has everything it needs: 177.14 (share), 31.89 (tip), 209.03 (total). It emits a Final Answer instead of another Action.</p><div class='code'>Thought: I now have per_person, the tip, and the total. I have everything needed to answer.\nFinal Answer: Each of the 7 people pays $209.03 in total (a $177.14 share plus an $31.89 tip).</div>");
+    },
+    function checkFinal(){
+      setPills(4, 4);
+      loopStatusEl.textContent = "done";
+      appendTranscript("Thought: I now have per_person, the tip, and the total. I have everything needed to answer.\nFinal Answer: Each of the 7 people pays $209.03 in total (a $177.14 share plus an $31.89 tip).\n");
+      setPanel("<h5 style='color:var(--done-c);'>Check: done signal found — loop terminates</h5><p style='font-size:0.85rem;'>\"Final Answer:\" is present in this step's output. The loop returns {\"status\": \"done\", \"steps_used\": 5, \"answer\": \"Each of the 7 people pays $209.03...\"}. <b style='color:var(--done-c);'>This run used exactly 5 of its 5-step budget</b> — the one validation failure at loop step 2 consumed the entire margin between the 3 calls this task strictly needed and the 5-step cap. Compare this against your section 1 prediction.</p>");
+    }
+  ];
+
+  nextBtn.addEventListener("click", function(){
+    if(idx >= STAGES.length){ return; }
+    STAGES[idx]();
+    idx++;
+    if(idx >= STAGES.length){
+      nextBtn.textContent = "Loop complete";
+      nextBtn.disabled = true;
+    } else {
+      nextBtn.textContent = "Run next sub-stage ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    loopStep = 0;
+    transcriptText = "Question: A team of 7 people split a $1,240 dinner bill evenly, then each person adds a 18% tip on their own share. What does each person pay in total?\n";
+    transcriptEl.textContent = transcriptText;
+    stepCountEl.textContent = "0";
+    loopStatusEl.textContent = "running";
+    setPills(-1, 0);
+    setPanel('<span class="empty-note">Click "Run next sub-stage" to start with the model generating its first tool call.</span>');
+    nextBtn.disabled = false;
+    nextBtn.textContent = "Run next sub-stage ▸";
+  });
+})();
+</script>
+</body>
+</html>

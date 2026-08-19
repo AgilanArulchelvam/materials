@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — JSON Schema Tool Specs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --type-c:#4fc3f7; --req-c:#f2c14e; --enum-c:#c792ea; --ok-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--type-c); color:var(--type-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--req-c); color:var(--req-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--enum-c); color:var(--enum-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.4rem 0; padding:0.5rem 0.7rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--ok-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .field-table{width:100%; border-collapse:collapse; margin:1.2rem 0; font-size:0.85rem;}
+  .field-table th, .field-table td{border:1px solid var(--rule); padding:0.55rem 0.8rem; text-align:left; vertical-align:top;}
+  .field-table th{background:var(--panel-2); font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  .field-table td{color:#cdd0d8;} .field-table code{font-family:var(--mono); color:var(--type-c); font-size:0.85em;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .chip.bad-chip.active{background:var(--bad-c); border-color:var(--bad-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--ok-c);} .dc-col.a h4{color:var(--ok-c);}
+  .dc-col.b{border-color:var(--bad-c);} .dc-col.b h4{color:var(--bad-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.type{border-left-color:var(--type-c); background:rgba(79,195,247,0.06);} .callout.type b{color:var(--type-c);}
+  .callout.req{border-left-color:var(--req-c); background:rgba(242,193,78,0.06);} .callout.req b{color:var(--req-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · JSON SCHEMA TOOL SPECS</div>
+  <h1>A tool's parameters aren't documentation for a human. They're a contract the model calls into.</h1>
+  <p class="lede">When a model "calls a tool," what actually happened is: the model generated a JSON object shaped to match a schema you wrote, and your code either trusts that shape or checks it. JSON Schema is how a tool declares exactly which inputs are valid — types, which fields are required, which values are allowed — so a malformed or nonsensical call can be caught before your tool ever runs. This lab builds a real tool spec field by field, then breaks it on purpose to watch validation catch the break.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Types &amp; descriptions — what shape, and why the model should pass it</div>
+    <div class="pipe-label b">required — which fields can't be missing</div>
+    <div class="pipe-label c">enum / format / min-max — which values are actually allowed</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="anatomy">1 · Anatomy of a Tool's JSON Schema</a>
+  <a data-target="constrain">2 · Constraining Valid Inputs</a>
+  <a data-target="live">3 · Validate a Call, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ANATOMY ============ -->
+<section id="anatomy">
+  <div class="kicker">01 — Every field in the schema is doing a specific job</div>
+  <h2>Anatomy of a tool's JSON Schema</h2>
+
+  <p><strong>Start here, before any JSON.</strong> Think about a form you fill out to book a flight — it doesn't let you type "sometime next month" into the departure date field, and it doesn't let you leave "from which city" blank. The form's STRUCTURE constrains what you're even able to submit, before anyone reads what you wrote. A tool's JSON Schema is that same form, but the one "filling it out" is a language model instead of a person, and the thing checking the submission is code instead of a human clerk.</p>
+
+  <p>Here's a real, complete schema for a <code class="inline">search_flights</code> tool — the kind an agent would be given so it can call a flight-search API on a user's behalf:</p>
+
+  <div class="code">{
+  <span class="c-key">"name"</span>: <span class="c-str">"search_flights"</span>,
+  <span class="c-key">"description"</span>: <span class="c-str">"Search available flights between two airports on a given date."</span>,
+  <span class="c-key">"parameters"</span>: {
+    <span class="c-key">"type"</span>: <span class="c-str">"object"</span>,
+    <span class="c-key">"properties"</span>: {
+      <span class="c-key">"origin"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+        <span class="c-key">"description"</span>: <span class="c-str">"IATA airport code the traveler is departing from, e.g. 'SFO'."</span>
+      },
+      <span class="c-key">"destination"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+        <span class="c-key">"description"</span>: <span class="c-str">"IATA airport code the traveler is arriving at, e.g. 'JFK'."</span>
+      },
+      <span class="c-key">"date"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+        <span class="c-key">"format"</span>: <span class="c-str">"date"</span>,
+        <span class="c-key">"description"</span>: <span class="c-str">"Departure date, ISO 8601 (YYYY-MM-DD). Omit for 'any date' searches."</span>
+      },
+      <span class="c-key">"passengers"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"integer"</span>,
+        <span class="c-key">"minimum"</span>: <span class="c-num">1</span>,
+        <span class="c-key">"maximum"</span>: <span class="c-num">9</span>,
+        <span class="c-key">"description"</span>: <span class="c-str">"Number of travelers. Most airline APIs cap a single booking at 9."</span>
+      },
+      <span class="c-key">"cabin_class"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"string"</span>,
+        <span class="c-key">"enum"</span>: [<span class="c-str">"economy"</span>, <span class="c-str">"business"</span>, <span class="c-str">"first"</span>],
+        <span class="c-key">"description"</span>: <span class="c-str">"Cabin tier. Defaults to 'economy' if omitted."</span>
+      }
+    },
+    <span class="c-key">"required"</span>: [<span class="c-str">"origin"</span>, <span class="c-str">"destination"</span>]
+  }
+}</div>
+
+  <p>Each field here is pulling its own weight, not decoration:</p>
+
+  <table class="field-table">
+    <tr><th>Keyword</th><th>What it actually does</th></tr>
+    <tr><td><code>type</code></td><td>Declares the JSON data type a value must be (<code>string</code>, <code>integer</code>, <code>number</code>, <code>boolean</code>, <code>array</code>, <code>object</code>). A validator rejects a value whose type doesn't match — <code>"passengers": "two"</code> fails immediately against <code>type: integer</code>, regardless of what the string means to a human.</td></tr>
+    <tr><td><code>required</code></td><td>An array of property names that MUST be present in the arguments object. Note it lives at the object level, not per-field — <code>origin</code> and <code>destination</code> are required, but <code>date</code>, <code>passengers</code>, and <code>cabin_class</code> are optional and can be omitted entirely.</td></tr>
+    <tr><td><code>enum</code></td><td>An exhaustive list of the ONLY values a field may take. Anything not in the list — including a plausible-sounding near-miss — fails validation. This is section 2's main subject.</td></tr>
+    <tr><td><code>format</code></td><td>A refinement on top of <code>type</code> for string-shaped data that has further structure — <code>"format": "date"</code> means the string must actually parse as a valid ISO 8601 date, not just be any string.</td></tr>
+    <tr><td><code>minimum</code> / <code>maximum</code></td><td>Numeric bounds. <code>passengers</code> can be any integer, but only within <code>[1, 9]</code> — a value of <code>0</code> or <code>15</code> fails, even though both are syntactically valid integers.</td></tr>
+    <tr><td><code>description</code></td><td>The one field here that validation code never reads at all — it exists purely to help the MODEL decide what to pass, at the moment it's deciding to call the tool. A vague description ("the date") produces worse tool calls than a specific one ("departure date, ISO 8601, omit for any-date searches"), even though both are equally valid JSON Schema.</td></tr>
+  </table>
+
+  <p>Notice the split: <code class="inline">type</code>, <code class="inline">enum</code>, <code class="inline">format</code>, <code class="inline">minimum</code>/<code class="inline">maximum</code>, and <code class="inline">required</code> are all read by a VALIDATOR — code that checks a call's arguments against the schema mechanically, with no understanding of what a flight is. <code class="inline">description</code> is read by the MODEL, before it ever generates a call, to understand what each field means and what a reasonable value looks like. Both halves matter, but they're doing genuinely different jobs for genuinely different readers.</p>
+
+  <div class="callout type"><b>Interview-ready definition:</b> a tool's JSON Schema specification declares the exact shape of valid arguments for that tool — each parameter's <code class="inline">type</code>, which parameters are <code class="inline">required</code> versus optional, and any further constraints (<code class="inline">enum</code>, <code class="inline">format</code>, numeric bounds) on what values are acceptable — plus human/model-readable <code class="inline">description</code> fields that guide what the model passes without themselves being enforced by a validator. The schema serves two audiences at once: the model reads descriptions to decide what to generate, and application code reads the structural constraints to verify what the model actually generated before ever executing the tool.</div>
+</section>
+
+<!-- ============ SECTION 2: CONSTRAINING VALID INPUTS ============ -->
+<section id="constrain">
+  <div class="kicker">02 — A malformed call gets caught by the schema, before the tool ever runs</div>
+  <h2>Constraining valid inputs via schema</h2>
+
+  <p><strong>Start here, before the example.</strong> Think about a vending machine that physically won't accept a coin shaped wrong, versus one that accepts anything you feed it and only fails later when the mechanism jams trying to dispense with the wrong coin already inside. The first design catches the problem at the door, with a clear, immediate "this doesn't fit" — the second discovers the problem deep inside its own machinery, often in a way that's harder to diagnose and can leave the machine in a broken state. Schema validation is the vending machine's coin slot: it rejects a malformed call at the door, before any of the tool's actual logic runs.</p>
+
+  <p>Take section 1's <code class="inline">search_flights</code> schema and a model-generated call that's ALMOST right:</p>
+
+  <div class="code"><span class="c-cmt">// what the model generated:</span>
+{
+  <span class="c-key">"origin"</span>: <span class="c-str">"SFO"</span>,
+  <span class="c-key">"destination"</span>: <span class="c-str">"JFK"</span>,
+  <span class="c-key">"cabin_class"</span>: <span class="c-str">"luxury"</span>
+}
+
+<span class="c-cmt">// validating against the schema's enum for cabin_class:</span>
+<span class="c-kw">enum</span> = [<span class="c-str">"economy"</span>, <span class="c-str">"business"</span>, <span class="c-str">"first"</span>]
+<span class="c-str">"luxury"</span> <span class="c-kw">not in</span> <span class="c-kw">enum</span>  <span class="c-cmt">// FAILS -- "luxury" is not one of the three allowed values</span>
+<span class="c-out">ValidationError: 'luxury' is not one of ['economy', 'business', 'first']
+  at $.cabin_class</span></div>
+
+  <p>Nothing about <code class="inline">"luxury"</code> is malformed JSON, and it's not even an unreasonable GUESS — a real airline sometimes markets a "luxury" tier. But this specific API's <code class="inline">cabin_class</code> parameter only accepts three exact strings, and <code class="inline">"luxury"</code> isn't one of them. Crucially, this check happens <strong>before the tool ever executes</strong> — the flight-search function is never even called with this input. The validator catches the mismatch at the boundary, the same way <code class="inline">type</code> and <code class="inline">minimum</code>/<code class="inline">maximum</code> would catch <code class="inline">"passengers": 15</code> or <code class="inline">"passengers": "two"</code> before either reached the actual search logic.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>With schema validation (catch it early)</h4>
+      <p>The malformed call never reaches the tool. The caller gets a precise, structured error — "cabin_class must be one of economy/business/first" — immediately, before any API call, database write, or side effect happens. The failure is caught at the cheapest possible point.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Without schema validation (let it fail inside)</h4>
+      <p>The tool's own code receives <code class="inline">"luxury"</code> and either crashes with an unrelated error deep inside (e.g. a KeyError from an internal lookup table that has no "luxury" entry), or — worse — silently does something undefined with it, like defaulting to whatever branch happens to run when no case matches. Either way, the failure surfaces further from its actual cause, and is harder to diagnose.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>The key distinction to hold onto:</b> schema validation is not about whether the tool COULD have handled <code class="inline">"luxury"</code> gracefully with a fallback — it's about never letting an out-of-contract value reach the tool's logic at all. This is exactly analogous to a database's <code class="inline">CHECK</code> constraint or a Pydantic model's field validator (per <code class="inline">backend/fastapi_routing_and_pydantic.html</code>): reject invalid data at the boundary, rather than trusting every downstream consumer to independently re-check it.</div>
+
+  <div class="callout req"><b>Interview-ready definition:</b> constraining valid tool inputs via JSON Schema means a model-generated tool call's arguments are checked against the tool's declared schema — types, required fields, and value constraints like <code class="inline">enum</code> — BEFORE the tool's own code ever executes. A call violating any constraint (an out-of-enum value, a missing required field, an out-of-range number) is rejected at this validation boundary with a specific, structured error identifying exactly what was wrong, rather than being passed through to the tool where it could fail unpredictably, deep inside logic that was never designed to handle it, or silently produce an undefined result.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE VALIDATION ============ -->
+<section id="live">
+  <div class="kicker">03 — Pick a call, validate it against the real schema</div>
+  <h2>Validate a tool call, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below are several candidate calls to <code class="inline">search_flights</code> — some valid, some broken in a specific, different way. Pick one and validate it against section 1's exact schema; the log shows precisely which check passes or fails, field by field, the same sequence a real validator runs.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>VALIDATE A CALL AGAINST search_flights' SCHEMA</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-call="valid">Valid: origin, destination, cabin_class="business"</button>
+      <button class="chip bad-chip" data-call="badenum">Bad enum: cabin_class="luxury"</button>
+      <button class="chip bad-chip" data-call="missing">Missing required: no "destination"</button>
+      <button class="chip bad-chip" data-call="badtype">Bad type: passengers="two"</button>
+      <button class="chip bad-chip" data-call="outofrange">Out of range: passengers=15</button>
+    </div>
+    <button class="btn" id="live-run">Validate this call ▸</button>
+    <div class="log" id="live-log"><span class="line">Pick a candidate call, then validate — watch which schema check catches it (or confirms it's clean).</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice as you try each one:</b> every failing case here is a DIFFERENT kind of violation — a value outside an enum, a missing required field, a value of the wrong JSON type entirely, and a value of the right type but outside its numeric bounds. A real validator checks all of these independently and can report more than one violation at once; this demo stops at the first failure it finds per call, mirroring how many validators report the earliest error to keep feedback focused.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a schema field for a new constraint</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The <code class="inline">search_flights</code> tool needs a new optional parameter, <code class="inline">max_price_usd</code>, which must be a positive number (no upper bound is meaningful, but negative or zero prices make no sense). Write the JSON Schema fragment for this one property.</p>
+    <details><summary>Show solution</summary><div class="solution">{
+  "max_price_usd": {
+    "type": "number",
+    "minimum": 0.01,
+    "description": "Maximum total price in USD the traveler is willing to pay. Omit for no price ceiling."
+  }
+}
+
+type: "number" (not "integer") because prices can have cents -- $412.50
+is a valid price, and "integer" would reject it. minimum: 0.01 rather
+than 0 rules out a nonsensical "$0 or negative" price while still
+allowing any genuinely positive amount -- there's no natural maximum, so
+no "maximum" key is included at all (omitting a constraint keyword
+entirely is the correct way to express "no bound here," rather than
+setting an arbitrarily large maximum). Since this parameter is OPTIONAL,
+it does NOT get added to the schema's top-level "required" array --
+consistent with section 1's cabin_class and date, which are also
+constrained (enum, format) without being mandatory.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing why "required" alone doesn't fully constrain a field</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate argues that listing <code class="inline">"origin"</code> in <code class="inline">required</code> is enough to guarantee a usable value — no further constraint needed. Using section 1's schema, what call would satisfy <code class="inline">required</code> for <code class="inline">origin</code> while still being useless to the actual flight-search API?</p>
+    <details><summary>Show solution</summary><div class="solution">{"origin": "", "destination": "JFK"}
+
+An empty string satisfies "required" -- the key "origin" IS present in
+the arguments object, which is all "required" checks (presence, not
+content). But an empty string is not a valid IATA airport code, and the
+flight-search API's own logic would still have to reject or fail on it
+downstream, exactly the "fails deep inside, not at the boundary"
+scenario section 2 warned against.
+
+This is why real-world schemas often add a "minLength": 1 (or, better, a
+"pattern" regex constraint like "^[A-Z]{3}$" to require exactly 3
+uppercase letters, matching the real IATA code format) alongside
+"required" -- "required" only guarantees the key exists in the object,
+it says nothing about whether the VALUE at that key is actually usable.
+Confusing "the field is present" with "the field is valid" is a common
+gap in schema design -- required and type/pattern/enum/minimum are
+answering genuinely different questions ("is it here" vs. "is what's
+here any good"), and a complete schema needs both where it matters.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about why description doesn't affect validation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes fixing the "luxury" cabin_class problem from section 2 by rewriting the <code class="inline">description</code> field to be more explicit: <code class="inline">"description": "Must be exactly 'economy', 'business', or 'first' -- do NOT use any other value including 'luxury'."</code> — without touching <code class="inline">enum</code> at all. Does this actually prevent the malformed call from reaching the tool?</p>
+    <details><summary>Show solution</summary><div class="solution">No. A more explicit description can genuinely reduce how OFTEN the
+model generates "luxury" in the first place, since a clearer prompt-like
+hint at generation time is real signal the model can use -- but it does
+nothing to VALIDATION. Per section 1's split, description is read only
+by the model, at generation time, to help it decide what to write; it is
+never read by a validator, which only checks type/enum/format/minimum/
+maximum/required against the actual generated value.
+
+If the model generates "luxury" ANYWAY -- despite a well-written
+description warning against it, which language models can and do
+sometimes do -- and there's no enum constraint actually present on
+cabin_class, the malformed call sails straight through to the tool with
+nothing catching it, reproducing exactly the "fails deep inside, not at
+the boundary" failure mode from section 2. A better description is a
+genuinely good idea (it likely reduces the RATE of bad calls), but it is
+not a substitute for an enforced enum constraint -- the two operate at
+different points in the pipeline (before generation vs. after
+generation, before execution) and a robust tool spec needs the
+enforced constraint regardless of how good the description is.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing between a loose type and a precise format</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The <code class="inline">date</code> field is typed as <code class="inline">"type": "string", "format": "date"</code> rather than just <code class="inline">"type": "string"</code> alone. What's the concrete difference in what gets rejected, and give one example value that the looser schema (string-only) would incorrectly accept?</p>
+    <details><summary>Show solution</summary><div class="solution">"type": "string" alone accepts ANY string at all -- "hello", "next
+Tuesday", "2024-13-45" (an invalid month/day), or "03/15/2024" (a valid
+date, but in the wrong format for this API) would all pass a bare
+string-type check, since none of them violate "must be a string."
+
+Adding "format": "date" layers a further, more precise constraint on
+top: the string must actually parse as a valid ISO 8601 calendar date
+(YYYY-MM-DD, with a real month 01-12 and a real day for that month).
+"2024-13-45" would FAIL this format check (month 13 and day 45 don't
+exist) even though it fully satisfies "type": "string" -- confirming the
+value's TYPE is correct but its CONTENT is still garbage. This is
+exactly the "required guarantees presence, not validity" distinction
+from Problem 2, generalized: type alone guarantees the right kind of
+data, but format (or enum, or a regex pattern) is often needed on top of
+type to guarantee the STRING itself actually represents something usable
+by the tool, rather than just being technically string-shaped.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Deciding what belongs in required vs. what belongs in a default</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's schema does NOT list <code class="inline">cabin_class</code> in <code class="inline">required</code>, and its description says it "defaults to 'economy' if omitted." Why is making a field optional-with-a-default often better tool design than making the model always specify it, and what's the risk of going too far in that direction?</p>
+    <details><summary>Show solution</summary><div class="solution">Making cabin_class optional-with-a-default means a user question like
+"find me a flight from SFO to JFK next Tuesday" -- which says nothing
+about cabin class -- can still produce a clean, valid tool call
+(omitting cabin_class entirely, letting the API apply its own sensible
+default) rather than forcing the model to either guess a value it has no
+actual basis for, or refuse to call the tool at all because a
+"required" field has no answer available in the conversation. Fewer
+required fields generally means fewer opportunities for the model to
+fabricate a plausible-sounding but ungrounded value just to satisfy the
+schema's required-field constraint -- exactly the kind of forced
+guessing you want to design away from, not toward.
+
+The risk of going too far: making EVERYTHING optional-with-defaults,
+including fields where a wrong silent default is actually dangerous
+(imagine "passengers" silently defaulting to 1 when a user actually
+asked about a family of 4, and the model simply forgot to extract that
+detail) trades one failure mode for a quieter, arguably worse one -- a
+call that "succeeds" but does something the user didn't actually intend,
+with no validation error to catch it, because nothing was technically
+malformed. The judgment call is per-field: origin/destination have no
+sensible default (there's no reasonable "assume the traveler meant some
+particular airport"), so they stay required; cabin_class has one
+genuinely reasonable default that matches typical user intent when
+unspecified, so it doesn't. Which fields belong in each category is a
+real design decision, not something JSON Schema itself can decide for
+you.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write a complete JSON Schema for a new one-tool spec from scratch, including at least one <code class="inline">enum</code> and one numeric bound, (2) explain precisely which schema keywords are read by a validator versus read only by the model, and (3) walk through why catching a malformed call at the schema boundary is strictly better than letting it fail inside the tool's own logic? The next lab, <code class="inline">deterministic_parsing.html</code>, picks up exactly where this one stops — once a call passes schema validation, HOW it gets parsed out of the model's raw output in the first place is its own separate correctness problem.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — json schema tool specs.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: LIVE VALIDATION DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-call]");
+  var runBtn = document.getElementById("live-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var selected = "valid";
+
+  var CALLS = {
+    valid: {
+      json: '{"origin": "SFO", "destination": "JFK", "cabin_class": "business"}',
+      steps: [
+        {ok:true, text:"required check: origin present, destination present — both satisfied."},
+        {ok:true, text:'type check: origin is a string, destination is a string — both satisfied.'},
+        {ok:true, text:'enum check: cabin_class = "business" is in ["economy","business","first"] — satisfied.'},
+        {ok:true, text:"<b>VALID.</b> This call passes every schema check and is forwarded to the tool for execution."}
+      ]
+    },
+    badenum: {
+      json: '{"origin": "SFO", "destination": "JFK", "cabin_class": "luxury"}',
+      steps: [
+        {ok:true, text:"required check: origin present, destination present — both satisfied."},
+        {ok:true, text:"type check: all present fields are the correct JSON type — satisfied."},
+        {ok:false, text:'enum check: cabin_class = "luxury" is NOT in ["economy","business","first"].'},
+        {ok:false, text:'<b>REJECTED before execution.</b> ValidationError: \'luxury\' is not one of the allowed values at $.cabin_class — the tool is never called.'}
+      ]
+    },
+    missing: {
+      json: '{"origin": "SFO", "cabin_class": "economy"}',
+      steps: [
+        {ok:false, text:'required check: "destination" is listed in required but is NOT present in this call\'s arguments.'},
+        {ok:false, text:'<b>REJECTED before execution.</b> ValidationError: \'destination\' is a required property — the tool is never called, and no other field is even checked.'}
+      ]
+    },
+    badtype: {
+      json: '{"origin": "SFO", "destination": "JFK", "passengers": "two"}',
+      steps: [
+        {ok:true, text:"required check: origin present, destination present — satisfied."},
+        {ok:false, text:'type check: passengers = "two" is a string, but the schema declares "type": "integer".'},
+        {ok:false, text:"<b>REJECTED before execution.</b> ValidationError: 'two' is not of type 'integer' at $.passengers — the tool is never called."}
+      ]
+    },
+    outofrange: {
+      json: '{"origin": "SFO", "destination": "JFK", "passengers": 15}',
+      steps: [
+        {ok:true, text:"required check: origin present, destination present — satisfied."},
+        {ok:true, text:"type check: passengers = 15 is a valid integer — satisfied."},
+        {ok:false, text:"range check: passengers = 15 exceeds the schema's \"maximum\": 9."},
+        {ok:false, text:"<b>REJECTED before execution.</b> ValidationError: 15 is greater than the maximum of 9 at $.passengers — the tool is never called."}
+      ]
+    }
+  };
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + (step.ok ? "ok" : "bad");
+    p.innerHTML = step.text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.call;
+    });
+  });
+
+  runBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    var call = CALLS[selected];
+    var header = document.createElement("div");
+    header.className = "line fadein";
+    header.innerHTML = "<b>Call:</b> " + call.json;
+    logEl.appendChild(header);
+    call.steps.forEach(function(step){ log(step); });
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = '<span class="line">Pick a candidate call, then validate — watch which schema check catches it (or confirms it\'s clean).</span>';
+  });
+})();
+</script>
+</body>
+</html>

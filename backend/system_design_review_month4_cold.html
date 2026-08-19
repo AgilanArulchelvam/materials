@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — System Design Review, Month 4 Cold</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --gw-c:#f2c14e; --queue-c:#4fc3f7; --link-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--gw-c); color:var(--gw-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--queue-c); color:var(--queue-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--link-c); color:var(--link-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  /* self-test recall card */
+  .recall{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0; background:var(--panel-2);}
+  .recall-num{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; display:block;}
+  .recall.gw .recall-num{color:var(--gw-c);}
+  .recall.queue .recall-num{color:var(--queue-c);}
+  .recall ul{margin:0.6rem 0 0; padding-left:1.3rem; color:#cdd0d8; font-size:0.9rem;}
+  .recall ul li{margin:0.4rem 0;}
+  .recall details{margin-top:1rem;}
+  .recall .solution{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  /* connection diagram */
+  .connect-stage{display:flex; align-items:center; justify-content:center; gap:1.2rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .connect-node{padding:0.7rem 1rem; border-radius:10px; border:1.5px solid; text-align:center;}
+  .connect-node.client{border-color:var(--ink-dim); color:var(--ink-dim); background:var(--panel-2);}
+  .connect-node.gw{border-color:var(--gw-c); color:var(--gw-c); background:rgba(242,193,78,0.08); font-weight:600;}
+  .connect-node.agent{border-color:var(--link-c); color:var(--link-c); background:rgba(127,216,160,0.08);}
+  .connect-node.queue{border-color:var(--queue-c); color:var(--queue-c); background:rgba(79,195,247,0.08);}
+  .connect-arrow{color:var(--ink-dim); font-size:1rem;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.gw{border-left-color:var(--gw-c); background:rgba(242,193,78,0.06);} .callout.gw b{color:var(--gw-c);}
+  .callout.queue{border-left-color:var(--queue-c); background:rgba(79,195,247,0.06);} .callout.queue b{color:var(--queue-c);}
+  .callout.link{border-left-color:var(--link-c); background:rgba(127,216,160,0.06);} .callout.link b{color:var(--link-c);}
+  .callout.survival{border-left-color:var(--gw-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--gw-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · MONTH 4 REVIEW COLD</div>
+  <h1>Notes closed. Re-derive the gateway and the job queue, then show how they actually connect.</h1>
+  <p class="lede">Same recall-practice structure as the Month 2 and Month 3 cold reviews, applied to this month's first two system designs: the MCP gateway (Week 1) and the async tool job queue (Week 2). Attempt each cold, out loud or on paper, before opening the hidden answer — then a synthesis section forces you to reason about how these two systems actually WIRE TOGETHER in a real agentic deployment, since neither one was designed to run in isolation.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">MCP gateway — re-derive cold</div>
+    <div class="pipe-label b">Async tool job queue — re-derive cold</div>
+    <div class="pipe-label c">How they connect in one real system</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="gateway">1 · MCP Gateway, From Scratch</a>
+  <a data-target="queue">2 · Async Tool Job Queue, From Scratch</a>
+  <a data-target="connect">3 · How the Gateway and the Queue Connect</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 3 Thursday's topic:</b> the roadmap calls for re-deriving both of this month's earlier system designs without notes. This is not new instructional content, mirroring exactly the structure of <code class="inline">backend/system_design_review_month3_cold.html</code> — attempt each prompt yourself first, notes closed, before revealing the hidden answer.</div>
+</div>
+
+<!-- ============ SECTION 1: MCP GATEWAY ============ -->
+<section id="gateway">
+  <div class="kicker">01 — Cold recall, no notes</div>
+  <h2>MCP gateway design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Set a timer for 5-8 minutes. On paper or out loud, answer every bullet below as if you were in an actual interview, with nobody to check your work until you're done.</p>
+
+  <div class="recall gw">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch an MCP gateway design:</p>
+    <ul>
+      <li>What does the gateway's routing table actually map, and why does <code class="inline">tools/list</code> need special handling that <code class="inline">tools/call</code> doesn't?</li>
+      <li>Why does centralizing auth at the gateway reduce security surface area, specifically — not just "make it tidier"?</li>
+      <li>What has to be true about a gateway instance before you can safely run several of them behind a load balancer?</li>
+      <li>Walk through what breaks if a permission revocation only updates one gateway instance's local memory.</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">ROUTING TABLE AND tools/list: the routing table maps tool (or resource/
+prompt) names to the backend MCP server address that actually implements
+each one -- so a client sends every request to ONE gateway address, and
+the gateway forwards tools/call requests to whichever specific backend
+owns the named tool. tools/list needs special handling because it's not
+a routing decision at all -- it's a DISCOVERY query, and the gateway has
+to MERGE every backend's individual tool catalog into one combined list
+so the client sees all available tools as if they came from a single
+server, rather than only seeing whichever one backend happened to answer
+first.
+
+WHY CENTRALIZING AUTH REDUCES SECURITY SURFACE AREA: with per-server
+auth, N independently-implemented auth/permission checks means N
+independent chances for a bug to slip through -- a security audit has to
+review every one of them separately, and a permission change has to be
+pushed to every one of them separately. Centralizing auth at the gateway
+means there is exactly ONE place authentication and per-client permission
+scope is enforced, before a request ever reaches any backend server --
+backend servers can even trust that anything reaching them was already
+authorized, simplifying their own code. This isn't "auth becomes bug-
+proof" -- it's that the surface area for such a bug shrinks from N
+independent implementations to one.
+
+WHAT MUST BE TRUE BEFORE SCALING HORIZONTALLY: the gateway instances must
+be STATELESS with respect to routing tables and per-client permissions --
+that data has to live in a shared external store every instance reads
+from (a database, a config service, a fast cache), not duplicated in
+each instance's own private memory. This mirrors Month 1's stateless/
+stateful lesson and the rate limiter's distributed-counter lesson exactly:
+if each instance kept its own private copy, a policy change would need to
+somehow reach every instance, and any instance that missed the update
+would keep enforcing stale policy.
+
+WHAT BREAKS ON A STALE REVOCATION: if a permission revocation updates
+only ONE gateway instance's local memory (or a config file that only
+some instances have re-read), the compromised client's next request might
+land -- via round-robin or whatever the load balancer's algorithm is --
+on an instance that HASN'T picked up the revocation yet, and that
+instance would incorrectly continue allowing access that was supposed to
+have just been cut off. This is a genuinely dangerous inconsistency
+specifically because it's security-relevant: the whole point of a
+revocation is immediate effect, not "cut off on however many instances
+happened to reload since the change."</div>
+    </details>
+  </div>
+
+  <div class="callout gw"><b>What "re-derive cold" is testing:</b> whether you can explain WHY centralizing auth actually reduces risk (fewer independent implementations, not just tidiness), and whether you connect "must be stateless" to a CONCRETE consequence (a stale revocation on one instance) rather than reciting "stateless" as a buzzword with no mechanism behind it.</div>
+</section>
+
+<!-- ============ SECTION 2: ASYNC TOOL JOB QUEUE ============ -->
+<section id="queue">
+  <div class="kicker">02 — Cold recall, no notes</div>
+  <h2>Async tool job queue design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall queue">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch an async tool job queue design:</p>
+    <ul>
+      <li>Walk through the enqueue → worker → result-store flow. What exactly makes the caller's path non-blocking?</li>
+      <li>Trace the exact backoff delays across several failed attempts, and explain what happens once <code class="inline">MAX_ATTEMPTS</code> is hit.</li>
+      <li>Name the two distinct problems a dead-letter queue solves.</li>
+      <li>Name at least two backpressure strategies, and describe a scenario where applying the wrong one makes things worse.</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">ENQUEUE -> WORKER -> RESULT-STORE FLOW: a slow tool call is represented
+as a job (tool name, arguments, a generated job ID) written to a queue
+rather than awaited directly in the caller's request path. The caller
+returns IMMEDIATELY with a job ID once the job is written to the queue --
+it never waits for the actual work to happen. A separate, independently-
+running worker process dequeues jobs on its own schedule and actually
+executes them, writing the result to a results store the caller (or a
+later poll) reads from afterward. What makes the caller's path non-
+blocking specifically: the enqueue operation itself (writing to the
+queue) is fast and returns right away -- the SLOW part (actually running
+the tool) happens entirely on the worker's own timeline, decoupled from
+the original request.
+
+BACKOFF DELAYS AND MAX_ATTEMPTS: using delay = BASE_DELAY_SECONDS *
+(2 ** (attempts - 1)) with BASE_DELAY_SECONDS=2: after attempt 1 fails,
+wait 2s; after attempt 2 fails, wait 4s; after attempt 3 fails, wait 8s --
+doubling each time. Once attempts reaches MAX_ATTEMPTS (commonly 4), the
+job stops retrying and moves to the dead-letter queue instead of
+attempting a 5th time -- the retry budget is bounded, not infinite.
+
+TWO PROBLEMS A DLQ SOLVES: first, it stops a permanently-failing job
+(malformed payload, deleted resource, invalid input -- not something
+retrying fixes) from consuming worker retry capacity forever, freeing
+that capacity for jobs that CAN succeed. Second, it avoids silently
+dropping the failed job -- its full payload and failure history are
+preserved intact for later human inspection, so if the root cause turns
+out to be fixable, the job can be reprocessed rather than being
+unrecoverably lost.
+
+BACKPRESSURE STRATEGIES AND THE WRONG-STRATEGY TRAP: (1) reject new
+enqueue requests past a queue-depth threshold -- simple, predictable,
+but pushes the "what now" decision back to the caller; (2) throttle/slow
+the producer -- couples producer speed to queue depth, which can cascade
+upstream; (3) scale workers horizontally to increase drain rate. The
+trap: scaling workers does NOT help when the actual bottleneck is an
+EXTERNAL, FIXED constraint -- e.g. a third-party API's hard rate limit
+that doesn't budge no matter how many workers are asking it for work.
+Adding more workers in that specific scenario can make things WORSE,
+since more workers just means more requests contending for the same
+fixed-rate resource, likely triggering more rate-limit errors and feeding
+back into the retry logic, compounding the problem rather than solving
+it.</div>
+    </details>
+  </div>
+
+  <div class="callout queue"><b>What "re-derive cold" is testing:</b> whether you can name the EXACT exponential-backoff arithmetic (not just "it retries with backoff"), articulate BOTH problems a DLQ solves (most people only remember one), and correctly identify a scenario where "just add more workers" is the wrong answer rather than always assuming more capacity helps.</div>
+</section>
+
+<!-- ============ SECTION 3: HOW THEY CONNECT ============ -->
+<section id="connect">
+  <div class="kicker">03 — Neither system was designed to run alone</div>
+  <h2>How the gateway and the job queue actually connect</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Section 1 and 2 each stand on their own as designs — but in a real agentic deployment, they're not two unrelated systems sitting side by side. They're two adjacent stages of the SAME request's journey: a client's request arrives at the gateway, the gateway routes it to whichever agent (or backend MCP server) handles that capability, and if that agent decides a particular tool call is slow enough to warrant it, THAT agent is the one enqueueing a job into the queue — the gateway itself never touches the queue directly.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE REQUEST'S JOURNEY — GATEWAY ROUTES, THE AGENT DECIDES TO ENQUEUE</span>
+      <div><button class="btn secondary" id="connect-reset">Reset</button></div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-node client">CLIENT</div>
+      <div class="connect-arrow">→</div>
+      <div class="connect-node gw" id="connect-gw">GATEWAY<br><span style="font-size:0.65rem;">routes by tool name (§1)</span></div>
+      <div class="connect-arrow">→</div>
+      <div class="connect-node agent" id="connect-agent">AGENT<br><span style="font-size:0.65rem;">decides: fast or slow?</span></div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-arrow" style="transform:rotate(90deg);">→</div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-node queue" id="connect-queue">JOB QUEUE<br><span style="font-size:0.65rem;">worker executes async (§2)</span></div>
+    </div>
+    <button class="btn" id="connect-run">Trace a slow tool call end to end ▸</button>
+    <div class="log" id="connect-log"></div>
+  </div>
+
+  <p>The key architectural point: the gateway's job (section 1) ends the moment it has routed the request to the correct agent — it has no opinion about whether that agent's tool calls are fast or slow, and it does not itself enqueue anything. The DECISION to enqueue (section 2's <code class="inline">if tool_name in SLOW_TOOLS</code> check) is made by the AGENT, downstream of the gateway, using exactly the same <code class="inline">handle_tool_call</code> logic <code class="inline">backend/async_tool_job_queue_design.html</code> already specified. The gateway routing a request and an agent enqueueing a job are two separate concerns, cleanly separated — the gateway would work identically whether or not any backend agent used a job queue internally at all.</p>
+
+  <table class="cmp">
+    <tr><th>Concern</th><th>Owned by</th><th>What it does NOT do</th></tr>
+    <tr><td>Routing a request to the right agent/server</td><td>The gateway (section 1)</td><td>Does not know or care whether the destination agent's tools are fast or slow — that's invisible to the gateway entirely</td></tr>
+    <tr><td>Deciding whether a specific tool call is slow enough to enqueue</td><td>The agent itself (section 2), using its own <code>SLOW_TOOLS</code> check</td><td>Does not involve the gateway at all once the request has already been routed to this agent</td></tr>
+    <tr><td>Auth / permission scoping</td><td>The gateway (section 1), before routing</td><td>The queue and its workers trust that any job they're asked to execute already came from an authorized request — they don't re-check permissions themselves</td></tr>
+    <tr><td>Scaling under load</td><td>Both, independently — the gateway scales via more gateway instances behind a load balancer; the queue scales via more workers (bounded by section 2's Problem 4 caveat about external, fixed-rate dependencies)</td><td>Neither system's scaling strategy depends on or blocks the other's — they can each be scaled up or down on their own schedule</td></tr>
+  </table>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> it's tempting to think the gateway itself should own retry/backoff/backpressure logic for slow tool calls, since section 1's gateway already sits in the critical path of every request. But retries, backoff, and the dead-letter queue are all about managing the LIFECYCLE of one specific tool call's EXECUTION — something the gateway has already handed off responsibility for once it routes the request downstream. Making the gateway also own job-queue semantics would blur a clean separation of concerns into one component doing two structurally different jobs (routing/authz vs. async execution management), which is exactly the kind of unnecessary coupling that makes each piece harder to reason about, test, and scale independently.</div>
+
+  <div class="callout link"><b>Interview-ready definition:</b> in a real agentic deployment, the MCP gateway and the async tool job queue are adjacent, cleanly separated stages of one request's journey rather than independent systems: the gateway authenticates the client and routes the request to the correct downstream agent based on which tool is being called, and — only once the request has already reached that agent — the agent itself decides, using its own slow-tool check, whether a given tool call should be enqueued for async execution rather than awaited inline. The gateway has no visibility into or responsibility for queue internals (retries, backoff, the dead-letter queue, backpressure); the queue and its workers have no visibility into or responsibility for routing and auth. Each system scales and fails independently of the other, which is the direct architectural payoff of keeping the two concerns separate rather than merging them into one component.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. These reason ACROSS both designs, not just reproduce one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing where a permission check belongs when a job is enqueued</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client's request to call a slow tool is authorized by the gateway, routed to the correct agent, and the agent enqueues it as a job (section 2). Minutes later, a worker dequeues the job and executes it. Does the worker need to re-check the client's permissions at execution time? Why or why not?</p>
+    <details><summary>Show solution</summary><div class="solution">In the architecture section 3 describes, no -- the worker does not need
+to independently re-check permissions, because authorization already
+happened once, upstream, at the gateway (section 1), BEFORE the request
+was ever routed to the agent that decided to enqueue it. By the time a
+job exists in the queue at all, it represents a tool call that was
+already authorized -- the queue and its workers are downstream of that
+decision, not a separate entry point a client could reach directly to
+bypass the gateway's auth check.
+
+This mirrors section 1's own "backend servers can trust a request that
+reaches them was already authorized" argument, extended one hop further:
+just as an MCP backend server doesn't need its own auth logic because the
+gateway already enforced it, a queue worker doesn't need its own
+permission check because the AGENT that enqueued the job only got to make
+that decision because ITS request had already passed the gateway's auth
+check. The one caveat worth naming: this chain of trust depends on there
+being no way to enqueue a job DIRECTLY into the queue, bypassing both the
+gateway and the agent -- if the queue had some other entry point
+reachable without going through the gateway first, THAT path would need
+its own authorization check, since the "already authorized upstream"
+assumption would no longer hold for jobs arriving that way.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reasoning about what happens if the queue is at capacity when an agent tries to enqueue</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's backpressure reasoning and section 3's connection diagram, what should the AGENT do if its attempt to enqueue a job is rejected because the queue is past its depth threshold? Does this failure ever need to propagate back through the gateway to the original client?</p>
+    <details><summary>Show solution</summary><div class="solution">The agent should treat the rejection as a real, structured outcome to
+reason about -- not silently retry the enqueue call in a tight loop
+(mirroring async_tool_job_queue_design's own Practice Problem 5, and the
+same graceful-degradation posture deterministic_parsing.html and
+mcp_client_basics.html both established elsewhere this month). A
+reasonable response: the agent surfaces "the system is currently at
+capacity for this kind of request, please try again shortly" as part of
+its own response, or attempts a bounded retry with backoff before giving
+up.
+
+Whether this needs to propagate back through the gateway to the client:
+yes, eventually -- the gateway's job (section 1) was only to ROUTE the
+original request to this agent; it has no ongoing role in the agent's
+internal handling of that request afterward, so the gateway itself does
+nothing special here. But the CLIENT still needs to find out the request
+couldn't be completed -- that response travels back along the same path
+the original request came in on (agent's response -> back through
+whatever return path the gateway's request/response cycle uses -> to the
+client), simply because that's the only path connecting the client to the
+agent at all. The gateway doesn't need to UNDERSTAND that a queue
+rejection happened somewhere downstream -- it's just forwarding a
+response back, the same as it would for any other response from that
+agent, authorized or not.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Comparing the two systems' approaches to horizontal scaling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Both the gateway and the job queue's worker pool can be scaled horizontally. Using section 1's statelessness requirement and section 2's backpressure table, explain one genuine similarity and one genuine difference in HOW each system scales.</p>
+    <details><summary>Show solution</summary><div class="solution">SIMILARITY: both scale by adding more independent, identically-capable
+instances rather than growing one instance's capacity indefinitely --
+more gateway instances behind a load balancer (section 1), more worker
+instances draining the same shared queue (section 2's "scale workers
+horizontally" backpressure strategy). Neither system tries to make ONE
+instance handle unbounded load; both lean on Month 1's horizontal-
+scaling pattern.
+
+DIFFERENCE: what each additional instance NEEDS to scale correctly
+differs. Gateway instances must be stateless with respect to routing
+tables and permissions specifically because MULTIPLE clients could hit
+DIFFERENT gateway instances for DIFFERENT requests at the same moment,
+and all of them need to enforce the exact same, current policy --
+inconsistency here is a security problem (section 1's stale-revocation
+scenario). Worker instances, by contrast, don't need to share nearly as
+much state with each other at all -- each worker mostly just needs to be
+able to dequeue an independent job, execute it, and write its own
+result; workers aren't coordinating policy decisions with each other the
+way gateway instances are. Also critically: section 2 already flags that
+scaling WORKERS specifically fails to help when the bottleneck is an
+external, fixed-rate dependency (Problem 4 of the async job queue lab) --
+there's no equivalent "external fixed-rate constraint" limiting how much
+scaling gateway instances helps, since the gateway's own routing/auth
+work doesn't depend on a third-party rate limit the way tool execution
+sometimes does. The two systems scale via the same general PATTERN, but
+the actual bottleneck each one runs into as it scales is genuinely
+different.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Spotting a design that merges the two systems' responsibilities incorrectly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A candidate proposes: "let's just have the gateway maintain the job queue directly, since it's already the single front door for every request anyway." Using section 3's separation-of-concerns argument, what's the risk of this design?</p>
+    <details><summary>Show solution</summary><div class="solution">This merges two structurally different responsibilities into one
+component, which section 3's warning callout flags directly. The
+gateway's entire job (section 1) is ROUTING and AUTHORIZATION -- fast,
+per-request decisions that need to happen before a request reaches any
+backend. The job queue's entire job (section 2) is managing the
+LIFECYCLE of long-running, asynchronous work -- retries, backoff, dead-
+letter handling, backpressure -- which unfolds over a completely
+different timescale (seconds to minutes, not the sub-request-latency
+scale routing operates on).
+
+Concretely, folding queue ownership into the gateway means: every
+gateway instance (recall section 1's requirement that gateway instances
+be stateless and horizontally scaled independently) would now ALSO need
+to coordinate queue state, worker assignment, and retry bookkeeping --
+coupling the gateway's scaling behavior to the queue's, when section 3
+specifically valued that the two currently scale independently. It also
+means a bug or overload in queue-management logic could now destabilize
+the GATEWAY itself -- the single front door every request passes through
+for routing and auth -- rather than staying contained to a separate
+component whose failure doesn't take down request routing for the entire
+system. "It's already the front door" is true but doesn't imply "so it
+should own everything downstream of the front door too" -- the value of
+keeping them separate is exactly that a queue-side problem stays a
+queue-side problem, and a gateway-side problem stays a gateway-side
+problem, rather than either one being able to take the other down.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Writing your own cold-recall connection question for a third system</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the same "how do these systems actually connect" framing as section 3, write ONE cold-recall question (not the answer) that tests how the MCP gateway would need to connect to <code class="inline">database/audit_trail_schema.html</code>'s logging schema — this same week's DB design topic — if every tool call routed through the gateway needed to be logged for replay/debugging.</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable connection question, following section 3's shape (specific
+enough to force a real design decision, not so open-ended a vague answer
+can dodge it):
+
+  "The gateway (section 1) sits in front of every tool call in the
+   system, and the audit trail schema needs a row logging every tool
+   call's inputs, outputs, and status. Where in the gateway's own request
+   flow -- BEFORE routing, AFTER a backend responds, or both -- would you
+   insert the audit-log write, and why does logging only 'before' or only
+   'after' each lose something the schema needs? Does the audit log write
+   need to be synchronous with the gateway's response to the client, or
+   could it be handled the way section 2's job queue handles slow work --
+   asynchronously, off the critical request path?"
+
+The value of writing this yourself: it forces connecting THIS lab's
+gateway-request-flow reasoning to a genuinely different system (a
+logging schema, not another system-design lab) using the same "trace one
+request's actual journey through multiple components" method section 3
+modeled -- rather than treating "system design" and "database design" as
+two disconnected weekly tracks that happen to both exist this month. The
+"synchronous vs async" sub-question specifically echoes section 2's own
+core lesson (don't block a fast path on slow, non-critical work) applied
+to a new concern (audit logging) that section 2 never actually covered.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, right now, with no notes, re-explain (1) why tools/list needs gateway-level merging that tools/call doesn't, (2) the exact exponential backoff formula and what a DLQ actually solves (both halves), (3) which of the two systems owns authorization versus which owns retry/backoff, and (4) why merging the two into one component would be a design mistake, not just an inelegant one? If any of the four feels shaky, that's the one to re-attempt cold again tomorrow, not just re-read.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — system design review, month 4 cold.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: CONNECTION TRACE DEMO */
+(function(){
+  var runBtn = document.getElementById("connect-run");
+  var resetBtn = document.getElementById("connect-reset");
+  var logEl = document.getElementById("connect-log");
+  var gwEl = document.getElementById("connect-gw");
+  var agentEl = document.getElementById("connect-agent");
+  var queueEl = document.getElementById("connect-queue");
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function clearActive(){
+    [gwEl, agentEl, queueEl].forEach(function(el){ el.style.boxShadow = "none"; });
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    clearActive();
+
+    log('<b>Client</b> calls a tool named "generate_video_report" against the single gateway address.');
+    await wait(450);
+
+    gwEl.style.boxShadow = "0 0 14px rgba(242,193,78,0.6)";
+    log('<b style="color:var(--gw-c);">Gateway (§1):</b> authenticates the client, checks its permission scope, looks up ROUTING_TABLE["generate_video_report"] → forwards to the owning agent. The gateway\'s job ends here.');
+    await wait(550);
+    gwEl.style.boxShadow = "none";
+
+    agentEl.style.boxShadow = "0 0 14px rgba(127,216,160,0.6)";
+    log('<b style="color:var(--link-c);">Agent:</b> receives the routed request. Checks its own SLOW_TOOLS set — "generate_video_report" is in it. The gateway had no idea this check was even happening.');
+    await wait(550);
+    agentEl.style.boxShadow = "none";
+
+    queueEl.style.boxShadow = "0 0 14px rgba(79,195,247,0.6)";
+    log('<b style="color:var(--queue-c);">Job queue (§2):</b> the agent enqueues a job — job_id returned immediately. A separate worker will dequeue and execute it on its own schedule, independent of this request entirely.');
+    await wait(550);
+    queueEl.style.boxShadow = "none";
+
+    log('<b>Result:</b> the agent replies to the gateway (which forwards to the client) with a job_id right away — no one in this chain waited on the actual slow work. The gateway routed; the agent decided to enqueue; the queue managed execution. Three separate concerns, cleanly separated.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    clearActive();
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

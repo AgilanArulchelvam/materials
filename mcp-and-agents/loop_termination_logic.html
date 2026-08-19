@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Loop Termination Logic</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --step-c:#4fc3f7; --done-c:#7fd8a0; --cap-c:#f2c14e; --timeout-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--step-c); color:var(--step-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--cap-c); color:var(--cap-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--timeout-c); color:var(--timeout-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--timeout-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.done{border-left-color:var(--done-c); background:rgba(127,216,160,0.06);}
+  .log .line.cap{border-left-color:var(--cap-c); background:rgba(242,193,78,0.06);}
+  .log .line.timeout{border-left-color:var(--timeout-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* step counter */
+  .counter-stage{display:flex; align-items:center; justify-content:center; gap:1.4rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .step-counter{font-family:var(--mono); text-align:center;}
+  .step-counter .num{font-size:2.6rem; font-weight:700; color:var(--step-c); line-height:1;}
+  .step-counter .lbl{font-size:0.72rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.08em; margin-top:0.3rem;}
+  .step-counter.cap-hit .num{color:var(--cap-c);}
+  .step-counter.done-hit .num{color:var(--done-c);}
+  .step-track{display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin:1rem 0;}
+  .step-dot{width:22px; height:22px; border-radius:6px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.6rem; display:flex; align-items:center; justify-content:center; color:var(--ink-dim); transition:all .3s ease;}
+  .step-dot.filled{border-color:var(--step-c); color:var(--step-c); background:rgba(79,195,247,0.1);}
+  .step-dot.done{border-color:var(--done-c); color:var(--done-c); background:rgba(127,216,160,0.15);}
+  .step-dot.cap{border-color:var(--cap-c); color:var(--cap-c); background:rgba(242,193,78,0.15);}
+
+  /* timeout meter */
+  .timeout-meter{width:100%; height:26px; border-radius:8px; background:var(--panel-2); border:1px solid var(--rule); overflow:hidden; position:relative; margin:0.8rem 0;}
+  .timeout-fill{height:100%; background:linear-gradient(90deg, var(--done-c), var(--cap-c) 70%, var(--timeout-c) 100%); width:0%; transition:width .1s linear;}
+  .timeout-label{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); margin-top:0.3rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--timeout-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--timeout-c);}
+  .callout.cap{border-left-color:var(--cap-c); background:rgba(242,193,78,0.06);} .callout.cap b{color:var(--cap-c);}
+  .callout.done{border-left-color:var(--done-c); background:rgba(127,216,160,0.06);} .callout.done b{color:var(--done-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · LOOP TERMINATION LOGIC</div>
+  <h1>Every loop needs an exit. An agent loop needs three: done, exhausted, and timed out.</h1>
+  <p class="lede">react_pattern.html's loop already had a <code class="inline">max_steps</code> cap and checked for a Final Answer — this lab formalizes both as first-class termination mechanisms, adds a wall-clock timeout as an independent third safety net, and works through what makes each one necessary: a model that never converges needs a step cap; a model that converges too slowly in wall-clock time (one slow tool call can burn a whole budget) needs a timeout that doesn't care how many steps have run.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Explicit done signal — the model says "I'm finished"</div>
+    <div class="pipe-label b">Max steps — a hard cap, independent of what the model says</div>
+    <div class="pipe-label c">Timeout — wall-clock, independent of step count entirely</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="mechanisms">1 · Max Steps &amp; Explicit Done Signals</a>
+  <a data-target="timeout">2 · Timeout Handling</a>
+  <a data-target="live">3 · Watch the Loop Terminate, Three Ways</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: MAX STEPS & DONE SIGNALS ============ -->
+<section id="mechanisms">
+  <div class="kicker">01 — Two different questions: "is the model done?" and "has it gone on too long?"</div>
+  <h2>Max steps and explicit done signals</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about giving someone directions with two independent safety nets: "keep walking until you reach the blue door" (a clear, self-reported completion condition) AND "but if you've walked more than 20 blocks, stop and call me regardless" (a hard cap that doesn't care whether they FEEL close to the blue door or not). The first trusts the walker's own judgment about when they're done. The second exists specifically for the case where that judgment is wrong, or the blue door doesn't exist at all — a genuinely different failure to guard against.</p>
+
+  <p>An agent loop needs exactly this pair, and they answer genuinely different questions. The <strong>explicit done signal</strong> is the model's own report that it has enough information to answer — <code class="inline">react_pattern.html</code>'s <code class="inline">"Final Answer:"</code> check is exactly this. The <strong>max-steps cap</strong> is a hard limit that terminates the loop regardless of what the model says, specifically covering the case where the model NEVER produces a done signal — looping indefinitely, calling tool after tool, never quite deciding it has enough.</p>
+
+  <div class="code"><span class="c-kw">async def</span> <span class="c-fn">agent_loop</span>(question: <span class="c-fn">str</span>, tools: <span class="c-fn">dict</span>, max_steps: <span class="c-fn">int</span> = <span class="c-num">8</span>) -> <span class="c-fn">dict</span>:
+    transcript = <span class="c-fn">f"Question: {question}\n"</span>
+
+    <span class="c-kw">for</span> step <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1</span>, max_steps + <span class="c-num">1</span>):
+        model_output = <span class="c-kw">await</span> call_model(transcript)
+        transcript += model_output
+
+        <span class="c-cmt"># MECHANISM 1: explicit done signal -- the model itself reports it's finished</span>
+        <span class="c-kw">if</span> <span class="c-str">"Final Answer:"</span> <span class="c-kw">in</span> model_output:
+            <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"done"</span>, <span class="c-str">"steps_used"</span>: step,
+                    <span class="c-str">"answer"</span>: model_output.split(<span class="c-str">"Final Answer:"</span>)[-<span class="c-num">1</span>].strip()}
+
+        action = parse_action(model_output)      <span class="c-cmt"># deterministic_parsing.html</span>
+        result = <span class="c-kw">await</span> execute_tool(tools, action)
+        transcript += <span class="c-fn">f"Observation: {result}\n"</span>
+
+    <span class="c-cmt"># MECHANISM 2: max_steps -- fires ONLY if the loop reaches here, meaning</span>
+    <span class="c-cmt"># step max_steps completed without ever hitting the done-signal return above</span>
+    <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"max_steps_exceeded"</span>, <span class="c-str">"steps_used"</span>: max_steps,
+            <span class="c-str">"answer"</span>: <span class="c-kw">None</span>}</div>
+
+  <p>Notice the two mechanisms are checked at genuinely different points and never conflict: the done-signal check happens INSIDE the loop body, every single iteration, immediately after each model call — it can fire as early as step 1. The max-steps cap is structural: it's simply the loop's own <code class="inline">for</code> bound, and it only ever "fires" in the sense that the loop exits its <code class="inline">for</code> statement normally, having never hit the early <code class="inline">return</code> for a done signal. A well-behaved model that converges quickly never comes close to <code class="inline">max_steps</code>; a model that never converges is caught by it regardless.</p>
+
+  <table class="cmp">
+    <tr><th>Mechanism</th><th>What triggers it</th><th>What it protects against</th></tr>
+    <tr><td>Explicit done signal</td><td>The model itself emits <code>"Final Answer:"</code> instead of another action</td><td>Nothing on its own — this is the NORMAL, successful exit path, not a safety net</td></tr>
+    <tr><td>Max steps</td><td>The loop completes <code>max_steps</code> iterations without ever hitting a done signal</td><td>A model that never converges — keeps calling tools indefinitely, never deciding it has enough information</td></tr>
+  </table>
+
+  <div class="callout done"><b>Interview-ready definition:</b> loop termination via explicit done signals and max steps means an agent loop exits through exactly one of two paths: the model itself reports completion (e.g. emitting a Final Answer instead of another tool call), which is the loop's normal, intended exit — or the loop reaches a hard-coded maximum step count without ever receiving that signal, which is a safety net specifically for a model that never converges. The two checks are independent and layered: the done-signal check runs every iteration and can fire immediately; the max-steps cap is a structural bound on the loop itself that only matters when the done signal never arrives.</div>
+</section>
+
+<!-- ============ SECTION 2: TIMEOUT HANDLING ============ -->
+<section id="timeout">
+  <div class="kicker">02 — A single step can hang forever, no matter how low the step count is</div>
+  <h2>Timeout handling</h2>
+
+  <p><strong>Start here, before the code.</strong> Section 1's <code class="inline">max_steps</code> guards against too MANY steps. It does nothing at all about a single step that never returns — imagine step 3 out of 8 calls a tool that hits a hung network connection to a third-party API that simply never responds. The loop is sitting at step 3, well under its cap of 8, technically "on track" by the step-count metric, but stuck forever anyway. This is a genuinely different failure mode from an unconverging model — the number of steps was never the problem; the WALL-CLOCK TIME one particular step is taking is.</p>
+
+  <p>A <strong>timeout</strong> is a wall-clock safety net, independent of step count entirely — it bounds how long the loop (or any single step within it) is allowed to run in real time, regardless of how many or how few steps have executed.</p>
+
+  <div class="code"><span class="c-kw">import</span> asyncio
+
+<span class="c-kw">async def</span> <span class="c-fn">agent_loop_with_timeout</span>(question: <span class="c-fn">str</span>, tools: <span class="c-fn">dict</span>,
+                               max_steps: <span class="c-fn">int</span> = <span class="c-num">8</span>, step_timeout_seconds: <span class="c-fn">float</span> = <span class="c-num">15.0</span>,
+                               total_timeout_seconds: <span class="c-fn">float</span> = <span class="c-num">60.0</span>) -> <span class="c-fn">dict</span>:
+    transcript = <span class="c-fn">f"Question: {question}\n"</span>
+    loop_start = time.monotonic()
+
+    <span class="c-kw">for</span> step <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1</span>, max_steps + <span class="c-num">1</span>):
+        <span class="c-cmt"># TOTAL timeout -- independent of step count, checked every iteration</span>
+        <span class="c-kw">if</span> time.monotonic() - loop_start > total_timeout_seconds:
+            <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"timed_out"</span>, <span class="c-str">"steps_used"</span>: step - <span class="c-num">1</span>, <span class="c-str">"answer"</span>: <span class="c-kw">None</span>}
+
+        <span class="c-kw">try</span>:
+            <span class="c-cmt"># PER-STEP timeout -- catches a SINGLE hung tool call, even at step 1 of 8</span>
+            model_output = <span class="c-kw">await</span> asyncio.wait_for(call_model(transcript), timeout=step_timeout_seconds)
+        <span class="c-kw">except</span> asyncio.TimeoutError:
+            <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"step_timed_out"</span>, <span class="c-str">"steps_used"</span>: step - <span class="c-num">1</span>, <span class="c-str">"answer"</span>: <span class="c-kw">None</span>}
+
+        transcript += model_output
+        <span class="c-kw">if</span> <span class="c-str">"Final Answer:"</span> <span class="c-kw">in</span> model_output:
+            <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"done"</span>, <span class="c-str">"steps_used"</span>: step, <span class="c-str">"answer"</span>: model_output.split(<span class="c-str">"Final Answer:"</span>)[-<span class="c-num">1</span>].strip()}
+
+        action = parse_action(model_output)
+        <span class="c-kw">try</span>:
+            result = <span class="c-kw">await</span> asyncio.wait_for(execute_tool(tools, action), timeout=step_timeout_seconds)
+        <span class="c-kw">except</span> asyncio.TimeoutError:
+            <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"step_timed_out"</span>, <span class="c-str">"steps_used"</span>: step, <span class="c-str">"answer"</span>: <span class="c-kw">None</span>}
+        transcript += <span class="c-fn">f"Observation: {result}\n"</span>
+
+    <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"max_steps_exceeded"</span>, <span class="c-str">"steps_used"</span>: max_steps, <span class="c-str">"answer"</span>: <span class="c-kw">None</span>}</div>
+
+  <p>Two DIFFERENT timeouts are layered here, and they're not redundant: <code class="inline">step_timeout_seconds</code> bounds any SINGLE model call or tool call, catching a hang inside one step regardless of overall progress. <code class="inline">total_timeout_seconds</code> bounds the WHOLE loop's wall-clock duration, catching the case where every individual step technically completes within its own budget, but there are enough of them (or they're each just slow enough) that the cumulative time is still unacceptable — a scenario <code class="inline">max_steps</code> alone wouldn't catch if the step cap were generous.</p>
+
+  <table class="cmp">
+    <tr><th>Mechanism</th><th>What it measures</th><th>What it catches that the others don't</th></tr>
+    <tr><td>max_steps</td><td>Count of loop iterations</td><td>A model that never converges — regardless of how fast each individual step is</td></tr>
+    <tr><td>step_timeout</td><td>Wall-clock time of ONE step</td><td>A single hung tool call or model call — even at step 1 of 8, long before max_steps would ever fire</td></tr>
+    <tr><td>total_timeout</td><td>Wall-clock time of the ENTIRE loop</td><td>Cumulative slowness across many technically-within-budget steps — a scenario max_steps alone wouldn't catch if the cap were generous</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why this has to be a SEPARATE mechanism, not folded into max_steps:</b> step count and wall-clock time measure genuinely different things, and a loop can be pathological on either axis independently. A loop stuck at step 3 of 8 forever (one hung call) never exhausts max_steps at all — nothing about the step-count cap would ever trigger, because the loop simply never reaches step 4. Only a timeout, measuring real elapsed time rather than iterations completed, catches this specific failure.</div>
+
+  <div class="callout cap"><b>Interview-ready definition:</b> timeout handling adds a wall-clock safety net to an agent loop, independent of step count: a per-step timeout bounds how long any single model call or tool call is allowed to run before being treated as failed, and a total-loop timeout bounds the loop's entire cumulative wall-clock duration regardless of how many steps have executed. This catches a failure mode max_steps cannot — a single step (or the sum of many technically-fast steps) hanging or running unacceptably long in real time, even when the number of steps completed is well within the step cap.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE TERMINATION DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — Same loop, three different ways it can end</div>
+  <h2>Watch the loop terminate, three ways</h2>
+
+  <p><strong>Start here, before running it.</strong> Pick a scenario below and run the loop. Each one exercises a different one of section 1 and 2's termination mechanisms — a normal done signal, a runaway model hitting the step cap, and a single step hanging past its timeout — with the step counter and (for the timeout case) a wall-clock meter both visible as it runs.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>AGENT LOOP — max_steps = 6, step_timeout = simulated</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-scenario="done">Converges normally — Final Answer at step 3</button>
+      <button class="chip" data-scenario="cap">Never converges — hits max_steps (6)</button>
+      <button class="chip" data-scenario="timeout">Hangs mid-step — timeout fires at step 3</button>
+    </div>
+    <div class="counter-stage">
+      <div class="step-counter" id="step-counter"><div class="num" id="step-num">0</div><div class="lbl">steps used</div></div>
+    </div>
+    <div class="step-track" id="step-track"></div>
+    <div id="timeout-wrap" style="display:none;">
+      <div class="timeout-meter"><div class="timeout-fill" id="timeout-fill"></div></div>
+      <div class="timeout-label" id="timeout-label">Step 3 wall-clock: 0.0s / 15.0s budget</div>
+    </div>
+    <button class="btn" id="live-run">Run this scenario ▸</button>
+    <div class="log" id="live-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice across all three:</b> the loop's basic structure never changes — same steps, same checks, same order. What differs is only WHICH exit condition fires first. A well-designed agent loop doesn't need special-case code for "the runaway case" or "the hang case" — it needs these three checks present unconditionally, on every run, so whichever failure mode actually occurs is the one that catches it.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing a max_steps value and justifying it</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A task typically needs 2-4 tool calls to complete. Why would <code class="inline">max_steps = 6</code> be a more defensible choice than either <code class="inline">max_steps = 3</code> or <code class="inline">max_steps = 50</code>?</p>
+    <details><summary>Show solution</summary><div class="solution">max_steps = 3 risks cutting off LEGITIMATE, successfully-converging runs
+that happen to need slightly more steps than the typical case -- if the
+task "typically" needs 2-4 calls, a cap of exactly 3 would already be too
+tight for some fraction of normal, non-pathological runs (anything
+needing the full 4), forcing them to terminate via max_steps_exceeded
+even though they were making genuine progress toward a real answer, not
+looping pathologically at all. This is a real cost: a cap set too low
+converts some SUCCESSFUL runs into failures for no reason related to the
+model actually malfunctioning.
+
+max_steps = 50 is too loose to serve as a meaningful safety net at all --
+a model that's genuinely stuck in a non-converging pattern would burn
+through 50 full model+tool round trips (real latency and real cost, per
+this month's discussion of token/step costs) before the cap ever
+intervened, which defeats much of the point of having a cap in the first
+place: catching a runaway loop reasonably QUICKLY, not merely
+eventually.
+
+max_steps = 6 sits meaningfully above the typical 2-4 range (giving
+genuine, well-behaved runs real headroom to occasionally need a couple
+more steps than usual without being wrongly cut off) while still being
+low enough that a truly non-converging model is caught after a bounded,
+reasonably small number of wasted round trips rather than after
+dozens. The right number is task-specific, not universal, but the
+underlying principle -- set the cap meaningfully above typical usage, not
+merely possible usage -- generalizes.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing which mechanism fires in a specific trace</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's <code class="inline">agent_loop_with_timeout</code>, a run reaches step 4 of <code class="inline">max_steps=8</code>, and step 4's tool call has been running for 20 seconds against a <code class="inline">step_timeout_seconds=15.0</code> budget, with <code class="inline">total_timeout_seconds=60.0</code> and only 35 seconds of total elapsed time so far. Which mechanism fires, and why not the others?</p>
+    <details><summary>Show solution</summary><div class="solution">The PER-STEP timeout fires -- step 4's tool call has been running 20
+seconds against a 15-second step_timeout_seconds budget, so
+asyncio.wait_for(execute_tool(...), timeout=15.0) raises
+asyncio.TimeoutError once 15 seconds elapse, well before it reaches the
+actual 20-second mark, and the loop returns {"status": "step_timed_out",
+...}.
+
+Why not max_steps: only 4 of the 8 allotted steps have been used --
+nowhere near exhausted, so the for-loop's bound was never going to be the
+thing that ends this run.
+
+Why not total_timeout: only 35 seconds of the 60-second total budget have
+elapsed -- the total-timeout check (per section 2's code, evaluated at
+the START of each loop iteration) would not have fired yet even if it
+were checked again after this step, since 35 < 60. This trace is a clean
+illustration of section 2's core point: the per-step timeout is what
+catches THIS specific failure (one step hanging) precisely because it's
+checking something max_steps and total_timeout are both blind to -- how
+long ONE step, specifically, has been running -- independent of how many
+steps have run overall or how much cumulative time has passed.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why total_timeout is checked at the top of the loop, not just once</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's code checks <code class="inline">time.monotonic() - loop_start > total_timeout_seconds</code> at the TOP of every iteration, not just once before the loop starts. Why does it need to be inside the loop body at all?</p>
+    <details><summary>Show solution</summary><div class="solution">A single check made ONCE before the loop starts would only ever see
+elapsed time = 0 (the loop hasn't run yet) -- it could never detect that
+the loop has since been running for, say, 65 seconds across several
+completed steps, because that time genuinely hasn't passed yet at the
+moment a pre-loop check would run. The total timeout is measuring
+CUMULATIVE wall-clock time across potentially many steps, which is
+fundamentally a quantity that only grows AS the loop executes -- it has
+to be re-evaluated at multiple points DURING execution to have any chance
+of catching the threshold being crossed.
+
+Checking it at the top of every iteration (section 2's actual placement)
+means: after step 1 completes, before starting step 2, ask "has the
+loop's total elapsed time now exceeded the budget?" -- and same again
+before step 3, step 4, and so on. This is the only placement that can
+actually catch "the loop has been running too long in total," since the
+condition being checked (cumulative elapsed time) is itself a moving
+target that changes with every completed step, unlike max_steps (a fixed
+number decided before the loop even starts) or step_timeout (scoped to
+one single step's own duration, checked via wait_for around that one
+call, not by re-polling a clock).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Deciding what happens after a step_timed_out result</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the graceful-degradation reasoning from <code class="inline">deterministic_parsing.html</code> and <code class="inline">mcp_client_basics.html</code>, should a <code class="inline">"step_timed_out"</code> result always mean the whole agent session ends with no answer? What's a better default?</p>
+    <details><summary>Show solution</summary><div class="solution">Not necessarily, and treating it as an automatic hard stop repeats the
+same mistake those two labs warned against for a DIFFERENT failure type:
+a single tool call timing out is a specific, localized failure (this
+particular tool, this particular call, timed out) -- not evidence the
+entire task is unanswerable. A better default mirrors
+deterministic_parsing.html's malformed-output handling almost exactly:
+treat the timeout as an Observation fed back into the transcript ("the
+last tool call timed out after 15s and did not return a result") and let
+the model's NEXT Thought decide how to proceed -- try a different tool,
+retry once with a longer budget if that's a reasonable option, or
+explicitly tell the user "I wasn't able to complete this because a
+lookup timed out" rather than silently returning nothing at all.
+
+The important caveat: this "let the model try again" response should
+itself still be bounded by max_steps and total_timeout -- a timeout
+recovering into "just try again" without any additional limit could
+still spiral into repeated timeouts eating the entire step/time budget.
+Whether to hard-stop immediately on any timeout or attempt one bounded
+recovery is a real design decision that depends on how expensive
+retrying is and how tolerant the specific task is of extra latency -- but
+"always hard-stop with zero recovery attempt" throws away exactly the
+kind of self-correction opportunity react_pattern.html and
+deterministic_parsing.html both argued for elsewhere in this same loop.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting termination logic to the retry-budget lesson from deterministic_parsing</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;"><code class="inline">deterministic_parsing.html</code>'s Practice Problem 5 argued a parse-failure retry loop needs its own bounded retry count, separate from but composed with <code class="inline">max_steps</code>. Using THIS lab's mechanisms, sketch how a parse-retry count and max_steps interact — does a parse-retry attempt consume a "step," or is it accounted separately?</p>
+    <details><summary>Show solution</summary><div class="solution">The cleanest design treats each parse-retry attempt as consuming one
+iteration of the SAME loop -- i.e., a step where the model generates
+malformed output, gets corrective feedback per deterministic_parsing.html,
+and generates again on the NEXT loop iteration is just another pass
+through this lab's for-loop body, incrementing step exactly the same way
+a successful tool call would. This has a genuinely useful property: it
+means max_steps automatically serves as an implicit upper bound on parse
+retries too, without needing a wholly separate counter -- a model stuck
+generating malformed JSON repeatedly still terminates via max_steps
+eventually, exactly as deterministic_parsing.html's Practice Problem 5
+required, because those retries are steps like any other and step count
+is already being tracked and capped.
+
+Where a SEPARATE, tighter counter still earns its keep: if you want to
+abandon a specific tool call after, say, 3 consecutive parse failures
+specifically (rather than letting the model burn most of its ENTIRE
+max_steps budget retrying the same malformed call over and over before
+moving on to anything else), a dedicated per-call retry counter --
+checked and reset independently of the loop's overall step count --
+lets you fail that ONE call fast and let the model try a different
+approach with most of its step budget still intact, rather than
+discovering only at max_steps that the whole session is out of steps
+because one call kept failing. The two counters aren't redundant: step
+count bounds the WHOLE session as a blunt backstop; a per-call retry
+counter bounds how much of that session budget any SINGLE call is
+allowed to consume before the loop gives up on it specifically and moves
+on.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch the loop pseudocode showing exactly where the done-signal check, the max_steps bound, and both timeouts each live, (2) explain a concrete scenario where max_steps alone would NOT catch a hung loop, and (3) explain why total_timeout has to be re-checked every iteration rather than computed once? The final lab this week, <code class="inline">function_calling_loop_practice.html</code>, wires this termination logic together with <code class="inline">json_schema_tool_specs.html</code>'s validation and <code class="inline">deterministic_parsing.html</code>'s parsing into one complete, runnable loop.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — loop termination logic.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: TERMINATION DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-scenario]");
+  var runBtn = document.getElementById("live-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var stepNumEl = document.getElementById("step-num");
+  var counterEl = document.getElementById("step-counter");
+  var trackEl = document.getElementById("step-track");
+  var timeoutWrap = document.getElementById("timeout-wrap");
+  var timeoutFill = document.getElementById("timeout-fill");
+  var timeoutLabel = document.getElementById("timeout-label");
+  var scenario = "done";
+  var busy = false;
+  var MAX_STEPS = 6;
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function buildTrack(){
+    trackEl.innerHTML = "";
+    for(var i = 1; i <= MAX_STEPS; i++){
+      var d = document.createElement("div");
+      d.className = "step-dot";
+      d.textContent = i;
+      d.id = "dot-" + i;
+      trackEl.appendChild(d);
+    }
+  }
+
+  function setStep(n){
+    stepNumEl.textContent = n;
+    for(var i = 1; i <= MAX_STEPS; i++){
+      var d = document.getElementById("dot-" + i);
+      d.classList.remove("filled", "done", "cap");
+      if(i <= n) d.classList.add("filled");
+    }
+  }
+
+  function resetAll(){
+    setStep(0);
+    counterEl.classList.remove("cap-hit", "done-hit");
+    timeoutWrap.style.display = "none";
+    timeoutFill.style.width = "0%";
+    logEl.innerHTML = "";
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      scenario = c.dataset.scenario;
+      resetAll();
+    });
+  });
+
+  async function runDone(){
+    log("<b>Loop starts.</b> max_steps = 6. Checking for a Final Answer after every step.");
+    for(var s = 1; s <= 3; s++){
+      await wait(400);
+      setStep(s);
+      if(s < 3){
+        log("Step " + s + ": Thought → Action → Observation. No \"Final Answer:\" yet — loop continues.");
+      } else {
+        log('Step ' + s + ': model emits <b>"Final Answer: ..."</b> — the explicit done signal fires.', "done");
+        document.getElementById("dot-" + s).classList.add("done");
+        counterEl.classList.add("done-hit");
+        await wait(300);
+        log('<b style="color:var(--done-c);">Loop returns {"status": "done", "steps_used": 3}.</b> Well under max_steps — this is the normal, successful exit path, not a safety net firing.', "done");
+      }
+    }
+  }
+
+  async function runCap(){
+    log("<b>Loop starts.</b> max_steps = 6. This model keeps calling tools and never emits a Final Answer.");
+    for(var s = 1; s <= MAX_STEPS; s++){
+      await wait(350);
+      setStep(s);
+      log("Step " + s + ": Thought → Action → Observation. No \"Final Answer:\" — loop continues.");
+    }
+    await wait(300);
+    document.querySelectorAll(".step-dot").forEach(function(d){ d.classList.add("cap"); });
+    counterEl.classList.add("cap-hit");
+    log('<b>for-loop exhausted after ' + MAX_STEPS + ' iterations — the done-signal check never fired.</b>', "cap");
+    log('<b style="color:var(--cap-c);">Loop returns {"status": "max_steps_exceeded", "steps_used": 6, "answer": null}.</b> The safety net specifically for a model that never converges.', "cap");
+  }
+
+  async function runTimeout(){
+    log("<b>Loop starts.</b> step_timeout_seconds = 15.0 (simulated at accelerated speed). Step 3's tool call hangs.");
+    for(var s = 1; s <= 2; s++){
+      await wait(400);
+      setStep(s);
+      log("Step " + s + ": Thought → Action → Observation completes normally, well under the per-step timeout budget.");
+    }
+    await wait(300);
+    setStep(3);
+    log("Step 3: tool call issued — a third-party API that never responds. asyncio.wait_for(..., timeout=15.0) starts counting.");
+    timeoutWrap.style.display = "block";
+    var elapsed = 0;
+    while(elapsed < 15){
+      await wait(60);
+      elapsed += 1.5;
+      var pct = Math.min(100, (elapsed / 15) * 100);
+      timeoutFill.style.width = pct + "%";
+      timeoutLabel.textContent = "Step 3 wall-clock: " + elapsed.toFixed(1) + "s / 15.0s budget";
+    }
+    document.getElementById("dot-3").classList.add("cap");
+    log('<b>15.0s elapsed — asyncio.TimeoutError raised inside step 3, at step 3 of 6 (well under max_steps).</b>', "timeout");
+    log('<b style="color:var(--timeout-c);">Loop returns {"status": "step_timed_out", "steps_used": 2, "answer": null}.</b> Neither the done signal nor max_steps would ever have caught this — only a wall-clock timeout, scoped to one single step, does.', "timeout");
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    resetAll();
+    if(scenario === "done") await runDone();
+    else if(scenario === "cap") await runCap();
+    else await runTimeout();
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    resetAll();
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  buildTrack();
+})();
+</script>
+</body>
+</html>
