@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Nginx Reverse Proxy</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --edge-c:#f2c14e; --internal-c:#7fd8a0; --tls-c:#4fc3f7; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--edge-c); color:var(--edge-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--tls-c); color:var(--tls-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--internal-c); color:var(--internal-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.enc{border-left-color:var(--tls-c); background:rgba(79,195,247,0.06);}
+  .log .line.plain{border-left-color:var(--internal-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* request path diagram */
+  .path-diagram{display:flex; align-items:center; gap:0.6rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .path-node{padding:0.8rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:110px; transition:all .4s ease;}
+  .path-node.client{border-color:var(--accent); color:var(--accent);}
+  .path-node.nginx{border-color:var(--edge-c); color:var(--edge-c);}
+  .path-node.app{border-color:var(--internal-c); color:var(--internal-c);}
+  .path-node.active{box-shadow:0 0 12px currentColor;}
+  .path-seg{flex:1; min-width:80px; height:5px; border-radius:3px; background:var(--rule); position:relative; transition:background .4s ease;}
+  .path-seg-label{position:absolute; top:-1.6rem; left:50%; transform:translateX(-50%); font-size:0.66rem; white-space:nowrap; color:var(--ink-dim);}
+  .path-seg.encrypted{background:var(--tls-c);}
+  .path-seg.plaintext{background:var(--internal-c); background-image:repeating-linear-gradient(90deg, var(--internal-c) 0 6px, transparent 6px 12px);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--edge-c);} .dc-col.a h4{color:var(--edge-c);}
+  .dc-col.b{border-color:var(--internal-c);} .dc-col.b h4{color:var(--internal-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.tls{border-left-color:var(--tls-c); background:rgba(79,195,247,0.06);} .callout.tls b{color:var(--tls-c);}
+  .callout.edge{border-left-color:var(--edge-c); background:rgba(242,193,78,0.06);} .callout.edge b{color:var(--edge-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · NGINX REVERSE PROXY</div>
+  <h1>One front door, doing the encryption handshake so your app servers never have to.</h1>
+  <p class="lede">Nginx sitting in front of your application servers does two related but separable jobs: <strong>routing</strong> — deciding, based on path or host, which upstream server actually handles a request — and <strong>TLS termination</strong> — being the ONE place that speaks HTTPS to the outside world, decrypting each request before forwarding it as plain HTTP to whichever app server is behind it. This lab shows a real nginx config for both, and animates exactly where a request's encryption boundary sits.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Routing — path/host decides which upstream server</div>
+    <div class="pipe-label b">TLS termination — nginx is the only place that decrypts</div>
+    <div class="pipe-label c">Nginx → app server — plain HTTP, safe only on a trusted network</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="routing">1 · Routing Requests to the Right Upstream</a>
+  <a data-target="tls">2 · TLS Termination, and Why It's Centralized</a>
+  <a data-target="live">3 · The Encryption Boundary, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ROUTING ============ -->
+<section id="routing">
+  <div class="kicker">01 — One address the internet knows about, many servers behind it</div>
+  <h2>Routing requests to the right upstream</h2>
+
+  <p><strong>Start here, before any config.</strong> Think about a hotel's front desk. Guests don't know or care which specific floor or wing their room is on — they walk up to ONE desk, say a room number, and the front desk staff (who know the building's actual layout) send them the right direction. The hotel could, in principle, hand every guest a building map and let them wander the halls looking for their room themselves — but centralizing that routing decision at one front desk is simpler, more consistent, and lets the hotel rearrange which rooms are on which floor without guests ever needing to know or care.</p>
+
+  <p>Nginx as a <strong>reverse proxy</strong> is exactly this front desk. It's the one address the outside world sends requests to, and based on the request's PATH or HOST header, it decides which <strong>upstream</strong> application server should actually handle it — forwarding the request there and relaying the response back to the client, who never needs to know or care how many app servers exist behind nginx, or which one actually answered. This connects directly to <code class="inline">systems/load_balancers.html</code>'s routing concepts (nginx can itself distribute requests across MULTIPLE identical upstream servers, doing double duty as both a reverse proxy and a load balancer) and Month 2's routing concepts (deciding which handler serves a given path, just one layer earlier — before the request even reaches the application framework's own router).</p>
+
+  <div class="code"><span class="c-cmt"># /etc/nginx/nginx.conf — routing by path to different upstream services
+
+upstream</span> api_service <span class="c-kw">{</span>
+    server 10.0.1.10:8000;
+    server 10.0.1.11:8000;   <span class="c-cmt"># two instances — nginx load-balances across both</span>
+<span class="c-kw">}</span>
+
+<span class="c-kw">upstream</span> eval_dashboard_service <span class="c-kw">{</span>
+    server 10.0.1.20:8001;
+<span class="c-kw">}</span>
+
+<span class="c-kw">server {</span>
+    listen 80;
+    server_name api.namespacelab.dev;
+
+    <span class="c-cmt"># /api/* goes to the API service</span>
+    <span class="c-kw">location</span> /api/ <span class="c-kw">{</span>
+        proxy_pass http://api_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    <span class="c-kw">}</span>
+
+    <span class="c-cmt"># /dashboard/* goes to a completely different upstream service</span>
+    <span class="c-kw">location</span> /dashboard/ <span class="c-kw">{</span>
+        proxy_pass http://eval_dashboard_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    <span class="c-kw">}</span>
+<span class="c-kw">}</span></div>
+
+  <p>Two details worth being precise about. First: <code class="inline">proxy_pass</code> is the actual forwarding instruction — it's what makes nginx a REVERSE proxy specifically (a forward proxy sits in front of CLIENTS, hiding who's making a request; a reverse proxy sits in front of SERVERS, hiding which one actually answers — nginx here is doing the latter). Second: <code class="inline">proxy_set_header X-Real-IP $remote_addr</code> matters because once nginx is in the middle, the app server would otherwise only ever see connections coming FROM nginx's own IP address, losing the original client's IP entirely — this header explicitly preserves it, which matters for logging, rate limiting, and any per-client logic the app server needs to do.</p>
+
+  <div class="callout edge"><b>Interview-ready definition:</b> nginx as a reverse proxy sits in front of one or more application servers and forwards each incoming request to the appropriate upstream based on routing rules — commonly the request's path or host — using <code class="inline">proxy_pass</code>, while relaying the upstream's response back to the client. Clients only ever interact with nginx's single public address; which specific upstream server (or which of several identical replicas, doing double duty as a load balancer per <code class="inline">systems/load_balancers.html</code>) actually handled the request is invisible to them, exactly the way a hotel's front desk is the single point of contact regardless of which floor a guest's room is actually on.</div>
+</section>
+
+<!-- ============ SECTION 2: TLS TERMINATION ============ -->
+<section id="tls">
+  <div class="kicker">02 — Why the encryption handshake happens in exactly one place</div>
+  <h2>TLS termination, and why it's centralized</h2>
+
+  <p><strong>Start here, before the config.</strong> Think about a company with one mailroom that opens, scans, and sorts every piece of incoming physical mail before routing it internally as normal, unsealed office memos. Every employee could instead receive their OWN sealed, tamper-evident mail directly and open it themselves — technically more "end-to-end secure" in some abstract sense — but that means every single employee needs to know how to safely verify a sealed envelope, and doing that securely at scale (hundreds of employees, all needing to be trained and equipped to handle sealed mail correctly) is a much bigger operational burden than training ONE mailroom team to do it well, once, centrally.</p>
+
+  <p><strong>TLS termination</strong> is nginx acting as that mailroom. Nginx holds the TLS certificate and private key, performs the full HTTPS handshake and decryption with the client, and then forwards the now-DECRYPTED request to the app server behind it as plain HTTP. The app server never sees an encrypted byte — by the time a request reaches it, nginx has already done the cryptographic work.</p>
+
+  <div class="code"><span class="c-cmt"># /etc/nginx/nginx.conf — TLS termination, forwarding plain HTTP internally
+
+server {</span>
+    listen 443 ssl;
+    server_name api.namespacelab.dev;
+
+    ssl_certificate     /etc/nginx/certs/api.namespacelab.dev.crt;
+    ssl_certificate_key /etc/nginx/certs/api.namespacelab.dev.key;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    <span class="c-kw">location</span> / <span class="c-kw">{</span>
+        <span class="c-cmt"># note: plain http:// here, NOT https:// — nginx already decrypted
+        # the request above; this hop to the app server is unencrypted</span>
+        proxy_pass http://api_service;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;  <span class="c-cmt"># tells the app "the original request WAS https"</span>
+    <span class="c-kw">}</span>
+<span class="c-kw">}</span>
+
+<span class="c-cmt"># separate server block: redirect any plain HTTP request to HTTPS</span>
+<span class="c-kw">server {</span>
+    listen 80;
+    server_name api.namespacelab.dev;
+    <span class="c-kw">return</span> 301 https://$host$request_uri;
+<span class="c-kw">}</span></div>
+
+  <p>Why centralize TLS at nginx instead of having every app server terminate its own TLS connections? Two concrete reasons. First, <strong>certificate management</strong>: a real deployment might run many app server instances, possibly across several services — with TLS terminated centrally at nginx, there's exactly ONE place that holds the certificate and private key, one place to renew it, and one place to audit. Managing certificates on every individual app server instance instead multiplies that operational burden by however many instances exist, and makes rotating a compromised key or renewing an expiring certificate a much riskier, more error-prone, multi-machine operation. Second, <strong>CPU offload</strong>: the TLS handshake and per-request encryption/decryption is genuinely CPU-intensive work. Doing it once, at a layer (nginx) that's built and tuned specifically for this, frees the app servers to spend their CPU budget on actual application logic instead of cryptographic overhead.</p>
+
+  <div class="callout tls"><b>Interview-ready definition:</b> TLS termination means nginx (or an equivalent reverse proxy/load balancer) is the ONLY layer that holds the TLS certificate and private key and performs the HTTPS handshake with the client; once decrypted, the request is forwarded to the app server behind it as plain, unencrypted HTTP. This centralizes certificate management (one place to store, rotate, and renew certificates instead of one per app server instance) and offloads the CPU cost of encryption/decryption to a layer designed for it, letting app servers spend their CPU budget on application logic instead. This pattern is safe specifically because nginx and the app servers it forwards to sit on the same trusted internal network — the plaintext hop only ever travels somewhere an external attacker cannot observe.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE ENCRYPTION BOUNDARY ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching exactly where a request stops being encrypted</div>
+  <h2>The encryption boundary, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, a request travels from a client's browser to an app server, through nginx. Watch the segment before nginx (client → nginx) render as genuinely encrypted, and the segment after nginx (nginx → app server) render as plain, unencrypted HTTP — the exact boundary section 2's config draws.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>REQUEST PATH — WATCH THE ENCRYPTION BOUNDARY</span>
+      <div><button class="btn secondary" id="path-reset">Reset</button></div>
+    </div>
+    <div class="path-diagram" id="path-diagram">
+      <div class="path-node client" id="node-client">Client<br>(browser)</div>
+      <div class="path-seg" id="seg-client-nginx"><span class="path-seg-label" id="label-client-nginx"></span></div>
+      <div class="path-node nginx" id="node-nginx">nginx<br>(TLS termination)</div>
+      <div class="path-seg" id="seg-nginx-app"><span class="path-seg-label" id="label-nginx-app"></span></div>
+      <div class="path-node app" id="node-app">App server<br>(internal)</div>
+    </div>
+    <button class="btn" id="path-run">Send GET /api/orders over HTTPS ▸</button>
+    <div class="log" id="path-log"></div>
+  </div>
+
+  <div class="callout warn"><b>The trust boundary this depends on:</b> forwarding plain HTTP from nginx to the app server is safe ONLY because that hop stays entirely within a trusted internal network — a VPC, a private subnet, a container network an external attacker has no path onto. If nginx and the app server were instead communicating across the open internet, or across untrusted infrastructure, that plaintext hop would need its own encryption too (often via mutual TLS between nginx and each upstream) — this lab's simplification is a genuinely common, genuinely safe pattern, but only under that specific trusted-network assumption.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing what happens if X-Forwarded-Proto is forgotten</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's config sets <code class="inline">proxy_set_header X-Forwarded-Proto https</code>. If this header were omitted, what would the app server incorrectly believe about the original request, and name one concrete way that could cause a bug.</p>
+    <details><summary>Show solution</summary><div class="solution">Without X-Forwarded-Proto, the app server has no direct way to know
+whether the ORIGINAL client request arrived over HTTPS or plain HTTP --
+from the app server's own point of view, every request it receives
+looks identical: a plain HTTP connection from nginx's internal IP,
+regardless of what the original client actually used. Many web
+frameworks use exactly this header (or an equivalent) to decide whether
+to treat the current request as "secure" -- e.g. whether to set the
+Secure flag on cookies, or whether to redirect a request to HTTPS.
+
+Concrete bug: a framework that checks "is this request secure" by
+looking at its own connection's scheme (which is plain HTTP, since
+nginx forwarded it that way) would incorrectly conclude the ORIGINAL
+client connection was insecure, potentially causing it to issue cookies
+without the Secure flag (making them vulnerable to being sent over a
+future plain-HTTP connection) or to enter an infinite redirect loop --
+the app server redirects "insecure" requests to https://..., the
+client's browser (which really did use HTTPS) follows the redirect,
+hits nginx again, gets forwarded to the app server as plain HTTP again,
+gets redirected again, forever. X-Forwarded-Proto exists specifically
+to prevent this exact class of bug by telling the app server the truth
+about the hop it can no longer see directly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Comparing nginx's routing role to load_balancers.html's load balancing role</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's <code class="inline">upstream api_service</code> block lists TWO server IPs. Using <code class="inline">systems/load_balancers.html</code>'s concepts, is nginx here acting as a reverse proxy, a load balancer, or both simultaneously? Justify precisely.</p>
+    <details><summary>Show solution</summary><div class="solution">Both, simultaneously -- and this is worth being precise about because
+the two roles are conceptually distinct even when the same piece of
+software (nginx) performs both. The REVERSE PROXY role is the routing
+decision -- "requests to /api/ go to the api_service upstream, requests
+to /dashboard/ go to a different upstream" -- deciding WHICH SERVICE
+handles a request based on path. The LOAD BALANCING role is what
+happens WITHIN that decision once a service is chosen -- section 1's
+api_service upstream lists two server IPs, and nginx distributes
+requests ACROSS those two identical replicas (by default, round-robin),
+exactly load_balancers.html's core concept: spreading load across
+multiple interchangeable instances of the same service.
+
+The two roles compose cleanly: reverse proxying picks the right SERVICE
+(dashboard vs api), and load balancing picks the right INSTANCE of that
+service once chosen. A deployment with only one instance per service
+would still need the reverse-proxy routing role, but would have nothing
+to load balance across -- confirming these are genuinely separable
+concerns that just happen to often be handled by the same nginx
+instance in a real deployment.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding whether a specific deployment can safely skip internal TLS</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team runs nginx and their app servers as separate containers on the SAME physical host, communicating over Docker's internal bridge network, never touching the open internet. Using section 3's trust-boundary callout, is section 2's plain-HTTP-after-termination pattern safe here? What would change your answer?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, this is a textbook case where section 2's pattern is safe, PROVIDED
+one additional assumption holds: nothing untrusted has a path onto that
+Docker bridge network. A container network on a single host is a
+reasonable example of the "trusted internal network" section 3's
+callout requires -- an external attacker on the open internet has no
+direct route onto that internal bridge network at all, so the plaintext
+nginx-to-app-server hop is never actually exposed to them.
+
+What WOULD change the answer: if any additional, less-trusted workload
+also runs on that same host and shares network access to that bridge
+network (e.g. a multi-tenant environment where other customers'
+containers, or even just other, less-audited internal services, could
+potentially reach that internal network segment) -- then "internal
+network" no longer implies "fully trusted," and the plaintext hop
+becomes a real exposure to anything else with access to that segment.
+This is exactly why real production deployments often still add mutual
+TLS between nginx and upstream services even on nominally "internal"
+networks in larger organizations -- the safety of section 2's pattern
+is a genuine assumption about the network's trust boundary, not a
+property that holds automatically just because traffic never crosses
+the public internet.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a routing config that silently sends dashboard traffic to the API service</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team adds a new <code class="inline">location /dashboard/</code> block to section 1's config, but places it AFTER a broader <code class="inline">location /</code> block that proxies everything to <code class="inline">api_service</code>. Requests to <code class="inline">/dashboard/</code> unexpectedly reach the API service instead. Using how nginx evaluates <code class="inline">location</code> blocks, explain why.</p>
+    <details><summary>Show solution</summary><div class="solution">Nginx does not simply match location blocks in the order they appear
+in the file for prefix matches like these -- but the KEY fact that
+explains this specific bug is nginx's matching precedence: among
+prefix-match location blocks (the plain `location /path/ { }` form used
+throughout this lab, as opposed to regex or exact-match forms), nginx
+selects the LONGEST matching prefix, not the first one written in the
+file. So if the file genuinely has `location / { proxy_pass
+http://api_service; }` -- a prefix match of length 1 (just "/") -- and
+also `location /dashboard/ { proxy_pass http://eval_dashboard_service;
+}` -- a longer prefix match of length 11 -- the request "/dashboard/x"
+matches BOTH blocks' prefixes, and nginx correctly picks the LONGER,
+more specific one (/dashboard/) regardless of which block appears
+first in the file.
+
+Given that this bug is actually observed (dashboard traffic reaching
+api_service), the more likely real cause is that the `location /`
+block used a directive that short-circuits location matching
+entirely for that path space (e.g. a regex `location ~ ^/` matched
+earlier with higher effective precedence, or the /dashboard/ block has
+a typo in its path/trailing-slash that makes it not actually match
+/dashboard/ requests at all -- e.g. `location /dashboard { }` without
+the trailing slash behaves subtly differently for prefix matching than
+`location /dashboard/ { }`). The general debugging lesson: when nginx
+routing behaves unexpectedly, checking WHICH location block nginx
+actually selected (nginx's own debug logging can show this) is more
+reliable than reasoning about file order, since prefix-length
+precedence — not file order — is nginx's real matching rule for this
+location form.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Extending the routing config for a WebSocket upgrade</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">backend/websockets.html</code>'s concept of a persistent, upgraded connection, what ADDITIONAL nginx directives (beyond section 1's plain <code class="inline">proxy_pass</code>) would a <code class="inline">location /ws/</code> block need to correctly proxy a WebSocket connection, and why does a normal HTTP proxy config alone not suffice?</p>
+    <details><summary>Show solution</summary><div class="solution">A WebSocket connection begins as a normal HTTP request that then
+UPGRADES to a different protocol via the Upgrade and Connection
+headers (per backend/websockets.html's own handshake mechanics) -- and
+critically, once upgraded, the connection needs to stay OPEN and
+bidirectional for as long as the client stays connected, not be treated
+as a single request/response cycle the way normal HTTP proxying
+assumes. Section 1's plain proxy_pass config, by default, does NOT
+forward the Upgrade/Connection headers nginx itself receives -- it
+would silently strip them, causing the upgrade handshake to fail and
+the connection to never actually become a WebSocket at all.
+
+The additional directives needed:
+
+location /ws/ {
+    proxy_pass http://api_service;
+    proxy_http_version 1.1;              # WebSocket requires HTTP/1.1
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 3600s;            # keep the connection open long-term
+}
+
+proxy_http_version 1.1 is required because WebSocket upgrades are not
+defined over HTTP/1.0. The Upgrade and Connection header forwarding is
+what actually lets the handshake complete instead of being silently
+stripped. And proxy_read_timeout needs to be raised from nginx's
+normal, much shorter default (meant for ordinary short-lived HTTP
+requests) to something that accommodates a connection meant to stay
+open for a long time -- otherwise nginx itself would forcibly close a
+perfectly healthy, long-lived WebSocket connection just because it
+looks like an unusually slow ordinary HTTP request. This connects
+directly to backend/chat_app_at_scale_design.html's concern about
+long-lived, stateful connections needing fundamentally different
+handling than typical request/response traffic -- nginx's default
+config assumes the latter, and needs these explicit overrides to
+correctly support the former.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write a real nginx config block that routes two different paths to two different upstream services, (2) explain precisely why TLS termination happens at nginx rather than at every app server, and (3) state the exact trust assumption that makes forwarding plain HTTP from nginx to an app server safe? <code class="inline">evals-and-observability/uvicorn_gunicorn_workers.html</code> picks up next — the app servers actually sitting behind nginx, and how many worker processes each one should run.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — nginx reverse proxy.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: ENCRYPTION BOUNDARY DEMO */
+(function(){
+  var runBtn = document.getElementById("path-run");
+  var resetBtn = document.getElementById("path-reset");
+  var logEl = document.getElementById("path-log");
+  var nodeClient = document.getElementById("node-client");
+  var nodeNginx = document.getElementById("node-nginx");
+  var nodeApp = document.getElementById("node-app");
+  var segClientNginx = document.getElementById("seg-client-nginx");
+  var segNginxApp = document.getElementById("seg-nginx-app");
+  var labelClientNginx = document.getElementById("label-client-nginx");
+  var labelNginxApp = document.getElementById("label-nginx-app");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetAll(){
+    [nodeClient, nodeNginx, nodeApp].forEach(function(n){ n.classList.remove("active"); });
+    segClientNginx.className = "path-seg";
+    segNginxApp.className = "path-seg";
+    labelClientNginx.textContent = "";
+    labelNginxApp.textContent = "";
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log('<b>Client</b> initiates GET https://api.namespacelab.dev/api/orders — TLS handshake begins.', "enc");
+    nodeClient.classList.add("active");
+    await wait(500);
+
+    segClientNginx.className = "path-seg encrypted";
+    labelClientNginx.textContent = "🔒 encrypted (TLS)";
+    log('<b>Client → nginx:</b> fully encrypted over HTTPS. Nginx terminates the TLS connection here, using its certificate and private key.', "enc");
+    await wait(700);
+    nodeClient.classList.remove("active");
+    nodeNginx.classList.add("active");
+
+    log('<b>nginx:</b> decrypts the request, reads the path (/api/orders), selects the api_service upstream per section 1\'s routing rules.', "enc");
+    await wait(700);
+
+    segNginxApp.className = "path-seg plaintext";
+    labelNginxApp.textContent = "plain HTTP (trusted network)";
+    log('<b>nginx → app server:</b> forwarded as PLAIN HTTP — no encryption on this hop. Safe because this stays entirely within the trusted internal network.', "plain");
+    await wait(700);
+    nodeNginx.classList.remove("active");
+    nodeApp.classList.add("active");
+
+    log('<b>App server:</b> never saw a single encrypted byte. Processes the request exactly as if it received it over plain HTTP directly, because it did.', "plain");
+    await wait(500);
+
+    log('<b>Response</b> flows back the same path in reverse: plain HTTP from app server to nginx, then nginx re-encrypts it before it reaches the client.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

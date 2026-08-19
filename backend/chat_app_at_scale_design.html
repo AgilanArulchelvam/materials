@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Chat App At Scale</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --conn-c:#4fc3f7; --deliver-c:#f2c14e; --scale-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--conn-c); color:var(--conn-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--deliver-c); color:var(--deliver-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--scale-c); color:var(--scale-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.conn{border-left-color:var(--conn-c); background:rgba(79,195,247,0.06);}
+  .log .line.deliver{border-left-color:var(--deliver-c); background:rgba(242,193,78,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pub/sub backplane diagram */
+  .backplane{display:flex; flex-direction:column; align-items:center; gap:0.8rem; margin:1.4rem 0;}
+  .bp-row{display:flex; align-items:center; justify-content:center; gap:1.4rem; flex-wrap:wrap; width:100%;}
+  .bp-node{font-family:var(--mono); font-size:0.78rem; padding:0.8rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:140px; transition:all .4s ease;}
+  .bp-node.server{border-color:var(--conn-c); color:var(--conn-c);}
+  .bp-node.pubsub{border-color:var(--deliver-c); color:var(--deliver-c);}
+  .bp-node.active{box-shadow:0 0 12px currentColor;}
+  .bp-node .sub{font-size:0.65rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .bp-arrow{font-family:var(--mono); color:var(--ink-dim); font-size:0.9rem;}
+  .bp-arrow.active{color:var(--deliver-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--deliver-c);} .dc-col.b h4{color:var(--deliver-c);}
+  .dc-col.c{border-color:var(--scale-c);} .dc-col.c h4{color:var(--scale-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.83rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.conn{border-left-color:var(--conn-c); background:rgba(79,195,247,0.06);} .callout.conn b{color:var(--conn-c);}
+  .callout.deliver{border-left-color:var(--deliver-c); background:rgba(242,193,78,0.06);} .callout.deliver b{color:var(--deliver-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · SYSTEM DESIGN — CHAT APP AT SCALE</div>
+  <h1>A million open sockets don't care which server happens to be holding them.</h1>
+  <p class="lede">A typical HTTP API is stateless: any server can answer any request, because nothing about "who's connected" persists between requests. A chat app breaks that assumption entirely — every online user holds open a long-lived, stateful WebSocket connection (per <code class="inline">backend/websockets.html</code>) to ONE specific server, and that server has to somehow deliver a message from a user on a completely different server. This lab designs connection management at scale, works through delivery guarantees, and builds the pub/sub backplane that lets any server reach any connected user.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Persistent connections — stateful, long-lived, one per online user</div>
+    <div class="pipe-label b">At-least-once + idempotency — the practical path to exactly-once</div>
+    <div class="pipe-label c">Redis pub/sub backplane — any server can reach any connected user</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="connections">1 · Connection Management at Scale</a>
+  <a data-target="delivery">2 · Message Delivery Guarantees</a>
+  <a data-target="horizontal">3 · Horizontal Scaling of Stateful Connections</a>
+  <a data-target="live">4 · Cross-Server Delivery, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: CONNECTION MANAGEMENT ============ -->
+<section id="connections">
+  <div class="kicker">01 — Why "any server can handle any request" stops being true</div>
+  <h2>Connection management at scale</h2>
+
+  <p><strong>Start here, before any architecture.</strong> Think about the difference between a mail carrier delivering a letter (a one-shot interaction — drop it off, done, the carrier owes the recipient nothing further) versus a phone operator on a decades-old switchboard holding open a physical circuit between two callers for the ENTIRE duration of their call. The mail carrier model scales trivially — any carrier can deliver any letter, no memory required between deliveries. The switchboard model doesn't: whichever operator physically plugged in that circuit is the one holding it open, and the call literally cannot continue if that specific operator's board goes down, no matter how many OTHER operators are sitting idle right next to them.</p>
+
+  <p>A typical stateless HTTP API is the mail carrier: any app server behind <code class="inline">nginx_reverse_proxy.html</code>'s load balancer can answer any request, because nothing persists between one request and the next — this is exactly why horizontal scaling (<code class="inline">systems/vertical_vs_horizontal_scaling.html</code>) is comparatively easy for stateless services. A chat app's WebSocket connections are the switchboard: per <code class="inline">backend/websockets.html</code>, when a user opens the app, they establish ONE persistent, long-lived, bidirectional connection to ONE specific server, and that connection stays open — often for hours — as long as the user stays online. That server now holds real STATE (which user is connected, on which specific TCP connection) that no other server has any direct access to.</p>
+
+  <div class="code"><span class="c-cmt"># the state a chat server holds for every currently-connected user
+# this in-memory map is exactly the "switchboard operator's board" --
+# it exists ONLY on this one server process, for exactly these connections</span>
+<span class="c-kw">class</span> <span class="c-fn">ChatServer</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self):
+        self.connections = {}  <span class="c-cmt"># user_id -> WebSocket connection object, LOCAL to this process</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">on_connect</span>(self, user_id, ws):
+        self.connections[user_id] = ws
+        <span class="c-cmt"># PROBLEM: no other server process knows this mapping exists at all</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">send_to_user</span>(self, user_id, message):
+        ws = self.connections.get(user_id)
+        <span class="c-kw">if</span> ws:
+            <span class="c-kw">await</span> ws.send(message)
+        <span class="c-kw">else</span>:
+            <span class="c-cmt"># user isn't connected to THIS server -- but might be connected</span>
+            <span class="c-cmt"># to a DIFFERENT one. This server has no way to know, on its own.</span>
+            <span class="c-kw">pass</span></div>
+
+  <p>This is precisely why a chat app's connection-management challenge is fundamentally different from a normal stateless API's scaling challenge — and connects directly to <code class="inline">evals-and-observability/uvicorn_gunicorn_workers.html</code>'s worker models: a WebSocket connection needs a worker (or event loop coroutine) that stays alive and dedicated to it for the connection's ENTIRE lifetime, not the short request/response cycle a typical async worker is optimized to cycle through quickly. Holding hundreds of thousands of long-lived connections open concurrently is itself a real capacity question (how many open sockets can one server/event loop hold before running out of memory or file descriptors), separate from and in addition to section 3's cross-server routing problem.</p>
+
+  <div class="callout conn"><b>Interview-ready definition:</b> connection management at scale for a chat app means each currently-online user holds one persistent, stateful WebSocket connection (per <code class="inline">backend/websockets.html</code>) to exactly ONE specific server process, and that server — not the load balancer, not any other server — is the only one with a direct handle to that connection. This breaks the assumption typical stateless HTTP services rely on (any server can answer any request) and introduces two distinct new challenges: how many long-lived connections a single server can hold open concurrently (a capacity/resource question), and how a message from a user on a DIFFERENT server ever reaches a user whose connection lives elsewhere (section 3's routing problem) — neither of which exists for a stateless request/response API.</div>
+</section>
+
+<!-- ============ SECTION 2: DELIVERY GUARANTEES ============ -->
+<section id="delivery">
+  <div class="kicker">02 — What "the message got delivered" actually promises, and what it costs to promise more</div>
+  <h2>Message delivery guarantees</h2>
+
+  <p><strong>Start here, before the definitions.</strong> Think about handing a letter to three different kinds of couriers. Courier A promises "I'll try to deliver this once — if something goes wrong along the way, I won't retry, and I definitely won't deliver it twice" (at-most-once: the letter might just never arrive). Courier B promises "I will absolutely make sure this gets delivered, and if I'm not 100% sure the first attempt worked, I'll just deliver it again to be safe" (at-least-once: the letter WILL arrive, but the recipient might get two identical copies). Courier C promises "this will arrive exactly once, no more, no less, guaranteed" — which sounds strictly better than both, but requires the courier to somehow coordinate with the recipient in a way real, unreliable networks make genuinely hard to guarantee absolutely.</p>
+
+  <table class="cmp">
+    <tr><th>Guarantee</th><th>What it promises</th><th>The real cost</th></tr>
+    <tr><td><strong>At-most-once</strong></td><td>A message is delivered zero or one times — never duplicated</td><td>Simplest to implement (send once, no retry), but messages can be silently LOST on any failure — unacceptable for a chat app where a lost message is a real user-visible bug</td></tr>
+    <tr><td><strong>At-least-once</strong></td><td>A message is delivered one or MORE times — never lost</td><td>Requires retrying on any uncertainty (timeout, ack not received), which means the SAME message can genuinely arrive twice — the receiving side must handle duplicates itself</td></tr>
+    <tr><td><strong>Exactly-once</strong></td><td>A message is delivered exactly one time — never lost, never duplicated</td><td>Genuinely hard to guarantee end-to-end in a distributed system with unreliable networks — in practice, almost always APPROXIMATED, not truly guaranteed at the network/transport level</td></tr>
+  </table>
+
+  <p>Exactly-once is hard for a structural reason, not just an engineering-effort reason: in a distributed system, a sender can never be perfectly certain whether a message it sent was received and processed, or was lost, or was received and processed but the ACKNOWLEDGMENT was what got lost on the way back (the exact ambiguity <code class="inline">database/crud_done_right.html</code>'s idempotency-key section built its entire "retry, but the client can't tell success from failure" scenario around). Given that fundamental uncertainty, a sender that wants to guarantee "never lost" has no choice but to retry when uncertain — which mechanically means at-least-once, with the very real possibility of duplicates, is really the only guarantee that can be TRULY enforced at the transport layer without additional coordination.</p>
+
+  <div class="code"><span class="c-cmt"># the actual pattern real chat systems use: at-least-once delivery
+# + idempotency, exactly database/crud_done_right.html's mechanism,
+# applied here to chat messages instead of payment charges</span>
+
+<span class="c-kw">async def</span> <span class="c-fn">send_message</span>(sender_id, recipient_id, message_id, body):
+    <span class="c-cmt"># message_id is a CLIENT-GENERATED idempotency key, one per logical
+    # message -- reused across retries of the SAME send attempt,
+    # exactly crud_done_right.html's "one key per logical operation" rule</span>
+    existing = <span class="c-kw">await</span> db.get_message_by_id(message_id)
+    <span class="c-kw">if</span> existing:
+        <span class="c-cmt"># this exact message was already processed -- retry, not a new message.
+        # return the already-stored result, don't re-deliver, don't re-store.</span>
+        <span class="c-kw">return</span> existing
+
+    <span class="c-cmt"># genuinely new message_id -- store it (this is the durability point;
+    # once stored, at-least-once redelivery to the recipient is safe to retry)</span>
+    <span class="c-kw">await</span> db.insert_message(message_id, sender_id, recipient_id, body)
+    <span class="c-kw">await</span> deliver_to_recipient(recipient_id, message_id, body)  <span class="c-cmt"># may be retried; safe</span>
+    <span class="c-kw">return</span> {<span class="c-str">"message_id"</span>: message_id, <span class="c-str">"status"</span>: <span class="c-str">"delivered"</span>}</div>
+
+  <p>This is the practical resolution real chat systems use: implement genuinely reliable AT-LEAST-ONCE delivery (retry aggressively whenever delivery confirmation is uncertain, since losing a chat message is a real bug), then use a client-generated <code class="inline">message_id</code> as an idempotency key so that any DUPLICATE delivery caused by a retry gets recognized and deduplicated — either by the server before storing (as above) or by the client, which can simply ignore a message it's already rendered once. The end result, from the USER's point of view, looks and feels like exactly-once delivery — no lost messages, no visible duplicates — even though the underlying mechanism is honestly at-least-once with deduplication, not a true, structurally-guaranteed exactly-once transport.</p>
+
+  <div class="callout deliver"><b>Interview-ready definition:</b> at-most-once delivery risks silent message loss but never duplicates; at-least-once delivery guarantees a message eventually arrives but may deliver it more than once; exactly-once delivery — arriving precisely once, always — is genuinely hard to guarantee at the transport layer in a distributed system, because a sender can never be perfectly certain whether an unacknowledged send failed or merely lost its acknowledgment on the way back. In practice, systems approximate exactly-once by implementing reliable at-least-once delivery (retry whenever uncertain) combined with idempotency — a client-generated message ID, exactly <code class="inline">database/crud_done_right.html</code>'s idempotency-key pattern, that lets the receiving side recognize and discard a duplicate delivery — producing an exactly-once USER EXPERIENCE built on top of an honestly at-least-once mechanism.</div>
+</section>
+
+<!-- ============ SECTION 3: HORIZONTAL SCALING OF STATEFUL CONNECTIONS ============ -->
+<section id="horizontal">
+  <div class="kicker">03 — The actual hard part: server B has a message for a user connected to server A</div>
+  <h2>Horizontal scaling of stateful connections</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Back at the switchboard: imagine now there are MULTIPLE switchboard buildings across town, each with its own set of operators and its own set of physical circuits, with no direct wires between the buildings themselves. If a call needs to reach someone whose circuit is held by an operator in a DIFFERENT building, the operator who received that request has no way to reach them directly — unless every building is ALSO connected to some shared, central coordination system that every operator can both announce things to and listen for things on.</p>
+
+  <p>This is exactly section 1's connection-state problem, now made concrete: if user A is connected to server 1 and user B is connected to server 2, and user A sends B a message, server 1 receives that message but has NO direct connection to user B at all — <code class="inline">self.connections</code> in section 1's code is a purely LOCAL, in-process map, invisible to every other server. The standard solution is a <strong>pub/sub backplane</strong> — commonly Redis pub/sub — that every chat server connects to. When server 1 needs to deliver a message to user B, it doesn't try to find server 2 directly; it PUBLISHES the message to a channel (often keyed by user ID or a shard of user IDs), and EVERY server SUBSCRIBES to the channels for users currently connected to it. Server 2, having subscribed to user B's channel because B is connected to it, receives the published message and delivers it over ITS OWN local WebSocket connection to B.</p>
+
+  <div class="code"><span class="c-cmt"># pub/sub backplane pattern -- every chat server connects to the SAME
+# Redis instance, publishing to and subscribing from user-scoped channels</span>
+
+<span class="c-kw">class</span> <span class="c-fn">ChatServer</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, redis_client):
+        self.connections = {}       <span class="c-cmt"># local WebSocket connections, same as section 1</span>
+        self.redis = redis_client   <span class="c-cmt"># SHARED backplane, every server connects to this same Redis</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">on_connect</span>(self, user_id, ws):
+        self.connections[user_id] = ws
+        <span class="c-cmt"># subscribe to a channel scoped to THIS user -- only messages meant
+        # for them will ever be published here</span>
+        <span class="c-kw">await</span> self.redis.subscribe(<span class="c-fn">f"user:{user_id}"</span>, self._on_pubsub_message)
+
+    <span class="c-kw">async def</span> <span class="c-fn">_on_pubsub_message</span>(self, channel, message):
+        <span class="c-cmt"># fires when ANY server (including a different one) publishes to a
+        # channel THIS server is subscribed to -- i.e. one of ITS local users</span>
+        user_id = channel.split(<span class="c-str">":"</span>)[<span class="c-num">1</span>]
+        ws = self.connections.get(user_id)
+        <span class="c-kw">if</span> ws:
+            <span class="c-kw">await</span> ws.send(message)
+
+    <span class="c-kw">async def</span> <span class="c-fn">send_to_user</span>(self, user_id, message):
+        <span class="c-cmt"># don't check local self.connections at all -- ALWAYS publish.
+        # whichever server actually holds this user's connection (maybe
+        # this one, maybe a different one) will receive it via subscribe.</span>
+        <span class="c-kw">await</span> self.redis.publish(<span class="c-fn">f"user:{user_id}"</span>, message)</div>
+
+  <p>The key design shift from section 1's broken code: <code class="inline">send_to_user</code> no longer even CHECKS whether the recipient is connected to this local server — it always publishes to the backplane, unconditionally, and relies on whichever server actually holds that user's connection (subscribed to that exact channel) to pick it up and deliver it locally. This decouples "which server received the send request" from "which server holds the recipient's connection" entirely — any server can now deliver to any connected user, regardless of which one physically holds the socket, which is precisely what horizontal scaling of stateful connections requires and what a purely local, in-memory connection map (section 1) could never provide on its own.</p>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> horizontal scaling of stateful WebSocket connections is hard specifically because each server only has a direct handle to the connections it personally accepted — unlike a stateless API, there's no way for server B to hand off work to server A's exact in-memory state. The standard fix is a pub/sub backplane (commonly Redis pub/sub) that every server connects to: each server subscribes to channels for its own locally-connected users, and any server needing to deliver a message publishes to the recipient's channel unconditionally, without needing to know or care which specific server actually holds that user's connection. This converts "route this message to the right SERVER" into "publish to the right CHANNEL," letting the backplane — not application code — handle the actual cross-server routing.</div>
+</section>
+
+<!-- ============ SECTION 4: LIVE CROSS-SERVER DELIVERY ============ -->
+<section id="live">
+  <div class="kicker">04 — Watching a message cross from one server's user to another server's user</div>
+  <h2>Cross-server delivery, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, user Alice is connected to Server 1, and user Bob is connected to Server 2 — two completely separate processes with no direct connection to each other. Watch Alice's message reach Bob entirely through the shared Redis pub/sub backplane, exactly section 3's pattern.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ALICE (SERVER 1) → BOB (SERVER 2) — VIA THE PUB/SUB BACKPLANE</span>
+      <div><button class="btn secondary" id="bp-reset">Reset</button></div>
+    </div>
+    <div class="backplane">
+      <div class="bp-row">
+        <div class="bp-node server" id="node-server1">Server 1<div class="sub">Alice connected here</div></div>
+        <div class="bp-arrow" id="arrow-pub">→ publish →</div>
+        <div class="bp-node pubsub" id="node-redis">Redis pub/sub<div class="sub">channel: user:bob</div></div>
+        <div class="bp-arrow" id="arrow-sub">→ subscribed →</div>
+        <div class="bp-node server" id="node-server2">Server 2<div class="sub">Bob connected here</div></div>
+      </div>
+    </div>
+    <button class="btn" id="bp-run">Alice sends Bob a message ▸</button>
+    <div class="log" id="bp-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> Server 1 never once contacts Server 2 directly — it has no idea Server 2 even exists, let alone that Bob is connected to it specifically. It publishes to a CHANNEL, not a SERVER, and the backplane is what makes sure the message ends up in front of whichever server actually needs it. This is exactly why adding a Server 3, 4, or 100 requires zero changes to this delivery logic — every new server just subscribes to its own local users' channels the same way, and the publish side never needs to know how many servers exist at all.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding what happens if the recipient isn't connected to ANY server</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3's <code class="inline">send_to_user</code> always publishes to Redis, unconditionally. If the recipient is currently offline — not connected to ANY server — what happens to the published message, and what does this imply needs to exist ALONGSIDE the pub/sub backplane for a real chat app?</p>
+    <details><summary>Show solution</summary><div class="solution">Redis pub/sub, by its own core mechanics, only delivers a published
+message to subscribers that are ACTIVELY subscribed at the moment of
+publish -- there's no built-in persistence or replay. If the recipient
+is offline, no server is subscribed to their channel at all, and the
+published message is simply gone -- not queued, not stored, not
+delivered later when they reconnect. This is precisely why section 3's
+pub/sub mechanism ALONE cannot be the complete message delivery story
+for a real chat app: it solves the "route to whichever server currently
+holds this connection" problem, but it structurally cannot solve "hold
+this message until the recipient reconnects," because pub/sub has no
+concept of a message existing independent of an active subscriber.
+
+What needs to exist alongside it: exactly section 2's durable storage
+step -- db.insert_message() in section 2's code -- which persists every
+message to a real database BEFORE attempting delivery, independent of
+whether the recipient is currently online. A real chat app's actual
+flow is: (1) durably store the message (this succeeds regardless of
+recipient online status), (2) attempt real-time delivery via the pub/
+sub backplane IF the recipient is currently connected somewhere, and
+(3) if not currently connected, the recipient's client fetches undelivered
+messages from the durable store directly on their NEXT reconnect,
+rather than depending on pub/sub to have somehow held onto it. Pub/sub
+handles the "already online" fast path; durable storage handles the
+"offline, deliver eventually" case pub/sub structurally cannot.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reasoning about a user connected to TWO servers simultaneously (multiple devices)</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A real user often has the chat app open on both their phone and their laptop at once — two separate WebSocket connections, potentially to two DIFFERENT servers. Using section 3's channel design (<code class="inline">user:{user_id}</code>, one channel per user, not per connection), would both devices receive a new message? Would you need to change the channel design, and if so, how?</p>
+    <details><summary>Show solution</summary><div class="solution">With section 3's design exactly as shown, BOTH devices would correctly
+receive the message, even without any changes -- and it's worth
+understanding precisely why. Redis pub/sub delivers a published message
+to EVERY currently-subscribed subscriber, not just one -- it's genuinely
+a broadcast mechanism, not a queue that a single consumer drains. If
+the phone's server and the laptop's server are both subscribed to the
+same user:{user_id} channel (because on_connect subscribes per
+CONNECTION, and this user currently has two active connections, quite
+possibly on two different servers), a publish to that channel reaches
+BOTH subscribing servers, and each independently delivers it to its own
+locally-held connection -- phone gets it, laptop gets it, exactly the
+multi-device behavior a real chat app needs.
+
+The one subtlety worth naming: if BOTH of this user's connections
+happen to land on the SAME server (not two different ones), that one
+server would subscribe to user:{user_id} potentially twice (once per
+on_connect call) -- section 3's code as written doesn't show connection-
+level deduplication of subscriptions, which in a real implementation
+would need self.connections to map to a LIST of connections per user
+(not a single WebSocket), and _on_pubsub_message would need to iterate
+and send to ALL of that user's local connections, not just one. This is
+a real, concrete extension needed on top of section 3's simplified
+single-connection-per-user model, but the core channel design (one
+channel per user, any number of subscribing servers/connections)
+already supports it structurally without redesign.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a message duplicated across a server crash and reconnect</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Server 2 (holding Bob's connection) crashes mid-delivery, after publishing an ack back but before Bob's client confirms receipt. The client, uncertain whether the message reached Bob, retries the send. Using section 2's mechanism exactly, trace what happens and confirm no duplicate message is shown to Bob.</p>
+    <details><summary>Show solution</summary><div class="solution">Trace it through section 2's exact code: the client's retry carries the
+SAME message_id as the original attempt (per crud_done_right.html's
+"one key per logical operation, reused across retries" rule, restated
+in section 2). When the retry's send_message() call runs, its very
+first step is db.get_message_by_id(message_id) -- and because the
+ORIGINAL attempt already completed db.insert_message(message_id, ...)
+before the crash (the durable-storage step happens BEFORE the delivery
+attempt in section 2's ordering), that lookup finds the message ALREADY
+EXISTS. The function returns the existing stored result immediately,
+WITHOUT calling insert_message again and WITHOUT calling
+deliver_to_recipient again -- no second publish to the pub/sub
+backplane happens at all for this retry.
+
+So Bob never sees a duplicate, PROVIDED the crash happened after
+insert_message completed (which the scenario states -- "after publishing
+an ack," implying storage had already succeeded). If instead the crash
+had happened BEFORE insert_message completed, the retry's
+get_message_by_id lookup would correctly find nothing, and the retry
+would proceed as a fresh attempt -- also correct, just a different
+branch of the same idempotency check. Either way, the message_id
+lookup is what prevents the duplicate, exactly the same mechanism
+crud_done_right.html's idempotency_keys table provided for payment
+retries, now protecting against a duplicate CHAT MESSAGE instead of a
+duplicate charge.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Estimating the connection-count challenge from section 1 at real scale</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A chat app has 500,000 concurrently online users, spread across 50 server instances (10,000 connections per server on average). Using section 1's reasoning and <code class="inline">evals-and-observability/uvicorn_gunicorn_workers.html</code>'s worker model discussion, would sync workers or async (Uvicorn) workers be the better fit for holding these connections, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Async (Uvicorn) workers, clearly, and for a reason that goes beyond
+uvicorn_gunicorn_workers.html's usual I/O-bound-API argument. A sync
+worker (per that lab's section 1) is fully blocked handling exactly ONE
+thing at a time -- there is no way for a single sync worker process to
+hold 10,000 concurrent WebSocket connections open simultaneously at
+all, since "holding a connection open" for a sync worker would mean
+that worker is permanently occupied by just that ONE connection.
+Achieving 10,000 concurrent connections under the sync model would
+require roughly 10,000 separate OS processes per server -- utterly
+impractical, both in raw OS resource terms (10,000 processes' worth of
+memory overhead) and because that number has nothing to do with
+uvicorn_gunicorn_workers.html's CPU-core-based sync heuristic at all,
+which assumes workers are occupied by short-lived, CPU-competing work,
+not indefinitely by one long-held socket.
+
+An async worker's single event loop, by contrast, can hold many
+thousands of suspended, idle WebSocket connections concurrently with
+comparatively little overhead per connection -- each idle connection is
+just a suspended coroutine waiting on the next incoming message,
+consuming memory but no CPU while idle, exactly the model
+uvicorn_gunicorn_workers.html's section 1 established for I/O-bound
+work. 10,000 connections per server is a realistic number specifically
+BECAUSE the async model was chosen -- this is precisely why real chat
+systems are built on async/event-loop-based servers (or their
+equivalent in other languages, like Go's goroutines or Erlang's
+lightweight processes) rather than a thread- or process-per-connection
+sync model, which simply cannot reach this kind of per-server
+connection density.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing what happens to Alice's channel subscription when she disconnects</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3's <code class="inline">on_connect</code> subscribes to <code class="inline">user:{user_id}</code>. What needs to happen when a user disconnects (closes the app, loses network), and what specifically goes wrong for FUTURE messages to that user if this step is forgotten?</p>
+    <details><summary>Show solution</summary><div class="solution">On disconnect, the server needs to explicitly UNSUBSCRIBE from that
+user's channel (a corresponding on_disconnect that mirrors on_connect,
+calling self.redis.unsubscribe(f"user:{user_id}") and removing the
+entry from self.connections) -- this is not automatic just because the
+WebSocket connection itself closed; the Redis subscription is a
+SEPARATE piece of state that has to be explicitly torn down.
+
+If this step is forgotten, two related problems compound over time.
+First, an immediate correctness bug: _on_pubsub_message would still
+fire for this now-stale subscription on a future publish to
+user:{user_id}, and self.connections.get(user_id) would return None (or
+worse, a reference to an already-closed WebSocket object) -- the code
+as shown in section 3 handles the None case gracefully (the `if ws:`
+check), but attempting ws.send() on an already-closed connection object
+could raise an exception that needs separate handling, not something
+this simplified code accounts for. Second, and more insidious at scale:
+every server that a user has EVER connected to, across their entire
+session history, accumulates a permanent, never-cleaned-up subscription
+to that user's channel if disconnection is never handled -- meaning a
+single active user could, over enough reconnects across enough
+different servers (e.g. every time a mobile client's connection drops
+and reconnects, possibly landing on a different server per
+nginx_reverse_proxy.html's load balancing), end up with subscriptions
+lingering on many stale servers simultaneously, each one needlessly
+receiving and discarding every message meant for that user forever.
+This is a genuine, gradually-worsening resource leak -- exactly the
+kind of "someone eventually has to clean this up explicitly" problem
+database/crud_done_right.html's soft-delete forgotten-filter bug
+illustrated in a different context: state that isn't automatically torn
+down when its owning event ends has to be torn down explicitly, or it
+just accumulates.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain precisely why a chat app's connection state can't be treated like a normal stateless API's, (2) name all three delivery guarantees and explain exactly why exactly-once is structurally hard rather than just hard to implement, and (3) trace a message from a sender on one server to a recipient on a different server through the pub/sub backplane, end to end? <code class="inline">database/apply_sharding_replication_to_evals.html</code> picks up Friday's DB design track next — applying Month 3's sharding and replication concepts to a very different workload: eval result data.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — chat app at scale.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 4: PUB/SUB CROSS-SERVER DELIVERY DEMO */
+(function(){
+  var runBtn = document.getElementById("bp-run");
+  var resetBtn = document.getElementById("bp-reset");
+  var logEl = document.getElementById("bp-log");
+  var nodeServer1 = document.getElementById("node-server1");
+  var nodeRedis = document.getElementById("node-redis");
+  var nodeServer2 = document.getElementById("node-server2");
+  var arrowPub = document.getElementById("arrow-pub");
+  var arrowSub = document.getElementById("arrow-sub");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetAll(){
+    [nodeServer1, nodeRedis, nodeServer2].forEach(function(n){ n.classList.remove("active"); });
+    arrowPub.classList.remove("active");
+    arrowSub.classList.remove("active");
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log('<b>Alice</b> (connected to Server 1) sends a message to Bob. Server 1 checks its LOCAL connections map — Bob is not there.', "conn");
+    nodeServer1.classList.add("active");
+    await wait(600);
+
+    log('<b>Server 1 stores the message durably</b> (message_id assigned, per section 2), then publishes to Redis on channel "user:bob" — unconditionally, without knowing or caring where Bob actually is.', "deliver");
+    arrowPub.classList.add("active");
+    await wait(600);
+    nodeRedis.classList.add("active");
+    arrowPub.classList.remove("active");
+
+    log('<b>Redis pub/sub</b> receives the publish on channel "user:bob" and looks up who\'s currently subscribed to it.', "deliver");
+    await wait(600);
+
+    arrowSub.classList.add("active");
+    log('<b>Server 2</b> is subscribed to "user:bob" (because Bob connected there) — Redis delivers the message to Server 2 over that subscription.', "deliver");
+    await wait(600);
+    nodeServer2.classList.add("active");
+    arrowSub.classList.remove("active");
+
+    log('<b>Server 2</b> looks up Bob in ITS OWN local connections map, finds his live WebSocket, and sends the message over it.', "conn");
+    await wait(500);
+
+    log('<b>Bob receives the message.</b> Server 1 and Server 2 never communicated directly at any point — the entire cross-server routing happened through the shared pub/sub channel, exactly section 3\'s design.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

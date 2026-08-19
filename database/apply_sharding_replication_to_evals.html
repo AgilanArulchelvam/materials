@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Sharding &amp; Replication for Eval Data</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --shard-c:#f2c14e; --repl-c:#4fc3f7; --good-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--shard-c); color:var(--shard-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--repl-c); color:var(--repl-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--good-c); color:var(--good-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.shard{border-left-color:var(--shard-c); background:rgba(242,193,78,0.06);}
+  .log .line.good{border-left-color:var(--good-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* shard key candidate chips + lookup */
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .shard-viz{display:flex; gap:0.8rem; margin:1.2rem 0; flex-wrap:wrap;}
+  .shard-box{flex:1; min-width:130px; border:1.5px solid var(--rule); border-radius:10px; padding:0.8rem; background:var(--panel-2); text-align:center;}
+  .shard-box .sname{font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim); margin-bottom:0.5rem;}
+  .shard-box .sbar{height:60px; background:var(--rule); border-radius:6px; position:relative; overflow:hidden; display:flex; align-items:flex-end;}
+  .shard-box .sfill{width:100%; background:var(--shard-c); transition:height .8s cubic-bezier(.2,.8,.2,1); height:0%;}
+  .shard-box .sfill.hot{background:var(--bad-c);}
+  .shard-box .sval{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); margin-top:0.4rem;}
+
+  /* replication mode toggle diagram */
+  .repl-diagram{display:flex; align-items:center; justify-content:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .repl-node{padding:0.8rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:140px; transition:all .4s ease;}
+  .repl-node.leader{border-color:var(--shard-c); color:var(--shard-c);}
+  .repl-node.follower{border-color:var(--repl-c); color:var(--repl-c);}
+  .repl-node.active{box-shadow:0 0 12px currentColor;}
+  .repl-node .sub{font-size:0.65rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .repl-arrow{color:var(--ink-dim); font-size:0.9rem;}
+  .repl-arrow.active{color:var(--repl-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--shard-c);} .dc-col.a h4{color:var(--shard-c);}
+  .dc-col.b{border-color:var(--repl-c);} .dc-col.b h4{color:var(--repl-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.shard{border-left-color:var(--shard-c); background:rgba(242,193,78,0.06);} .callout.shard b{color:var(--shard-c);}
+  .callout.repl{border-left-color:var(--repl-c); background:rgba(79,195,247,0.06);} .callout.repl b{color:var(--repl-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · SHARDING &amp; REPLICATION FOR EVAL DATA</div>
+  <h1>Month 3's sharding and replication concepts, finally aimed at a workload with a real shape.</h1>
+  <p class="lede"><code class="inline">database/sharding_and_partitioning.html</code> and <code class="inline">database/replication.html</code> taught the general mechanics. This lab applies them to one SPECIFIC, real schema — <code class="inline">eval_run</code>/<code class="inline">eval_result</code> from <code class="inline">database/eval_results_schema.html</code> — and makes the actual decisions: which column should be the shard key, and does this data need synchronous or asynchronous replication. Both answers follow directly from how this data actually gets written and read, not from abstract sharding theory alone.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Shard key choice — run_id vs dataset_id vs time period</div>
+    <div class="pipe-label b">Replication mode — sync or async, for THIS workload specifically</div>
+    <div class="pipe-label c">Both decisions follow from the access pattern, not from theory alone</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="workload">1 · The Eval Data Access Pattern, First</a>
+  <a data-target="sharding">2 · Choosing a Shard Key for eval_result</a>
+  <a data-target="replication">3 · Sync or Async Replication for This Data</a>
+  <a data-target="live">4 · Compare Shard Keys, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE WORKLOAD ============ -->
+<section id="workload">
+  <div class="kicker">01 — Every sharding and replication decision starts from how the data is actually used</div>
+  <h2>The eval data access pattern, first</h2>
+
+  <p><strong>Start here, before any shard key candidates.</strong> <code class="inline">database/sharding_and_partitioning.html</code>'s core lesson was that a shard key's quality depends entirely on the QUERIES a system actually runs, not on the data's shape in isolation — a shard key that avoids hot shards but forces every real query to fan out across all shards anyway hasn't actually solved anything useful. So before picking a shard key or a replication mode for <code class="inline">eval_run</code>/<code class="inline">eval_result</code>, the access pattern needs to be pinned down precisely, using <code class="inline">database/eval_results_schema.html</code>'s own section 3 queries as ground truth for how this data really gets used.</p>
+
+  <p>Two facts about eval data's access pattern, both directly from <code class="inline">eval_results_schema.html</code>: it is <strong>written once, read many times</strong> — an <code class="inline">eval_result</code> row is inserted exactly once when a run completes and essentially never updated afterward, but then read repeatedly by dashboards, CI gates, and engineers investigating a regression. And it is <strong>overwhelmingly queried by RECENT time range or by a SPECIFIC run</strong> — <code class="inline">eval_results_schema.html</code>'s own Q1 ("pass rate across the last 5 runs"), Q2 ("failing results from the MOST RECENT run"), and Q3 ("does test case tc-882 fail across recent runs") are all either scoped to one specific <code class="inline">run_id</code>, or bounded to a RECENT window, ordered by <code class="inline">started_at DESC</code>. Nobody in that lab's queries ever asked "give me every eval result for dataset X across all history" as a primary access pattern — which turns out to matter enormously for section 2's decision.</p>
+
+  <div class="callout shard"><b>Interview-ready definition:</b> before choosing a shard key or replication mode for any dataset, the actual read/write access pattern has to be established first — write frequency and update frequency (does this data change after being written), and which columns real queries filter or order by. For eval data specifically: written once per result, read many times, and the dominant read patterns are "one specific run_id" (CI gates, drill-down debugging) and "recent time range" (dashboards, trend queries) — never "one dataset_id across all of history" as a primary pattern. Every decision in this lab follows directly from these two established facts, not from sharding or replication theory in the abstract.</div>
+</section>
+
+<!-- ============ SECTION 2: SHARD KEY CHOICE ============ -->
+<section id="sharding">
+  <div class="kicker">02 — run_id, dataset_id, or time period: which one actually serves the real queries?</div>
+  <h2>Choosing a shard key for eval_result</h2>
+
+  <p><strong>Start here, before the comparison.</strong> <code class="inline">sharding_and_partitioning.html</code>'s core interview-ready definition named two things a good shard key needs: even distribution (no hot shard) AND minimizing how often real queries have to cross shard boundaries at all. Applied to <code class="inline">eval_result</code>, three candidates are worth weighing against BOTH of those criteria, using section 1's established access pattern as the test.</p>
+
+  <table class="cmp">
+    <tr><th>Candidate shard key</th><th>Distribution</th><th>Serves "one run_id" queries (Q2)?</th><th>Serves "recent time range" queries (Q1, Q3)?</th></tr>
+    <tr><td><code>run_id</code></td><td>Good — a UUID per run, naturally high-cardinality, no real-world skew</td><td><strong>Yes, perfectly</strong> — every row for one run_id lives on exactly one shard, so Q2 ("failing results from the most recent run") never crosses a shard boundary</td><td>No — recent runs are spread evenly across ALL shards (since run_id has no correlation with time), so a "last 5 runs" query (Q1) has to fan out to potentially every shard</td></tr>
+    <tr><td><code>dataset_id</code></td><td>Risky — a small number of popular, frequently-used datasets could concentrate a large share of eval_result rows and traffic onto very few shards, the exact <code class="inline">sharding_and_partitioning.html</code> hot-shard pattern</td><td>No — a single run_id's results, if that run spans one dataset, land on one shard, but results are also often queried WITHOUT knowing dataset_id up front (Q2 doesn't filter by dataset at all)</td><td>No — same fan-out problem as run_id, recent runs across many datasets still scatter across shards</td></tr>
+    <tr><td>Time period (e.g. month of <code>evaluated_at</code>)</td><td>Good NOW, but same <code>signup_date</code>-style skew risk <code class="inline">sharding_and_partitioning.html</code> warned about — the MOST RECENT time-period shard absorbs nearly all current write AND read traffic (dashboards querying "recent" data), while older shards sit comparatively idle</td><td>No — one run's results could straddle a period boundary if the run happens near a boundary, and even when they don't, nothing about run_id correlates with a clean partition edge</td><td><strong>Yes, well</strong> — a time-range query lands on exactly the shard(s) covering that range, often just one, avoiding fan-out for exactly the dashboards' dominant access pattern</td></tr>
+  </table>
+
+  <p>Neither <code class="inline">run_id</code> nor time period alone serves BOTH dominant access patterns well — this is the genuine trade-off, not a case where one obviously dominates. Sharding by <code class="inline">run_id</code> makes Q2-style "one run" queries perfectly single-shard, but scatters Q1/Q3-style "recent time range" queries across every shard. Sharding by time period makes the opposite trade: recent-range dashboard queries stay single-shard (or close to it), but a single run's own results are still trivially findable within that one time-period shard anyway, since <code class="inline">run_id</code> is still indexed WITHIN each shard — a "get results for run_id=X" query still only has to search the ONE shard covering that run's <code class="inline">started_at</code>, which the application layer can determine directly from the run's own timestamp without needing to fan out at all.</p>
+
+  <p>This tips the decision toward <strong>time period</strong> as the primary shard key, with the caveat that it inherits the exact same recency-skew risk <code class="inline">sharding_and_partitioning.html</code>'s <code class="inline">signup_date</code> example warned about — the shard covering the current month absorbs almost all live write traffic (every CI run writing fresh eval_result rows) AND almost all live read traffic (every dashboard querying "recent" data), while shards covering last year sit nearly idle. The mitigation <code class="inline">database/time_series_schema.html</code> already established for exactly this shape of data applies directly here: use a rolling window of active, writable shards (e.g. one shard per month, only the current 1-2 months actively serving both reads and writes) with OLDER shards effectively becoming read-mostly, lower-priority storage — accepting the skew as an intrinsic, expected property of time-partitioned data rather than something a cleverer shard key could avoid, because the recency skew is a property of the WORKLOAD itself (eval runs happen now, not evenly across all of history), not an artifact of a poorly chosen key.</p>
+
+  <div class="callout shard"><b>Interview-ready definition:</b> for eval_result data — written once, read predominantly by recent time range (dashboards) or by a specific run_id (CI gates, drill-downs) — sharding by TIME PERIOD best serves the dominant "recent" access pattern, keeping most dashboard queries single-shard, while a run_id lookup remains cheap within a time-sharded scheme because the run's own timestamp identifies which shard to query directly, no fan-out needed. This comes at the cost of inheriting the same recency-driven hot-shard risk <code class="inline">sharding_and_partitioning.html</code>'s <code class="inline">signup_date</code> example demonstrated — the current period's shard absorbs disproportionate live traffic — which is mitigated the same way <code class="inline">time_series_schema.html</code> mitigates it for any time-series-shaped data: treat recency skew as an expected, structural property of the workload, not a shard-key design flaw to be engineered away entirely.</div>
+</section>
+
+<!-- ============ SECTION 3: REPLICATION MODE ============ -->
+<section id="replication">
+  <div class="kicker">03 — Does an eval dashboard reading a few seconds behind the truth ever actually hurt anyone?</div>
+  <h2>Sync or async replication for this data</h2>
+
+  <p><strong>Start here, before the trade-off.</strong> <code class="inline">database/replication.html</code>'s core distinction: synchronous replication waits for a follower to confirm a write before telling the client "success" (safer, slower); asynchronous replication confirms immediately and lets followers catch up in the background (faster, with a real replication-lag window where a follower can serve stale data). Which one fits eval data comes down to a single, concrete question: is an eval_result read ever in the CRITICAL PATH of a live, user-facing request, the way a financial transaction or an inventory check would be?</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Why financial data needs SYNCHRONOUS</h4>
+      <p>A payment system reading a stale balance from a lagging follower could let a user overdraw an account or double-spend funds — the read's staleness directly causes an incorrect, consequential DECISION made right now, in the critical path of the request. Synchronous replication's slower writes are a worthwhile trade to guarantee every read sees the true, current state.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Why eval data is fine with ASYNCHRONOUS</h4>
+      <p>Per section 1, eval_result reads serve dashboards and CI gate checks — genuinely important, but not something a LIVE USER's request is blocked on in real time. A dashboard showing a pass-rate number that's 2 seconds (or even a minute) behind the true latest write causes no incorrect action to be taken RIGHT NOW — nobody's transaction gets double-processed, no money moves incorrectly. This is precisely the same "trend dashboard tolerates staleness" reasoning <code class="inline">database/read_replicas_and_dashboard_caching.html</code> already established for observability dashboards generally, now confirmed for eval-results dashboards specifically.</p>
+    </div>
+  </div>
+
+  <p>The one case worth checking carefully before committing to asynchronous replication fully: <code class="inline">backend/cicd_gating_system_design.html</code>'s CI/CD gate reads the JUST-COMPLETED eval_run's results to decide whether to block a deploy — is THAT read in a critical path sensitive enough to need synchronous replication instead? Working through it: the gate's read happens moments after the SAME eval_run's write completed, from the SAME pipeline that triggered the run — if that read is routed to a replica that hasn't caught up yet (replication lag, per <code class="inline">replication.html</code>'s section 1), the gate could see an incomplete or stale result set and make the WRONG blocking decision. This is genuinely a case where either (a) the CI gate's specific read should be routed to the PRIMARY rather than a replica — exactly <code class="inline">read_replicas_and_dashboard_caching.html</code>'s "route reads that need the latest committed row back to primary" pattern, applied to this one specific, sensitive read — or (b) the gate should simply wait for write confirmation from the SAME connection that performed the writes (which, on a single primary connection, already guarantees read-your-own-write consistency without needing synchronous REPLICATION at all). Either fix is cheaper than making ALL eval data replication synchronous just to cover this one specific read.</p>
+
+  <div class="repl-diagram">
+    <div class="repl-node leader" id="repl-leader">Primary<div class="sub">eval_run/eval_result writes land here</div></div>
+    <div class="repl-arrow" id="repl-arrow">⇢ async ⇢</div>
+    <div class="repl-node follower" id="repl-follower">Replica<div class="sub">dashboard + trend reads</div></div>
+  </div>
+
+  <div class="callout repl"><b>Interview-ready definition:</b> eval_result data is a strong candidate for ASYNCHRONOUS replication because its dominant reads — dashboards, trend queries — are never in the critical path of a live user-facing request the way financial transaction data is; a dashboard reading a few seconds stale causes no incorrect real-time decision. The one exception worth naming explicitly is the CI/CD gate's own read of its own just-completed run's results (per <code class="inline">backend/cicd_gating_system_design.html</code>), which needs read-your-own-write consistency — solved narrowly by routing that ONE specific read to the primary (or the same connection that wrote it), exactly <code class="inline">read_replicas_and_dashboard_caching.html</code>'s targeted fix — rather than by making the entire dataset's replication synchronous just to cover this one sensitive read path.</div>
+</section>
+
+<!-- ============ SECTION 4: LIVE SHARD KEY COMPARISON ============ -->
+<section id="live">
+  <div class="kicker">04 — Watching each candidate shard key's distribution, side by side</div>
+  <h2>Compare shard keys, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, the same 10,000 <code class="inline">eval_result</code> rows (one week's worth of CI activity) get distributed across 4 shards under each of section 2's three candidate keys. Click each one and watch the distribution.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>10,000 EVAL_RESULT ROWS — DISTRIBUTED ACROSS 4 SHARDS</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-key="run_id">Shard by run_id</button>
+      <button class="chip" data-key="dataset_id">Shard by dataset_id</button>
+      <button class="chip" data-key="time">Shard by time period</button>
+    </div>
+    <div class="shard-viz" id="shard-viz">
+      <div class="shard-box"><div class="sname">Shard 1</div><div class="sbar"><div class="sfill" id="fill-1"></div></div><div class="sval" id="val-1"></div></div>
+      <div class="shard-box"><div class="sname">Shard 2</div><div class="sbar"><div class="sfill" id="fill-2"></div></div><div class="sval" id="val-2"></div></div>
+      <div class="shard-box"><div class="sname">Shard 3</div><div class="sbar"><div class="sfill" id="fill-3"></div></div><div class="sval" id="val-3"></div></div>
+      <div class="shard-box"><div class="sname">Shard 4</div><div class="sbar"><div class="sfill" id="fill-4"></div></div><div class="sval" id="val-4"></div></div>
+    </div>
+    <div class="log" id="shard-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> <code class="inline">run_id</code> and <code class="inline">dataset_id</code> both produce visibly uneven bars — dataset_id badly, because a handful of popular datasets dominate CI activity; time period is nearly even across the CURRENT week's data shown here, but section 2's callout explains why that evenness is temporary — shard 4 (this week) will keep absorbing new writes while shards 1-3 (older weeks) stay essentially frozen, becoming lopsided again the moment you zoom out to more than one week of accumulated data.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Justifying why eval_run and eval_result should share the same shard key</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2 settles on time period as eval_result's shard key. Using <code class="inline">eval_results_schema.html</code>'s header/detail relationship (eval_run to eval_result), should eval_run be sharded the SAME way, by the same time period? What would go wrong if eval_run were sharded differently — say, by <code class="inline">triggered_by</code>?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, eval_run should be sharded by the SAME time period as eval_result
+-- specifically, co-locating a run and its own results on the SAME
+shard, keyed by consistent logic (e.g. both keyed off started_at's time
+period). This directly reuses sharding_and_partitioning.html's cross-
+shard-query warning: eval_results_schema.html's Q1 query JOINs eval_run
+and eval_result together (to get pass rate per run, ordered by
+started_at). If the two tables were sharded independently by DIFFERENT
+keys, that JOIN would almost always become a cross-shard operation --
+paying the fan-out-and-merge cost sharding_and_partitioning.html's
+section 3 described as strictly more expensive, on what should be one
+of the schema's most common queries.
+
+Sharding eval_run by triggered_by ('ci_pipeline' vs 'manual' vs
+'scheduled') would be actively worse: that column has very low
+cardinality (only 3 real values) and almost certainly skews heavily
+toward 'ci_pipeline' in practice (most eval_run rows come from
+automated CI, not manual or scheduled triggers) -- a textbook hot-shard
+setup per sharding_and_partitioning.html's section 2, AND it would
+decouple eval_run from eval_result's own time-based sharding entirely,
+turning every single Q1-style JOIN into a cross-shard query regardless
+of which specific run is being looked up. The general principle: two
+tables in a header/detail relationship that are ALWAYS queried together
+(via JOIN) should be sharded by a CONSISTENT, co-locating key, so their
+join stays within one shard for the common case -- exactly the "shard
+key chosen so most real queries stay within a single shard" criterion
+sharding_and_partitioning.html's section 3 established generally.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding what changes if the dominant access pattern shifts</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose a new product requirement emerges: a "dataset health" dashboard that shows aggregate pass rates PER DATASET across all of history, becoming a heavily-used, primary query pattern (not just an occasional one). Would this change section 2's shard key recommendation? Explain using the same criteria section 2 applied.</p>
+    <details><summary>Show solution</summary><div class="solution">This is exactly the kind of access-pattern shift that should trigger
+RE-EVALUATING the shard key decision, not just adding an index and
+moving on -- section 1's entire premise was that the shard key follows
+from the actual, CURRENT dominant access pattern, and that pattern has
+now genuinely changed. Under the CURRENT time-period sharding, "pass
+rate per dataset across all of history" is now the worst possible query
+shape -- it has to fan out across EVERY time-period shard ever created
+(since a popular dataset's eval runs are scattered across every week of
+history) and merge partial aggregates from each, exactly the expensive
+cross-shard coordination sharding_and_partitioning.html's section 3
+described, now happening on every load of this new, HEAVILY-USED
+dashboard rather than as a rare exception.
+
+If this dataset-health pattern truly becomes a PRIMARY, high-frequency
+access pattern (not just occasional), the honest answer is that
+sharding by dataset_id starts looking more attractive despite section
+2's original hot-shard concern -- OR, more likely in practice, this
+argues for NOT re-sharding the primary table at all, but instead
+maintaining a separate, precomputed AGGREGATE table (per-dataset
+rolled-up pass rates, updated incrementally as new eval_result rows
+land) that serves this specific new dashboard directly, without forcing
+either shard key to serve two genuinely conflicting dominant access
+patterns at once. This mirrors read_replicas_and_dashboard_caching.
+html's own principle: an expensive, frequently-repeated aggregate query
+is often better served by precomputing/caching its answer than by
+trying to make the PRIMARY schema's sharding equally good at every
+possible query shape simultaneously.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Tracing exactly why the CI gate's read-your-own-write problem is a replication issue, not a sharding issue</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3 identifies the CI/CD gate's read as needing special handling. Is this specifically a REPLICATION concern, a SHARDING concern, or both? Justify by explaining what would (and wouldn't) happen if the gate's read were routed to the correct SHARD but a lagging REPLICA of that shard.</p>
+    <details><summary>Show solution</summary><div class="solution">Purely a replication concern, not a sharding one -- and separating
+these two is exactly the point worth being precise about. Sharding
+determines WHICH shard a given row lives on; replication determines
+which COPY of that shard (primary vs a given follower) a specific read
+is served from. The CI gate's read for its own just-completed run is
+trivially routed to the CORRECT shard -- per section 2, the run's own
+started_at timestamp identifies its time-period shard directly, no
+ambiguity, no fan-out needed, sharding is doing its job correctly here.
+
+The actual problem is entirely on the REPLICATION side: even having
+found the right SHARD, if that read gets served from a REPLICA of that
+shard rather than the shard's own PRIMARY, and that replica hasn't yet
+caught up to the write the CI pipeline just performed moments earlier
+(section 3's replication.html-sourced lag concern), the gate could see
+an incomplete eval_result set for that run and make an incorrect
+blocking decision -- purely because of WHICH COPY was read, with the
+correct shard having been identified successfully throughout. This
+confirms section 3's fix (route this one read to the shard's primary,
+or use the same connection that wrote it) is a replication-routing
+fix, completely independent of and unaffected by whatever shard key
+section 2 chose -- the two concerns compose but don't interact here,
+exactly the way database/read_replicas_and_dashboard_caching.html's
+Problem 5 established that replication lag and (in that lab's case)
+cache TTL are independent, STACKING sources of staleness, each needing
+its own separate fix.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Evaluating a proposal to shard eval_result by test_case_id instead</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate proposes sharding <code class="inline">eval_result</code> by <code class="inline">test_case_id</code> instead, arguing it would make <code class="inline">eval_results_schema.html</code>'s Q3 ("does tc-882 fail consistently across runs") a single-shard query. Evaluate this proposal against section 1's established DOMINANT access pattern, not just Q3 in isolation.</p>
+    <details><summary>Show solution</summary><div class="solution">The teammate is locally correct about Q3 specifically -- sharding by
+test_case_id WOULD make "all history for one specific test case" a
+single-shard lookup, genuinely improving that one query. But evaluating
+it against section 1's actual DOMINANT pattern (not just Q3 in
+isolation) reveals a worse overall trade: Q1 and Q2 -- arguably the more
+operationally CRITICAL queries, since Q2 is what a CI gate runs on
+EVERY SINGLE deploy, and Q1 is what most dashboards show by default --
+both become WORSE under test_case_id sharding than under time-period
+sharding. Q2 ("failing results from the most recent run") would now
+have to fan out across potentially every test_case_id shard, since a
+single run's results span MANY different test cases scattered across
+however many shards those test_case_ids hash to -- exactly the kind of
+regression sharding_and_partitioning.html's section 3 warned a bad
+shard key produces even when it happens to serve ONE query type well.
+
+The general lesson, directly connecting back to section 1's opening
+principle: evaluating a shard key against a single query in isolation
+(here, Q3) without weighing it against the FULL set of real, frequently
+-run queries is a common mistake -- optimizing for a comparatively rare
+"trace one test case's history" investigation at the cost of degrading
+the CI gate's every-single-deploy query and the default dashboard's
+every-single-load query would be a bad trade in practice, even though
+the proposal isn't WRONG about the one specific query it targets. A
+better fix for Q3 specifically, without resharding the whole table, is
+simply a good secondary INDEX on (test_case_id, run_id) within each
+time-period shard -- exactly the indexing strategy eval_results_schema.
+html's own section 3 already recommended -- giving Q3 reasonable
+performance WITHIN whichever shard(s) it needs to touch, without
+sacrificing the dominant patterns' single-shard performance to do it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the failover story for a lost eval-data shard's primary</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">replication.html</code>'s failover/split-brain reasoning and this lab's asynchronous replication decision, what happens to the CURRENT month's eval-data shard if its primary crashes, and is any eval data at risk of being permanently lost?</p>
+    <details><summary>Show solution</summary><div class="solution">Per replication.html's failover mechanics, the surviving followers of
+that ONE shard (not the whole system -- sharding means only that
+specific shard's primary/follower set is affected, per section 2's
+per-shard replication topology) coordinate to promote one follower to
+become the new primary for that shard, typically favoring whichever
+follower has the LEAST replication lag to minimize data loss --
+identical mechanics to replication.html's general case, just scoped to
+one shard rather than a single, whole-database primary.
+
+Is any data at risk? Yes, genuinely, and this is the direct, honest
+cost of section 3's asynchronous replication choice: because writes are
+confirmed to the CI pipeline the moment they land on the PRIMARY,
+without waiting for any follower to acknowledge, any eval_result rows
+written to the old primary but NOT YET replicated to the promoted
+follower at the moment of the crash are lost -- they existed on the
+crashed primary's disk, potentially momentarily, but never made it to
+any surviving copy. This is precisely the trade-off section 3's
+argument accepted deliberately: eval data isn't in the critical path of
+a live user request, so this small, bounded risk of losing a handful of
+very-recently-written rows during a rare primary crash is an acceptable
+cost in exchange for not paying synchronous replication's write-latency
+tax on EVERY eval_result insert, unlike financial transaction data
+where that same risk would be unacceptable. The practical mitigation
+isn't switching to synchronous replication for all eval data -- it's
+making sure the CI/CD gate (section 3) treats a just-crashed-and-
+failed-over shard's very recent history as suspect and, if a gate
+decision genuinely can't be made confidently right after such a
+failover, erring toward blocking the deploy rather than assuming
+missing rows mean the eval suite passed.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) name the two candidate shard keys this lab rejected and explain specifically WHY each fails to serve the dominant access pattern, (2) explain why eval data's replication mode decision hinges on whether a read sits in a live request's critical path, and (3) trace the CI gate's read-your-own-write problem and explain why it's a replication fix, not a sharding fix? <code class="inline">evals-and-observability/cicd_pipeline_basics.html</code> picks up Saturday's track next — the actual lint/test/build pipeline this month has been building toward all along.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — sharding and replication for eval data.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 4: SHARD KEY DISTRIBUTION COMPARISON */
+(function(){
+  var chips = document.querySelectorAll(".chip[data-key]");
+  var logEl = document.getElementById("shard-log");
+
+  var DISTRIBUTIONS = {
+    run_id: {
+      values: [2480, 2560, 2410, 2550],
+      hot: [false, false, false, false],
+      note: '<b>Shard by run_id:</b> nearly even — a UUID has no correlation with anything real-world, so results spread uniformly across shards. But this key does NOT serve Q1/Q3\'s "recent time range" queries well — a "last 5 runs" dashboard query has to check every shard.'
+    },
+    dataset_id: {
+      values: [6800, 1200, 1400, 600],
+      hot: [true, false, false, false],
+      note: '<b style="color:var(--bad-c);">Shard by dataset_id:</b> badly uneven — one popular, frequently-tested dataset (shard 1) absorbs 68% of all eval_result rows and traffic, exactly the hot-shard pattern sharding_and_partitioning.html warned about.'
+    },
+    time: {
+      values: [2200, 2350, 2500, 2950],
+      hot: [false, false, false, false],
+      note: '<b>Shard by time period (this week\'s snapshot):</b> looks roughly even right now — but shard 4 (the current week) is the ONLY one still receiving new writes. Zoom out to a full year and shard 4 (or whichever is "current") will dominate write AND read traffic every single week, the same recency skew as a signup_date shard key.'
+    }
+  };
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function render(key){
+    var dist = DISTRIBUTIONS[key];
+    var max = Math.max.apply(null, dist.values);
+    for(var i=0;i<4;i++){
+      var fill = document.getElementById("fill-" + (i+1));
+      var val = document.getElementById("val-" + (i+1));
+      var pct = (dist.values[i] / max * 100);
+      fill.style.height = "0%";
+      fill.className = "sfill" + (dist.hot[i] ? " hot" : "");
+      setTimeout((function(fill, pct, val, count){
+        return function(){
+          fill.style.height = pct + "%";
+          val.textContent = count.toLocaleString() + " rows";
+        };
+      })(fill, pct, val, dist.values[i]), 60);
+    }
+    logEl.innerHTML = "";
+    log(dist.note, dist.hot.some(function(h){return h;}) ? "bad" : "good");
+  }
+
+  chips.forEach(function(chip){
+    chip.addEventListener("click", function(){
+      chips.forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      render(chip.dataset.key);
+    });
+  });
+
+  render("run_id");
+})();
+</script>
+</body>
+</html>

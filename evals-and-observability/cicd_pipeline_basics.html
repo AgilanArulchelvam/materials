@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — CI/CD Pipeline Basics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --lint-c:#7fd8a0; --test-c:#4fc3f7; --build-c:#f2c14e; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--lint-c); color:var(--lint-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--test-c); color:var(--test-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--build-c); color:var(--build-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.lint{border-left-color:var(--lint-c); background:rgba(127,216,160,0.06);}
+  .log .line.test{border-left-color:var(--test-c); background:rgba(79,195,247,0.06);}
+  .log .line.build{border-left-color:var(--build-c); background:rgba(242,193,78,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pipeline stage tracker, reused pattern from cicd_gating_system_design.html */
+  .pipeline{display:flex; gap:0.5rem; flex-wrap:wrap; margin:1.4rem 0;}
+  .stage{font-family:var(--mono); font-size:0.72rem; padding:0.6rem 0.9rem; border-radius:9px; border:1.5px solid var(--rule); color:var(--ink-dim); background:var(--panel-2); transition:all .35s ease; text-align:center; flex:1; min-width:100px;}
+  .stage .stime{display:block; font-size:0.62rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .stage.pass{border-color:var(--lint-c); color:var(--lint-c); background:rgba(127,216,160,0.1);}
+  .stage.active{border-color:var(--build-c); color:var(--build-c); background:rgba(242,193,78,0.12); box-shadow:0 0 10px rgba(242,193,78,0.25);}
+  .stage.blocked{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.12);}
+  .stage.skipped{border-color:var(--rule); color:var(--ink-dim); background:var(--panel-2); opacity:0.45;}
+  .stage-arrow{display:flex; align-items:center; color:var(--ink-dim); font-family:var(--mono);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--lint-c);} .dc-col.a h4{color:var(--lint-c);}
+  .dc-col.b{border-color:var(--build-c);} .dc-col.b h4{color:var(--build-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.lint{border-left-color:var(--lint-c); background:rgba(127,216,160,0.06);} .callout.lint b{color:var(--lint-c);}
+  .callout.build{border-left-color:var(--build-c); background:rgba(242,193,78,0.06);} .callout.build b{color:var(--build-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · CI/CD PIPELINE BASICS</div>
+  <h1>Fail on a typo in three seconds, not on a broken build ten minutes later.</h1>
+  <p class="lede">A real CI/CD pipeline runs its stages in a deliberate order: <strong>lint</strong> first (fast, catches style/syntax issues), then <strong>test</strong> (runs the eval suite from <code class="inline">pytest_evals_practice.html</code>), then <strong>build</strong> (the multi-stage Docker image from <code class="inline">multistage_docker_builds.html</code>). This lab builds a real GitHub Actions-style pipeline config, and animates the exact reason this ordering exists: fail cheap and fast, before ever paying for anything expensive.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Lint — seconds, catches syntax/style before anything else runs</div>
+    <div class="pipe-label b">Test — the real eval suite, only runs if lint passed</div>
+    <div class="pipe-label c">Build — the multi-stage Docker image, only runs if tests passed</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="config">1 · A Real Pipeline Config, Stage by Stage</a>
+  <a data-target="ordering">2 · Why This Order: Fail Fast on Cheap Checks</a>
+  <a data-target="live">3 · Two Runs — All Green, and an Early Lint Failure</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE CONFIG ============ -->
+<section id="config">
+  <div class="kicker">01 — Three stages, each one a real, runnable step</div>
+  <h2>A real pipeline config, stage by stage</h2>
+
+  <p><strong>Start here, before the YAML.</strong> Think about a factory assembly line where the FIRST station is a five-second visual inspection (does this part even look right, before anything is machined into it), the SECOND station is a genuine stress test (does it actually hold weight, which takes a few minutes to run), and only the THIRD station does the expensive final assembly. A part that fails the five-second visual check gets pulled immediately — nobody wastes the stress-test machine's time, let alone the assembly station's, on a part that was visibly wrong from the start. A CI/CD pipeline is this same assembly line, applied to code.</p>
+
+  <div class="code"><span class="c-cmt"># .github/workflows/ci.yml — three ordered stages, each depends on the last</span>
+<span class="c-kw">name</span>: CI
+
+<span class="c-kw">on</span>: [pull_request]
+
+<span class="c-kw">jobs</span>:
+  <span class="c-key">lint</span>:
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>:
+      - <span class="c-kw">uses</span>: actions/checkout@v4
+      - <span class="c-kw">name</span>: Run ruff (style + syntax)
+        <span class="c-kw">run</span>: ruff check .
+      - <span class="c-kw">name</span>: Run mypy (type checking)
+        <span class="c-kw">run</span>: mypy app/
+    <span class="c-cmt"># ~5-15 seconds. Catches typos, unused imports, obvious type errors --
+    # none of this requires running any actual code.</span>
+
+  <span class="c-key">test</span>:
+    <span class="c-kw">needs</span>: lint  <span class="c-cmt"># will NOT start unless lint succeeded</span>
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>:
+      - <span class="c-kw">uses</span>: actions/checkout@v4
+      - <span class="c-kw">name</span>: Install dependencies
+        <span class="c-kw">run</span>: pip install -r requirements.txt
+      - <span class="c-kw">name</span>: Run the eval suite
+        <span class="c-cmt"># exactly pytest_evals_practice.html's suite -- deterministic,
+        # trajectory-based, and rubric checks, against the fixed fixture</span>
+        <span class="c-kw">run</span>: pytest tests/evals/ -v
+    <span class="c-cmt"># ~1-3 minutes. Actually imports and runs code -- genuinely more
+    # expensive than lint, but far cheaper than a full image build.</span>
+
+  <span class="c-key">build</span>:
+    <span class="c-kw">needs</span>: test  <span class="c-cmt"># will NOT start unless test succeeded</span>
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>:
+      - <span class="c-kw">uses</span>: actions/checkout@v4
+      - <span class="c-kw">name</span>: Build multi-stage Docker image
+        <span class="c-cmt"># exactly multistage_docker_builds.html's two-stage Dockerfile --
+        # compiles dependencies, then produces the slim runtime image</span>
+        <span class="c-kw">run</span>: docker build -t namespacelab-api:${{ github.sha }} .
+      - <span class="c-kw">name</span>: Push to registry
+        <span class="c-kw">run</span>: docker push namespacelab-api:${{ github.sha }}
+    <span class="c-cmt"># ~3-10 minutes. The single most expensive stage -- compiling
+    # dependencies, assembling layers, pushing a real image over the network.</span></div>
+
+  <p>The <code class="inline">needs:</code> keyword is what actually enforces the ordering — <code class="inline">test</code> declares <code class="inline">needs: lint</code>, meaning GitHub Actions will not even START the test job unless the lint job completed successfully; <code class="inline">build</code> similarly <code class="inline">needs: test</code>. This isn't just a visual ordering in the YAML file — it's a hard dependency the CI runner enforces, so a lint failure genuinely, mechanically prevents the test and build stages from ever running at all, not just from being reported as "also failed."</p>
+
+  <div class="callout lint"><b>Interview-ready definition:</b> a CI/CD pipeline's lint/test/build stages are ordered as an explicit dependency chain (<code class="inline">needs:</code> in GitHub Actions syntax) rather than run independently in parallel, so that each stage only executes if every earlier, cheaper stage has already succeeded. Lint (style and syntax checks, no code execution) is cheapest and runs first; test (the real eval suite from <code class="inline">pytest_evals_practice.html</code>, actually importing and running code) is more expensive and runs second, gated on lint passing; build (compiling and assembling a real Docker image, per <code class="inline">multistage_docker_builds.html</code>) is the most expensive stage and runs last, gated on tests passing.</div>
+</section>
+
+<!-- ============ SECTION 2: WHY THIS ORDER ============ -->
+<section id="ordering">
+  <div class="kicker">02 — The ordering isn't arbitrary — it's sorted by cost, cheapest first</div>
+  <h2>Why this order: fail fast on cheap checks</h2>
+
+  <p><strong>Start here, before the reasoning.</strong> Think about a restaurant kitchen deciding whether to reject a delivery of ingredients. The FIRST check is a two-second visual glance — is the produce visibly rotten? That check costs almost nothing and catches the most obviously bad deliveries instantly. Only produce that PASSES the glance test gets the more expensive treatment — actually washing, prepping, and cooking with it. Nobody fully cooks a dish with visibly rotten produce just to discover during plating that it was bad — the cheap check happens first specifically so the expensive work never gets wasted on something that was already, visibly, disqualified.</p>
+
+  <p>This lab's three stages are sorted by exactly this cost ordering, and each stage catches a genuinely DIFFERENT class of problem that the earlier stage structurally cannot:</p>
+
+  <table class="cmp">
+    <tr><th>Stage</th><th>Approximate cost</th><th>What it catches</th><th>What it CANNOT catch</th></tr>
+    <tr><td>Lint</td><td>Seconds</td><td>Syntax errors, style violations, obvious type errors — none of this requires running any code at all</td><td>Whether the code actually WORKS — a perfectly-styled function with completely wrong logic passes lint cleanly</td></tr>
+    <tr><td>Test</td><td>Minutes</td><td>Actual behavioral correctness — the eval suite genuinely runs the code and checks its outputs, per <code class="inline">pytest_evals_practice.html</code></td><td>Whether the code can be correctly PACKAGED and deployed — a test suite can pass while a Dockerfile is subtly broken</td></tr>
+    <tr><td>Build</td><td>Minutes (often the longest)</td><td>Whether the application actually builds into a deployable artifact — dependency resolution, compilation, image assembly all genuinely happening</td><td>Nothing "later" exists in this 3-stage pipeline — build is the last gate before an artifact would be ready to deploy</td></tr>
+  </table>
+
+  <p>The financial argument for this ordering is concrete, not just aesthetic: if a broken PR has a simple typo (something lint would catch in 5 seconds) but the pipeline instead ran build FIRST (say, 8 minutes) before ever getting to lint, every single broken PR with a trivial typo would cost 8+ minutes of CI compute and wall-clock time before the contributor even learns their PR has a problem — multiplied across however many PRs a team submits per day. Running the cheapest, fastest-failing check FIRST means the overwhelming majority of "obviously broken" PRs get rejected in seconds, and the expensive stages (test, build) only ever run on PRs that have already cleared the cheap bar — genuinely saving both compute cost and, just as importantly, the CONTRIBUTOR's time waiting for feedback.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Cheap-first ordering (this lab's pipeline)</h4>
+      <p>A PR with a typo fails in ~5-15 seconds, at lint. The contributor sees the failure almost immediately and fixes it without ever consuming test or build compute time. Only genuinely lint-clean PRs ever reach the more expensive test stage.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Reversed ordering (build first, hypothetically)</h4>
+      <p>The SAME typo'd PR would sit through an 8-minute build first, THEN fail at a lint stage that could have caught it in seconds — wasting 8 minutes of compute and 8 minutes of the contributor's wait time on a PR that was disqualified from the very first character typed.</p>
+    </div>
+  </div>
+
+  <div class="callout build"><b>Interview-ready definition:</b> ordering a CI/CD pipeline's stages from cheapest/fastest to most expensive — lint, then test, then build — and gating each stage on the previous one's success means an obviously broken PR is rejected as early and as cheaply as possible, rather than only being caught after the pipeline has already paid the cost of the more expensive later stages. This "fail fast" principle isn't about any one stage being more IMPORTANT than another — build failures matter just as much as lint failures — it's about SEQUENCING checks by cost so that expensive compute (and contributor wait time) is never spent validating something a cheap, earlier check would have already rejected.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE PIPELINE RUNS ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching a healthy PR pass all three stages, and a broken PR get rejected in seconds</div>
+  <h2>Two runs — all green, and an early lint failure</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, run the SAME 3-stage pipeline twice: once against a healthy PR (clears all three stages), and once against a PR with a simple lint error (an unused import). Watch exactly how much of the pipeline the second run skips entirely.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PR → LINT → TEST → BUILD</span>
+      <div><button class="btn secondary" id="ci-reset">Reset</button></div>
+    </div>
+    <div style="display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn" id="ci-healthy">Run healthy PR ▸</button>
+      <button class="btn secondary" id="ci-broken">Run PR with a lint error ▸</button>
+    </div>
+    <div class="pipeline" id="pipeline-track">
+      <div class="stage" id="st-lint">Lint<span class="stime" id="tm-lint"></span></div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-test">Test<span class="stime" id="tm-test"></span></div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-build">Build<span class="stime" id="tm-build"></span></div>
+    </div>
+    <div class="log" id="ci-log"></div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> the broken run's test and build stages never even attempt to start — they render as SKIPPED, not failed. The pipeline doesn't waste a single second of test or build compute on a PR that was already disqualified at lint, exactly section 2's cost argument made concrete: the total wall-clock cost of the broken run is a few seconds, not the minutes a full test+build cycle would have cost if lint hadn't caught it first.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding where a new "type check" step belongs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's lint job already runs both <code class="inline">ruff</code> (style) and <code class="inline">mypy</code> (type checking) in the SAME job. A teammate proposes splitting mypy into its own separate stage, positioned between lint and test. Using section 2's cost-ordering argument, is this a good idea? What would decide it either way?</p>
+    <details><summary>Show solution</summary><div class="solution">It depends entirely on mypy's ACTUAL relative cost and failure
+correlation compared to ruff, not on some fixed rule that "type
+checking deserves its own stage." If mypy runs in a comparable amount
+of time to ruff (both genuinely just seconds, neither requiring code
+execution) and PRs that fail mypy are similarly common to PRs that fail
+ruff, keeping them together in one "lint" stage is fine and arguably
+simpler -- section 2's cost-ordering argument cares about the RELATIVE
+cost between stages, and two checks of similar, small cost gain little
+from being split into separately-gated stages; splitting them just adds
+pipeline complexity (another job definition, another needs: dependency)
+without meaningfully improving fail-fast behavior, since both would
+already fail in roughly the same few seconds either way.
+
+The case FOR splitting would be if mypy were meaningfully slower than
+ruff in this specific codebase (e.g. a large, complex type-checked
+codebase where mypy genuinely takes 30-60+ seconds, versus ruff's
+near-instant style check) -- in that case, section 2's exact reasoning
+argues for running the CHEAPER check (ruff) first, on its own, so a
+pure style violation still fails in the fastest possible time, with
+mypy as a second, slightly more expensive gate before test. The
+decision criterion is the same one section 2 established generally:
+order stages (or sub-stages) by actual cost, and only split a combined
+stage into separate ones when there's a REAL cost difference worth
+sequencing around -- splitting two equally-cheap checks into separate
+stages for no reason just adds pipeline bookkeeping without buying any
+additional fail-fast benefit.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing what happens to the eval gate from cicd_gating_system_design.html within this pipeline</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">backend/cicd_gating_system_design.html</code>'s two-gate design (unit/integration tests, THEN a separate eval-threshold gate), where in section 1's <code class="inline">test</code> job would the eval-threshold check specifically belong, and should it be a separate job from <code class="inline">pytest tests/evals/</code>?</p>
+    <details><summary>Show solution</summary><div class="solution">The eval-threshold check belongs INSIDE the same test job, logically
+AFTER the pytest eval suite step, not as a wholly separate top-level
+job -- and the reasoning connects both labs precisely. cicd_gating_
+system_design.html's section 1 code computed eval_result.pass_rate and
+compared it against EVAL_THRESHOLD as essentially the SAME step that
+runs the eval suite (run_eval_suite() returning a pass rate, checked
+immediately) -- the threshold check is really just an assertion made
+about the OUTPUT of the eval suite run, not a fundamentally separate
+kind of work requiring its own build environment, dependencies, or
+checkout step the way build (a genuinely different kind of work --
+compiling a Docker image) does.
+
+Concretely, this lab's test job's pytest tests/evals/ -v step already
+produces the pass/fail signal per-test-case (pytest's own exit code
+reflects whether all assertions in the suite passed) -- if
+pytest_evals_practice.html's suite itself encodes the threshold logic
+as assertions (e.g. asserting the trajectory check's specific behavior
+directly, per that lab's actual tests), then the test job already IS
+the eval gate, with no additional job needed at all. If instead the
+threshold check needs to run as a SEPARATE aggregation step (say,
+computing pass rate across many individual eval results and comparing
+to a numeric threshold, closer to cicd_gating_system_design.html's
+literal code), it should still be an additional STEP within the SAME
+test job, immediately after the pytest step, rather than a new
+top-level job -- because it depends directly on that job's own output
+and doesn't need its own separate checkout/dependency-install overhead
+that a genuinely separate job (like build) would.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Designing what should happen if lint and test could theoretically run in parallel instead</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate suggests running lint and test in PARALLEL (removing test's <code class="inline">needs: lint</code>) to make the pipeline finish faster overall, since most PRs pass both anyway. Evaluate this proposal against section 2's fail-fast argument specifically for the PRs that DON'T pass both.</p>
+    <details><summary>Show solution</summary><div class="solution">This proposal genuinely improves TOTAL wall-clock time for the common
+case (a healthy PR that passes both stages) -- running lint and test
+concurrently instead of sequentially means the healthy-PR pipeline
+finishes in roughly max(lint_time, test_time) instead of lint_time +
+test_time, a real speedup. But it directly undermines section 2's
+fail-fast argument for the LESS common but still important case: a PR
+with BOTH a lint error and a test failure (or even just a lint error
+alone) would now consume the FULL test-stage compute cost regardless,
+since test starts immediately in parallel rather than waiting to be
+gated on lint's result -- exactly the wasted-compute scenario section 2's
+dc-compare specifically argued against.
+
+The actual trade-off being made: parallelizing optimizes for the
+COMMON case (healthy PRs) at the direct cost of the fail-fast
+guarantee for the LESS common case (broken PRs) -- whether this is a
+good trade depends on the team's actual PR health rate and the relative
+cost of test compute. If test is cheap and PRs are rarely broken, the
+proposal is reasonable. If test is expensive (a large, slow eval suite)
+and lint failures are common (e.g. a team without a pre-commit hook
+enforcing style locally, so many PRs arrive with trivial lint issues),
+keeping the sequential needs: lint gate remains the better default,
+since it's specifically optimizing for minimizing WASTED compute on the
+PRs most likely to fail early anyway -- which is precisely section 2's
+whole argument, and a case where "faster in the average case" and
+"cheaper in the failure case" are genuinely in tension, not the same
+goal.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a pipeline where build sometimes runs despite a test failure</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's pipeline occasionally shows the build stage running even though the test stage's logs clearly show failing assertions. Using section 1's <code class="inline">needs:</code> mechanism, name the most likely misconfiguration causing this.</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause: the test job's pytest step (or an equivalent
+command) isn't correctly propagating a non-zero exit code as the JOB's
+own failure signal -- e.g. a shell step that runs `pytest tests/evals/
+|| true` (deliberately swallowing pytest's failure exit code), or a
+step configured with continue-on-error: true in GitHub Actions syntax,
+which tells the runner "treat this step's failure as non-fatal to the
+job." In either case, the test JOB itself reports SUCCESS to GitHub
+Actions even though the actual pytest run, read by a human in the logs,
+clearly failed -- and because build's needs: test gate only checks
+whether the test JOB succeeded (not whether every individual step
+inside it "looked clean" to a human), build proceeds exactly as if
+tests had genuinely passed.
+
+This is a subtle but common real-world CI misconfiguration, and it's
+worth naming why it happens innocently: continue-on-error is a genuine,
+legitimate feature for steps that are ALLOWED to fail (e.g. an optional
+coverage-upload step that shouldn't block the whole pipeline if a
+third-party service is briefly down) -- the bug is applying that same
+flag to the actual eval-suite-running step, which should NEVER be
+allowed to fail silently. The fix: remove continue-on-error (or the
+`|| true` pattern) from the actual test-running step specifically, so
+pytest's real exit code correctly propagates as the job's own pass/
+fail signal, restoring build's needs: test gate to actually mean what
+it's supposed to mean.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Extending the pipeline with a deploy stage and connecting it to Week 3's earlier labs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">backend/cicd_gating_system_design.html</code>'s blue-green rollout and <code class="inline">multistage_docker_builds.html</code>'s image, sketch a FOURTH stage, <code class="inline">deploy</code>, that would follow this lab's <code class="inline">build</code> stage. What does it depend on, and what happens if it fails?</p>
+    <details><summary>Show solution</summary><div class="solution">deploy:
+    needs: build   # only runs if the multi-stage image (this lab's
+                   # build stage) was successfully built and pushed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote candidate build through the eval gate
+        # exactly cicd_gating_system_design.html's second gate --
+        # runs the eval suite against THIS candidate image specifically,
+        # separate from (and in addition to) this lab's own test stage
+        run: run_eval_suite --image namespacelab-api:${{ github.sha }}
+      - name: Blue-green cutover
+        # cicd_gating_system_design.html's section 3 mechanism --
+        # flip the traffic pointer to the newly-built, newly-gated image
+        run: flip_traffic_to namespacelab-api:${{ github.sha }}
+
+This deploy stage needs: build specifically (not test directly) because
+it depends on having an actual, pushed, deployable ARTIFACT to deploy --
+the build stage is what produces that artifact; test alone (passing
+unit/eval tests against source code) doesn't guarantee a deployable
+image exists yet. Note this deploy stage's OWN internal eval-gate step
+is a genuinely SEPARATE check from this lab's test stage, even though
+both run "the eval suite" -- this lab's test stage validates the SOURCE
+CODE before spending build compute on it (section 2's fail-fast
+argument), while deploy's own gate, per cicd_gating_system_design.html,
+validates the actual BUILT CANDIDATE IMAGE specifically, catching any
+regression introduced during the build/packaging process itself that
+source-level testing couldn't see (e.g. a dependency version pinned
+differently in the built image than in the local test environment).
+
+If deploy fails -- either the eval gate blocking (per cicd_gating_
+system_design.html's blocked-deploy scenario) or the blue-green cutover
+itself failing -- the PREVIOUS, already-deployed version remains live
+and fully serving traffic throughout, exactly that lab's core guarantee:
+because blue-green never tears down the old, known-good version until
+the new one has proven itself, a deploy-stage failure here costs
+nothing in terms of production availability, only the time spent
+building and gating the candidate that ultimately wasn't promoted.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write a 3-stage GitHub Actions pipeline from memory with the correct <code class="inline">needs:</code> dependencies, (2) explain the concrete cost argument for lint-then-test-then-build ordering, not just "it feels right," and (3) diagnose a misconfigured pipeline where a later stage runs despite an earlier one having actually failed? This closes out Month 5 Week 3's infra track — multi-stage builds, nginx routing and TLS, worker models, the chat-at-scale system design, sharding/replication applied to eval data, and finally this pipeline, which ties the build stage, the test stage, and (per Problem 5) the eval-gated deploy from <code class="inline">backend/cicd_gating_system_design.html</code> into one real, ordered whole.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — cicd pipeline basics.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: PIPELINE RUN DEMO */
+(function(){
+  var healthyBtn = document.getElementById("ci-healthy");
+  var brokenBtn = document.getElementById("ci-broken");
+  var resetBtn = document.getElementById("ci-reset");
+  var logEl = document.getElementById("ci-log");
+  var stLint = document.getElementById("st-lint");
+  var stTest = document.getElementById("st-test");
+  var stBuild = document.getElementById("st-build");
+  var tmLint = document.getElementById("tm-lint");
+  var tmTest = document.getElementById("tm-test");
+  var tmBuild = document.getElementById("tm-build");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetStages(){
+    [stLint, stTest, stBuild].forEach(function(s){ s.className = "stage"; });
+    [tmLint, tmTest, tmBuild].forEach(function(t){ t.textContent = ""; });
+    logEl.innerHTML = "";
+  }
+
+  async function runHealthy(){
+    healthyBtn.disabled = true; brokenBtn.disabled = true;
+    resetStages();
+
+    stLint.classList.add("active");
+    log('<b>Lint:</b> ruff check . && mypy app/ — running...', "lint");
+    await wait(500);
+    stLint.classList.remove("active"); stLint.classList.add("pass");
+    tmLint.textContent = "8s";
+    log('<b style="color:var(--lint-c);">Lint PASSED</b> in 8s. No style or type issues found.', "lint");
+    await wait(400);
+
+    stTest.classList.add("active");
+    log('<b>Test:</b> pytest tests/evals/ -v — running the full eval suite from pytest_evals_practice.html...', "test");
+    await wait(900);
+    stTest.classList.remove("active"); stTest.classList.add("pass");
+    tmTest.textContent = "1m 42s";
+    log('<b style="color:var(--test-c);">Test PASSED</b> in 1m 42s. All deterministic, trajectory, and rubric checks green.', "test");
+    await wait(400);
+
+    stBuild.classList.add("active");
+    log('<b>Build:</b> docker build (multi-stage, per multistage_docker_builds.html) — compiling wheels, assembling the slim runtime image...', "build");
+    await wait(1100);
+    stBuild.classList.remove("active"); stBuild.classList.add("pass");
+    tmBuild.textContent = "4m 15s";
+    log('<b style="color:var(--build-c);">Build PASSED</b> in 4m 15s. Image pushed: namespacelab-api:a1b2c3d. Ready for the deploy stage.', "build");
+
+    healthyBtn.disabled = false; brokenBtn.disabled = false;
+  }
+
+  async function runBroken(){
+    healthyBtn.disabled = true; brokenBtn.disabled = true;
+    resetStages();
+
+    stLint.classList.add("active");
+    log('<b>Lint:</b> ruff check . && mypy app/ — running...', "lint");
+    await wait(500);
+    stLint.classList.remove("active"); stLint.classList.add("blocked");
+    tmLint.textContent = "6s";
+    log('<b style="color:var(--bad-c);">Lint FAILED</b> in 6s — app/handlers.py:14: F401 "json" imported but unused.', "bad");
+    await wait(400);
+
+    stTest.classList.add("skipped");
+    tmTest.textContent = "skipped";
+    log('<b>Test:</b> SKIPPED — needs: lint was not satisfied. Zero test compute spent.', "bad");
+    await wait(300);
+
+    stBuild.classList.add("skipped");
+    tmBuild.textContent = "skipped";
+    log('<b>Build:</b> SKIPPED — needs: test was never satisfied either, since test itself never ran. Zero build compute spent.', "bad");
+    await wait(300);
+
+    log('<b style="color:var(--bad-c);">Pipeline rejected in 6 seconds total.</b> Compare to the healthy run\'s ~6 minutes — this is section 2\'s fail-fast argument made concrete: a trivial, cheap-to-catch mistake never got anywhere near the expensive test or build stages.');
+
+    healthyBtn.disabled = false; brokenBtn.disabled = false;
+  }
+
+  healthyBtn.addEventListener("click", runHealthy);
+  brokenBtn.addEventListener("click", runBroken);
+  resetBtn.addEventListener("click", function(){
+    resetStages();
+    healthyBtn.disabled = false; brokenBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Uvicorn &amp; Gunicorn Workers</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --sync-c:#ff8a65; --async-c:#7fd8a0; --event-c:#4fc3f7; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--sync-c); color:var(--sync-c); background:rgba(255,138,101,0.08);}
+  .pipe-label.b{border-color:var(--async-c); color:var(--async-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--event-c); color:var(--event-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.sync{border-left-color:var(--sync-c); background:rgba(255,138,101,0.06);}
+  .log .line.async{border-left-color:var(--async-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* worker queue visualization */
+  .worker-grid{display:flex; gap:1.4rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .worker-col{flex:1; min-width:260px;}
+  .worker-col h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .worker-col.sync h4{color:var(--sync-c);}
+  .worker-col.async h4{color:var(--async-c);}
+  .worker-box{border:1.5px solid var(--rule); border-radius:10px; padding:0.8rem; margin-bottom:0.6rem; background:var(--panel-2);}
+  .worker-box .wname{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-bottom:0.5rem;}
+  .req-dot{display:inline-block; width:14px; height:14px; border-radius:50%; margin:2px; background:var(--rule); transition:background .3s ease, transform .3s ease;}
+  .req-dot.busy{background:var(--sync-c); transform:scale(1.15);}
+  .req-dot.waiting{background:var(--bad-c); opacity:0.6;}
+  .req-dot.active{background:var(--async-c); transform:scale(1.15);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--sync-c);} .dc-col.a h4{color:var(--sync-c);}
+  .dc-col.b{border-color:var(--async-c);} .dc-col.b h4{color:var(--async-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.sync{border-left-color:var(--sync-c); background:rgba(255,138,101,0.06);} .callout.sync b{color:var(--sync-c);}
+  .callout.async{border-left-color:var(--async-c); background:rgba(127,216,160,0.06);} .callout.async b{color:var(--async-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · UVICORN &amp; GUNICORN WORKERS</div>
+  <h1>A sync worker holds a request hostage. An async worker just waits somewhere else for a moment.</h1>
+  <p class="lede">Gunicorn's traditional sync workers handle exactly one request at a time — the process is BLOCKED, doing nothing else, for the entire duration of that request, so concurrency comes only from running many worker PROCESSES. Uvicorn workers (run via Gunicorn as a process manager, using Uvicorn's ASGI worker class) handle many concurrent requests inside a SINGLE worker process, using the asyncio event loop this month's Month 1 labs already covered. This lab shows the real Gunicorn commands for both, and works through the actual worker-count heuristics.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Sync workers — one request per process, blocking</div>
+    <div class="pipe-label b">Async (Uvicorn) workers — many requests per process, event loop</div>
+    <div class="pipe-label c">Worker count depends on CPU-bound vs I/O-bound, per Month 1's GIL labs</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="models">1 · Sync vs Async Worker Models</a>
+  <a data-target="count">2 · How Many Workers to Run</a>
+  <a data-target="live">3 · Watching Both Handle the Same Burst of Requests</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SYNC VS ASYNC WORKERS ============ -->
+<section id="models">
+  <div class="kicker">01 — One process handling one request at a time, versus one process juggling many</div>
+  <h2>Sync vs async worker models</h2>
+
+  <p><strong>Start here, before any commands.</strong> Think about two different ways a single bank teller could handle customers. Model one: the teller helps ONE customer completely, start to finish — including the slow parts, like waiting for a manager's approval that takes several minutes — before even looking at the next person in line, no matter how long that approval takes. To serve more customers at once, the bank needs to open more TELLER WINDOWS, each staffed by its own teller. Model two: a single teller who, the moment they submit a request that needs a slow manager approval, immediately moves on to help the NEXT customer while that approval is pending, circling back to the first customer the instant their approval comes through. One teller, handling many customers' requests concurrently, by never sitting idle waiting on any single one.</p>
+
+  <p>Gunicorn's traditional <strong>sync workers</strong> are model one. Each sync worker process handles exactly one request at a time, completely blocked for that request's full duration — including any time spent waiting on a slow database query, an external API call, or anything else that isn't pure CPU work. To serve N requests concurrently, a sync-worker deployment needs roughly N separate WORKER PROCESSES, each one a full OS process with its own memory.</p>
+
+  <p><strong>Uvicorn workers</strong> — Uvicorn's ASGI-compatible worker class, run under Gunicorn as the process manager — are model two, directly building on <code class="inline">python/asyncio_fundamentals.html</code>'s exact event loop mechanics. A single Uvicorn worker process runs one asyncio event loop, and when a request handler hits an <code class="inline">await</code> (a database query, an HTTP call to another service, anything I/O-bound), the event loop doesn't block — it suspends that specific request's coroutine and moves on to service other requests' coroutines that are ready to make progress, coming back to the suspended one once its I/O completes. One process, genuinely handling many concurrent in-flight requests, exactly the way <code class="inline">asyncio_fundamentals.html</code>'s event loop juggled many coroutines on one thread.</p>
+
+  <div class="code"><span class="c-cmt"># SYNC workers — Gunicorn's default worker class, no event loop involved
+# each of these 5 processes can only ever be doing ONE request at a time</span>
+gunicorn app.main:app --workers 5 --worker-class sync --bind 0.0.0.0:8000
+
+<span class="c-cmt"># ASYNC (Uvicorn) workers — Gunicorn manages the PROCESSES,
+# Uvicorn's worker class runs an asyncio event loop INSIDE each one</span>
+gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000</div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Sync worker</h4>
+      <p>One request per process, full stop, for the request's entire duration — even the parts spent waiting on I/O with nothing to do. Concurrency = number of worker PROCESSES. Simple to reason about; a slow request only blocks that one process, not others. But scaling concurrency means spawning more OS processes, each with real memory overhead.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Async (Uvicorn) worker</h4>
+      <p>Many requests per process, interleaved on one asyncio event loop — a request awaiting I/O yields the loop to other pending work instead of blocking it. Concurrency = however many coroutines the event loop can juggle, which for I/O-bound work is often far more than one process could serve under the sync model. But a CPU-bound handler that never <code class="inline">await</code>s blocks the ENTIRE event loop — every other in-flight request in that process stalls too, exactly <code class="inline">python/the_gil.html</code>'s warning about CPU-bound work starving an event loop.</p>
+    </div>
+  </div>
+
+  <div class="callout sync"><b>Interview-ready definition:</b> a sync worker (Gunicorn's traditional model) handles exactly one request per worker process for that request's full duration, including idle time spent waiting on I/O, so achieving concurrency requires running many separate worker processes. An async worker (Uvicorn, run under Gunicorn as the process manager) runs an asyncio event loop inside a single process and handles many requests concurrently by suspending a request's coroutine at each <code class="inline">await</code> point and resuming other ready coroutines in the meantime — directly reusing <code class="inline">python/asyncio_fundamentals.html</code>'s cooperative-scheduling model, now applied at the level of an entire web server's request-handling, not just a single script's coroutines.</div>
+</section>
+
+<!-- ============ SECTION 2: HOW MANY WORKERS ============ -->
+<section id="count">
+  <div class="kicker">02 — The heuristic differs because the two models scale concurrency completely differently</div>
+  <h2>How many workers to run</h2>
+
+  <p><strong>Start here, before the formula.</strong> Back at the bank: the "many teller windows" model (sync) genuinely needs roughly one window per customer being served at once — the number of windows IS the concurrency limit, so the bank sizes it around how many CPUs (tellers) it actually has available to keep busy. The "one multitasking teller" model (async) doesn't need nearly as many tellers, because ONE teller juggling many pending approvals can serve far more customers concurrently than one teller ever could under the first model — adding a second multitasking teller helps mainly for using a SECOND CPU core, not for handling more concurrent waiting.</p>
+
+  <p>For <strong>sync workers</strong>, the common heuristic, straight from Gunicorn's own documentation, is <code class="inline">(2 × number_of_cpu_cores) + 1</code>. The reasoning: since each sync worker blocks completely during I/O wait time (not just CPU time), having somewhat MORE workers than CPU cores lets the OS schedule a different worker onto a core while one worker is blocked on I/O rather than actually computing — squeezing a bit of extra overlap out of I/O-bound blocking time, without so many workers that they mostly just contend for the same limited CPU cores. This directly reuses <code class="inline">python/the_gil.html</code>'s distinction: sync workers scale like separate OS PROCESSES (each with its own Python interpreter, its own GIL, genuinely running in parallel across cores) — the same reasoning that lab gave for why CPU-bound work benefits from multiprocessing over threading.</p>
+
+  <div class="code"><span class="c-cmt"># sync worker count heuristic: (2 x CPU cores) + 1
+# example: a 4-core machine</span>
+gunicorn app.main:app --workers 9 --worker-class sync
+<span class="c-cmt"># (2 * 4) + 1 = 9</span></div>
+
+  <p>For <strong>async (Uvicorn) workers</strong>, fewer are usually needed, because a SINGLE worker's event loop can already hold many concurrent I/O-bound requests in flight — the ceiling isn't "one worker per concurrent request" the way sync workers are. A common starting heuristic instead ties worker count to CPU core count directly (often just <code class="inline">number_of_cpu_cores</code>, sometimes <code class="inline">(2 × cores) + 1</code> as an upper bound), because each Uvicorn worker is still bound by Python's GIL — one process, one interpreter, and CPU-bound work inside that process still can't run in true parallel across multiple cores within a SINGLE worker. Running one Uvicorn worker per CPU core is what actually gets you real, GIL-bypassing parallelism, exactly <code class="inline">python/the_gil.html</code>'s multiprocessing argument, while EACH of those per-core workers separately handles high I/O-bound concurrency via its own event loop.</p>
+
+  <div class="code"><span class="c-cmt"># async worker count heuristic: closer to CPU core count directly
+# example: same 4-core machine, I/O-bound workload (typical API)</span>
+gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker
+<span class="c-cmt"># each of these 4 processes independently handles many concurrent
+# in-flight requests via its own event loop -- concurrency comes from
+# the event loop, not from spawning more processes</span></div>
+
+  <p>The deciding factor in both cases is exactly <code class="inline">python/the_gil.html</code>'s CPU-bound vs I/O-bound split. A workload that's mostly I/O-bound (waiting on a database, waiting on an external LLM API call, waiting on another microservice) benefits enormously from the async model's ability to overlap many waits within one process — this is the common case for a typical backend API. A workload that's genuinely CPU-bound (heavy in-process computation, like image processing or numeric work with no I/O in between) gets comparatively little benefit from more concurrency within one event loop, since a CPU-bound handler blocks the WHOLE loop while it runs — for that workload, more PROCESSES (via multiprocessing, or simply more Uvicorn workers up to the core count) is what actually helps, not a more clever single-process concurrency model.</p>
+
+  <table class="cmp">
+    <tr><th>Workload shape</th><th>Best fit</th><th>Why</th></tr>
+    <tr><td>I/O-bound (typical API: DB calls, external HTTP, LLM calls)</td><td>Uvicorn (async) workers, count ≈ CPU cores</td><td>One event loop per worker overlaps many concurrent waits; more processes mainly buys parallel CPU cores, not more overlap</td></tr>
+    <tr><td>CPU-bound (heavy in-process compute, minimal I/O)</td><td>Sync workers (or async workers offloading compute to a process pool), count ≈ (2×cores)+1</td><td>A CPU-bound handler blocks an entire event loop; true parallelism needs separate processes/GILs, per <code class="inline">the_gil.html</code></td></tr>
+  </table>
+
+  <div class="callout async"><b>Interview-ready definition:</b> the sync-worker heuristic <code class="inline">(2 × CPU cores) + 1</code> sizes worker count around overlapping I/O-blocked processes with CPU-available ones, since each sync worker fully blocks during I/O wait. The async-worker heuristic ties worker count closer to CPU core count directly, since a single Uvicorn worker's event loop already provides high I/O concurrency within one process — adding more workers beyond the core count mainly helps CPU-bound work escape the GIL's single-process limitation (per <code class="inline">python/the_gil.html</code>), not I/O-bound concurrency, which the event loop already handles. The right number in either case is ultimately a function of whether the workload is I/O-bound (favors fewer, async workers) or CPU-bound (favors more processes, sync or otherwise), not a single universal formula.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE COMPARISON ============ -->
+<section id="live">
+  <div class="kicker">03 — The same 8 concurrent I/O-bound requests, two worker models, watch what happens</div>
+  <h2>Watching both handle the same burst of requests</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, 8 concurrent requests arrive, each needing 800ms of I/O wait (a database call) and almost no CPU time. Run them against 2 sync workers, then against 2 Uvicorn (async) workers, and watch how differently each model absorbs the burst.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>8 CONCURRENT I/O-BOUND REQUESTS — 2 WORKER PROCESSES EITHER WAY</span>
+      <div><button class="btn secondary" id="wk-reset">Reset</button></div>
+    </div>
+    <div style="display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn secondary" id="wk-sync">Run with 2 sync workers ▸</button>
+      <button class="btn" id="wk-async">Run with 2 Uvicorn (async) workers ▸</button>
+    </div>
+    <div class="worker-grid" id="worker-grid">
+      <div class="worker-col sync">
+        <h4>2 sync workers</h4>
+        <div class="worker-box"><div class="wname">worker-1 (blocking)</div><div id="sync-w1"></div></div>
+        <div class="worker-box"><div class="wname">worker-2 (blocking)</div><div id="sync-w2"></div></div>
+      </div>
+      <div class="worker-col async">
+        <h4>2 Uvicorn (async) workers</h4>
+        <div class="worker-box"><div class="wname">worker-1 (event loop)</div><div id="async-w1"></div></div>
+        <div class="worker-box"><div class="wname">worker-2 (event loop)</div><div id="async-w2"></div></div>
+      </div>
+    </div>
+    <div class="log" id="wk-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> with 2 sync workers, only 2 of the 8 requests can be "in progress" at any moment — the other 6 sit queued, genuinely waiting for a worker process to free up, even though every one of those 8 requests spends almost all its time just waiting on I/O, not computing. With 2 Uvicorn workers, each worker's event loop happily holds 4 requests concurrently in flight (suspended on <code class="inline">await</code>), so all 8 requests make progress at roughly the same time — the same total I/O work, finished far sooner, using the exact same 2 processes.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Applying the sync heuristic to a specific machine</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A production server has 8 CPU cores. Using section 2's sync-worker heuristic, how many sync workers should it run, and why does the formula add "+1" rather than using exactly <code class="inline">2 × cores</code>?</p>
+    <details><summary>Show solution</summary><div class="solution">(2 * 8) + 1 = 17 sync workers. The "+1" is a small, deliberate buffer
+beyond the doubled-core count -- with exactly 2x cores worth of workers,
+every core could in principle be fully saturated by CPU-bound work from
+two workers simultaneously scheduled on it, leaving zero slack for the
+brief moments when a currently-scheduled worker's request needs the CPU
+to, say, serialize a response, while another I/O-blocked worker becomes
+ready to run at the exact same instant. The extra +1 worker gives the
+OS scheduler one additional worker to slot in during exactly that kind
+of brief overlap, without meaningfully changing the total worker
+count's memory or resource cost. It is a small empirical safety margin
+from Gunicorn's own documented guidance, not a value derived from a
+precise mathematical argument -- the core insight (roughly double the
+CPU count, to overlap I/O-blocked workers with CPU-available ones) is
+what matters more than the exact "+1".</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a CPU-bound handler accidentally deployed with async workers</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team deploys a genuinely CPU-heavy endpoint (parsing and transforming a large file, no I/O at all) behind 4 Uvicorn workers. Under load, they observe that ALL requests to that endpoint — even ones that arrived seconds apart — seem to complete in a tight cluster, one after another, rather than overlapping at all. Using section 1's event loop model, explain why.</p>
+    <details><summary>Show solution</summary><div class="solution">A CPU-bound handler with no await points inside it never yields control
+back to the event loop -- per section 1's core mechanic, the event loop
+only gets a chance to switch to a DIFFERENT pending coroutine at an
+await point; a synchronous, CPU-heavy block of code running inside an
+async handler runs to completion on that ONE process's single thread
+before the event loop can service anything else AT ALL, including
+requests that arrived and were technically "waiting" the entire time.
+
+So within any ONE of the 4 Uvicorn workers, if multiple CPU-heavy
+requests land on it, they execute strictly SEQUENTIALLY, one fully
+blocking the event loop before the next can even start being processed
+-- exactly the "tight cluster, one after another" behavior observed,
+even though from the outside it looks like these 4 processes should
+provide real concurrency. The fix isn't more Uvicorn workers (that
+mainly helps I/O-bound work, per section 2) -- it's either moving the
+CPU-heavy work to a separate process pool (e.g. via
+asyncio.to_thread or a background worker queue, keeping the event loop
+itself free to keep servicing other requests) or, if the entire
+endpoint really is CPU-bound with no I/O to overlap, reconsidering
+whether sync workers (section 1's dc-compare) or a dedicated
+multiprocessing-based worker pool is actually the better fit for that
+SPECIFIC endpoint's workload, even if the rest of the API is
+genuinely I/O-bound and well-served by the async model.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing worker counts for a mixed I/O-bound and CPU-bound service</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service has two kinds of endpoints on the same deployment: most are typical I/O-bound API calls (DB reads, external calls), but one specific endpoint does meaningful CPU-bound image processing. Using section 2's reasoning, propose an architecture — not just a worker count — that serves both well.</p>
+    <details><summary>Show solution</summary><div class="solution">A single worker-count choice can't actually serve both workload shapes
+well at once -- this is precisely why the right answer is architectural
+separation, not a compromise number. Run the typical I/O-bound
+endpoints behind Uvicorn (async) workers, sized near the CPU core
+count per section 2's I/O-bound heuristic, getting the high I/O
+concurrency this workload benefits from. For the CPU-bound image
+processing endpoint specifically, offload that work OUT of the async
+event loop entirely -- either to a separate process pool
+(asyncio.to_thread or multiprocessing, keeping the CPU-heavy work off
+the shared event loop so it doesn't stall unrelated I/O-bound requests,
+directly avoiding Problem 2's exact bug) or, more robustly at scale, to
+an entirely separate background job queue/worker fleet (per
+backend/async_tool_job_queue_design.html's pattern) that the API
+endpoint enqueues work to and returns a job ID from, rather than
+processing the image synchronously within the request/response cycle
+at all.
+
+The general principle this illustrates: worker-count heuristics
+(section 2) answer "how many workers for a GIVEN, roughly uniform
+workload shape" -- they don't resolve the deeper problem of mixing
+fundamentally different workload shapes (I/O-bound vs CPU-bound) behind
+the SAME worker pool. A service with genuinely mixed workloads is
+usually better served by separating them into different deployments or
+offloading the CPU-heavy piece elsewhere than by picking one worker
+count and hoping it works reasonably for both.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about what a crashed sync worker versus a crashed async worker takes down</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If one sync worker process crashes mid-request, how many in-flight requests are lost? If one Uvicorn (async) worker process crashes mid-request, how many in-flight requests are lost? Explain the difference using each model's concurrency mechanism.</p>
+    <details><summary>Show solution</summary><div class="solution">A crashed sync worker loses exactly ONE in-flight request -- per
+section 1's model, a sync worker was only ever handling one request at
+the moment it crashed, so exactly that one request fails (typically
+with a connection reset the client sees), while every OTHER sync
+worker process is completely unaffected, since each is a fully
+independent OS process with no shared state.
+
+A crashed Uvicorn (async) worker loses potentially MANY in-flight
+requests at once -- however many coroutines that worker's single event
+loop happened to be juggling concurrently at the moment of the crash
+(per section 3's demo, this could be several requests all suspended
+mid-await simultaneously within one process). This is a real,
+concrete trade-off of the async model's efficiency: packing many
+concurrent requests into one process means a single process failure has
+a larger blast radius than the sync model's "one process, one request"
+isolation. This is one reason a production async deployment still runs
+MULTIPLE Uvicorn worker processes (section 2's count ≈ CPU cores) rather
+than just one -- not only for using multiple CPU cores, but also so a
+single worker crash doesn't take down every single in-flight request
+across the entire service at once, only the subset that happened to be
+on that one worker.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting worker count to nginx's upstream config</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">evals-and-observability/nginx_reverse_proxy.html</code>'s <code class="inline">upstream</code> block, which listed 2 separate app server IPs, how does that relate to THIS lab's worker-count decision — are those 2 upstream entries the same thing as 2 Gunicorn workers, or a different layer of scaling entirely?</p>
+    <details><summary>Show solution</summary><div class="solution">Different, complementary layer of scaling -- worth being precise about
+the distinction. nginx_reverse_proxy.html's upstream block lists 2
+separate MACHINES (or containers) -- 10.0.1.10:8000 and 10.0.1.11:8000
+-- each one an entirely separate host running its OWN Gunicorn process
+(or process manager), which in turn runs its OWN set of workers sized
+per THIS lab's section 2 heuristics. So the real picture is nested:
+nginx load-balances across N separate app server INSTANCES (horizontal
+scaling across machines, per systems/vertical_vs_horizontal_scaling.
+html), and each of those N instances independently runs however many
+Gunicorn workers section 2's heuristic recommends for ITS OWN CPU core
+count.
+
+Total request-handling capacity is therefore roughly (number of
+upstream instances) x (workers per instance), not just one number or
+the other. This also means the TWO layers get scaled for different
+reasons and by different mechanisms: adding more upstream instances in
+nginx's config is how you scale ACROSS machines (more total CPU cores
+available system-wide, plus redundancy if one whole instance goes
+down), while tuning the worker count WITHIN one instance (this lab's
+whole subject) is how you make the BEST use of the cores that single
+machine already has. Getting one right without the other leaves
+capacity on the table either way -- e.g. 2 well-tuned app server
+instances each criminally under-provisioned on workers still
+underperforms relative to those same 2 instances correctly sized per
+section 2's heuristics.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain precisely why a sync worker's concurrency scales with process count while an async worker's scales within one process, (2) state and justify both worker-count heuristics, and (3) diagnose why a CPU-bound handler stalls an entire async worker's other in-flight requests? <code class="inline">backend/chat_app_at_scale_design.html</code> picks this up next — a system design where LONG-LIVED, persistent connections (not short request/response cycles) make the worker-model choice matter even more.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — uvicorn and gunicorn workers.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: WORKER MODEL COMPARISON */
+(function(){
+  var syncBtn = document.getElementById("wk-sync");
+  var asyncBtn = document.getElementById("wk-async");
+  var resetBtn = document.getElementById("wk-reset");
+  var logEl = document.getElementById("wk-log");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetDots(){
+    ["sync-w1","sync-w2","async-w1","async-w2"].forEach(function(id){
+      document.getElementById(id).innerHTML = "";
+    });
+  }
+
+  function addDot(containerId, cls){
+    var dot = document.createElement("span");
+    dot.className = "req-dot " + cls;
+    document.getElementById(containerId).appendChild(dot);
+    return dot;
+  }
+
+  async function runSync(){
+    syncBtn.disabled = true; asyncBtn.disabled = true;
+    logEl.innerHTML = ""; resetDots();
+    log('<b>8 requests arrive at once.</b> Only 2 sync workers exist — 2 can start immediately, 6 must queue.', "sync");
+
+    var reqs = [];
+    for(var i=0;i<8;i++){ reqs.push(addDot("sync-w1", "")); }
+    // reassign: first 2 go active in w1/w2, rest wait visually in a shared queue row
+    document.getElementById("sync-w1").innerHTML = "";
+    document.getElementById("sync-w2").innerHTML = "";
+    var queueDots = [];
+    for(var q=0;q<6;q++){ queueDots.push(addDot("sync-w2", "waiting")); }
+    document.getElementById("sync-w2").innerHTML = "";
+    for(var q2=0;q2<6;q2++){ queueDots.push(addDot("sync-w2", "waiting")); }
+
+    var w1dot = addDot("sync-w1", "busy");
+    var w2dot = addDot("sync-w2", "busy");
+    await wait(300);
+    log('<b>worker-1</b> and <b>worker-2</b> each pick up ONE request, fully blocked for 800ms of I/O wait. 6 requests still queued, untouched.', "sync");
+    await wait(900);
+
+    w1dot.className = "req-dot"; w2dot.className = "req-dot";
+    log('<b>t=900ms:</b> first 2 requests complete. Workers free up, immediately pick up requests 3 and 4.', "sync");
+    var w1dot2 = addDot("sync-w1", "busy");
+    var w2dot2 = addDot("sync-w2", "busy");
+    await wait(900);
+    log('<b>t=1800ms:</b> requests 3 and 4 complete. Workers pick up requests 5 and 6.', "sync");
+    var w1dot3 = addDot("sync-w1", "busy");
+    var w2dot3 = addDot("sync-w2", "busy");
+    await wait(900);
+    log('<b>t=2700ms:</b> requests 5 and 6 complete. Workers pick up the final 2, requests 7 and 8.', "sync");
+    await wait(900);
+    log('<b style="color:var(--sync-c);">All 8 complete at ~3600ms.</b> 2 sync workers could only ever serve 2 requests at once — the other 6 spent most of their time simply queued, even though every request was almost entirely I/O wait, not CPU work.', "bad");
+
+    syncBtn.disabled = false; asyncBtn.disabled = false;
+  }
+
+  async function runAsync(){
+    syncBtn.disabled = true; asyncBtn.disabled = true;
+    logEl.innerHTML = ""; resetDots();
+    log('<b>8 requests arrive at once.</b> 2 Uvicorn workers, each running its own event loop — no need to queue at the process level.', "async");
+    await wait(300);
+
+    var dots = [];
+    for(var i=0;i<4;i++){ dots.push(addDot("async-w1", "active")); }
+    for(var i2=0;i2<4;i2++){ dots.push(addDot("async-w2", "active")); }
+    log('<b>worker-1\'s event loop</b> accepts 4 requests concurrently — each hits <code class="inline">await db.fetch(...)</code> and suspends, freeing the loop to start the next one almost instantly. Same for <b>worker-2</b>.', "async");
+    await wait(850);
+
+    log('<b>t≈850ms:</b> all 8 requests\' I/O completes at roughly the same time — since none of them ever blocked the event loop, they were all "in flight" concurrently the entire time.', "async");
+    dots.forEach(function(d){ d.className = "req-dot"; });
+    await wait(400);
+    log('<b style="color:var(--async-c);">All 8 complete at ~850ms.</b> Same 2 processes, same total I/O work — but the event loop let all 8 requests overlap their waiting time instead of queuing behind just 2 blocking workers.', "async");
+
+    syncBtn.disabled = false; asyncBtn.disabled = false;
+  }
+
+  syncBtn.addEventListener("click", runSync);
+  asyncBtn.addEventListener("click", runAsync);
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = ""; resetDots();
+    syncBtn.disabled = false; asyncBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

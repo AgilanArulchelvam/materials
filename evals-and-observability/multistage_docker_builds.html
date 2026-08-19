@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Multi-Stage Docker Builds</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --build-c:#f2c14e; --runtime-c:#7fd8a0; --bloat-c:#ff6b6b; --layer-c:#4fc3f7; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--build-c); color:var(--build-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--runtime-c); color:var(--runtime-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--bloat-c); color:var(--bloat-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.build{border-left-color:var(--build-c); background:rgba(242,193,78,0.06);}
+  .log .line.runtime{border-left-color:var(--runtime-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bloat-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* image size bars */
+  .size-compare{display:flex; flex-direction:column; gap:1rem; margin:1.4rem 0;}
+  .size-row{display:flex; align-items:center; gap:1rem;}
+  .size-label{width:200px; flex-shrink:0; font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim);}
+  .size-track{flex:1; height:28px; background:var(--panel-2); border-radius:6px; position:relative; overflow:hidden;}
+  .size-fill{position:absolute; height:100%; border-radius:6px; width:0%; transition:width 1.1s cubic-bezier(.2,.8,.2,1); display:flex; align-items:center; padding-left:0.6rem; color:#12141a; font-size:0.72rem; font-weight:700; font-family:var(--mono); white-space:nowrap;}
+  .size-fill.bloat{background:var(--bloat-c);}
+  .size-fill.slim{background:var(--runtime-c);}
+
+  /* stage diagram */
+  .stage-diagram{display:flex; align-items:stretch; gap:1rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .stage-box{flex:1; min-width:240px; border:1.5px solid; border-radius:12px; padding:1.1rem 1.3rem;}
+  .stage-box.build{border-color:var(--build-c);}
+  .stage-box.build h4{color:var(--build-c);}
+  .stage-box.runtime{border-color:var(--runtime-c);}
+  .stage-box.runtime h4{color:var(--runtime-c);}
+  .stage-box h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .stage-box ul{margin:0; padding-left:1.1rem; font-size:0.85rem; color:#cdd0d8;}
+  .stage-box li{margin:0.3rem 0;}
+  .stage-arrow-mid{display:flex; align-items:center; justify-content:center; font-family:var(--mono); color:var(--ink-dim); font-size:0.8rem; flex-direction:column; gap:0.3rem; min-width:70px;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bloat-c);} .dc-col.a h4{color:var(--bloat-c);}
+  .dc-col.b{border-color:var(--runtime-c);} .dc-col.b h4{color:var(--runtime-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bloat-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bloat-c);}
+  .callout.build{border-left-color:var(--build-c); background:rgba(242,193,78,0.06);} .callout.build b{color:var(--build-c);}
+  .callout.runtime{border-left-color:var(--runtime-c); background:rgba(127,216,160,0.06);} .callout.runtime b{color:var(--runtime-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · MULTI-STAGE DOCKER BUILDS</div>
+  <h1>The compiler that built your app has no business shipping <em>inside</em> it.</h1>
+  <p class="lede">A naive Dockerfile installs gcc, dev headers, and every build tool it needs, compiles the app, and ships ALL of that — compiler included — in the final image. A multi-stage build splits this into two genuinely separate stages: one that has the full build toolchain and produces compiled artifacts, and a second, completely separate final stage that starts from a slim base image and copies over ONLY those artifacts — the compiler, the dev headers, the build cache, never make it into the image that actually runs in production.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Stage 1 — build tools, compilers, dev headers, compiles the app</div>
+    <div class="pipe-label b">Stage 2 — slim base, copies ONLY the compiled output</div>
+    <div class="pipe-label c">1.2GB → 150MB, same app, none of the toolchain shipped</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="stages">1 · Separating Build &amp; Runtime Stages</a>
+  <a data-target="size">2 · Shrinking Image Size, With Real Numbers</a>
+  <a data-target="live">3 · Build Both Versions, Watch the Layers</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SEPARATING STAGES ============ -->
+<section id="stages">
+  <div class="kicker">01 — Why the thing that BUILDS your app shouldn't be the thing that RUNS it</div>
+  <h2>Separating build &amp; runtime stages</h2>
+
+  <p><strong>Start here, before any Dockerfile.</strong> Think about a furniture workshop that ships finished chairs to customers. The workshop itself is full of things a customer's living room has no use for — table saws, sanders, sawdust, half-cut lumber, glue clamps. Nobody would ever ship the ENTIRE WORKSHOP to a customer's house just because the workshop is where the chair got built — you ship only the finished chair. A multi-stage Docker build applies exactly this separation to software: the environment that COMPILES your application (full of compilers, dev headers, build caches, package managers) is not the environment that should RUN it in production. Only the finished, compiled result needs to ship.</p>
+
+  <p>Concretely, a multi-stage Dockerfile declares two (or more) <code class="inline">FROM</code> blocks in the same file, each one a separate, independent stage. The first stage — call it <code class="inline">builder</code> — starts from a full-featured base image with a compiler and build tools, installs whatever's needed to compile the application's dependencies (e.g. Python packages with native C extensions, which need <code class="inline">gcc</code> to build), and produces compiled artifacts, like Python wheels. The second, FINAL stage starts completely fresh from a minimal base image — no compiler, no dev headers — and uses Docker's <code class="inline">COPY --from=builder</code> instruction to pull ONLY the specific compiled artifacts out of the first stage. Everything else in the builder stage — the compiler itself, intermediate build files, package manager caches — simply never exists in the final image, because the final image was never built FROM the builder stage's filesystem, only handed a few specific files copied out of it.</p>
+
+  <div class="code"><span class="c-cmt"># Dockerfile — a real Python app, two genuinely separate stages
+# STAGE 1: "builder" — has the full compiler toolchain</span>
+<span class="c-kw">FROM</span> python:3.12 <span class="c-kw">AS</span> builder
+
+<span class="c-kw">RUN</span> apt-get update <span class="c-kw">&amp;&amp;</span> apt-get install -y --no-install-recommends \
+    gcc python3-dev libpq-dev \
+    <span class="c-cmt"># ^ compiler + dev headers needed to build native-extension wheels</span>
+    <span class="c-kw">&amp;&amp;</span> rm -rf /var/lib/apt/lists/*
+
+<span class="c-kw">WORKDIR</span> /build
+<span class="c-kw">COPY</span> requirements.txt .
+<span class="c-cmt"># compiles every dependency into a wheel file — gcc runs HERE, in this stage only</span>
+<span class="c-kw">RUN</span> pip wheel --no-cache-dir --wheel-dir /build/wheels -r requirements.txt
+
+<span class="c-cmt"># STAGE 2: "runtime" — a completely separate, minimal image
+# note the fresh FROM — this does NOT inherit anything from "builder"</span>
+<span class="c-kw">FROM</span> python:3.12-slim <span class="c-kw">AS</span> runtime
+
+<span class="c-kw">WORKDIR</span> /app
+<span class="c-cmt"># pull ONLY the compiled wheels out of the builder stage by name</span>
+<span class="c-kw">COPY</span> --from=builder /build/wheels /wheels
+<span class="c-kw">RUN</span> pip install --no-cache-dir /wheels/*.whl <span class="c-kw">&amp;&amp;</span> rm -rf /wheels
+
+<span class="c-cmt"># application code, never touched by the build toolchain at all</span>
+<span class="c-kw">COPY</span> . .
+
+<span class="c-cmt"># gcc, python3-dev, libpq-dev, the pip cache, apt's package lists --
+# NONE of it exists anywhere in this final image. It was never FROM builder.</span>
+<span class="c-kw">CMD</span> [<span class="c-str">"uvicorn"</span>, <span class="c-str">"app.main:app"</span>, <span class="c-str">"--host"</span>, <span class="c-str">"0.0.0.0"</span>]</div>
+
+  <div class="stage-diagram">
+    <div class="stage-box build">
+      <h4>Stage 1 — builder</h4>
+      <ul>
+        <li>Full Python image + gcc, dev headers</li>
+        <li>Compiles dependencies into wheels</li>
+        <li>Build cache, intermediate files, apt lists</li>
+        <li><strong>Discarded entirely</strong> once the final image is built</li>
+      </ul>
+    </div>
+    <div class="stage-arrow-mid">COPY --from=builder<br>↳ only /build/wheels ↴</div>
+    <div class="stage-box runtime">
+      <h4>Stage 2 — runtime (this is what ships)</h4>
+      <ul>
+        <li><code class="inline">python:3.12-slim</code> — no compiler at all</li>
+        <li>Installs the already-compiled wheels</li>
+        <li>Application code</li>
+        <li><strong>This exact filesystem is what runs in production</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout build"><b>Interview-ready definition:</b> a multi-stage Docker build declares two or more independent <code class="inline">FROM</code> blocks in one Dockerfile — an earlier "build" stage that includes the full toolchain needed to compile the application (compilers, dev headers, package managers) and produces compiled artifacts, and a later, separate "runtime" stage that starts fresh from a minimal base image and uses <code class="inline">COPY --from=&lt;stage&gt;</code> to pull in ONLY the specific compiled outputs it actually needs. Because the final stage is never built FROM the build stage's filesystem — it only copies a few named files out of it — none of the build stage's toolchain, intermediate files, or caches exist in the image that ships to production, even though that toolchain was absolutely necessary to PRODUCE the artifacts the final image runs.</div>
+</section>
+
+<!-- ============ SECTION 2: SHRINKING IMAGE SIZE ============ -->
+<section id="size">
+  <div class="kicker">02 — What a 1.2GB image costs you that a 150MB image doesn't</div>
+  <h2>Shrinking image size, with real numbers</h2>
+
+  <p><strong>Start here, before the numbers.</strong> Think about the difference between mailing someone a fully-stocked toolshed versus mailing them just the one finished birdhouse they asked for. Both technically "contain" the birdhouse. But the toolshed is heavier to ship, costs more, takes longer to arrive, and gives a thief who intercepts the package a lot more to work with than the birdhouse alone would. A bloated Docker image is the toolshed; a multi-stage-built image is just the birdhouse.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME APPLICATION, TWO BUILD STRATEGIES</span></div>
+    <div class="size-compare">
+      <div class="size-row">
+        <div class="size-label">Single-stage (naive)</div>
+        <div class="size-track"><div class="size-fill bloat" id="fill-naive"></div></div>
+      </div>
+      <div class="size-row">
+        <div class="size-label">Multi-stage (section 1's Dockerfile)</div>
+        <div class="size-track"><div class="size-fill slim" id="fill-multi"></div></div>
+      </div>
+    </div>
+    <button class="btn" id="size-run">Build both images ▸</button>
+    <div class="log" id="size-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>What's inside</th><th>Single-stage (naive)</th><th>Multi-stage (section 1)</th></tr>
+    <tr><td>Base image</td><td><code>python:3.12</code> (~1GB before app code)</td><td><code>python:3.12-slim</code> (~150MB before app code)</td></tr>
+    <tr><td>gcc, python3-dev, libpq-dev</td><td>Present — needed to build, never removed</td><td>Absent — existed only in the discarded builder stage</td></tr>
+    <tr><td>pip build cache, apt package lists</td><td>Present — leftover from the install/compile steps</td><td>Absent — never copied into the runtime stage</td></tr>
+    <tr><td>Compiled wheels + app code</td><td>Present</td><td>Present — the only thing actually needed</td></tr>
+    <tr><td>Approximate final size</td><td>~1.2GB</td><td>~150MB</td></tr>
+  </table>
+
+  <p>Why this difference actually matters in production, beyond just "smaller is tidier":</p>
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>1.2GB image — what it costs</h4>
+      <p>Slower to <code class="inline">docker pull</code> on every deploy and every new node that joins a cluster — at scale, this adds real minutes to rollout time. A larger attack surface: gcc, dev headers, and apt package lists are all things a compromised container could potentially use, and CVE scanners flag vulnerabilities in packages that were never even needed at runtime. Higher registry storage cost and higher network transfer cost, multiplied across every image push and every node pull.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>150MB image — what you get back</h4>
+      <p>Pulls in a fraction of the time — meaningfully faster autoscaling and faster rollback if a blue-green flip (per <code class="inline">backend/cicd_gating_system_design.html</code>) needs the new image pulled onto fresh nodes quickly. A smaller attack surface — no compiler sitting in a container an attacker might otherwise be able to abuse to build and run malicious code in-place. Lower storage and transfer cost, which compounds across every build in a CI pipeline that publishes many images per day.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> shrinking image size via multi-stage builds means excluding an application's build-time-only dependencies (compilers, dev headers, build caches) from the image that actually runs in production, since those dependencies were necessary to PRODUCE the compiled artifacts but serve no purpose at runtime. This matters at scale for three concrete reasons: faster image pulls (directly affecting deploy and autoscaling speed), a smaller attack surface (fewer packages that could contain exploitable vulnerabilities or be abused if the container is compromised), and lower storage/transfer cost, all of which compound across every deploy, every autoscaled node, and every CI build in a real production system.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE BUILD ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching each Dockerfile's layers actually get built</div>
+  <h2>Build both versions, watch the layers</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, both Dockerfiles from section 1's comparison "build" layer by layer. Watch which layers exist ONLY in the naive version's final image, and which ones the multi-stage version discards entirely once the final <code class="inline">COPY --from=builder</code> step runs.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>DOCKER BUILD — LAYER BY LAYER</span>
+      <div><button class="btn secondary" id="build-reset">Reset</button></div>
+    </div>
+    <div style="display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn secondary" id="build-naive">Build single-stage (naive) ▸</button>
+      <button class="btn" id="build-multi">Build multi-stage ▸</button>
+    </div>
+    <div class="log" id="build-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the naive build's log ends with gcc, dev headers, and pip's build cache still sitting in the final image layers — nothing ever removes them, because there IS no separate final stage to leave them out of. The multi-stage build's log shows the exact same compile step happening in Stage 1, but the final image's layer list, built from Stage 2, never mentions gcc or dev headers at all — they were real, necessary work, just work that happened in a stage the final image was never built from.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing exactly what COPY --from=builder does and doesn't bring across</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's Dockerfile runs <code class="inline">COPY --from=builder /build/wheels /wheels</code> in the runtime stage. Precisely: does this instruction also bring gcc, or python3-dev, or the apt package cache into the runtime stage's filesystem? Explain exactly why or why not, in terms of what <code class="inline">COPY --from</code> actually does.</p>
+    <details><summary>Show solution</summary><div class="solution">No -- COPY --from=builder brings across ONLY the specific path named in
+the instruction (/build/wheels here), copied as files into the runtime
+stage's own filesystem. It does not "merge" the builder stage's
+filesystem into the runtime stage, and it does not bring across
+anything installed elsewhere in the builder stage (gcc, python3-dev,
+libpq-dev, apt's package lists) unless a COPY --from instruction
+explicitly names that specific path too.
+
+The runtime stage's FROM python:3.12-slim line starts it from a
+completely fresh, minimal filesystem -- the builder stage's filesystem
+never becomes the runtime stage's filesystem, or even a layer within
+it. COPY --from is best understood as "reach into a different, already-
+built stage and copy specific named files out of it into THIS stage,"
+the same mental model as copying a few files off a USB drive rather
+than cloning the entire drive. Anything in the builder stage not
+explicitly named in a COPY --from instruction simply never exists in
+the runtime stage at all -- which is exactly the mechanism that makes
+gcc, dev headers, and the apt cache disappear from the final image
+without any explicit "uninstall" or cleanup step being necessary.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding whether the app's source code should be COPY'd in the builder or runtime stage</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's Dockerfile does <code class="inline">COPY . .</code> (the application's own source code) in the RUNTIME stage, not the builder stage. Would it be functionally wrong to instead copy the source code into the builder stage and then <code class="inline">COPY --from=builder</code> it into the runtime stage alongside the wheels? What's the practical downside of doing it that way?</p>
+    <details><summary>Show solution</summary><div class="solution">It wouldn't be functionally WRONG in the sense of producing a broken
+image -- the app code would still end up in the runtime stage's
+filesystem either way, and the final running container would behave
+identically. But it's a worse design for a concrete, practical reason
+connected to Docker's LAYER CACHING: Docker caches each instruction's
+resulting layer, and reuses a cached layer on a later build as long as
+nothing that instruction depends on has changed. Application source
+code changes far more often than dependency lists (requirements.txt)
+do -- during normal development, nearly every commit touches source code
+but only occasionally touches dependencies.
+
+If source code were copied into the builder stage BEFORE the
+pip wheel compile step, then every single source code change would
+invalidate Docker's cache for that COPY instruction and everything
+after it in that stage -- forcing gcc to recompile every dependency's
+wheel from scratch on every build, even though the dependencies
+themselves didn't change at all. Keeping COPY requirements.txt +
+the wheel-building RUN early in the builder stage, and only copying
+application source code in the RUNTIME stage (or late in the builder
+stage, after the expensive compile step), means changing application
+code never invalidates the expensive dependency-compilation layer's
+cache -- a genuinely faster day-to-day build loop, not just a stylistic
+preference.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Estimating the effect of a THIRD stage for test dependencies</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team wants to add <code class="inline">pytest</code> and other test-only dependencies (not needed at runtime) to their CI pipeline's build. Using section 1's two-stage structure, would you add these to the existing <code class="inline">builder</code> stage, the <code class="inline">runtime</code> stage, or a genuinely separate THIRD stage? Justify using this lab's core principle.</p>
+    <details><summary>Show solution</summary><div class="solution">A separate third stage -- call it "test" -- built FROM builder (so it
+inherits the compiled wheels and toolchain already present there,
+avoiding a redundant recompile), that additionally installs pytest and
+runs the test suite. Neither the existing builder nor runtime stage is
+the right fit: adding pytest to builder would work mechanically (it's
+already discarded, so it wouldn't bloat the FINAL image), but it
+conflates two genuinely different concerns -- "compile the app's real
+dependencies" and "install tools needed only to verify correctness" --
+into one stage, making the Dockerfile harder to reason about and reuse
+independently (e.g. section 1's builder stage should ideally stay
+reusable even in a context that never wants to run tests as part of
+the image build). Adding pytest to runtime would be a direct violation
+of this lab's entire principle -- pytest has no purpose in a running
+production container and would bloat the shipped image exactly the way
+section 2 argued against.
+
+A dedicated test stage, built FROM builder (not FROM scratch, and not
+FROM the slim runtime base, since pytest needs the compiled wheels
+already present to actually run meaningful tests against the app), lets
+CI target that ONE stage specifically with `docker build --target
+test`, run the suite, and then completely discard that stage's image --
+never publishing it, never letting pytest anywhere near the actual
+runtime image that ships. This is the same "each stage exists for
+exactly one purpose, and only the stages that need to ship actually get
+published" discipline section 1 established, just extended to a third
+stage.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing why a multi-stage build failed to shrink the image at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team rewrites their Dockerfile with two <code class="inline">FROM</code> blocks (looking correct at a glance) but the final image is still 1.1GB — barely smaller than the single-stage version. Looking at section 1's Dockerfile as the correct reference, name the single most likely mistake, and how you'd confirm it.</p>
+    <details><summary>Show solution</summary><div class="solution">The single most likely mistake: the final stage's FROM line is still
+pointing at the FULL builder image (or an equivalently large base)
+instead of a genuinely minimal one -- e.g. `FROM builder AS runtime`
+instead of `FROM python:3.12-slim AS runtime`. Using the builder stage
+itself (or inheriting from it) as the runtime stage's base means the
+runtime stage DOES include the full builder filesystem -- gcc, dev
+headers, apt caches and all -- with the COPY --from=builder instructions
+becoming redundant no-ops copying files that were already present.
+Section 1's whole size reduction depends on the final stage starting
+completely FRESH from a genuinely minimal base image and then
+selectively copying files IN, not starting from the large builder image
+and (implicitly) keeping everything already there.
+
+How to confirm it: run `docker history <image>` on the resulting image
+and look for layers corresponding to `apt-get install gcc python3-dev
+libpq-dev` -- per Problem 1's reasoning, those layers should be
+completely absent from a correctly-built multi-stage image's history,
+since COPY --from only ever brings across explicitly named paths. If
+those apt-get layers show up in the final image's history at all, the
+final stage is inheriting from the wrong base, exactly as suspected --
+and the fix is checking that final stage's FROM line points at a slim
+base image, not at the builder stage or an equivalent full image.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the Dockerfile for a compiled-binary language instead of Python wheels</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Apply section 1's exact same two-stage principle to a Go application instead of Python — Go compiles to a single static binary with no runtime interpreter needed at all. Sketch (in words, referencing section 1's structure) what the builder and runtime stages would each contain, and explain why the runtime stage for Go can be made even smaller than this lab's Python example.</p>
+    <details><summary>Show solution</summary><div class="solution">Builder stage: FROM golang:1.22 AS builder — a full Go toolchain image
+with the compiler, WORKDIR set, source code copied in, and `go build
+-o app .` run to produce a single statically-linked binary (Go, unlike
+Python's C-extension wheels, typically compiles everything -- including
+most dependencies -- directly into one self-contained executable, no
+separate interpreter or shared libraries required at runtime).
+
+Runtime stage: FROM a base image that is smaller even than
+python:3.12-slim -- commonly `scratch` (Docker's literal empty base
+image, containing nothing at all) or a minimal image like
+`gcr.io/distroless/static`, then COPY --from=builder /build/app
+/app, and CMD ["/app"]. This is possible specifically BECAUSE a
+statically-linked Go binary has no runtime dependency on an
+interpreter, a package manager, or even a standard C library being
+present in the final image -- unlike the Python example, where the
+runtime stage still needs python:3.12-slim itself (a real interpreter,
+installed via pip) to execute the app at all. The GENERAL principle
+from section 1 -- final stage contains only what's needed to RUN,
+copied in from a stage that contained what was needed to BUILD -- is
+identical; what differs is how minimal "what's needed to run" can get,
+which depends entirely on whether the compiled language needs a runtime
+interpreter (Python: yes, needs the interpreter itself) or produces a
+fully self-contained binary (Go: no interpreter needed at all,
+enabling an even smaller final image than this lab's Python case).</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write a two-stage Dockerfile from memory for a compiled-dependency Python app, (2) explain precisely what <code class="inline">COPY --from=builder</code> does and does not bring across, and (3) name the three concrete production costs of a bloated image versus a slim one? <code class="inline">evals-and-observability/cicd_pipeline_basics.html</code> picks this up directly — this exact multi-stage build becomes the "build" stage of a real CI/CD pipeline.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — multi-stage docker builds.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: SIZE BAR DEMO */
+(function(){
+  var runBtn = document.getElementById("size-run");
+  var logEl = document.getElementById("size-log");
+  var fillNaive = document.getElementById("fill-naive");
+  var fillMulti = document.getElementById("fill-multi");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    fillNaive.style.width = "0%"; fillNaive.textContent = "";
+    fillMulti.style.width = "0%"; fillMulti.textContent = "";
+
+    log('<b>Building single-stage image:</b> python:3.12 base, gcc + dev headers installed, wheels compiled in place, app code added — nothing ever removed.', "bad");
+    await wait(500);
+    fillNaive.style.width = "100%";
+    fillNaive.textContent = "1.2GB";
+    await wait(900);
+
+    log('<b>Building multi-stage image:</b> Stage 1 compiles wheels with the full toolchain (discarded). Stage 2 starts fresh from python:3.12-slim, copies in only the compiled wheels and app code.', "build");
+    await wait(500);
+    fillMulti.style.width = (150/1200*100) + "%";
+    fillMulti.textContent = "150MB";
+    await wait(900);
+
+    log('<b>Result:</b> same application, same compiled dependencies, 8x smaller final image. The 1.05GB difference is entirely gcc, dev headers, and build caches that were necessary to COMPILE the app but unnecessary to RUN it.', "runtime");
+
+    runBtn.disabled = false;
+  });
+})();
+
+/* SECTION 3: LAYER-BY-LAYER BUILD LOG */
+(function(){
+  var naiveBtn = document.getElementById("build-naive");
+  var multiBtn = document.getElementById("build-multi");
+  var resetBtn = document.getElementById("build-reset");
+  var logEl = document.getElementById("build-log");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  async function buildNaive(){
+    naiveBtn.disabled = true; multiBtn.disabled = true;
+    logEl.innerHTML = "";
+    log('<b>[1/6]</b> FROM python:3.12', "build");
+    await wait(350);
+    log('<b>[2/6]</b> RUN apt-get install gcc python3-dev libpq-dev  <span style="color:var(--bloat-c);">← stays in final image</span>', "bad");
+    await wait(400);
+    log('<b>[3/6]</b> COPY requirements.txt .', "build");
+    await wait(300);
+    log('<b>[4/6]</b> RUN pip install -r requirements.txt  <span style="color:var(--bloat-c);">← pip cache stays in final image</span>', "bad");
+    await wait(400);
+    log('<b>[5/6]</b> COPY . .', "build");
+    await wait(300);
+    log('<b style="color:var(--bloat-c);">[6/6] Final image: ~1.2GB.</b> gcc, python3-dev, libpq-dev, and pip\'s build cache are all present in this exact image — the same one running in production.', "bad");
+    naiveBtn.disabled = false; multiBtn.disabled = false;
+  }
+
+  async function buildMulti(){
+    naiveBtn.disabled = true; multiBtn.disabled = true;
+    logEl.innerHTML = "";
+    log('<b>STAGE 1 (builder):</b> FROM python:3.12 AS builder', "build");
+    await wait(350);
+    log('<b>[builder]</b> RUN apt-get install gcc python3-dev libpq-dev', "build");
+    await wait(400);
+    log('<b>[builder]</b> RUN pip wheel -r requirements.txt → wheels compiled to /build/wheels', "build");
+    await wait(400);
+    log('<b style="color:var(--ink-dim);">Stage 1 complete — this entire filesystem, gcc included, will now be discarded except for the one path named below.</b>', "");
+    await wait(400);
+    log('<b>STAGE 2 (runtime):</b> FROM python:3.12-slim AS runtime  <span style="color:var(--runtime-c);">← fresh, minimal base</span>', "runtime");
+    await wait(400);
+    log('<b>[runtime]</b> COPY --from=builder /build/wheels /wheels  <span style="color:var(--runtime-c);">← only the compiled output crosses over</span>', "runtime");
+    await wait(400);
+    log('<b>[runtime]</b> RUN pip install /wheels/*.whl && rm -rf /wheels', "runtime");
+    await wait(300);
+    log('<b>[runtime]</b> COPY . .', "runtime");
+    await wait(400);
+    log('<b style="color:var(--runtime-c);">Final image: ~150MB.</b> gcc, python3-dev, libpq-dev never existed in this image — they did real, necessary work, in a stage this image was never built from.', "runtime");
+    naiveBtn.disabled = false; multiBtn.disabled = false;
+  }
+
+  naiveBtn.addEventListener("click", buildNaive);
+  multiBtn.addEventListener("click", buildMulti);
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    naiveBtn.disabled = false; multiBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>
