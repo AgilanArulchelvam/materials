@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Trajectory-Based Evals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --traj-c:#4fc3f7; --rag-c:#7fd8a0; --skip-c:#ff6b6b; --accent:#ff8a65; --final-c:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,138,101,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--traj-c); color:var(--traj-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--rag-c); color:var(--rag-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--skip-c); color:var(--skip-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.traj{border-left-color:var(--traj-c); background:rgba(79,195,247,0.06);}
+  .log .line.skip{border-left-color:var(--skip-c); background:rgba(255,107,107,0.06);}
+  .log .line.final{border-left-color:var(--final-c); background:rgba(242,193,78,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .step-track{display:flex; flex-wrap:wrap; gap:0.6rem; margin:1.2rem 0;}
+  .step-node{font-family:var(--mono); font-size:0.75rem; padding:0.6rem 0.9rem; border-radius:9px; border:1.5px solid var(--rule); background:var(--panel-2); opacity:0.3; transition:all .35s ease;}
+  .step-node.active{opacity:1; border-color:var(--traj-c); box-shadow:0 0 10px rgba(79,195,247,0.25);}
+  .step-node.skipped{opacity:1; border-color:var(--skip-c); background:rgba(255,107,107,0.1); text-decoration:line-through; color:var(--skip-c);}
+  .step-node.final{border-color:var(--final-c); color:var(--final-c);}
+
+  .verdict-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.2rem 0;}
+  @media(max-width:760px){.verdict-grid{grid-template-columns:1fr;}}
+  .verdict-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2);}
+  .verdict-card h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .verdict-card.pass{border-color:var(--rag-c);} .verdict-card.pass h4{color:var(--rag-c);}
+  .verdict-card.fail{border-color:var(--skip-c);} .verdict-card.fail h4{color:var(--skip-c);}
+  .verdict-card .verdict{font-family:var(--mono); font-weight:700; font-size:1.1rem; margin-top:0.6rem;}
+  .verdict-card.pass .verdict{color:var(--rag-c);}
+  .verdict-card.fail .verdict{color:var(--skip-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--traj-c);} .dc-col.a h4{color:var(--traj-c);}
+  .dc-col.b{border-color:var(--rag-c);} .dc-col.b h4{color:var(--rag-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--skip-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--skip-c);}
+  .callout.traj{border-left-color:var(--traj-c); background:rgba(79,195,247,0.06);} .callout.traj b{color:var(--traj-c);}
+  .callout.rag{border-left-color:var(--rag-c); background:rgba(127,216,160,0.06);} .callout.rag b{color:var(--rag-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · TRAJECTORY-BASED EVALS</div>
+  <h1>A right answer reached the wrong way is still a bug waiting to happen.</h1>
+  <p class="lede"><code class="inline">deterministic_evals.html</code> and <code class="inline">model_graded_evals.html</code> both scored the agent's FINAL answer. Neither would ever notice if the agent skipped a required verification step, called tools in a nonsensical order, or simply got lucky. <strong>Trajectory-based evals</strong> score the sequence of intermediate steps — which tools were called, in what order, with what reasoning — not just where the agent ended up. This lab shows exactly why final-answer-only evaluation misses a real, common class of agent failure.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Score the STEPS, not just the destination</div>
+    <div class="pipe-label b">DeepEval/Ragas — RAG-focused trajectory-and-retrieval evals</div>
+    <div class="pipe-label c">Right answer, wrong path — a real failure mode</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="idea">1 · Scoring the Sequence of Steps</a>
+  <a data-target="frameworks">2 · DeepEval and Ragas Concepts</a>
+  <a data-target="live">3 · Right Answer, Wrong Path — Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SCORING THE SEQUENCE ============ -->
+<section id="idea">
+  <div class="kicker">01 — The path an agent took is itself evidence, not a discardable detail</div>
+  <h2>Scoring the sequence of steps, not just the final answer</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about a student who gets the right final answer on a math problem, but their work shows they skipped the step where they were supposed to check their answer against the original constraints — maybe they just guessed correctly this time, or copied the answer from somewhere. A teacher grading only the final number would mark it correct. A teacher who actually reads the work would catch that the REQUIRED verification step never happened — and would (correctly) worry that the same student will get the NEXT similar problem wrong, because whatever process got them here wasn't reliable, it just happened to land on the right number this once.</p>
+
+  <p>This is exactly the gap trajectory-based evals close for agents. <code class="inline">final_multi_agent_workflow.html</code>'s capstone scenario had a specific required recovery path: when <code class="inline">get_order_detail</code> failed for one order, the agent was supposed to retry it (per <code class="inline">loop_termination_logic.html</code>'s bounded-retry discipline) before either succeeding or abandoning that order with an explicit <code class="inline">orders_omitted</code> entry. A final-answer-only eval checks only whether the returned JSON is correct — it has no visibility into WHETHER the retry actually happened, or whether the agent instead silently fabricated a plausible-looking result for the order that failed, or skipped it without recording why. Both a genuinely-recovered trajectory and a silently-fabricated one could produce an IDENTICAL final JSON blob.</p>
+
+  <div class="code"><span class="c-cmt"># a trajectory eval checks the SEQUENCE of tool calls, not just the final return value</span>
+<span class="c-kw">def</span> <span class="c-fn">score_trajectory</span>(trajectory: list[dict], expected_tools: list[str]) -> dict:
+    <span class="c-cmt"># trajectory: [{"tool": "query_orders", "args": {...}, "result": "success"},</span>
+    <span class="c-cmt">#              {"tool": "get_order_detail", "args": {"order_id": "ord-129"}, "result": "error"},</span>
+    <span class="c-cmt">#              {"tool": "get_order_detail", "args": {"order_id": "ord-129"}, "result": "success"}, ...]</span>
+    called_tools = [step[<span class="c-str">"tool"</span>] <span class="c-kw">for</span> step <span class="c-kw">in</span> trajectory]
+    <span class="c-kw">return</span> {
+        <span class="c-str">"used_required_tools"</span>: all(t <span class="c-kw">in</span> called_tools <span class="c-kw">for</span> t <span class="c-kw">in</span> expected_tools),
+        <span class="c-str">"retried_after_failure"</span>: <span class="c-fn">_had_retry_after_error</span>(trajectory),
+        <span class="c-str">"no_redundant_calls"</span>: len(called_tools) == len(set(
+            (s[<span class="c-str">"tool"</span>], tuple(sorted(s[<span class="c-str">"args"</span>].items()))) <span class="c-kw">for</span> s <span class="c-kw">in</span> trajectory
+        )),
+        <span class="c-str">"step_order_valid"</span>: called_tools.index(<span class="c-str">"query_orders"</span>) < called_tools.index(<span class="c-str">"get_order_detail"</span>)
+    }</div>
+
+  <p>Every one of these four checks is asking about the PROCESS, not the outcome — did the agent use the tools it needed to, did it actually retry rather than silently giving up or fabricating, did it avoid wasteful repeated calls, did it call things in a sensible dependency order. An agent could score perfectly on all four of these and still get the final answer wrong (a genuinely correct process applied to bad luck downstream); an agent could ALSO get the final answer completely right while failing every one of these — and it's specifically that second case that final-answer-only evaluation is structurally blind to.</p>
+
+  <div class="callout traj"><b>Interview-ready definition:</b> a trajectory-based eval scores the sequence of intermediate steps an agent took — which tools were called, in what order, with what arguments, and how it responded to failures — rather than scoring only the final returned answer. This catches a real class of failure that final-answer-only evals structurally cannot: an agent reaching a correct final answer via an incorrect, unreliable, or lucky path (skipping a required step, fabricating a result instead of genuinely recovering from a failure, or calling tools in an order that happened to work this time but isn't a dependable process for the next similar task).</div>
+</section>
+
+<!-- ============ SECTION 2: DEEPEVAL / RAGAS ============ -->
+<section id="frameworks">
+  <div class="kicker">02 — Naming the frameworks that formalize this for RAG pipelines</div>
+  <h2>DeepEval and Ragas concepts</h2>
+
+  <p><strong>Start here, before the framework names.</strong> Month 3's RAG labs (<code class="inline">storage-and-rag/</code>) built a pipeline: retrieve relevant chunks, assemble context, generate an answer. That pipeline has its OWN version of the "right answer, wrong path" problem — a generated answer can happen to be factually correct while being built from retrieved context that was actually IRRELEVANT to the question, which is a real, latent failure even if this specific answer looks fine. <strong>DeepEval</strong> and <strong>Ragas</strong> are two widely-used open-source frameworks built specifically to formalize evaluation for RAG and agentic pipelines — you don't need to memorize their APIs, but understanding the CONCEPTS they standardize is directly useful, because those concepts are exactly trajectory-based thinking applied to a RAG pipeline's specific shape.</p>
+
+  <table class="cmp">
+    <tr><th>Concept</th><th>What it checks</th><th>Connects to</th></tr>
+    <tr><td>Retrieval relevance</td><td>Were the chunks the retrieval step actually pulled back genuinely relevant to the query — not just superficially similar?</td><td><code class="inline">storage-and-rag/hybrid_search.html</code> and <code class="inline">reranking.html</code>'s whole reason for existing — retrieval quality is itself a step worth scoring, not just the final generated answer</td></tr>
+    <tr><td>Faithfulness</td><td>Does the generated answer only assert things actually supported by the retrieved context, without inventing details the context never contained?</td><td>Directly analogous to this lab's <code class="inline">final_multi_agent_workflow.html</code> fabrication concern — the model asserting something plausible-sounding rather than something the actual retrieved/tool-call evidence supports</td></tr>
+    <tr><td>Answer relevance</td><td>Does the final answer actually address what the user's ORIGINAL question asked, independent of whether it's faithful to the retrieved context?</td><td>Catches a subtly different failure: an answer can be perfectly faithful to the context AND still fail to actually answer the question that was asked</td></tr>
+  </table>
+
+  <p>Notice these three checks are DELIBERATELY separated rather than folded into one "is the answer good" score — exactly because they can fail INDEPENDENTLY of each other. A RAG pipeline can retrieve irrelevant chunks but still generate a faithful (to those irrelevant chunks) and yet completely unhelpful answer; it can retrieve perfectly relevant chunks and then generate an answer that's unfaithful to them (hallucinating details the context never said); or it can be both faithful and relevant to the retrieved context while never actually addressing what the user asked. Each of these is a DIFFERENT bug, in a DIFFERENT pipeline stage, and collapsing them into one aggregate score — the same trap a final-answer-only agent eval falls into — would hide exactly which stage needs fixing.</p>
+
+  <div class="callout rag"><b>Interview-ready definition:</b> DeepEval and Ragas are open-source evaluation frameworks purpose-built for RAG and agentic pipelines, formalizing trajectory-style thinking into named, separately-scored metrics rather than one aggregate "is this good" judgment: retrieval relevance (did the retrieval step pull back genuinely useful context), faithfulness (does the generated answer stick to what that context actually supports, without inventing unsupported claims), and answer relevance (does the final answer actually address the original question). Each metric targets a different pipeline STAGE specifically so failures can be localized to where they actually occurred — retrieval, generation, or the connection between the question and the answer — rather than only being visible as one undifferentiated low score with no clue which stage caused it.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — The same final answer, two different trajectories, two different verdicts</div>
+  <h2>Right answer, wrong path — live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below are two runs of the Month 4 capstone-style scenario. Both produce the EXACT SAME final JSON answer. Step through each and watch a final-answer-only eval and a trajectory-based eval reach different verdicts on the SECOND run — this is the concrete case section 1 argued for, made runnable.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TWO TRAJECTORIES, IDENTICAL FINAL ANSWER</span>
+      <div><button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Run A: the agent hits the injected failure and genuinely retries, per <code class="inline">loop_termination_logic.html</code>. Run B: the agent's <code class="inline">get_order_detail</code> call for the same order fails, and instead of retrying, the agent fabricates a plausible-looking result and moves on.</p>
+    <div class="lookup-controls" style="display:flex; gap:0.6rem; margin-bottom:1rem;">
+      <button class="btn" id="run-a">Run A: genuine retry ▸</button>
+      <button class="btn secondary" id="run-b">Run B: silent fabrication ▸</button>
+    </div>
+    <div class="step-track" id="step-track"></div>
+    <div class="log" id="run-log"></div>
+    <div class="verdict-grid" id="verdict-grid" style="display:none;">
+      <div class="verdict-card" id="verdict-final">
+        <h4>Final-answer-only eval</h4>
+        <div class="verdict" id="verdict-final-text">—</div>
+      </div>
+      <div class="verdict-card" id="verdict-traj">
+        <h4>Trajectory-based eval</h4>
+        <div class="verdict" id="verdict-traj-text">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> Run B's final JSON is <em>identical</em> to Run A's — same order count, same totals, same everything a final-answer-only check inspects. A final-answer-only eval PASSES both runs. Only the trajectory-based eval — checking whether a genuine retry actually happened, not just whether the numbers look right — catches that Run B's agent fabricated a result instead of following the required recovery process, exactly the failure mode section 1 named.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a trajectory check for a specific requirement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's <code class="inline">score_trajectory</code> function shape, write a check verifying that the agent never called <code class="inline">confirm_booking</code> before a preceding <code class="inline">select_seat</code> call in the same trajectory (referencing the sequence from <code class="inline">database/audit_trail_schema.html</code>'s live replay demo).</p>
+    <details><summary>Show solution</summary><div class="solution">def confirm_after_select(trajectory: list[dict]) -> bool:
+    tools = [step["tool"] for step in trajectory]
+    if "confirm_booking" not in tools:
+        return True  # nothing to check if confirm_booking never happened
+    confirm_idx = tools.index("confirm_booking")
+    # find the LAST select_seat call before this confirm_booking
+    select_indices = [i for i, t in enumerate(tools) if t == "select_seat" and i < confirm_idx]
+    return len(select_indices) > 0
+
+This mirrors section 1's step_order_valid check exactly, just applied to
+a different required ordering: confirm_booking depends on a seat having
+been selected first, the same real data dependency
+react_pattern.html's capital-then-population example established for
+tool call ordering in general. A trajectory where confirm_booking
+appears with no PRIOR select_seat call at all would be flagged by this
+check even if -- through some coincidence -- the confirm call still
+somehow "succeeded," because the ordering itself is the property being
+verified, independent of whether the final outcome happened to look
+fine.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why Ragas separates faithfulness from answer relevance</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Construct a concrete example where a RAG answer is FAITHFUL to its retrieved context but scores poorly on answer relevance. Why would collapsing both into one score hide this specific failure?</p>
+    <details><summary>Show solution</summary><div class="solution">Concrete example: a user asks "what's the refund policy for
+international orders?" The retrieval step, due to a relevance bug,
+pulls back a chunk about the DOMESTIC refund policy instead (a genuine
+retrieval failure). The generation step then produces an answer that
+accurately, faithfully summarizes exactly what that domestic-policy
+chunk says -- faithfulness is HIGH, because the answer invents nothing
+beyond what the retrieved context actually said. But the answer never
+addresses the user's actual question about INTERNATIONAL orders --
+answer relevance is LOW, because the response, however faithful to its
+(wrong) source, doesn't answer what was asked.
+
+Why collapsing both into one score hides this: a single "is this answer
+good" score averaging or blending these two dimensions could land at a
+middling number that looks like "an okay answer with some minor issues,"
+when the real story is a much sharper diagnosis -- the GENERATION step
+did its job perfectly (faithful to its input), and the actual bug is
+entirely upstream, in RETRIEVAL. Separating the metrics tells you
+exactly where to look (fix retrieval relevance, not the generation
+prompt) in a way one blended score never could -- this is precisely
+section 2's point about localizing failures to the STAGE that actually
+caused them.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding whether a trajectory eval is even necessary for a given task</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A single-tool agent always calls exactly one tool (a calculator) and returns its result directly with no other steps possible. Does this agent need a trajectory-based eval on top of a final-answer eval? Justify using section 1's reasoning about what trajectory evals are FOR.</p>
+    <details><summary>Show solution</summary><div class="solution">No, or at most minimally -- trajectory-based evals earn their value
+specifically when there's a MEANINGFUL SEQUENCE OF DECISIONS that could
+go right or wrong independent of the final answer: which tool to call,
+in what order, how to respond to a failure. A single-tool agent with
+exactly one possible tool call and no branching, retry logic, or
+multi-step dependency has no meaningfully different "wrong path" to a
+correct answer -- there's only one path available at all, so a
+correct final answer and a correct trajectory are effectively the SAME
+fact, not two independent things that could diverge.
+
+This connects to section 1's core argument precisely by testing its
+boundary: trajectory evals matter BECAUSE final-answer-only evaluation
+can be fooled by multiple different paths converging on the same
+correct-looking output (Run A's genuine retry vs Run B's fabrication in
+section 3's demo, both landing on an identical final JSON). Where there
+is only one possible path to begin with, that specific failure mode
+structurally cannot occur, so the marginal value of a separate
+trajectory eval is much lower -- though even here, a MINIMAL trajectory
+check (did the calculator actually get called, rather than the model
+just guessing an answer without ever invoking it) still has some value,
+since "was the tool actually used at all" is itself a trajectory-level
+question a final-answer eval alone wouldn't directly verify.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing why Run B's final answer looked identical to Run A's</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 3's live demo, explain mechanically HOW an agent that fabricates a result instead of retrying can still produce a final JSON answer that's schema-valid and plausible-looking, and why <code class="inline">deterministic_evals.html</code>'s schema-validation check specifically cannot catch this.</p>
+    <details><summary>Show solution</summary><div class="solution">Mechanically: nothing about generating a well-formed JSON object
+requires the VALUES inside it to have come from a genuine, successful
+tool call. A model asked to "summarize this order" can, in principle,
+generate a plausible-looking order_id, total, and item_count from its
+own generative capability -- the same way it can generate any other
+plausible-sounding text -- without that data having any grounding in an
+actual successful get_order_detail call. The resulting JSON object
+passes every structural check deterministic_evals.html's schema
+validation runs (right fields, right types, required keys present)
+because schema validation, per that lab's own Problem 2, ONLY checks
+structure, never whether the VALUES are actually grounded in real data.
+
+Why schema validation specifically can't catch this: schema validation
+has no visibility into PROVENANCE -- it inspects the final JSON object
+in isolation, with no access to (or interest in) the trajectory that
+produced it. A fabricated total=511 and a genuinely-fetched total=511
+are byte-for-byte identical from the schema validator's point of view --
+there's no field in the schema for "was this actually retrieved from a
+successful tool call." Only a trajectory-based eval, which inspects the
+SEQUENCE OF TOOL CALLS rather than just their eventual output, can tell
+the difference -- checking specifically whether a get_order_detail call
+for that order_id actually appears in the trajectory with a success
+result, which section 3's Run B trajectory conspicuously lacks.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing a combined eval suite that catches both failure classes</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using everything from this week so far (deterministic, model-graded, and trajectory-based evals), design a complete eval suite for the Month 4 capstone agent that would catch: (1) a malformed final answer, (2) a factually wrong but well-formed summary, (3) fabrication instead of genuine retry. Name which eval type catches each.</p>
+    <details><summary>Show solution</summary><div class="solution">(1) Malformed final answer -- deterministic (schema validation), per
+deterministic_evals.html section 1: validate the final JSON against the
+task's output schema; a missing required field or wrong type fails this
+check immediately and cheaply, with no model call needed.
+
+(2) Factually wrong but well-formed summary (e.g. the total dollar
+amount for an order is subtly incorrect, or the summary reads
+coherently but misrepresents what the source order data actually
+contained) -- this splits across TWO tools depending on what "wrong"
+means here: if it's a checkable INVARIANT (e.g. orders_found not
+matching summarized+omitted counts), a deterministic rule-based check
+catches it cheaply, per deterministic_evals.html section 3's live demo.
+If it's a more open-ended factual/faithfulness question not reducible to
+an exact rule (e.g. "does this summary's prose actually reflect what the
+order contained, without subtly misstating it"), a model-graded eval
+with a faithfulness-focused rubric (model_graded_evals.html section 1,
+echoing this lab's faithfulness metric from section 2) is the right
+tool.
+
+(3) Fabrication instead of genuine retry -- trajectory-based eval,
+exactly per this lab's section 3 live demo: checking the ACTUAL SEQUENCE
+of tool calls for evidence that a real get_order_detail retry occurred
+after the injected failure, which neither the deterministic schema
+check nor a model-graded faithfulness check (both of which only see the
+FINAL text/JSON, never the trajectory that produced it) has any
+visibility into at all.
+
+The overall lesson this suite makes concrete: no single eval type is
+sufficient on its own for a real agentic system -- each catches a
+genuinely different, non-overlapping class of failure, and a suite that
+only runs one type (however sophisticated) leaves the other failure
+classes completely uncovered.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain precisely why a final-answer-only eval can be fooled by two different trajectories producing the same output, (2) name the three Ragas/DeepEval-style metrics and which pipeline stage each localizes a failure to, and (3) design a combined eval suite naming which eval type catches which failure class? Thursday's <code class="inline">systems/observability_pipeline_design.html</code> picks up the infrastructure question this raises directly: if trajectories matter this much for evaluation, you need a system that actually CAPTURES them at scale in the first place.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — trajectory-based evals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: TWO TRAJECTORIES DEMO */
+(function(){
+  var runABtn = document.getElementById("run-a");
+  var runBBtn = document.getElementById("run-b");
+  var resetBtn = document.getElementById("run-reset");
+  var trackEl = document.getElementById("step-track");
+  var logEl = document.getElementById("run-log");
+  var verdictGrid = document.getElementById("verdict-grid");
+
+  var STEPS_A = [
+    {label: "query_orders", cls: "active"},
+    {label: "get_order_detail(ord-129)", cls: "skipped"},
+    {label: "RETRY get_order_detail(ord-129)", cls: "active"},
+    {label: "Final JSON answer", cls: "final"}
+  ];
+  var STEPS_B = [
+    {label: "query_orders", cls: "active"},
+    {label: "get_order_detail(ord-129)", cls: "skipped"},
+    {label: "[no retry — fabricates result]", cls: "skipped"},
+    {label: "Final JSON answer", cls: "final"}
+  ];
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderTrack(steps, upto){
+    trackEl.innerHTML = "";
+    steps.forEach(function(s, i){
+      var el = document.createElement("div");
+      el.className = "step-node" + (i < upto ? (" " + s.cls) : "");
+      el.textContent = s.label;
+      trackEl.appendChild(el);
+    });
+  }
+
+  async function runTrajectory(steps, isFabrication){
+    runABtn.disabled = true; runBBtn.disabled = true;
+    logEl.innerHTML = "";
+    verdictGrid.style.display = "none";
+    renderTrack(steps, 0);
+
+    log('<b>Step 1:</b> query_orders → 4 qualifying orders found, including ord-129 ($511).', "traj");
+    renderTrack(steps, 1);
+    await wait(500);
+
+    log('<b>Step 2:</b> get_order_detail(order_id="ord-129") → <b style="color:var(--skip-c);">FAILS</b> (injected transient error).', "traj");
+    renderTrack(steps, 2);
+    await wait(600);
+
+    if(isFabrication){
+      log('<b style="color:var(--skip-c);">Step 3 (Run B):</b> agent does NOT retry. Instead, it generates a plausible-looking result for ord-129 — total: $511, item_count: 1 — with no actual successful tool call behind it.', "skip");
+    } else {
+      log('<b style="color:var(--rag-c);">Step 3 (Run A):</b> agent retries get_order_detail(order_id="ord-129") → succeeds: total $511, 1 line item. A genuine recovery, per loop_termination_logic.html.', "traj");
+    }
+    renderTrack(steps, 3);
+    await wait(600);
+
+    log('<b>Step 4:</b> Final JSON answer assembled: {"orders_found": 4, "orders_summarized": [...ord-129: total 511, item_count 1...], "orders_omitted": []}', "final");
+    renderTrack(steps, 4);
+    await wait(500);
+
+    var finalCard = document.getElementById("verdict-final");
+    var trajCard = document.getElementById("verdict-traj");
+    verdictGrid.style.display = "grid";
+
+    finalCard.className = "verdict-card pass";
+    document.getElementById("verdict-final-text").textContent = "PASS — schema-valid, all fields present, numbers look plausible.";
+
+    if(isFabrication){
+      trajCard.className = "verdict-card fail";
+      document.getElementById("verdict-traj-text").textContent = "FAIL — no successful get_order_detail call for ord-129 exists in the trajectory. The final answer's data for that order has no grounding in an actual tool result.";
+      log('<b style="color:var(--skip-c);">Verdict:</b> the final-answer-only eval PASSES this run — the JSON looks fine. Only the trajectory-based eval, checking for an actual grounding tool call, catches that ord-129\'s data was fabricated.', "skip");
+    } else {
+      trajCard.className = "verdict-card pass";
+      document.getElementById("verdict-traj-text").textContent = "PASS — a successful get_order_detail retry for ord-129 is present in the trajectory, grounding the final answer's data.";
+      log('<b style="color:var(--rag-c);">Verdict:</b> both evals pass this run — the final answer is correct AND the process that produced it was genuine.', "traj");
+    }
+
+    runABtn.disabled = false; runBBtn.disabled = false;
+  }
+
+  runABtn.addEventListener("click", function(){ runTrajectory(STEPS_A, false); });
+  runBBtn.addEventListener("click", function(){ runTrajectory(STEPS_B, true); });
+
+  resetBtn.addEventListener("click", function(){
+    trackEl.innerHTML = "";
+    logEl.innerHTML = "";
+    verdictGrid.style.display = "none";
+    runABtn.disabled = false; runBBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

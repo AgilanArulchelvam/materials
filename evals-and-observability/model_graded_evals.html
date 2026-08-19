@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Model-Graded Evals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --judge-c:#c792ea; --rubric-c:#4fc3f7; --bias-c:#ff6b6b; --accent:#f2c14e; --pass-c:#7fd8a0;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,107,107,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--judge-c); color:var(--judge-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.b{border-color:var(--rubric-c); color:var(--rubric-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--bias-c); color:var(--bias-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.judge{border-left-color:var(--judge-c); background:rgba(199,146,234,0.06);}
+  .log .line.bias{border-left-color:var(--bias-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .candidate-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.candidate-compare{grid-template-columns:1fr;}}
+  .cand-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2);}
+  .cand-card h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem; color:var(--rubric-c);}
+  .cand-card .text{font-size:0.85rem; color:#cdd0d8; margin-bottom:0.8rem; min-height:3.5em;}
+  .cand-card .score{font-family:var(--mono); font-size:1.4rem; font-weight:700; color:var(--ink-dim); text-align:center; padding:0.6rem 0; border-top:1px dashed var(--rule);}
+  .cand-card.scored .score{color:var(--accent);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--rubric-c);} .dc-col.a h4{color:var(--rubric-c);}
+  .dc-col.b{border-color:var(--bias-c);} .dc-col.b h4{color:var(--bias-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bias-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bias-c);}
+  .callout.judge{border-left-color:var(--judge-c); background:rgba(199,146,234,0.06);} .callout.judge b{color:var(--judge-c);}
+  .callout.rubric{border-left-color:var(--rubric-c); background:rgba(79,195,247,0.06);} .callout.rubric b{color:var(--rubric-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · MODEL-GRADED EVALS</div>
+  <h1>Some qualities are easier to recognize than to write a rule for.</h1>
+  <p class="lede"><code class="inline">deterministic_evals.html</code>'s Practice Problem 5 already ran into the wall: "is this response helpful and empathetic" has no exact-match string, no JSON shape, and no single programmatic rule that captures it. <strong>Model-graded evals</strong> — using a separate LLM call as a judge, scoring an output against a rubric — exist for exactly this gap. But a judge is itself a model, with its own failure modes, not an oracle. This lab covers both halves honestly: how LLM-as-judge works, and the concrete, well-documented ways it goes wrong.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">A separate LLM call scores the output against a rubric</div>
+    <div class="pipe-label b">Correct for qualities too fuzzy to specify as a rule</div>
+    <div class="pipe-label c">The judge has its own biases — length, position, inconsistency</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="idea">1 · Using an LLM as Judge</a>
+  <a data-target="failures">2 · Failure Modes of Model-Graded Evals</a>
+  <a data-target="live">3 · Score Candidates, Then Watch a Failure Mode Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE CORE IDEA ============ -->
+<section id="idea">
+  <div class="kicker">01 — When correctness can't be checked by a rule, ask a second judge</div>
+  <h2>Using an LLM as judge</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about grading a job applicant's writing sample versus grading their typing speed. Typing speed is a number — you time it, done, no judgment involved. But "is this cover letter well-written and persuasive" isn't something you can reduce to a formula ahead of time; instead, you hand it to someone qualified to judge writing, give them a rubric ("clarity, tone, structure, persuasiveness"), and trust their scored judgment — not because it's infallible, but because it's the best available tool for a question that genuinely requires judgment rather than measurement. Model-graded evals apply exactly this idea to LLM outputs: when a quality can't be reduced to an exact-match string, a schema, or a programmatic rule, a SEPARATE LLM call — the "judge" — reads the output (and often the original input and a rubric) and produces a score.</p>
+
+  <p>The key structural fact: the judge is a DIFFERENT call from the one that produced the output being evaluated — usually the same or a different model, invoked fresh, with no memory of having generated the answer, given only the rubric and the output to assess. This separation matters: the judge's job is strictly evaluation, not generation, and it should be prompted narrowly enough that its entire task is producing a score plus (ideally) a justification.</p>
+
+  <div class="code"><span class="c-cmt"># a rubric-based judging prompt for the model_graded_evals task</span>
+JUDGE_PROMPT = <span class="c-str">"""You are evaluating an AI agent's response for QUALITY, not correctness of facts.
+
+ORIGINAL REQUEST: {original_request}
+AGENT'S RESPONSE: {response}
+
+Score the response from 1-5 on each of these dimensions:
+- Clarity: is the response easy to understand?
+- Faithfulness: does it accurately reflect only what the source data actually said,
+  without inventing details?
+- Completeness: does it address everything the request asked for?
+
+Respond with ONLY a JSON object: {"clarity": <1-5>, "faithfulness": <1-5>,
+"completeness": <1-5>, "justification": "<one sentence per dimension>"}"""</span></div>
+
+  <p>Notice the judge prompt asks for a SCORE on named dimensions plus a short justification, not a bare "good" or "bad" — this mirrors <code class="inline">json_schema_tool_specs.html</code>'s discipline of specifying exactly the output shape wanted, applied here to a scoring call rather than a tool call. A justification-free score is much harder to audit later when a human wants to understand WHY the judge rated something the way it did.</p>
+
+  <div class="callout rubric"><b>Interview-ready definition:</b> a model-graded eval uses a separate LLM call — the judge — to score an output against an explicit rubric, for qualities that are easier to recognize than to specify as an exact rule (coherence, faithfulness to source material, helpfulness, tone). It fills the gap deterministic evals structurally cannot: deterministic checks can only ever verify what they were explicitly programmed to check, while a judge model can assess genuinely open-ended qualitative properties the same way a human reviewer would, at the cost of introducing the judge model's own imperfect judgment as a new, non-deterministic source of potential error into the evaluation itself.</div>
+</section>
+
+<!-- ============ SECTION 2: FAILURE MODES ============ -->
+<section id="failures">
+  <div class="kicker">02 — The judge is not a neutral oracle — it has its own predictable biases</div>
+  <h2>Failure modes of model-graded evals</h2>
+
+  <p><strong>Start here, before trusting a judge score.</strong> Think about a human interviewer who unconsciously rates confident-sounding candidates higher regardless of actual answer quality, or who scores the SECOND candidate they see slightly differently than the first purely because of ordering, not merit, or who might rate the exact same answer differently on a good day versus a bad one. None of these make the interviewer useless — but a hiring process that doesn't account for these known biases will systematically produce skewed results. LLM judges have documented, analogous biases, and treating a judge's score as ground truth without accounting for them repeats the same mistake.</p>
+
+  <h3>Length bias</h3>
+  <p>Judge models have a well-documented tendency to rate longer, more verbose answers higher, independent of actual quality — a concise, correct answer can score lower than a bloated, padded one purely because length reads as "more thorough" to the judge, even when the extra length adds no real information.</p>
+
+  <h3>Position bias</h3>
+  <p>When a judge compares two candidate answers side by side ("which is better, A or B"), the judge's preference can shift measurably based on which answer is presented FIRST versus SECOND — the same two answers, with positions swapped, can produce a different verdict, revealing that the judgment is partly tracking position rather than purely content.</p>
+
+  <h3>Inconsistency across repeated judgments</h3>
+  <p>Asking the same judge to score the exact same output twice, in separate calls, does not reliably produce the exact same score — sampling randomness in the judge's own generation means a judge is not a fixed, deterministic function the way <code class="inline">deterministic_evals.html</code>'s checks are, even when judging literally identical input.</p>
+
+  <table class="cmp">
+    <tr><th>Failure mode</th><th>What it looks like concretely</th><th>Why it happens</th></tr>
+    <tr><td>Length bias</td><td>A padded, repetitive 300-word answer scores higher than a precise 60-word answer that says the same thing more efficiently</td><td>Verbosity correlates with "thoroughness" in the judge's training distribution, even when it's actually just padding</td></tr>
+    <tr><td>Position bias</td><td>Judge prefers "Response A" when it's shown first, but prefers the SAME text when it's relabeled "Response B" and shown second</td><td>Presentation order itself becomes a (spurious) signal the judge partly keys on, alongside content</td></tr>
+    <tr><td>Inconsistency</td><td>The identical output, judged twice in separate calls with the same prompt, gets a 4/5 once and a 2/5 the other time</td><td>The judge is itself a sampling LLM call, not a deterministic function — same input does not guarantee same output</td></tr>
+  </table>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> it's tempting to think "model-graded evals replace deterministic evals" once qualitative judgment is available. They don't — they're for genuinely DIFFERENT questions. A judge should never be asked to verify something a deterministic check could verify more cheaply and more reliably (does this JSON have the right fields? use schema validation). Reserve the judge for exactly the qualities that resist a rule — and even then, treat its score as one noisy signal, not ground truth, mitigated by techniques like averaging across repeated judgments, randomizing presentation order for pairwise comparisons, and using an explicit rubric with named dimensions rather than one vague "rate this 1-10."</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> model-graded evals have three well-documented failure modes: length bias (favoring longer/more verbose outputs regardless of actual quality), position bias (a pairwise comparison's verdict shifting based on presentation order rather than content alone), and inconsistency (the same judge producing different scores for the identical output across repeated calls, since the judge is itself a non-deterministic model, not a fixed function). None of these make model-graded evals useless — they make them a NOISY, imperfect signal that needs mitigation (randomized ordering, repeated sampling and averaging, explicit rubrics) rather than a ground-truth oracle to be trusted uncritically.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — Score two real candidates, then watch length bias happen live</div>
+  <h2>Score candidates, then watch a failure mode live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below is a simple simulated "judge" scoring two candidate summaries against the rubric from section 1. Run the fair judgment first — the concise, accurate summary should score at least as well as the padded one. Then click to see the SAME judge exhibit length bias when its prompt is subtly changed to reward apparent thoroughness — a deliberately constructed failure mode, so you can see exactly how a well-intentioned rubric can still be gamed by verbosity.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TWO CANDIDATE SUMMARIES OF THE SAME SOURCE — SIMULATED JUDGE</span>
+      <div><button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <div class="candidate-compare">
+      <div class="cand-card" id="card-a">
+        <h4>Candidate A — concise</h4>
+        <div class="text">"The Q3 report shows revenue up 12% year-over-year, driven mainly by the enterprise segment. Churn held flat."</div>
+        <div class="score" id="score-a">—</div>
+      </div>
+      <div class="cand-card" id="card-b">
+        <h4>Candidate B — padded</h4>
+        <div class="text">"In this comprehensive Q3 report, it is important to note that, upon careful analysis, revenue has increased by approximately 12% when compared year-over-year, and this growth appears to be substantially driven by the enterprise customer segment, while it is also worth mentioning that churn rates have remained essentially flat and unchanged throughout this period."</div>
+        <div class="score" id="score-b">—</div>
+      </div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="fair">Fair rubric (accuracy + concision weighted)</button>
+      <button class="chip" data-mode="biased">Length-biased judge (rewards apparent "thoroughness")</button>
+    </div>
+    <button class="btn" id="run-judge">Run the judge ▸</button>
+    <div class="log" id="run-log"></div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> both candidates convey the exact same facts — nothing in Candidate B's extra length adds real information. A fair rubric that explicitly weights concision should score them close to equally (or favor A). A judge instructed to reward "thoroughness" without guarding against padding will favor B purely for being longer — this is length bias, reproduced on demand, not a hypothetical.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing between deterministic and model-graded for a stated task</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An eval needs to check whether a generated email reply (1) contains a valid unsubscribe link and (2) is polite in tone. Using both this lab and <code class="inline">deterministic_evals.html</code>, which check type fits each requirement, and why can't one eval type cover both?</p>
+    <details><summary>Show solution</summary><div class="solution">"Contains a valid unsubscribe link" -- a rule-based deterministic check
+(e.g. a regex or URL-parse check that a specific pattern/link is
+present). This is a mechanically verifiable property with no
+ambiguity about what counts as satisfying it.
+
+"Is polite in tone" -- a model-graded eval. Politeness is exactly the
+kind of quality section 1 describes: easier to recognize than to specify
+as an exact rule. There's no regex or schema that reliably captures
+"politeness" across the space of ways a reply could be worded.
+
+Why one eval type can't cover both: they're structurally different
+kinds of properties. A rule-based check could never meaningfully assess
+tone (no programmatic rule captures "politeness" in general), and a
+judge model is comparatively expensive, slower, and non-deterministic --
+using it to check "does this contain a specific URL pattern" would be
+strictly worse than a regex on every axis (cost, speed, reliability) for
+a property a regex already checks perfectly. The correct eval suite for
+this task runs BOTH checks, each doing the job it's actually suited
+for -- this is the same "cheapest sufficient tool" reasoning
+sql_vs_nosql.html applies to storage engines, just applied here to eval
+strategy choice.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a specific judge failure from a described symptom</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team runs a pairwise judge comparison ("is Response A or Response B better") 10 times on the same fixed pair, alternating which response is labeled A vs B each time. Response A (by content, not label) wins 8 times when placed first, and only 3 times when placed second. Name the specific failure mode and what mitigation directly addresses it.</p>
+    <details><summary>Show solution</summary><div class="solution">This is position bias, and it's diagnosed exactly the way this scenario
+is constructed to reveal it: the SAME content (by actual substance, not
+by label) wins far more often when it happens to be presented FIRST
+(8/times-first) than when presented second (3/times-second) -- a large,
+systematic swing tied to PRESENTATION ORDER rather than to the content's
+actual quality, which should be judge-order-independent if the judge
+were purely evaluating merit.
+
+The direct mitigation: run each pairwise comparison TWICE per pair, once
+with each ordering (A-then-B and B-then-A), and either average the two
+results or require the same verdict in both orderings before trusting it
+-- exactly the "randomize/counterbalance presentation order" mitigation
+section 2 names. If a judge's verdict flips depending purely on which
+slot a response is placed in, the raw single-ordering verdict isn't
+trustworthy on its own; the double-ordering check either cancels out the
+order effect (by averaging) or explicitly surfaces cases where the judge
+is genuinely uncertain (disagreeing verdicts across orderings), which is
+itself useful information a single-ordering run would have hidden.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Redesigning a rubric to resist length bias</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's judge prompt template and section 3's live demo, rewrite the rubric so it explicitly resists rewarding Candidate B's padding over Candidate A's concision. What specific instruction addition makes the biggest difference?</p>
+    <details><summary>Show solution</summary><div class="solution">The single highest-leverage addition: explicitly instruct the judge to
+score CONCISION as its own named dimension, and explicitly warn against
+conflating length with quality -- e.g. adding a line like: "Concision:
+does the response convey the necessary information without unnecessary
+padding or repeated phrasing? A shorter response that says the same
+thing is NOT worse than a longer one -- do not reward length for its own
+sake."
+
+Naming concision as its OWN scored dimension (rather than leaving it
+implicit inside "clarity" or "completeness") forces the judge to
+explicitly reckon with length as a factor it must actively evaluate,
+rather than letting length bias operate silently in the background the
+way it does when the rubric only asks for vague, undifferentiated
+"quality." This mirrors the general principle from
+json_schema_tool_specs.html of making implicit requirements EXPLICIT in
+a spec -- an unstated expectation ("don't reward padding") is far more
+likely to be silently violated than one spelled out as its own named,
+scored criterion the judge is directly instructed to weigh.
+
+This doesn't ELIMINATE length bias (the judge is still an imperfect
+model, and could still get it wrong) -- but it materially reduces it
+compared to a rubric that never mentions length or concision at all,
+which is the realistic bar a rubric redesign can actually clear.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about mitigating judge inconsistency</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's inconsistency failure mode, propose a concrete mitigation for a team that needs a STABLE score for the same output across multiple eval runs (e.g. for tracking quality trend over time in a dashboard), and explain the trade-off it introduces.</p>
+    <details><summary>Show solution</summary><div class="solution">The standard mitigation: run the judge call MULTIPLE times (e.g. 3-5
+independent calls) on the same output and take the median or average
+score, rather than trusting any single judge call's result. Since
+inconsistency comes from the judge's own sampling randomness, averaging
+across several independent samples smooths out that noise the same way
+averaging multiple noisy measurements of anything reduces the influence
+of any one outlier reading.
+
+The trade-off: this multiplies the cost and latency of the eval by
+however many repeated judge calls are used (3-5x more judge-model calls
+per single scored output), which matters at scale if a suite runs
+against thousands of outputs regularly. It also doesn't eliminate
+inconsistency, only reduces its practical impact on the AVERAGED score
+-- a team still shouldn't treat the averaged number as perfectly precise
+to the decimal point, just meaningfully more stable than any single raw
+judge call. A cheaper partial mitigation that doesn't fully solve
+inconsistency but helps: setting the judge's own sampling temperature to
+0 (deterministic decoding) where the judge model supports it, which
+reduces (though may not fully eliminate, depending on the underlying
+model's guarantees) run-to-run variance for identical input without
+needing multiple calls at all -- a real trade between mitigation
+strength (multi-sample averaging is more robust) and cost (temperature=0
+is nearly free by comparison).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting model-graded evals to permission scoping's least-privilege reasoning</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A judge model is given access to call the same tools the agent under evaluation used, "in case it needs to double-check a fact." Using <code class="inline">permission_scoping.html</code>'s reasoning from Month 4, why is this a design mistake even if it seems helpful?</p>
+    <details><summary>Show solution</summary><div class="solution">A judge's job, per section 1, is strictly EVALUATION -- reading the
+original request, the rubric, and the agent's already-produced output,
+then scoring it. It never needs to independently GENERATE new actions
+or fetch new data to do that job; everything it needs to score the
+output is already in front of it (or should be, if the eval was set up
+correctly with sufficient context).
+
+Granting it tool-calling access anyway is exactly the least-privilege
+violation permission_scoping.html warns about: a component gets
+capabilities beyond what its actual, stated job requires, purely because
+those capabilities happened to be convenient or "might help." Concretely,
+if a judge can call the same tools the agent used, a manipulated or
+buggy judge prompt (or content the judge reads while "double-checking" a
+fact, which could itself carry an injected instruction, per
+prompt_injection_risks.html) now has an actual attack surface it never
+needed -- it could take real actions (write, delete, external calls) that
+have nothing to do with producing a score. The correct design keeps the
+judge strictly read-only over the context it's given, with no tool-
+calling capability at all, mirroring section 1's own "the judge's job is
+evaluation, not generation" boundary at the permission level, not just
+the conceptual level -- least privilege applied at design time again,
+exactly as final_multi_agent_workflow.html's Problem 4 argued for the
+agent itself.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain why model-graded evals exist rather than just writing more elaborate rules, (2) name and demonstrate all three documented judge failure modes with a fresh example each, and (3) describe at least two concrete mitigations and what they cost? <code class="inline">trajectory_based_evals.html</code> extends this same "final answer alone isn't enough" theme one level further — scoring the STEPS an agent took, not just its final output.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — model-graded evals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: SIMULATED JUDGE */
+(function(){
+  var runBtn = document.getElementById("run-judge");
+  var resetBtn = document.getElementById("run-reset");
+  var logEl = document.getElementById("run-log");
+  var modeChips = document.querySelectorAll("[data-mode]");
+  var mode = "fair";
+
+  var CAND_A_LEN = 118;
+  var CAND_B_LEN = 330;
+
+  modeChips.forEach(function(c){
+    c.addEventListener("click", function(){
+      modeChips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      mode = c.dataset.mode;
+    });
+  });
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setScore(id, score){
+    var card = document.getElementById("card-" + id);
+    card.classList.add("scored");
+    document.getElementById("score-" + id).textContent = score.toFixed(1) + " / 5.0";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    document.getElementById("card-a").classList.remove("scored");
+    document.getElementById("card-b").classList.remove("scored");
+    document.getElementById("score-a").textContent = "—";
+    document.getElementById("score-b").textContent = "—";
+
+    if(mode === "fair"){
+      log('<b>Judge (fair rubric):</b> scoring both candidates on clarity, faithfulness, completeness, AND concision — explicitly told not to reward length for its own sake.', "judge");
+      await wait(600);
+      setScore("a", 4.6);
+      log('<b>Candidate A:</b> 4.6/5 — clear, faithful to the source, complete, and appropriately concise.', "judge");
+      await wait(600);
+      setScore("b", 4.3);
+      log('<b>Candidate B:</b> 4.3/5 — same facts conveyed, but the concision dimension specifically dings it for unnecessary padding ("it is important to note", "upon careful analysis") that adds no information.', "judge");
+      await wait(500);
+      log('<b>Result:</b> the concise candidate wins, as it should — both convey identical facts, and the rubric explicitly penalizes padding rather than rewarding it.');
+    } else {
+      log('<b>Judge (length-biased):</b> instructed only to rate "thoroughness" and "detail," with NO explicit concision dimension — exactly the kind of underspecified rubric section 2 warns produces length bias.', "bias");
+      await wait(600);
+      setScore("a", 3.4);
+      log('<b>Candidate A:</b> 3.4/5 — "the response is accurate but feels somewhat brief; more detail could strengthen it."', "bias");
+      await wait(600);
+      setScore("b", 4.7);
+      log('<b>Candidate B:</b> 4.7/5 — "this response is comprehensive and thorough, covering the material in detail."', "bias");
+      await wait(500);
+      log('<b style="color:var(--bias-c);">Length bias reproduced:</b> Candidate B — ' + CAND_B_LEN + ' characters of mostly padding versus Candidate A\'s ' + CAND_A_LEN + ' characters conveying the exact same facts — scores nearly a full point and a half higher, purely because "thoroughness" was never disentangled from raw length in the rubric. Nothing about the underlying facts changed between the two runs — only the rubric\'s wording did.', "bias");
+    }
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    document.getElementById("card-a").classList.remove("scored");
+    document.getElementById("card-b").classList.remove("scored");
+    document.getElementById("score-a").textContent = "—";
+    document.getElementById("score-b").textContent = "—";
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Pytest Evals Practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --schema-c:#4fc3f7; --traj-c:#c792ea; --rubric-c:#f2c14e; --accent:#7fd8a0; --fail-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--schema-c); color:var(--schema-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--traj-c); color:var(--traj-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--rubric-c); color:var(--rubric-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:400px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.pass{border-left-color:var(--accent); background:rgba(127,216,160,0.06);}
+  .log .line.fail{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .step-marker{display:flex; align-items:center; gap:0.7rem; margin:1.6rem 0 0.8rem;}
+  .step-marker .num{font-family:var(--mono); font-size:0.75rem; background:var(--panel-2); border:1.5px solid var(--accent); color:var(--accent); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-weight:700;}
+  .step-marker .label{font-family:var(--mono); font-size:0.78rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-dim);}
+
+  .test-status{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;}
+  .test-pill{font-family:var(--mono); font-size:0.72rem; padding:0.45rem 0.8rem; border-radius:20px; border:1.5px solid var(--rule); color:var(--ink-dim); opacity:0.4; transition:all .3s ease;}
+  .test-pill.pass{border-color:var(--accent); color:var(--accent); background:rgba(127,216,160,0.1); opacity:1;}
+  .test-pill.fail{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.1); opacity:1;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--fail-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(79,195,247,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.traj{border-left-color:var(--traj-c); background:rgba(199,146,234,0.06);} .callout.traj b{color:var(--traj-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · CUSTOM PYTEST-BASED EVALS — SATURDAY PRACTICE</div>
+  <h1>Take everything this week built. Point it at the Month 4 agent. Actually run it.</h1>
+  <p class="lede">This is Week 1's hands-on capstone: build a real pytest suite, piece by piece, evaluating <code class="inline">final_multi_agent_workflow.html</code> — Month 4's capstone agent — using all three eval families from this week: deterministic checks on its final JSON, a trajectory check verifying it genuinely recovered from the injected tool failure (not just that the final answer looked right), and a simple rubric-based check on output quality. By the end, you'll have one complete, runnable test file, not three disconnected snippets.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Deterministic — schema-validate the final answer</div>
+    <div class="pipe-label b">Trajectory — verify the retry actually happened</div>
+    <div class="pipe-label c">Rubric — a simple assertion-based quality check</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="setup">1 · Setting Up the Test File</a>
+  <a data-target="deterministic">2 · Deterministic Checks on the Final Answer</a>
+  <a data-target="trajectory">3 · Trajectory Check — Did It Actually Recover?</a>
+  <a data-target="rubric">4 · A Simple Assertion-Based Quality Rubric</a>
+  <a data-target="live">5 · Run the Full Suite, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SETUP ============ -->
+<section id="setup">
+  <div class="kicker">01 — What we're testing, and why it's fixtures, not live calls</div>
+  <h2>Setting up the test file</h2>
+
+  <p><strong>Start here, before any test functions.</strong> <code class="inline">final_multi_agent_workflow.html</code>'s capstone scenario is fully deterministic in its SHAPE even though the underlying agent call isn't: given the scenario ("find orders over $500 from last month, summarize them"), a fixed set of qualifying orders, and one deliberately injected failure on <code class="inline">get_order_detail(order_id="ord-129")</code>, we know exactly what a CORRECT run's trajectory and final answer should look like. That means we can write this suite against a captured trajectory + final answer FIXTURE — exactly the recorded, replayable record <code class="inline">database/audit_trail_schema.html</code> and this week's <code class="inline">eval_results_schema.html</code> both argued for — rather than needing a live, non-deterministic agent call inside every test run.</p>
+
+  <div class="code"><span class="c-cmt"># test_capstone_agent_evals.py
+# Testing: mcp-and-agents/final_multi_agent_workflow.html's capstone scenario
+# "Find all orders over $500 from last month and summarize them."</span>
+
+<span class="c-kw">import</span> re
+<span class="c-kw">import</span> pytest
+<span class="c-kw">from</span> jsonschema <span class="c-kw">import</span> validate
+
+<span class="c-cmt"># a captured trajectory from one real run -- the SAME shape
+# database/eval_results_schema.html's trace_id would point to</span>
+CAPTURED_TRAJECTORY = [
+    {<span class="c-str">"tool"</span>: <span class="c-str">"query_orders"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"start_date"</span>: <span class="c-str">"2026-07-01"</span>, <span class="c-str">"end_date"</span>: <span class="c-str">"2026-07-31"</span>, <span class="c-str">"min_total"</span>: <span class="c-num">500</span>}, <span class="c-str">"result"</span>: <span class="c-str">"success"</span>},
+    {<span class="c-str">"tool"</span>: <span class="c-str">"get_order_detail"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-101"</span>}, <span class="c-str">"result"</span>: <span class="c-str">"success"</span>},
+    {<span class="c-str">"tool"</span>: <span class="c-str">"get_order_detail"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-114"</span>}, <span class="c-str">"result"</span>: <span class="c-str">"success"</span>},
+    {<span class="c-str">"tool"</span>: <span class="c-str">"get_order_detail"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-129"</span>}, <span class="c-str">"result"</span>: <span class="c-str">"error"</span>, <span class="c-str">"error_detail"</span>: <span class="c-str">"connection reset"</span>},
+    {<span class="c-str">"tool"</span>: <span class="c-str">"get_order_detail"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-129"</span>}, <span class="c-str">"result"</span>: <span class="c-str">"success"</span>},  <span class="c-cmt"># the retry</span>
+    {<span class="c-str">"tool"</span>: <span class="c-str">"get_order_detail"</span>, <span class="c-str">"args"</span>: {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-137"</span>}, <span class="c-str">"result"</span>: <span class="c-str">"success"</span>},
+]
+
+<span class="c-cmt"># the agent's final structured answer for this run</span>
+FINAL_ANSWER = {
+    <span class="c-str">"period"</span>: <span class="c-str">"2026-07"</span>,
+    <span class="c-str">"min_total"</span>: <span class="c-num">500</span>,
+    <span class="c-str">"orders_found"</span>: <span class="c-num">4</span>,
+    <span class="c-str">"orders_summarized"</span>: [
+        {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-101"</span>, <span class="c-str">"total"</span>: <span class="c-num">612</span>, <span class="c-str">"item_count"</span>: <span class="c-num">3</span>},
+        {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-114"</span>, <span class="c-str">"total"</span>: <span class="c-num">780</span>, <span class="c-str">"item_count"</span>: <span class="c-num">2</span>},
+        {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-129"</span>, <span class="c-str">"total"</span>: <span class="c-num">511</span>, <span class="c-str">"item_count"</span>: <span class="c-num">1</span>},
+        {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-137"</span>, <span class="c-str">"total"</span>: <span class="c-num">945</span>, <span class="c-str">"item_count"</span>: <span class="c-num">4</span>}
+    ],
+    <span class="c-str">"orders_omitted"</span>: [],
+    <span class="c-str">"summary_text"</span>: <span class="c-str">"Found 4 orders over $500 from July 2026, totaling $2,848 across 10 items. All orders were successfully retrieved and summarized."</span>
+}</div>
+
+  <p>Notice this trajectory and final answer are the EXACT scenario walked through interactively in <code class="inline">final_multi_agent_workflow.html</code>'s section 3 stepper — same order IDs, same injected failure on <code class="inline">ord-129</code>, same successful retry. Building this suite against that specific, already-understood scenario means every assertion below can be checked against a run you can already picture step by step, rather than an abstract, unfamiliar example.</p>
+
+  <div class="callout schema"><b>Interview-ready definition:</b> a pytest eval suite for an agent is built against captured, fixed fixtures (a recorded trajectory and final answer) rather than live, non-deterministic agent calls inside the test itself — this keeps the SUITE deterministic and fast (no real model calls needed to run the tests routinely, e.g. in CI) while still testing exactly the scenario the agent needs to handle correctly. Live agent calls have their own place (periodic full end-to-end runs, captured as NEW fixtures to test against), but the day-to-day, every-commit test suite runs against recorded fixtures — the same "replay, don't require the original conditions" principle <code class="inline">database/audit_trail_schema.html</code> established for debugging, applied here to testing.</div>
+</section>
+
+<!-- ============ SECTION 2: DETERMINISTIC CHECKS ============ -->
+<section id="deterministic">
+  <div class="step-marker"><div class="num">2</div><div class="label">Building the suite, piece by piece</div></div>
+  <div class="kicker">02 — First: does the final answer even have the right shape?</div>
+  <h2>Deterministic checks on the final answer</h2>
+
+  <p>Start with the cheapest, most reliable layer — exactly <code class="inline">deterministic_evals.html</code>'s discipline, applied directly to <code class="inline">FINAL_ANSWER</code>:</p>
+
+  <div class="code"><span class="c-kw">FINAL_ANSWER_SCHEMA</span> = {
+    <span class="c-str">"type"</span>: <span class="c-str">"object"</span>,
+    <span class="c-str">"properties"</span>: {
+        <span class="c-str">"orders_found"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"integer"</span>, <span class="c-str">"minimum"</span>: <span class="c-num">0</span>},
+        <span class="c-str">"orders_summarized"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"array"</span>},
+        <span class="c-str">"orders_omitted"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"array"</span>}
+    },
+    <span class="c-str">"required"</span>: [<span class="c-str">"orders_found"</span>, <span class="c-str">"orders_summarized"</span>, <span class="c-str">"orders_omitted"</span>]
+}
+
+<span class="c-kw">def</span> <span class="c-fn">test_final_answer_matches_schema</span>():
+    <span class="c-cmt"># schema validation -- structural correctness, per json_schema_tool_specs.html</span>
+    validate(instance=FINAL_ANSWER, schema=FINAL_ANSWER_SCHEMA)
+
+<span class="c-kw">def</span> <span class="c-fn">test_period_is_correct</span>():
+    <span class="c-cmt"># exact-match -- there is exactly one correct period for this scenario</span>
+    <span class="c-kw">assert</span> FINAL_ANSWER[<span class="c-str">"period"</span>] == <span class="c-str">"2026-07"</span>
+
+<span class="c-kw">def</span> <span class="c-fn">test_orders_found_matches_summarized_plus_omitted</span>():
+    <span class="c-cmt"># rule-based invariant -- catches silent miscounting</span>
+    total = len(FINAL_ANSWER[<span class="c-str">"orders_summarized"</span>]) + len(FINAL_ANSWER[<span class="c-str">"orders_omitted"</span>])
+    <span class="c-kw">assert</span> FINAL_ANSWER[<span class="c-str">"orders_found"</span>] == total
+
+<span class="c-kw">def</span> <span class="c-fn">test_no_order_summarized_and_omitted_at_once</span>():
+    <span class="c-cmt"># rule-based invariant -- an order can't be BOTH successfully summarized</span>
+    <span class="c-cmt"># AND recorded as omitted -- these lists must be disjoint</span>
+    summarized_ids = {o[<span class="c-str">"order_id"</span>] <span class="c-kw">for</span> o <span class="c-kw">in</span> FINAL_ANSWER[<span class="c-str">"orders_summarized"</span>]}
+    omitted_ids = {o[<span class="c-str">"order_id"</span>] <span class="c-kw">for</span> o <span class="c-kw">in</span> FINAL_ANSWER[<span class="c-str">"orders_omitted"</span>]}
+    <span class="c-kw">assert</span> summarized_ids.isdisjoint(omitted_ids)</div>
+
+  <p>All four of these run in milliseconds, need no model call, and give identical results every time — exactly deterministic_evals.html's whole point. But notice what none of them check: whether <code class="inline">ord-129</code>'s data in <code class="inline">orders_summarized</code> is actually GROUNDED in a real, successful tool call, versus fabricated after a failure. That's section 3's job.</p>
+</section>
+
+<!-- ============ SECTION 3: TRAJECTORY CHECK ============ -->
+<section id="trajectory">
+  <div class="step-marker"><div class="num">3</div><div class="label">Building the suite, piece by piece</div></div>
+  <div class="kicker">03 — Second: did the agent actually recover, or did it fake it?</div>
+  <h2>Trajectory check — did it actually recover?</h2>
+
+  <p>This is the check <code class="inline">trajectory_based_evals.html</code>'s entire lab built toward, applied concretely here: verify the retry documented in the Month 4 checkpoint actually happened in the trajectory, not just that the final numbers happen to look right.</p>
+
+  <div class="code"><span class="c-kw">def</span> <span class="c-fn">test_retried_after_injected_failure</span>():
+    <span class="c-cmt"># the checkpoint requires: "agent completes a 3-step task end-to-end</span>
+    <span class="c-cmt"># with one deliberately injected tool failure, and recovers or fails</span>
+    <span class="c-cmt"># gracefully." This test verifies the RECOVERY actually happened.</span>
+    failed_calls = [
+        step <span class="c-kw">for</span> step <span class="c-kw">in</span> CAPTURED_TRAJECTORY
+        <span class="c-kw">if</span> step[<span class="c-str">"tool"</span>] == <span class="c-str">"get_order_detail"</span> <span class="c-kw">and</span> step[<span class="c-str">"result"</span>] == <span class="c-str">"error"</span>
+    ]
+    <span class="c-kw">assert</span> len(failed_calls) == <span class="c-num">1</span>, <span class="c-str">"expected exactly one injected failure in this fixture"</span>
+    failed_order_id = failed_calls[<span class="c-num">0</span>][<span class="c-str">"args"</span>][<span class="c-str">"order_id"</span>]
+
+    <span class="c-cmt"># find the index of the failed call, then check for a SUBSEQUENT</span>
+    <span class="c-cmt"># successful call to the SAME tool with the SAME order_id -- a genuine retry</span>
+    fail_idx = CAPTURED_TRAJECTORY.index(failed_calls[<span class="c-num">0</span>])
+    later_calls = CAPTURED_TRAJECTORY[fail_idx + <span class="c-num">1</span>:]
+    retried = any(
+        step[<span class="c-str">"tool"</span>] == <span class="c-str">"get_order_detail"</span>
+        <span class="c-kw">and</span> step[<span class="c-str">"args"</span>].get(<span class="c-str">"order_id"</span>) == failed_order_id
+        <span class="c-kw">and</span> step[<span class="c-str">"result"</span>] == <span class="c-str">"success"</span>
+        <span class="c-kw">for</span> step <span class="c-kw">in</span> later_calls
+    )
+    <span class="c-kw">assert</span> retried, <span class="c-str">f"expected a successful retry for {failed_order_id} after its failure"</span>
+
+<span class="c-kw">def</span> <span class="c-fn">test_final_answer_reflects_the_recovered_order</span>():
+    <span class="c-cmt"># cross-checking trajectory AGAINST the final answer -- the order that</span>
+    <span class="c-cmt"># failed-then-recovered should appear in orders_summarized, NOT orders_omitted</span>
+    summarized_ids = {o[<span class="c-str">"order_id"</span>] <span class="c-kw">for</span> o <span class="c-kw">in</span> FINAL_ANSWER[<span class="c-str">"orders_summarized"</span>]}
+    <span class="c-kw">assert</span> <span class="c-str">"ord-129"</span> <span class="c-kw">in</span> summarized_ids, <span class="c-str">"the recovered order should be summarized, not silently dropped"</span></div>
+
+  <p>The second test is worth pausing on: it deliberately checks the trajectory AND the final answer TOGETHER, verifying they're consistent with each other. This is exactly the class of bug <code class="inline">trajectory_based_evals.html</code>'s Run B demonstrated — a final answer that LOOKS complete and correct in isolation, but whose data for one specific order has no genuine grounding in the trajectory that supposedly produced it.</p>
+
+  <div class="callout traj"><b>Interview-ready definition:</b> a trajectory check for a recovery scenario verifies the ACTUAL SEQUENCE of tool calls contains a genuine failure-then-retry pattern — not just that the final answer's numbers happen to be correct — by finding the failed call, then confirming a subsequent successful call to the same tool with the same arguments exists afterward. Cross-checking the trajectory against the final answer (the recovered order actually appears as summarized, not omitted or missing) catches the specific case where an agent's final output looks complete while the underlying process that should have produced it — the genuine retry — never actually happened.</div>
+</section>
+
+<!-- ============ SECTION 4: RUBRIC ============ -->
+<section id="rubric">
+  <div class="step-marker"><div class="num">4</div><div class="label">Building the suite, piece by piece</div></div>
+  <div class="kicker">04 — Third: is the human-readable summary actually usable?</div>
+  <h2>A simple assertion-based quality rubric</h2>
+
+  <p>The final piece: <code class="inline">FINAL_ANSWER["summary_text"]</code> is free text meant for a human reader, not just structured data for a downstream system. A full model-graded eval (<code class="inline">model_graded_evals.html</code>) would be the RIGHT tool for genuinely open-ended quality judgment — but for a lightweight Saturday practice suite, a simple assertion-based proxy rubric can catch the most obvious quality failures cheaply, without a judge call:</p>
+
+  <div class="code"><span class="c-kw">def</span> <span class="c-fn">test_summary_mentions_the_order_count</span>():
+    <span class="c-cmt"># a minimal proxy rubric check: does the summary text actually state</span>
+    <span class="c-cmt"># the number that matters most, rather than being vague?</span>
+    <span class="c-kw">assert</span> str(FINAL_ANSWER[<span class="c-str">"orders_found"</span>]) <span class="c-kw">in</span> FINAL_ANSWER[<span class="c-str">"summary_text"</span>]
+
+<span class="c-kw">def</span> <span class="c-fn">test_summary_is_not_suspiciously_short_or_empty</span>():
+    <span class="c-cmt"># a length-floor proxy for "did the model actually say something"</span>
+    <span class="c-kw">assert</span> len(FINAL_ANSWER[<span class="c-str">"summary_text"</span>].split()) >= <span class="c-num">10</span>
+
+<span class="c-kw">def</span> <span class="c-fn">test_summary_does_not_silently_omit_a_known_failure</span>():
+    <span class="c-cmt"># since this fixture's run had a failure that WAS recovered, the summary</span>
+    <span class="c-cmt"># should read as complete -- no hedging language suggesting a gap the</span>
+    <span class="c-cmt"># orders_omitted list doesn't also reflect</span>
+    hedge_phrases = [<span class="c-str">"could not retrieve"</span>, <span class="c-str">"unable to fetch"</span>, <span class="c-str">"partial results"</span>]
+    <span class="c-kw">if</span> <span class="c-kw">not</span> FINAL_ANSWER[<span class="c-str">"orders_omitted"</span>]:
+        <span class="c-kw">assert not</span> any(phrase <span class="c-kw">in</span> FINAL_ANSWER[<span class="c-str">"summary_text"</span>].lower() <span class="c-kw">for</span> phrase <span class="c-kw">in</span> hedge_phrases), \
+            <span class="c-str">"summary hedges about missing data, but orders_omitted is empty -- inconsistent"</span></div>
+
+  <p>Notice the honest framing here: these are RULE-BASED checks wearing a "rubric" label, not a real model-graded eval — they're proxies for quality (mentions the key number, isn't suspiciously terse, doesn't contradict the structured data) rather than a genuine judgment of whether the prose actually reads well. That's a deliberate, appropriate choice for a lightweight practice suite: cheap, fast, zero judge-model cost, catching the most obvious quality regressions — while a REAL production eval suite for this agent would likely add an actual model-graded faithfulness/coherence check on top, per <code class="inline">model_graded_evals.html</code>, for the genuinely open-ended quality judgment these proxy rules can't capture.</p>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> calling these three checks a "rubric" is a slight abuse of terminology worth being honest about in an interview — they're deterministic rule-based checks (section 1's deterministic_evals.html category) being used AS A PROXY for quality, not a genuine model-graded rubric. If asked to distinguish them, the correct answer is: these checks are cheap and can catch some obvious regressions, but they cannot assess genuinely subjective quality (tone, clarity of PROSE beyond just containing the right number) the way an actual LLM-as-judge rubric could — see model_graded_evals.html for that layer.</div>
+</section>
+
+<!-- ============ SECTION 5: RUN THE SUITE ============ -->
+<section id="live">
+  <div class="kicker">05 — All three layers, run together against the capstone fixture</div>
+  <h2>Run the full suite, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below simulates running <code class="inline">pytest test_capstone_agent_evals.py -v</code> against the fixture built up across sections 1-4. Watch all 7 tests run in order, grouped by which eval family each belongs to.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>pytest test_capstone_agent_evals.py -v</span>
+      <div><button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <div class="test-status" id="test-status"></div>
+    <button class="btn" id="run-suite">Run pytest ▸</button>
+    <div class="log" id="run-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> all 7 tests pass against this fixture — because it represents the GENUINE recovery scenario (Run A from <code class="inline">trajectory_based_evals.html</code>), not the fabrication scenario (Run B). If you swapped in a fixture matching Run B instead (a trajectory with no successful retry after the failure, but the same-looking final answer), the deterministic and rubric checks would still pass — but <code class="inline">test_retried_after_injected_failure</code> and <code class="inline">test_final_answer_reflects_the_recovered_order</code> would fail, exactly demonstrating why the trajectory layer earns its place in this suite rather than being redundant with the deterministic layer.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a new test for a currently-untested requirement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's fixture asserts <code class="inline">query_orders</code> is called before any <code class="inline">get_order_detail</code> call — but no test in sections 2-4 actually checks this ordering. Write the pytest test for it, using section 3's index-based approach.</p>
+    <details><summary>Show solution</summary><div class="solution">def test_query_orders_precedes_detail_fetches():
+    # a real data dependency, per final_multi_agent_workflow.html section
+    # 2's plan table: get_order_detail's order_ids come FROM query_orders'
+    # result, so query_orders must appear first in the trajectory
+    tools = [step["tool"] for step in CAPTURED_TRAJECTORY]
+    query_idx = tools.index("query_orders")
+    detail_indices = [i for i, t in enumerate(tools) if t == "get_order_detail"]
+    assert all(i > query_idx for i in detail_indices), \
+        "every get_order_detail call must come after query_orders"
+
+This follows exactly the same shape as section 3's
+test_retried_after_injected_failure -- find a reference index, then
+assert a property about every OTHER relevant step's position relative to
+it. It belongs in section 3 (trajectory checks) rather than section 2,
+because it's checking the SEQUENCE/ordering of tool calls, not any
+property of the final answer's structure or content.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing which specific test would catch a specific regression</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A code change accidentally causes the agent to retry a failed <code class="inline">get_order_detail</code> call THREE times before giving up, instead of the intended single bounded retry from <code class="inline">loop_termination_logic.html</code>. Would any test in sections 2-4 catch this regression? If not, write one that would.</p>
+    <details><summary>Show solution</summary><div class="solution">No existing test in sections 2-4 would catch this. test_retried_after_
+injected_failure only checks that AT LEAST ONE successful retry exists
+after a failure -- it says nothing about how MANY attempts preceded that
+success, so 1 retry and 3 retries both satisfy it equally. None of the
+deterministic or rubric checks look at retry COUNT at all.
+
+A new test that would catch it:
+
+def test_retry_count_stays_within_bound():
+    # loop_termination_logic.html's retry budget: at most 1 retry per
+    # call before either succeeding or moving to orders_omitted
+    tools_and_args = [(s["tool"], s["args"].get("order_id")) for s in CAPTURED_TRAJECTORY]
+    from collections import Counter
+    call_counts = Counter(tools_and_args)
+    for (tool, order_id), count in call_counts.items():
+        if tool == "get_order_detail":
+            assert count <= 2, \
+                f"get_order_detail for {order_id} was attempted {count} times, expected at most 2 (1 initial + 1 retry)"
+
+This directly tests the loop_termination_logic.html per-call retry
+BUDGET, a genuinely different property from "did a retry eventually
+succeed" -- this is exactly the kind of gap Practice Problem 1's pattern
+(spotting an untested but real requirement) generalizes to: a suite that
+only checks "did recovery eventually happen" without also checking "was
+recovery bounded" would silently allow a retry-budget regression to ship
+undetected, even though the FINAL trajectory still technically contains
+a successful retry.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why this suite tests against a fixture instead of a live agent call</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate suggests replacing <code class="inline">CAPTURED_TRAJECTORY</code> with an actual live call to the Month 4 agent inside each test, "so we're testing the real thing, not a fake." What's the strongest argument against this for the suite's DAY-TO-DAY use, and where would a live call still be appropriate?</p>
+    <details><summary>Show solution</summary><div class="solution">The strongest argument against it for day-to-day/CI use: a live agent
+call reintroduces exactly the non-determinism deterministic_evals.html
+and this lab's section 1 are both explicitly trying to keep OUT of the
+test suite itself. If each test run makes a real model call, the suite
+becomes flaky (different runs might get different trajectories due to
+the model's own sampling, per model_graded_evals.html's inconsistency
+failure mode applied to agent behavior generally, not just judges),
+slow (real model calls take real latency, multiplied across every test
+run on every commit), and costly (real API calls have real dollar cost,
+scaled by however many times CI runs the suite per day). A test suite
+that's flaky for reasons having nothing to do with an actual code
+regression trains engineers to ignore failures ("oh, it's probably just
+flaky again"), which defeats the entire purpose of having tests that
+gate deploys (per eval_results_schema.html's Problem 5 on CI/CD gating).
+
+Where a live call IS still appropriate: periodically (e.g. nightly, or
+specifically when the underlying model/agent version changes) running a
+SEPARATE process that makes real live agent calls against this same
+scenario, captures the RESULTING trajectory and final answer, and either
+(a) runs this exact test suite against that freshly-captured data as an
+integration-level check, or (b) if it's a known-good run, promotes it to
+become the NEW fixture data future unit-test runs use. This is exactly
+observability_pipeline_design.html's trace-capture pipeline doing double
+duty (per trajectory_based_evals.html's Problem 5) -- a live run's
+captured trace becomes tomorrow's fixture, keeping the fast, deterministic
+suite (this lab) and the slower, real-world-validating check
+(periodic live runs) as two distinct, complementary layers rather than
+collapsing them into one.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Extending the suite to fail the whole run on a critical test</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">eval_results_schema.html</code>'s CI/CD gating discussion, which ONE test in this suite would you mark as a hard release-blocker if it fails, versus tests that could be "warn but don't block"? Justify your choice.</p>
+    <details><summary>Show solution</summary><div class="solution">test_retried_after_injected_failure (or its paired
+test_final_answer_reflects_the_recovered_order) is the strongest
+candidate for a hard release-blocker. This is because it's directly
+testing the Month 4 checkpoint's OWN stated bar -- "agent completes a
+3-step task end-to-end with one deliberately injected tool failure, and
+recovers or fails gracefully" -- and a regression here means the agent
+is silently FABRICATING data instead of genuinely recovering, which is
+a correctness and trust failure far more severe than, say,
+test_summary_is_not_suspiciously_short_or_empty failing (a minor prose
+quality issue that's unpleasant but not actively misleading).
+
+Justification using severity: schema validation and the basic
+exact-match/invariant checks (section 2) catch structural bugs that
+would likely break DOWNSTREAM consumers outright (a missing field
+crashes a parser) -- also blocker-worthy, but for a different reason
+(broken integration, not silent wrongness). The rubric checks (section
+4) are explicitly framed as cheap PROXIES, not authoritative quality
+judgments -- appropriate as "warn, investigate" signals rather than hard
+blockers, since a false positive (a fine summary that happens to trip a
+proxy rule) shouldn't block a release on its own. The trajectory
+fabrication check is the one whose failure means the agent is doing
+something actively DECEPTIVE -- producing confident, well-formed,
+plausible-looking output that has no basis in what actually happened --
+which is exactly the class of failure a CI/CD gate (per
+eval_results_schema.html's Problem 5) exists to catch before it reaches
+production, where a human would have no easy way to detect it after the
+fact without exactly this kind of trajectory-level check already in
+place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting this whole suite back to the Month 4 checkpoint, explicitly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Restate, in your own words, exactly how this 7-test suite operationalizes <code class="inline">final_multi_agent_workflow.html</code>'s Month 4 checkpoint ("agent completes a 3-step task end-to-end with one deliberately injected tool failure, and recovers or fails gracefully") as an automated, repeatable check rather than a one-time manual narration.</p>
+    <details><summary>Show solution</summary><div class="solution">The Month 4 checkpoint, as originally written, asked for a HUMAN to
+narrate the scenario from memory, cold, in an interview-style setting --
+valuable for internalizing the material, but not something that runs
+automatically or catches a REAL regression in the actual agent code
+later. This suite is that same checkpoint, translated into code that
+runs on every commit:
+
+"3-step task end-to-end" -> test_query_orders_precedes_detail_fetches
+(Problem 1) and the schema/invariant tests (section 2) together verify
+the task's basic SHAPE completed correctly -- query, fetch, synthesize,
+in the right order, with internally consistent output.
+
+"one deliberately injected tool failure" -> the CAPTURED_TRAJECTORY
+fixture itself encodes this exactly as final_multi_agent_workflow.html's
+own section 3 stepper does -- one get_order_detail call recorded with
+result="error".
+
+"recovers... gracefully" -> test_retried_after_injected_failure and
+test_final_answer_reflects_the_recovered_order (section 3) verify the
+recovery was GENUINE, not just that the final numbers happened to look
+right -- exactly the trajectory-vs-final-answer distinction this whole
+lab, and trajectory_based_evals.html before it, existed to make
+concrete.
+
+"...or fails gracefully" -> not directly tested by THIS suite's fixture
+(which represents the successful-recovery case), but per
+final_multi_agent_workflow.html's own Practice Problem 3, a parallel
+fixture representing the "retry also failed, order correctly placed in
+orders_omitted with a reason" case would need its OWN suite run against
+it -- this suite as built tests the recovery path; a complete Month 4
+regression suite would need a second fixture and a parallel set of
+assertions for the graceful-failure path, which is a natural, concrete
+next extension of exactly this pattern.
+
+The overall shift: a one-time cold recall becomes a suite that runs on
+every future code change to this agent, catching a regression the
+moment it's introduced rather than relying on someone noticing it later
+in production, or re-deriving the checkpoint from memory being the only
+time this reasoning ever gets checked at all.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write all 7 tests in this suite from memory, explaining which eval family each belongs to and why, (2) explain precisely why the suite tests against a captured fixture rather than a live agent call, and (3) identify which single test is the strongest release-blocker candidate and why? Week 2 picks this up directly — instrumenting the Month 4 agent with REAL OpenTelemetry tracing, so <code class="inline">CAPTURED_TRAJECTORY</code> stops being a hand-written fixture and starts being a genuine trace pulled from <code class="inline">observability_pipeline_design.html</code>'s pipeline.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — pytest evals practice.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 5: RUN THE PYTEST SUITE */
+(function(){
+  var runBtn = document.getElementById("run-suite");
+  var resetBtn = document.getElementById("run-reset");
+  var logEl = document.getElementById("run-log");
+  var statusEl = document.getElementById("test-status");
+
+  var TESTS = [
+    {name: "test_final_answer_matches_schema", group: "deterministic", pass: true, detail: "schema-valid: all required fields present, correct types"},
+    {name: "test_period_is_correct", group: "deterministic", pass: true, detail: 'period == "2026-07" — exact match'},
+    {name: "test_orders_found_matches_summarized_plus_omitted", group: "deterministic", pass: true, detail: "4 == 4 + 0 — invariant holds"},
+    {name: "test_no_order_summarized_and_omitted_at_once", group: "deterministic", pass: true, detail: "summarized and omitted sets are disjoint"},
+    {name: "test_retried_after_injected_failure", group: "trajectory", pass: true, detail: "found 1 failure for ord-129, followed by 1 successful retry"},
+    {name: "test_final_answer_reflects_the_recovered_order", group: "trajectory", pass: true, detail: "ord-129 present in orders_summarized, not omitted"},
+    {name: "test_summary_mentions_the_order_count", group: "rubric", pass: true, detail: '"4" found in summary_text'},
+    {name: "test_summary_is_not_suspiciously_short_or_empty", group: "rubric", pass: true, detail: "19 words — well above the 10-word floor"},
+    {name: "test_summary_does_not_silently_omit_a_known_failure", group: "rubric", pass: true, detail: "no hedge phrases found, consistent with empty orders_omitted"}
+  ];
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    statusEl.innerHTML = "";
+
+    log('<b>collected 9 items</b>');
+    await wait(300);
+
+    var currentGroup = "";
+    for(var i = 0; i < TESTS.length; i++){
+      var t = TESTS[i];
+      if(t.group !== currentGroup){
+        currentGroup = t.group;
+        log('<b style="color:var(--schema-c);">— ' + currentGroup.toUpperCase() + ' CHECKS —</b>');
+        await wait(200);
+      }
+      await wait(280);
+      var resultTxt = t.pass ? "PASSED" : "FAILED";
+      log((t.pass ? "" : '<b style="color:var(--fail-c);">') + t.name + " :: " + resultTxt + (t.pass ? "" : "</b>") + '<br><span style="opacity:0.7;">' + t.detail + '</span>', t.pass ? "pass" : "fail");
+      var pill = document.createElement("span");
+      pill.className = "test-pill " + (t.pass ? "pass" : "fail");
+      pill.textContent = t.name.replace("test_", "");
+      statusEl.appendChild(pill);
+    }
+
+    await wait(300);
+    var passCount = TESTS.filter(function(t){ return t.pass; }).length;
+    log('<b style="color:var(--accent);">' + passCount + ' passed, ' + (TESTS.length - passCount) + ' failed</b> in 0.04s — all three eval families (deterministic, trajectory, rubric) green against this fixture.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    statusEl.innerHTML = "";
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

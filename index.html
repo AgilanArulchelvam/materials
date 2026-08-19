@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
-    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --backend-c:#ff6b9d; --storage-c:#4fc3f7; --mcp-c:#5fc9b0; --accent:#ff8a65;
+    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --backend-c:#ff6b9d; --storage-c:#4fc3f7; --mcp-c:#5fc9b0; --eval-c:#d4a5f0; --accent:#ff8a65;
     --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
   }
   *{box-sizing:border-box;}
@@ -65,6 +65,9 @@
   .mcp .tag{color:var(--mcp-c);}
   .mcp:hover{border-color:var(--mcp-c);}
   .mcp .arrow{color:var(--mcp-c);}
+  .eval .tag{color:var(--eval-c);}
+  .eval:hover{border-color:var(--eval-c);}
+  .eval .arrow{color:var(--eval-c);}
 
   .card.roadmap{position:relative;}
   .card .status{font-family:var(--mono); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid var(--rule); color:var(--ink-dim); position:absolute; top:1.4rem; right:1.5rem;}
@@ -78,8 +81,8 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>One hundred and one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
-  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, and MCP &amp; agentic systems — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
+  <h1>One hundred and seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, MCP &amp; agentic systems, and AI evals &amp; observability — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
 <main>
@@ -231,7 +234,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">7 labs</span>
+      <span class="count">8 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -276,13 +279,19 @@
         <p>Write-through vs write-back animated side by side, a live LRU eviction on a 5-slot cache, and why perfect cache consistency is in direct tension with the reason a cache exists.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/observability_pipeline_design.html">
+        <span class="tag">System Design — Traces, Metrics &amp; Logs</span>
+        <h3>Observability Pipeline Design</h3>
+        <p>Traces, metrics, and logs animated from one live request across three services, plus the retention/downsampling design observability data needs at real scale.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">15 labs</span>
+      <span class="count">16 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -373,6 +382,12 @@
         <span class="tag">DB Design — Immutable Events vs Mutable Rows</span>
         <h3>Event Sourcing vs. CRUD</h3>
         <p>An order's status derived by replaying OrderCreated/PaymentReceived/OrderShipped events instead of overwriting a status column, the replayability-vs-query-complexity trade-off, and when plain CRUD is simply the right, simpler default.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/eval_results_schema.html">
+        <span class="tag">DB Design — Eval Runs, Results &amp; Trace Links</span>
+        <h3>Eval Results Schema</h3>
+        <p>An eval_run/eval_result header-detail pair, a failing trajectory result traced back to the exact trace_id that produced it, and the pass-rate-over-time queries a real eval pipeline actually runs.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -755,6 +770,39 @@
 
   <section class="group">
     <div class="group-head">
+      <h2>Evals &amp; Observability</h2>
+      <span class="count">4 labs</span>
+    </div>
+    <div class="cards">
+      <a class="card eval" href="evals-and-observability/deterministic_evals.html">
+        <span class="tag">Exact-Match, Schema Validation &amp; Rule-Based Checks</span>
+        <h3>Deterministic Evals</h3>
+        <p>The three deterministic check types explained and coded as real pytest assertions, then run live against a sample agent output — passing some checks and failing others simultaneously.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/model_graded_evals.html">
+        <span class="tag">LLM-as-Judge, Rubrics &amp; Bias</span>
+        <h3>Model-Graded Evals</h3>
+        <p>Using a separate LLM call to score qualities too fuzzy for a rule, plus length bias, position bias, and judge inconsistency reproduced live on two candidate summaries.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/trajectory_based_evals.html">
+        <span class="tag">Scoring the Steps, Not Just the Answer</span>
+        <h3>Trajectory-Based Evals</h3>
+        <p>Two runs producing an identical final answer — one a genuine recovery, one a silent fabrication — with only a trajectory-based eval able to tell them apart, plus DeepEval/Ragas concepts.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/pytest_evals_practice.html">
+        <span class="tag">Practice — A Real Suite for the Month 4 Agent</span>
+        <h3>Pytest Evals Practice</h3>
+        <p>Building a complete pytest suite piece by piece against final_multi_agent_workflow.html's capstone — deterministic, trajectory, and rubric checks, run live as one suite.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
       <h2>Roadmap</h2>
       <span class="count">6 months</span>
     </div>
@@ -806,7 +854,7 @@
 
 </main>
 
-<footer>materials/ · one hundred and one standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and seven standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Deterministic Evals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --exact-c:#4fc3f7; --schema-c:#c792ea; --rule-c:#f2c14e; --pass-c:#7fd8a0; --accent:#7fd8a0; --fail-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--exact-c); color:var(--exact-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--rule-c); color:var(--rule-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.pass{border-left-color:var(--pass-c); background:rgba(127,216,160,0.06);}
+  .log .line.fail{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .check-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.9rem; margin:1.2rem 0;}
+  @media(max-width:820px){.check-grid{grid-template-columns:1fr;}}
+  .check-card{border:1.5px solid var(--rule); border-radius:10px; padding:1rem; background:var(--panel-2); text-align:center; transition:all .3s ease;}
+  .check-card .name{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.5rem;}
+  .check-card .result{font-family:var(--mono); font-size:1rem; font-weight:700;}
+  .check-card.pending .result{color:var(--ink-dim);}
+  .check-card.pass{border-color:var(--pass-c); box-shadow:0 0 12px rgba(127,216,160,0.2);}
+  .check-card.pass .result{color:var(--pass-c);}
+  .check-card.fail{border-color:var(--fail-c); box-shadow:0 0 12px rgba(255,107,107,0.2);}
+  .check-card.fail .result{color:var(--fail-c);}
+  .check-card .detail{font-size:0.72rem; color:var(--ink-dim); margin-top:0.4rem; font-family:var(--mono);}
+
+  .json-out{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1rem 0; color:#cdd0d8; white-space:pre-wrap;}
+  .json-out .k{color:var(--exact-c);} .json-out .s{color:#7fd8a0;} .json-out .n{color:#c792ea;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--fail-c);}
+  .callout.exact{border-left-color:var(--exact-c); background:rgba(79,195,247,0.06);} .callout.exact b{color:var(--exact-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(199,146,234,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.rule{border-left-color:var(--rule-c); background:rgba(242,193,78,0.06);} .callout.rule b{color:var(--rule-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · DETERMINISTIC EVALS</div>
+  <h1>Before you ever need a judge, ask whether a <em>rule</em> could have answered it.</h1>
+  <p class="lede">Month 4 built an agent whose final answer comes back as validated, structured JSON (<code class="inline">final_multi_agent_workflow.html</code>). Month 5 asks the next question: how do you actually check, systematically and repeatably, whether that output is CORRECT? The cheapest, fastest, most trustworthy category of check is a <strong>deterministic eval</strong> — a check with no randomness and no judgment call, that gives the exact same pass/fail result every single time on the same input. This lab covers the three deterministic check types and shows them running live against a real agent output.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Exact-match — the output equals a known string, byte for byte</div>
+    <div class="pipe-label b">Schema validation — the output's SHAPE is checked, not its exact content</div>
+    <div class="pipe-label c">Rule-based checks — a specific programmatic property must hold</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="types">1 · Exact-Match, Schema Validation, Rule-Based Checks</a>
+  <a data-target="code">2 · Writing Deterministic Eval Checks</a>
+  <a data-target="live">3 · Run the Checks Live Against a Sample Output</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE THREE TYPES ============ -->
+<section id="types">
+  <div class="kicker">01 — Three ways to check an answer without ever asking a model to judge it</div>
+  <h2>Exact-match, schema validation, and rule-based checks</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about grading a math worksheet versus grading an essay. For "what is 7 times 8," there's exactly one correct answer — you compare the student's answer to "56" and it's either right or wrong, no interpretation needed. For "does this shape look like a valid geometric proof," you're not checking one exact answer, you're checking that the STRUCTURE follows the required form (a hypothesis, then steps, then a conclusion) even though the specific wording varies. For "did the student show their work by writing at least 3 lines," you're checking one very specific, mechanically verifiable rule, independent of whether the final answer was even correct. All three are things a strict but literal-minded grading assistant could check without understanding math at all — that's exactly the posture a deterministic eval takes toward an agent's output.</p>
+
+  <h3>Exact-match</h3>
+  <p><strong>Exact-match</strong> compares an agent's output to one specific, known-correct expected string, and passes only if they are identical (optionally after a narrow, explicitly-defined normalization step like trimming whitespace or lowercasing). It is the strictest, simplest, and least forgiving of the three checks.</p>
+  <div class="code"><span class="c-cmt"># exact-match: output must equal the expected string exactly</span>
+<span class="c-kw">def</span> <span class="c-fn">exact_match</span>(output: str, expected: str) -> bool:
+    <span class="c-kw">return</span> output.strip() == expected.strip()
+
+<span class="c-fn">exact_match</span>(<span class="c-str">"Paris"</span>, <span class="c-str">"Paris"</span>)   <span class="c-cmt"># True</span>
+<span class="c-fn">exact_match</span>(<span class="c-str">"paris"</span>, <span class="c-str">"Paris"</span>)   <span class="c-cmt"># False -- case mismatch, exact-match doesn't forgive this</span></div>
+  <p>Exact-match is the right tool only when there really is exactly one acceptable answer, expressed exactly one acceptable way — a capital city's name, a specific numeric ID, a fixed classification label from a closed set. It is the WRONG tool the moment there's more than one valid phrasing of a correct answer ("Paris, France" vs "Paris" would both be correct in a chat context, but exact-match against just <code class="inline">"Paris"</code> would fail the first).</p>
+
+  <h3>Schema validation</h3>
+  <p><strong>Schema validation</strong> doesn't check the output's exact content at all — it checks that the output's SHAPE conforms to a JSON Schema: the right fields present, the right types, required fields not missing. This is precisely the discipline <code class="inline">json_schema_tool_specs.html</code> and <code class="inline">final_multi_agent_workflow.html</code> already established for tool call arguments and the agent's final structured answer — schema validation as an eval is that SAME check, now run as a scored test rather than as inline validation before returning a result to a caller.</p>
+  <div class="code"><span class="c-cmt">// the Month 4 agent's final-answer schema, from final_multi_agent_workflow.html</span>
+{
+  <span class="c-key">"type"</span>: <span class="c-str">"object"</span>,
+  <span class="c-key">"properties"</span>: {
+    <span class="c-key">"orders_found"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"integer"</span>, <span class="c-key">"minimum"</span>: <span class="c-num">0</span>},
+    <span class="c-key">"orders_summarized"</span>: {
+      <span class="c-key">"type"</span>: <span class="c-str">"array"</span>,
+      <span class="c-key">"items"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"object"</span>,
+        <span class="c-key">"properties"</span>: {
+          <span class="c-key">"order_id"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"string"</span>},
+          <span class="c-key">"total"</span>:    {<span class="c-key">"type"</span>: <span class="c-str">"number"</span>},
+          <span class="c-key">"item_count"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"integer"</span>}
+        },
+        <span class="c-key">"required"</span>: [<span class="c-str">"order_id"</span>, <span class="c-str">"total"</span>, <span class="c-str">"item_count"</span>]
+      }
+    },
+    <span class="c-key">"orders_omitted"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"array"</span>}
+  },
+  <span class="c-key">"required"</span>: [<span class="c-str">"orders_found"</span>, <span class="c-str">"orders_summarized"</span>, <span class="c-str">"orders_omitted"</span>]
+}</div>
+  <p>A schema-validation eval doesn't care whether <code class="inline">orders_found</code> is 3 or 4 — it cares whether <code class="inline">orders_found</code> exists at all, is an integer, and is non-negative. This is deliberately a weaker, more permissive check than exact-match: it can't tell you the agent got the CONTENT right, only that the output is well-formed enough for a downstream system to consume it without crashing.</p>
+
+  <h3>Rule-based checks</h3>
+  <p><strong>Rule-based checks</strong> apply one specific, programmatically-verifiable property to the output — not "does it equal X" and not "does it have the right shape," but "does it satisfy this particular predicate." Common examples: the output must contain a valid ISO-format date; the output must not exceed some token or character budget; the output must not contain a specific banned substring (an internal system prompt fragment leaking, for instance).</p>
+  <div class="code"><span class="c-cmt"># rule-based: output must contain a valid ISO-8601 date</span>
+<span class="c-kw">import</span> re
+<span class="c-kw">def</span> <span class="c-fn">contains_iso_date</span>(output: str) -> bool:
+    <span class="c-kw">return</span> re.search(<span class="c-str">r"\d{4}-\d{2}-\d{2}"</span>, output) <span class="c-kw">is not</span> <span class="c-kw">None</span>
+
+<span class="c-cmt"># rule-based: output must not exceed N tokens (approximated by whitespace split)</span>
+<span class="c-kw">def</span> <span class="c-fn">within_token_budget</span>(output: str, max_tokens: int) -> bool:
+    <span class="c-kw">return</span> len(output.split()) <= max_tokens</div>
+  <p>Rule-based checks are the most FLEXIBLE of the three, because the "rule" can be almost anything expressible in code — but that flexibility means each rule is only as good as whoever wrote it thought to check. A rule-based check for "contains an ISO date" says nothing about whether that date is the CORRECT date.</p>
+
+  <table class="cmp">
+    <tr><th>Check type</th><th>What it verifies</th><th>What it can't catch</th></tr>
+    <tr><td>Exact-match</td><td>Output is byte-identical to one known-correct string</td><td>Any semantically correct answer phrased differently</td></tr>
+    <tr><td>Schema validation</td><td>Output's structure/types conform to a JSON Schema</td><td>Whether the VALUES inside that correct structure are actually right</td></tr>
+    <tr><td>Rule-based</td><td>One specific programmatic property holds (format, length, forbidden content)</td><td>Anything the rule wasn't written to check — correctness beyond that one property</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> a deterministic eval is a check that produces the exact same pass/fail result every time it's run against the same output, with no model call and no subjective judgment involved. Exact-match verifies literal string equality against one expected answer; schema validation verifies structural conformance (fields, types, required keys) to a JSON Schema without checking specific values; rule-based checks verify one explicit, programmatically-expressed property (a format, a length bound, a forbidden substring). All three trade flexibility for reliability — they can only ever check what they were explicitly written to check, but what they DO check, they check with total consistency and zero cost of ambiguity.</div>
+</section>
+
+<!-- ============ SECTION 2: WRITING THE CHECKS ============ -->
+<section id="code">
+  <div class="kicker">02 — From "here's the idea" to a real, runnable test</div>
+  <h2>Writing deterministic eval checks</h2>
+
+  <p><strong>Start here, before the pytest file.</strong> An eval check isn't a philosophical distinction — it's ordinary code, usually wired into a test framework so it can run automatically, in CI, on every change to a prompt or model version. Here is a real pytest-style suite applying all three check types to one sample output from the Month 4 agent's capstone scenario.</p>
+
+  <div class="code"><span class="c-cmt"># test_agent_deterministic_evals.py</span>
+<span class="c-kw">import</span> json
+<span class="c-kw">import</span> re
+<span class="c-kw">import</span> pytest
+<span class="c-kw">from</span> jsonschema <span class="c-kw">import</span> validate, ValidationError
+
+<span class="c-cmt"># the agent's actual final answer for this test case</span>
+AGENT_OUTPUT = {
+    <span class="c-str">"period"</span>: <span class="c-str">"2026-07"</span>,
+    <span class="c-str">"orders_found"</span>: <span class="c-num">4</span>,
+    <span class="c-str">"orders_summarized"</span>: [
+        {<span class="c-str">"order_id"</span>: <span class="c-str">"ord-101"</span>, <span class="c-str">"total"</span>: <span class="c-num">612</span>, <span class="c-str">"item_count"</span>: <span class="c-num">3</span>}
+    ],
+    <span class="c-str">"orders_omitted"</span>: []
+}
+
+FINAL_ANSWER_SCHEMA = {
+    <span class="c-str">"type"</span>: <span class="c-str">"object"</span>,
+    <span class="c-str">"properties"</span>: {
+        <span class="c-str">"orders_found"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"integer"</span>, <span class="c-str">"minimum"</span>: <span class="c-num">0</span>},
+        <span class="c-str">"orders_summarized"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"array"</span>},
+        <span class="c-str">"orders_omitted"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"array"</span>}
+    },
+    <span class="c-str">"required"</span>: [<span class="c-str">"orders_found"</span>, <span class="c-str">"orders_summarized"</span>, <span class="c-str">"orders_omitted"</span>]
+}
+
+<span class="c-kw">def</span> <span class="c-fn">test_period_exact_match</span>():
+    <span class="c-cmt"># deterministic: this task's period MUST be exactly "2026-07" -- no other phrasing is correct</span>
+    <span class="c-kw">assert</span> AGENT_OUTPUT[<span class="c-str">"period"</span>] == <span class="c-str">"2026-07"</span>
+
+<span class="c-kw">def</span> <span class="c-fn">test_final_answer_matches_schema</span>():
+    <span class="c-cmt"># schema validation: raises ValidationError on any structural mismatch</span>
+    validate(instance=AGENT_OUTPUT, schema=FINAL_ANSWER_SCHEMA)
+
+<span class="c-kw">def</span> <span class="c-fn">test_period_is_valid_iso_month</span>():
+    <span class="c-cmt"># rule-based: the period field must be a valid YYYY-MM string</span>
+    <span class="c-kw">assert</span> re.fullmatch(<span class="c-str">r"\d{4}-\d{2}"</span>, AGENT_OUTPUT[<span class="c-str">"period"</span>])
+
+<span class="c-kw">def</span> <span class="c-fn">test_orders_found_matches_summarized_plus_omitted</span>():
+    <span class="c-cmt"># rule-based: a specific INVARIANT the output must satisfy, not just a shape check</span>
+    total = len(AGENT_OUTPUT[<span class="c-str">"orders_summarized"</span>]) + len(AGENT_OUTPUT[<span class="c-str">"orders_omitted"</span>])
+    <span class="c-kw">assert</span> AGENT_OUTPUT[<span class="c-str">"orders_found"</span>] == total</div>
+
+  <p>Notice the last test: it isn't checking a fixed value or a schema shape at all — it's checking a RELATIONSHIP between three fields that must always hold if the agent's bookkeeping is internally consistent (<code class="inline">orders_found</code> should always equal the count of summarized plus omitted orders). This is exactly the kind of invariant a rule-based check is good at catching that neither exact-match nor schema validation would ever notice, since both fields individually pass their own checks even when the relationship between them is broken.</p>
+
+  <div class="callout schema"><b>Interview-ready definition:</b> writing a deterministic eval check means expressing a pass/fail condition as ordinary, runnable test code — typically a pytest function ending in an <code class="inline">assert</code>, or a schema-validation call that raises on mismatch — so the check can be run automatically and repeatably, the same way any other unit test would run in CI. The valuable checks go beyond superficial shape-matching to verify actual invariants the output must satisfy (like a count field matching the length of the list it's supposed to describe), because those catch classes of bugs that individual field-level checks, run in isolation, would each pass while the output as a whole is still wrong.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching the three check types run against the same output, live</div>
+  <h2>Run the checks live against a sample output</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below is a sample agent output (deliberately similar to <code class="inline">final_multi_agent_workflow.html</code>'s capstone scenario) run through several deterministic checks. Each check type is scored independently — watch which ones pass and which fail, and notice that a single output can pass some checks and fail others simultaneously, because each check is only ever asking its own narrow question.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAMPLE OUTPUT — RUN ALL DETERMINISTIC CHECKS</span>
+      <div><button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <div class="json-out" id="sample-output"></div>
+    <div class="check-grid">
+      <div class="check-card pending" id="card-exact"><div class="name">Exact-match</div><div class="result">—</div><div class="detail" id="detail-exact"></div></div>
+      <div class="check-card pending" id="card-schema"><div class="name">Schema validation</div><div class="result">—</div><div class="detail" id="detail-schema"></div></div>
+      <div class="check-card pending" id="card-rule"><div class="name">Rule-based (date format)</div><div class="result">—</div><div class="detail" id="detail-rule"></div></div>
+      <div class="check-card pending" id="card-budget"><div class="name">Rule-based (token budget)</div><div class="result">—</div><div class="detail" id="detail-budget"></div></div>
+      <div class="check-card pending" id="card-invariant"><div class="name">Rule-based (count invariant)</div><div class="result">—</div><div class="detail" id="detail-invariant"></div></div>
+    </div>
+    <button class="btn" id="run-checks">Run all checks ▸</button>
+    <div class="log" id="run-log"></div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> this sample output is constructed so it passes schema validation and both format-based rule checks, but FAILS the exact-match on its <code class="inline">period</code> field (it says <code class="inline">"2026-07-01"</code> instead of the expected <code class="inline">"2026-07"</code>) and fails the count-invariant rule check (its <code class="inline">orders_found</code> doesn't match summarized+omitted). A well-formed, schema-valid JSON blob can still be substantively wrong — schema validation alone is never sufficient.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing the right check type for a stated requirement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An eval needs to verify that an agent's output for "what is the capital of France" is correct. A second eval needs to verify that a generated support-ticket summary is under 200 tokens. A third needs to verify that a generated JSON tool call has all required arguments. Match each to exact-match, rule-based, or schema validation, and justify each.</p>
+    <details><summary>Show solution</summary><div class="solution">"Capital of France" -- exact-match is the closest fit IF the eval
+normalizes for the small set of acceptable phrasings ("Paris",
+"Paris, France") ahead of time, since there is genuinely exactly one
+correct city, just with a few acceptable surface forms. If the system
+under test is a free-text chat response rather than a constrained
+single-word answer, a rule-based "output contains the substring Paris"
+check is often more robust in practice than strict exact-match, since it
+tolerates the answer being embedded in a full sentence.
+
+"Under 200 tokens" -- rule-based. This is precisely the token-budget
+example from section 1: a specific, programmatically verifiable
+property (length) that has nothing to do with matching a known string
+or a JSON structure.
+
+"JSON tool call has all required arguments" -- schema validation. This
+is exactly json_schema_tool_specs.html's discipline: checking that the
+generated call's arguments object has the right keys and types per its
+inputSchema, without caring what the SPECIFIC argument values are.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why schema validation alone is insufficient</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 3's live demo, explain concretely why an agent output can pass schema validation and still be a completely wrong answer. What category of bug does schema validation structurally never catch?</p>
+    <details><summary>Show solution</summary><div class="solution">Schema validation only checks TYPES and PRESENCE of fields -- it never
+inspects whether the VALUES inside those correctly-typed fields are
+actually correct. An output like {"orders_found": 999, "orders_summarized":
+[], "orders_omitted": []} passes the schema from section 1 perfectly
+(orders_found is a non-negative integer, both arrays are present) while
+being wildly, obviously wrong -- claiming 999 orders were found while
+summarizing zero of them. Schema validation's entire job is structural
+conformance; correctness of CONTENT is a completely separate question
+that requires either a rule-based check targeting the specific invariant
+(section 3's count-invariant check) or, for anything schema/rule checks
+can't mechanically express, a model-graded eval (model_graded_evals.html)
+instead. The category of bug schema validation structurally never
+catches: any bug where the output is well-formed but semantically wrong
+-- wrong numbers, wrong facts, wrong reasoning -- because "well-formed"
+and "correct" are orthogonal properties a schema check was never
+designed to conflate.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Writing a rule-based check for a new requirement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write (in pseudocode or real Python) a rule-based check verifying that an agent's output never contains a system-prompt leak — specifically, that it never contains the literal substring <code class="inline">"You are an AI assistant"</code> (a common system-prompt opening). Why is this check a poor substitute for actually preventing the leak in the first place?</p>
+    <details><summary>Show solution</summary><div class="solution">def test_no_system_prompt_leak(output: str):
+    assert "You are an AI assistant" not in output
+
+This is a legitimate rule-based check -- a specific, mechanically
+verifiable property (absence of a known substring). But it's a poor
+SUBSTITUTE for actually preventing leaks (via prompt design, output
+filtering before the eval even runs, or permission scoping over what
+content the model can see) for the same reason a rule-based check is
+inherently limited per section 1's table: it can only catch EXACTLY the
+substring it was written to check. A leak phrased even slightly
+differently ("As an AI assistant, you are..." or a leak of a DIFFERENT
+part of the system prompt entirely) sails right through this specific
+check untouched. This check is useful as ONE layer of defense-in-depth
+-- catching the exact known failure mode it targets, cheaply and
+reliably -- but treating it as sufficient protection against system
+prompt leaks in general would repeat the same mistake
+tool_call_sandboxing.html and permission_scoping.html warned against:
+a narrow, mechanical check is not a substitute for addressing the
+underlying cause, only a backstop for one specific known symptom of it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a flaky deterministic eval</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's exact-match eval for a date field sometimes passes and sometimes fails against what looks like the same agent output, run twice. Since exact-match and schema validation are supposed to be perfectly deterministic (same input, same result, every time), what's the most likely explanation, and how would you debug it?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely explanation isn't that exact-match itself is
+nondeterministic -- string comparison is about as deterministic as code
+gets -- it's that the INPUT isn't actually identical between runs, even
+though it looks the same at a glance. Common concrete causes: (1) the
+underlying agent call itself is nondeterministic (temperature > 0, or
+any sampling), so the "same" prompt genuinely produces slightly
+different output text each time -- e.g. "2026-07-01" one run and
+"July 1, 2026" the next, both semantically identical but not byte-equal;
+(2) trailing whitespace, a stray newline, or invisible unicode
+characters differing between runs in a way that's invisible when eyeballing
+the two outputs side by side but fails a literal ==; (3) a timestamp or
+other non-deterministic field (like a request ID) accidentally included
+in what's being compared, when only the DATE field was meant to be checked.
+
+How to debug it: print or diff the two output strings' raw bytes/repr
+(not just their printed form) to catch invisible whitespace/unicode
+differences; check whether the agent call itself uses temperature=0 or
+some other deterministic decoding setting if bit-for-bit reproducibility
+of the AGENT'S output (not just the eval logic) is actually required;
+and narrow the exact-match comparison to ONLY the specific field being
+tested, not the full raw output, to rule out unrelated fields (like a
+timestamp) leaking into what's being compared. The eval mechanism itself
+being "deterministic" only guarantees the CHECK is repeatable given
+identical input -- it says nothing about whether the agent's own output
+generation is deterministic, which is usually the real source of
+apparent eval flakiness.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Deciding when deterministic evals are NOT enough</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team wants to eval whether a generated customer-support response is "helpful and empathetic in tone." Explain concretely why none of exact-match, schema validation, or rule-based checks can meaningfully evaluate this, and what category of eval this task actually requires.</p>
+    <details><summary>Show solution</summary><div class="solution">Exact-match fails immediately -- there is no single correct string for
+"a helpful, empathetic response," since countless different phrasings
+could equally satisfy that quality. Schema validation is irrelevant --
+the response is presumably free text with no meaningful JSON structure
+to validate in the first place, and even if it were structured,
+"empathetic tone" isn't a type or presence property any schema can
+express. Rule-based checks could approximate a few narrow SIGNALS
+(e.g. "does not contain a curt one-word reply," "is at least N words
+long," "does not contain an angry-sounding exclamation-heavy phrase") but
+none of these mechanically-checkable proxies actually verify the real
+underlying quality being asked about -- a response could satisfy every
+one of those rules while still reading as cold or dismissive, and a
+genuinely warm, well-judged response could technically violate one of
+the proxy rules (e.g. being shorter than the length threshold) while
+being exactly right.
+
+This is precisely the gap model_graded_evals.html exists to fill: "is
+this response helpful and empathetic" is a genuinely SUBJECTIVE quality
+judgment that's far easier to recognize than to specify as an exact
+rule -- exactly the condition under which having a separate LLM call
+score the output against a rubric becomes the right tool, in place of
+trying to force a fundamentally qualitative judgment through
+deterministic checks that were never designed to express it.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) name all three deterministic check types and give a fresh example of each, (2) write a pytest function for each type from memory, (3) explain precisely why schema validation passing doesn't mean the output is correct, and (4) identify a concrete task where NONE of the three deterministic types can meaningfully evaluate quality? <code class="inline">model_graded_evals.html</code> picks up exactly where that gap starts.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — deterministic evals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: LIVE CHECK RUNNER */
+(function(){
+  var runBtn = document.getElementById("run-checks");
+  var resetBtn = document.getElementById("run-reset");
+  var logEl = document.getElementById("run-log");
+  var outEl = document.getElementById("sample-output");
+
+  var SAMPLE = {
+    period: "2026-07-01",
+    orders_found: 4,
+    orders_summarized: [
+      {order_id: "ord-101", total: 612, item_count: 3},
+      {order_id: "ord-114", total: 780, item_count: 2}
+    ],
+    orders_omitted: []
+  };
+
+  function renderSample(){
+    outEl.innerHTML = '{\n  <span class="k">"period"</span>: <span class="s">"' + SAMPLE.period + '"</span>,\n  <span class="k">"orders_found"</span>: <span class="n">' + SAMPLE.orders_found + '</span>,\n  <span class="k">"orders_summarized"</span>: [ ...2 entries... ],\n  <span class="k">"orders_omitted"</span>: []\n}';
+  }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setCard(id, pass, detail){
+    var card = document.getElementById("card-" + id);
+    card.className = "check-card " + (pass ? "pass" : "fail");
+    card.querySelector(".result").textContent = pass ? "PASS" : "FAIL";
+    document.getElementById("detail-" + id).textContent = detail;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    ["exact","schema","rule","budget","invariant"].forEach(function(id){
+      var card = document.getElementById("card-" + id);
+      card.className = "check-card pending";
+      card.querySelector(".result").textContent = "—";
+    });
+
+    await wait(300);
+    var exactPass = (SAMPLE.period === "2026-07");
+    setCard("exact", exactPass, exactPass ? "matches expected string" : 'expected "2026-07", got "' + SAMPLE.period + '"');
+    log('<b>Exact-match on period:</b> ' + (exactPass ? '<span style="color:var(--pass-c);">PASS</span>' : '<span style="color:var(--fail-c);">FAIL</span> — "' + SAMPLE.period + '" !== "2026-07"'), exactPass ? "pass" : "fail");
+
+    await wait(500);
+    var hasRequired = SAMPLE.hasOwnProperty("orders_found") && SAMPLE.hasOwnProperty("orders_summarized") && SAMPLE.hasOwnProperty("orders_omitted");
+    var typesOk = typeof SAMPLE.orders_found === "number" && Array.isArray(SAMPLE.orders_summarized) && Array.isArray(SAMPLE.orders_omitted);
+    var schemaPass = hasRequired && typesOk;
+    setCard("schema", schemaPass, schemaPass ? "all required fields present, types correct" : "missing field or wrong type");
+    log('<b>Schema validation:</b> ' + (schemaPass ? '<span style="color:var(--pass-c);">PASS</span> — required fields present, types correct' : '<span style="color:var(--fail-c);">FAIL</span>'), schemaPass ? "pass" : "fail");
+
+    await wait(500);
+    var datePass = /^\d{4}-\d{2}(-\d{2})?$/.test(SAMPLE.period);
+    setCard("rule", datePass, datePass ? "period matches a date-like pattern" : "period is not date-like");
+    log('<b>Rule-based (date format):</b> ' + (datePass ? '<span style="color:var(--pass-c);">PASS</span> — "' + SAMPLE.period + '" is a recognizable date format' : '<span style="color:var(--fail-c);">FAIL</span>'), datePass ? "pass" : "fail");
+
+    await wait(500);
+    var approxTokens = JSON.stringify(SAMPLE).split(/\s+/).length;
+    var budgetPass = approxTokens < 200;
+    setCard("budget", budgetPass, approxTokens + " approx tokens (limit 200)");
+    log('<b>Rule-based (token budget):</b> <span style="color:var(--pass-c);">PASS</span> — well under the 200-token limit', "pass");
+
+    await wait(500);
+    var total = SAMPLE.orders_summarized.length + SAMPLE.orders_omitted.length;
+    var invPass = (SAMPLE.orders_found === total);
+    setCard("invariant", invPass, invPass ? "orders_found matches summarized+omitted" : "orders_found=" + SAMPLE.orders_found + " but summarized+omitted=" + total);
+    log('<b>Rule-based (count invariant):</b> ' + (invPass ? '<span style="color:var(--pass-c);">PASS</span>' : '<span style="color:var(--fail-c);">FAIL</span> — orders_found is ' + SAMPLE.orders_found + ' but only ' + total + ' orders appear across both lists — the agent likely miscounted or dropped an order silently'), invPass ? "pass" : "fail");
+
+    await wait(300);
+    log('<b>Summary:</b> 3 of 5 checks passed. A single output failed on two DIFFERENT, unrelated checks (exact-match on a formatting difference, and a rule-based invariant on a real counting bug) — exactly why running the full suite matters instead of stopping at the first check that happens to pass.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    ["exact","schema","rule","budget","invariant"].forEach(function(id){
+      var card = document.getElementById("card-" + id);
+      card.className = "check-card pending";
+      card.querySelector(".result").textContent = "—";
+      document.getElementById("detail-" + id).textContent = "";
+    });
+    runBtn.disabled = false;
+  });
+
+  renderSample();
+})();
+</script>
+</body>
+</html>

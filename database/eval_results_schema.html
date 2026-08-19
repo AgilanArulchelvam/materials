@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Eval Results Schema</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --run-c:#f2c14e; --result-c:#4fc3f7; --trace-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--run-c); color:var(--run-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--result-c); color:var(--result-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--trace-c); color:var(--trace-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--trace-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ERD-style link diagram */
+  .erd{display:flex; align-items:center; justify-content:center; gap:0.8rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.76rem;}
+  .erd-box{padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid; text-align:left; min-width:150px;}
+  .erd-box.run{border-color:var(--run-c); color:var(--run-c); background:rgba(242,193,78,0.08);}
+  .erd-box.result{border-color:var(--result-c); color:var(--result-c); background:rgba(79,195,247,0.08);}
+  .erd-box.trace{border-color:var(--trace-c); color:var(--trace-c); background:rgba(127,216,160,0.08);}
+  .erd-box .fields{color:var(--ink-dim); font-size:0.68rem; margin-top:0.4rem; line-height:1.5;}
+  .erd-arrow{color:var(--ink-dim); font-size:1.1rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.run{border-left-color:var(--run-c); background:rgba(242,193,78,0.06);} .callout.run b{color:var(--run-c);}
+  .callout.result{border-left-color:var(--result-c); background:rgba(79,195,247,0.06);} .callout.result b{color:var(--result-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · EVAL RESULTS SCHEMA</div>
+  <h1>An eval score with no trace behind it is a number nobody can trust.</h1>
+  <p class="lede">This week built three families of eval checks — deterministic, model-graded, trajectory-based — and Thursday's <code class="inline">observability_pipeline_design.html</code> built the trace/metric/log pipeline those evals need to actually run against. This lab is where they meet: a schema for <strong>eval runs</strong>, <strong>eval results</strong>, and how a result links back to the specific <code class="inline">trace_id</code> of the exact execution that produced the behavior being scored — the same "link the record back to what actually happened" discipline <code class="inline">audit_trail_schema.html</code> established for tool calls, applied here to eval scoring.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">eval_run — one batch execution of a test suite against a model/dataset</div>
+    <div class="pipe-label b">eval_result — one test case's score within that run</div>
+    <div class="pipe-label c">trace_id — the link back to the actual execution being scored</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="schema">1 · Schema for Eval Runs, Scores, and Trace Records</a>
+  <a data-target="live">2 · Trace a Result Back to Its Execution, Live</a>
+  <a data-target="queries">3 · Real Queries Against This Schema</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE SCHEMA ============ -->
+<section id="schema">
+  <div class="kicker">01 — Two tables, one relationship, and a link to the execution that actually happened</div>
+  <h2>Schema for eval runs, scores, and trace records</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Think about a school's report card system. A "run" is one exam sitting — a specific date, a specific test version, a specific group of students taking it together. A "result" is one student's one score on one question within that sitting. And critically, if a student disputes their score, the school doesn't just have the number — it has the ACTUAL ANSWER SHEET that student submitted, so a grader can go back and verify exactly what happened, not just trust the recorded score in isolation. <code class="inline">eval_run</code>, <code class="inline">eval_result</code>, and the trace link are exactly this trio.</p>
+
+  <div class="code"><span class="c-cmt">-- one row per BATCH execution of an eval suite -- e.g. "run the full</span>
+<span class="c-cmt">-- deterministic + trajectory suite against agent v2.3 on the standard dataset"</span>
+<span class="c-kw">CREATE TABLE</span> eval_run (
+    run_id          <span class="c-kw">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    completed_at    <span class="c-kw">TIMESTAMPTZ</span>,
+    model_version   <span class="c-kw">TEXT NOT NULL</span>,        <span class="c-cmt">-- which agent/model build was under test</span>
+    dataset_id      <span class="c-kw">TEXT NOT NULL</span>,        <span class="c-cmt">-- which fixed set of test cases was used</span>
+    suite_name      <span class="c-kw">TEXT NOT NULL</span>,        <span class="c-cmt">-- e.g. "deterministic_v1", "trajectory_v1"</span>
+    triggered_by     <span class="c-kw">TEXT NOT NULL</span>         <span class="c-cmt">-- 'ci_pipeline', 'manual', 'scheduled'</span>
+);
+
+<span class="c-cmt">-- one row per TEST CASE's outcome within a given eval_run</span>
+<span class="c-kw">CREATE TABLE</span> eval_result (
+    result_id       <span class="c-kw">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    run_id          <span class="c-kw">UUID NOT NULL REFERENCES</span> eval_run(run_id),
+    test_case_id    <span class="c-kw">TEXT NOT NULL</span>,        <span class="c-cmt">-- which fixed test case this result is for</span>
+    eval_type       <span class="c-kw">TEXT NOT NULL CHECK</span> (eval_type <span class="c-kw">IN</span>
+                        (<span class="c-str">'deterministic'</span>, <span class="c-str">'model_graded'</span>, <span class="c-str">'trajectory'</span>)),
+    score           <span class="c-kw">NUMERIC</span>,              <span class="c-cmt">-- e.g. 1.0/0.0 for pass/fail, or a 1-5 judge score</span>
+    passed          <span class="c-kw">BOOLEAN NOT NULL</span>,
+    details         <span class="c-kw">JSONB</span>,                <span class="c-cmt">-- e.g. which sub-check failed, judge's justification</span>
+    trace_id        <span class="c-kw">TEXT</span>,                 <span class="c-cmt">-- links to the EXACT execution being scored</span>
+    evaluated_at    <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+);</div>
+
+  <p>Notice the shape mirrors <code class="inline">audit_trail_schema.html</code>'s own core table almost exactly: a header/detail split (<code class="inline">eval_run</code> is the "session," <code class="inline">eval_result</code> is the "one call" — the same relationship <code class="inline">conversation_history_schema.html</code> used for conversations and turns), a full JSONB <code class="inline">details</code> column rather than a lossy summary, and — most importantly for this lab — a <code class="inline">trace_id</code> column that isn't just metadata, it's the actual LINK back to <code class="inline">observability_pipeline_design.html</code>'s trace pipeline: the specific spans, tool calls, and timing of the exact execution that produced the output this <code class="inline">eval_result</code> row is scoring.</p>
+
+  <div class="erd">
+    <div class="erd-box run">eval_run<div class="fields">run_id (PK)<br>model_version<br>dataset_id<br>suite_name</div></div>
+    <div class="erd-arrow">→ 1:N →</div>
+    <div class="erd-box result">eval_result<div class="fields">result_id (PK)<br>run_id (FK)<br>eval_type<br>score, passed<br>trace_id</div></div>
+    <div class="erd-arrow">→ points to →</div>
+    <div class="erd-box trace">trace (in the observability backend, not this DB)<div class="fields">trace_id<br>spans: tool calls,<br>timing, order</div></div>
+  </div>
+
+  <p>Why <code class="inline">trace_id</code> is a plain TEXT/string column here rather than a foreign key with a full <code class="inline">REFERENCES</code> constraint: the trace itself typically lives in a SEPARATE observability backend (per <code class="inline">observability_pipeline_design.html</code>'s architecture — spans, metrics, and logs usually live in purpose-built time-series storage, not the same relational database as this eval schema). <code class="inline">trace_id</code> here is a REFERENCE by value into that other system, the same pattern <code class="inline">agent_memory_schemas.html</code> and <code class="inline">conversation_history_schema.html</code> already used for cross-system references that a single database's foreign key mechanism can't span — the two systems agree on an ID format, and joining across them happens at query time in application code, not via a database-enforced constraint.</p>
+
+  <div class="callout result"><b>Interview-ready definition:</b> an eval results schema splits into a header/detail pair — <code class="inline">eval_run</code> (one batch execution: which model version, which dataset, which suite, when) and <code class="inline">eval_result</code> (one test case's score within that run: eval type, score, pass/fail, and structured details) — plus a <code class="inline">trace_id</code> column on each result linking it back to the specific execution (spans, tool calls, timing) that produced the behavior being scored. That link is what turns "this test failed" into "this test failed, and here's exactly what the agent did, in what order, that caused it" — without it, an eval result is just an isolated number with no path back to the actual evidence behind it, the same gap <code class="inline">audit_trail_schema.html</code> identified for tool calls logged without ordering or session context.</div>
+</section>
+
+<!-- ============ SECTION 2: LIVE TRACE-BACK ============ -->
+<section id="live">
+  <div class="kicker">02 — A failed eval result, traced back to the execution that caused it</div>
+  <h2>Trace a result back to its execution, live</h2>
+
+  <p><strong>Start here, before running it.</strong> Below is one <code class="inline">eval_result</code> row — a trajectory-based check that FAILED. Step through following its <code class="inline">trace_id</code> back to the actual trace, the same way an engineer debugging a failed eval run actually would.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>eval_result row_id=res-4471 — FAILED — FOLLOW trace_id BACK TO THE EXECUTION</span>
+      <div><button class="btn secondary" id="trace-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="trace-run">Trace the failure back ▸</button>
+    <div class="log" id="trace-log"><span class="line">Click to walk from the eval_result row back to the trace that produced the scored behavior.</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the <code class="inline">eval_result</code> row alone tells you WHAT failed (a trajectory check) and gives a one-line reason in <code class="inline">details</code>. Only by following <code class="inline">trace_id</code> into the observability backend do you see the actual sequence of spans that explains WHY — this is the exact same "the row alone isn't enough, you need the linked evidence" argument <code class="inline">audit_trail_schema.html</code>'s Problem 3 made for tool call ordering, now applied one level up, to eval results pointing at traces instead of tool calls pointing at each other.</div>
+</section>
+
+<!-- ============ SECTION 3: REAL QUERIES ============ -->
+<section id="queries">
+  <div class="kicker">03 — What this schema is actually FOR, in practice</div>
+  <h2>Real queries against this schema</h2>
+
+  <p><strong>Start here, before the SQL.</strong> A schema earns its shape by what it makes easy to ask. Three real questions a team running evals continuously actually needs to answer, and how this schema answers each:</p>
+
+  <div class="code"><span class="c-cmt">-- Q1: "Has our pass rate for trajectory evals regressed across the last 5 runs?"</span>
+<span class="c-kw">SELECT</span> r.run_id, r.started_at, r.model_version,
+       COUNT(*) <span class="c-kw">FILTER</span> (<span class="c-kw">WHERE</span> res.passed) * <span class="c-num">1.0</span> / COUNT(*) <span class="c-kw">AS</span> pass_rate
+<span class="c-kw">FROM</span> eval_run r
+<span class="c-kw">JOIN</span> eval_result res <span class="c-kw">ON</span> res.run_id = r.run_id
+<span class="c-kw">WHERE</span> res.eval_type = <span class="c-str">'trajectory'</span>
+<span class="c-kw">GROUP BY</span> r.run_id, r.started_at, r.model_version
+<span class="c-kw">ORDER BY</span> r.started_at <span class="c-kw">DESC LIMIT</span> <span class="c-num">5</span>;
+
+<span class="c-cmt">-- Q2: "Show me every failing result from the most recent run, with a path to its trace"</span>
+<span class="c-kw">SELECT</span> res.result_id, res.test_case_id, res.eval_type, res.details, res.trace_id
+<span class="c-kw">FROM</span> eval_result res
+<span class="c-kw">WHERE</span> res.run_id = (<span class="c-kw">SELECT</span> run_id <span class="c-kw">FROM</span> eval_run <span class="c-kw">ORDER BY</span> started_at <span class="c-kw">DESC LIMIT</span> <span class="c-num">1</span>)
+  <span class="c-kw">AND</span> res.passed = <span class="c-kw">FALSE</span>;
+
+<span class="c-cmt">-- Q3: "Does test case tc-882 fail consistently across recent runs, or is it flaky?"</span>
+<span class="c-kw">SELECT</span> r.started_at, res.passed, res.score
+<span class="c-kw">FROM</span> eval_result res
+<span class="c-kw">JOIN</span> eval_run r <span class="c-kw">ON</span> r.run_id = res.run_id
+<span class="c-kw">WHERE</span> res.test_case_id = <span class="c-str">'tc-882'</span>
+<span class="c-kw">ORDER BY</span> r.started_at <span class="c-kw">DESC LIMIT</span> <span class="c-num">10</span>;</div>
+
+  <p>Q1 and Q3 both depend on the SAME structural fact: <code class="inline">eval_result</code> rows across MANY runs, for the SAME <code class="inline">test_case_id</code>, are directly comparable over time, because <code class="inline">run_id</code> and <code class="inline">test_case_id</code> together give every result a stable identity across runs. This is precisely why a leftmost-prefix index on <code class="inline">(test_case_id, run_id)</code> — or, depending on which query pattern dominates, <code class="inline">(run_id, eval_type)</code> — matters here exactly the way <code class="inline">database/indexing.html</code> and <code class="inline">audit_trail_schema.html</code>'s Problem 1 established: put the equality-filtered column first, letting the database narrow directly instead of scanning and filtering after the fact.</p>
+
+  <div class="callout run"><b>Interview-ready definition:</b> this schema's real value shows up in queries that track a metric OVER TIME (pass rate trend across runs) and queries that trace a SPECIFIC failure back to evidence (a failing result's trace_id). Both depend on the header/detail relationship (eval_run to eval_result) giving every result a stable, comparable identity across runs via test_case_id, and on the trace_id link giving every result a path to the actual execution evidence behind it — a schema that only stored aggregate pass/fail counts per run, without per-test-case rows or trace links, could answer "is our pass rate trending down" but could never answer "which SPECIFIC test case is regressing" or "WHY did it fail," which are usually the more actionable questions in practice.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding what belongs in eval_run vs eval_result</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team wants to add a <code class="inline">judge_model_version</code> field (which specific judge model scored a model-graded result). Does it belong on <code class="inline">eval_run</code> or <code class="inline">eval_result</code>? Justify using the header/detail relationship section 1 established.</p>
+    <details><summary>Show solution</summary><div class="solution">eval_result, not eval_run. eval_run captures properties of the BATCH as
+a whole (which model version is under TEST, which dataset, when the
+batch started) -- properties that are the same across every result in
+that run. judge_model_version is a property of ONE SPECIFIC result
+row's SCORING mechanism, and critically, it can legitimately differ
+WITHIN the same eval_run: a single run might include deterministic
+results (no judge at all -- judge_model_version would be NULL for those
+rows), model_graded results possibly scored by different judge model
+versions if a judge was upgraded mid-rollout, and trajectory results
+(also no judge). Putting judge_model_version on eval_run would force one
+single value to apply to every result in the batch, which is factually
+wrong the moment a run mixes eval types or judge versions -- exactly the
+same header/detail reasoning conversation_history_schema.html and
+audit_trail_schema.html both apply: a field describing ONE row's
+specific circumstances belongs on the DETAIL table, not the header,
+even when it happens to be constant across most rows in practice.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a schema that can't distinguish a flaky test from a real regression</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's eval_result table has no <code class="inline">run_id</code> column at all — just <code class="inline">test_case_id</code>, <code class="inline">passed</code>, and <code class="inline">evaluated_at</code>. Using section 3's Q3 query, explain specifically what becomes impossible to answer, and why.</p>
+    <details><summary>Show solution</summary><div class="solution">Without run_id, there's no way to group results into the BATCH they
+came from, which breaks two related things at once. First, Q1's
+per-run pass-rate aggregation becomes impossible to compute correctly --
+"what was the pass rate for THIS SPECIFIC run" requires knowing which
+rows belong to that run, and evaluated_at timestamps alone are a weak,
+error-prone substitute (concurrent runs, or a run that takes a while to
+complete, would make timestamp-based grouping ambiguous or wrong in a
+way an explicit run_id foreign key never is).
+
+Second, and more subtly connecting to this problem's actual question:
+without run_id, you can still see individual pass/fail history for
+tc-882 ordered by evaluated_at (Q3's basic shape survives), but you lose
+the ability to correlate ITS failure with what ELSE failed or passed in
+the SAME batch -- e.g. "did tc-882 fail on a run where EVERYTHING else
+also failed (suggesting an infrastructure problem, not a real regression
+in tc-882 specifically) or did it fail in isolation while everything
+else in that same run passed (suggesting a genuine, specific regression
+for that test case)." That distinction is exactly what separates "this
+is probably flaky infrastructure" from "this is a real regression," and
+it requires being able to ask "what ELSE was in the SAME run as this
+failure" -- a question that has no answer at all without run_id linking
+results back to a shared batch identity.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about trace_id as a cross-system reference</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 argues <code class="inline">trace_id</code> is a plain TEXT column, not a real foreign key, because the trace lives in a different system. What's the concrete downside of this design choice compared to a true foreign key, and why is it still the right trade-off here?</p>
+    <details><summary>Show solution</summary><div class="solution">The concrete downside: the database can no longer ENFORCE referential
+integrity on trace_id the way a real FOREIGN KEY REFERENCES constraint
+would for an in-database relationship. Nothing stops an eval_result row
+from being written with a trace_id that doesn't actually exist in the
+observability backend (a typo, a trace that was already pruned by
+observability_pipeline_design.html's retention policy, or a race
+condition where the eval_result is written before the trace finishes
+being ingested) -- the database has no mechanism to reject or flag this
+at write time the way it would reject an eval_result with a nonexistent
+run_id.
+
+Why it's still the right trade-off: the trace lives in a fundamentally
+different kind of storage system (a time-series/observability backend,
+per observability_pipeline_design.html's section 3, likely NOT even the
+same relational database engine at all) -- a true cross-database foreign
+key constraint isn't something most database engines can even enforce
+in the first place, since FK constraints only work within a single
+database's own schema. This is the same trade-off
+agent_memory_schemas.html and conversation_history_schema.html already
+accepted for other cross-system references: accept a referentially-
+unenforced pointer (with the small risk of a dangling reference) in
+exchange for NOT forcing every eval result and its trace data into the
+same storage system, which would be a far worse trade given how
+different observability data's storage/query shape (Thursday's lab)
+is from this schema's OLTP-like relational shape. The mitigation isn't
+a database constraint -- it's application-level tooling that surfaces a
+dangling trace_id as a data-quality issue to investigate, not something
+the schema itself can prevent from ever happening.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Designing a retention policy for eval_result at scale</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">database/time_series_schema.html</code>'s retention reasoning and <code class="inline">audit_trail_schema.html</code>'s Problem 5, a team runs the full eval suite on every CI commit — thousands of eval_result rows per day. Propose a retention strategy, distinguishing what should be kept in full detail versus summarized.</p>
+    <details><summary>Show solution</summary><div class="solution">The same tiered shape both referenced labs already established, applied
+to eval results specifically: keep full-detail eval_result rows
+(including the full JSONB details column and trace_id links) for a
+bounded RECENT window -- say 30-90 days, long enough to cover the
+overwhelming majority of "did my recent change break something, and
+why" investigations, which are almost always about recent commits, not
+commits from 8 months ago.
+
+Beyond that window, roll individual eval_result rows into a coarser
+per-run SUMMARY (pass count, fail count, pass rate, broken out by
+eval_type) rather than either deleting everything or keeping every row's
+full detail (including trace_id links, which are increasingly likely to
+be DANGLING anyway past that window, per Problem 3, since the
+observability backend's OWN retention window -- per
+observability_pipeline_design.html's section 3, 7-30 days for raw
+traces -- is typically much SHORTER than 90 days, meaning the trace_id
+link for an old eval_result is often already unusable regardless of
+whether the eval_result row itself survives).
+
+This last point is worth naming explicitly: eval_result's own retention
+window for FULL trace-linkable detail is naturally bounded by the
+SHORTER of (a) how long eval_result itself is worth keeping in full
+detail, and (b) how long the linked trace actually still exists in the
+observability backend -- keeping an eval_result row's trace_id
+"forever" past the point the trace itself has been pruned doesn't
+actually preserve any real debugging capability, just a pointer to
+nothing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Extending the schema for CI/CD gating</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Week 2's roadmap calls for a "CI/CD gating system" that blocks deploys on eval thresholds. Using this schema, sketch (in words or SQL) the query a CI/CD pipeline would run against <code class="inline">eval_run</code>/<code class="inline">eval_result</code> to decide "should this deploy be blocked," and name one column this schema is MISSING that such a gate would need.</p>
+    <details><summary>Show solution</summary><div class="solution">The query: for the eval_run just completed against the candidate build
+(model_version = the new build being considered), compute the pass rate
+per eval_type (Q1's shape from section 3) and compare each against a
+configured threshold -- e.g. "deterministic pass rate must be >= 99%,
+trajectory pass rate must be >= 90%." If ANY threshold isn't met, the
+gate blocks the deploy; a pipeline would run this as an automated check
+immediately after the eval_run completes, before promoting the build.
+
+SELECT eval_type,
+       COUNT(*) FILTER (WHERE passed) * 1.0 / COUNT(*) AS pass_rate
+FROM eval_result
+WHERE run_id = :new_run_id
+GROUP BY eval_type;
+-- pipeline logic: if any pass_rate < configured threshold for that
+-- eval_type, block the deploy and report which eval_type failed the gate
+
+One column this schema is missing for that purpose: a way to mark WHICH
+run corresponds to a specific CANDIDATE BUILD/deploy attempt being
+gated, distinct from routine scheduled or ad-hoc runs. triggered_by
+('ci_pipeline' vs 'manual' vs 'scheduled') gets partway there, but a
+gating system specifically needs to correlate one eval_run with one
+SPECIFIC deploy/commit SHA it's gating -- a deploy_candidate_id or
+commit_sha column on eval_run, so the CI/CD pipeline can query "give me
+the eval_run for commit abc123" directly rather than relying on
+approximate matching by timestamp or model_version alone. This is
+exactly the kind of schema gap Week 4's "finalize eval/trace schema"
+checkpoint exists to catch before it's locked in -- a real, missing
+requirement that only became obvious once a concrete downstream USE
+(CI/CD gating) was worked through against the schema as originally
+designed.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the <code class="inline">eval_run</code>/<code class="inline">eval_result</code> DDL from memory including the eval_type CHECK constraint, (2) explain why trace_id is a plain reference rather than a true foreign key, and (3) write the pass-rate-trend query from section 3 unaided? Week 2's <code class="inline">database/</code> lab picks this up directly, adding read replicas and caching for the dashboards that would actually display these pass-rate trends to a team.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — eval results schema.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: TRACE-BACK DEMO */
+(function(){
+  var runBtn = document.getElementById("trace-run");
+  var resetBtn = document.getElementById("trace-reset");
+  var logEl = document.getElementById("trace-log");
+  var idx = 0;
+  var busy = false;
+
+  var STEPS = [
+    {ok:true, text:'<b>eval_result row res-4471:</b> run_id=run-88, test_case_id=tc-882, eval_type=trajectory, score=0.0, passed=false, trace_id="7f3a9c".'},
+    {ok:false, text:'<b>details column:</b> {"failed_check": "retried_after_failure", "reason": "no successful get_order_detail retry found for ord-129 after its first failure"}. This is what the eval_result row alone tells you — a WHAT, not a full WHY.'},
+    {ok:true, text:'<b>Following trace_id="7f3a9c" into the observability backend</b> (per observability_pipeline_design.html\'s architecture — a separate system, not this database): the full trace for the exact execution being scored.'},
+    {ok:false, text:'<b>Trace spans reveal the actual sequence:</b> query_orders (success) → get_order_detail(ord-129) (FAILED, connection reset) → [no retry span exists] → final answer assembled anyway with fabricated data for ord-129. The trace makes visible EXACTLY what "no successful retry found" meant in practice.'},
+    {ok:true, text:'<b style="color:var(--trace-c);">Diagnosis complete.</b> The eval_result row alone said "trajectory check failed." Only by following trace_id back to the actual execution does the specific, actionable root cause — the agent fabricated a result instead of retrying — become visible. This is exactly why trace_id earns a column on every eval_result row, not just a nice-to-have.'}
+  ];
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + (step.ok ? "ok" : "bad");
+    p.innerHTML = step.text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener("click", function(){
+    if(busy) return;
+    if(idx === 0){ logEl.innerHTML = ""; }
+    if(idx >= STEPS.length){ return; }
+    log(STEPS[idx]);
+    idx++;
+    if(idx >= STEPS.length){
+      runBtn.disabled = true;
+      runBtn.textContent = "Trace fully followed";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    busy = false;
+    runBtn.disabled = false;
+    runBtn.textContent = "Trace the failure back ▸";
+    logEl.innerHTML = '<span class="line">Click to walk from the eval_result row back to the trace that produced the scored behavior.</span>';
+  });
+})();
+</script>
+</body>
+</html>
