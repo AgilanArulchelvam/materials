@@ -81,7 +81,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>One hundred and nineteen labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>One hundred and twenty-five labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, MCP &amp; agentic systems, and AI evals &amp; observability — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -234,7 +234,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">8 labs</span>
+      <span class="count">9 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -285,13 +285,19 @@
         <p>Traces, metrics, and logs animated from one live request across three services, plus the retention/downsampling design observability data needs at real scale.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/month5_case_studies_cold_review.html">
+        <span class="tag">System Design — Re-Derive Month 5's Designs Cold</span>
+        <h3>Month 5 Case Studies, Cold Review</h3>
+        <p>Chat-app-at-scale, CI/CD eval gating, the nginx reverse proxy, and sharding/replication for eval data — each re-derived from a blank page before any answer is revealed, plus one request traced through all four at once.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">18 labs</span>
+      <span class="count">19 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -400,6 +406,12 @@
         <span class="tag">DB Design — Applying Month 3's Concepts to Eval Data</span>
         <h3>Sharding &amp; Replication for Eval Data</h3>
         <p>The real shard-key decision for eval_result — run_id, dataset_id, or time period — weighed against its actual read pattern, plus why this data is a strong fit for asynchronous replication.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/eval_trace_schema_finalization.html">
+        <span class="tag">DB Design — Extending the Schema with Real Span Tables</span>
+        <h3>Eval/Trace Schema Finalization</h3>
+        <p>Extending eval_results_schema.html with a new eval_span table — parent_span_id nesting, generated duration columns — via an additive, backward-compatible migration with a real rollback plan.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -795,7 +807,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Evals &amp; Observability</h2>
-      <span class="count">12 labs</span>
+      <span class="count">16 labs</span>
     </div>
     <div class="cards">
       <a class="card eval" href="evals-and-observability/deterministic_evals.html">
@@ -870,6 +882,30 @@
         <p>A real GitHub Actions-style lint/test/build pipeline with explicit needs: gating, animated running healthy end to end and failing fast on a lint error before test or build ever spend a second.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card eval" href="evals-and-observability/eval_scenario_design.html">
+        <span class="tag">Survival Exercise — A Systematic Scenario Taxonomy</span>
+        <h3>Eval Scenario Design</h3>
+        <p>Six categories a real eval set needs — happy path, edge cases, adversarial, ambiguous, tool-traps, multi-turn — plus the collapse trap where fifty scenarios secretly test one thing, and a live filterable scenario builder.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/tool_selection_and_hallucination_metrics.html">
+        <span class="tag">Survival Exercise — Precision, Recall &amp; Grounding</span>
+        <h3>Tool-Selection &amp; Hallucination Metrics</h3>
+        <p>Tool-selection accuracy as per-tool precision/recall with a real confusion matrix, reference-based grounding checks for hallucination rate, and a live calculator computing both from real run data.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/latency_and_tracing_integration.html">
+        <span class="tag">Survival Exercise — Span Timing &amp; Percentiles</span>
+        <h3>Latency Measurement &amp; Tracing Integration</h3>
+        <p>Span-level vs request-level latency inside the same trace tree, why p95/p99 catch a tail an average smooths away, and a 200-run simulated histogram with live percentile markers.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/cicd_eval_gating_survival_exercise.html">
+        <span class="tag">Month 5 Checkpoint — Configure Thresholds, Block a Deploy</span>
+        <h3>CI/CD Eval Gating Survival Exercise</h3>
+        <p>A fourth eval-gate pipeline stage built on cicd_pipeline_basics.html, gating on tool-selection accuracy, hallucination rate, and p95 latency — configure real thresholds and watch a bad candidate deploy actually get blocked.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -926,7 +962,7 @@
 
 </main>
 
-<footer>materials/ · one hundred and nineteen standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and twenty-five standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

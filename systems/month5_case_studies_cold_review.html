@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Month 5 Case Studies, Cold Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --chat-c:#4fc3f7; --gate-c:#f2c14e; --proxy-c:#7fd8a0; --shard-c:#c792ea; --accent:#f2c14e; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--chat-c); color:var(--chat-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--gate-c); color:var(--gate-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--proxy-c); color:var(--proxy-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--shard-c); color:var(--shard-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .recall{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0; background:var(--panel-2);}
+  .recall-num{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; display:block;}
+  .recall.chat .recall-num{color:var(--chat-c);}
+  .recall.gate .recall-num{color:var(--gate-c);}
+  .recall.proxy .recall-num{color:var(--proxy-c);}
+  .recall.shard .recall-num{color:var(--shard-c);}
+  .recall ul{margin:0.6rem 0 0; padding-left:1.3rem; color:#cdd0d8; font-size:0.9rem;}
+  .recall ul li{margin:0.4rem 0;}
+  .recall details{margin-top:1rem;}
+  .recall .solution{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .connect-stage{display:flex; align-items:center; justify-content:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.76rem;}
+  .connect-node{padding:0.7rem 0.9rem; border-radius:10px; border:1.5px solid; text-align:center;}
+  .connect-node.client{border-color:var(--ink-dim); color:var(--ink-dim); background:var(--panel-2);}
+  .connect-node.proxy{border-color:var(--proxy-c); color:var(--proxy-c); background:rgba(127,216,160,0.08); font-weight:600;}
+  .connect-node.chat{border-color:var(--chat-c); color:var(--chat-c); background:rgba(79,195,247,0.08);}
+  .connect-node.gate{border-color:var(--gate-c); color:var(--gate-c); background:rgba(242,193,78,0.08);}
+  .connect-node.shard{border-color:var(--shard-c); color:var(--shard-c); background:rgba(199,146,234,0.08);}
+  .connect-arrow{color:var(--ink-dim); font-size:1rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.chat{border-left-color:var(--chat-c); background:rgba(79,195,247,0.06);} .callout.chat b{color:var(--chat-c);}
+  .callout.gate{border-left-color:var(--gate-c); background:rgba(242,193,78,0.06);} .callout.gate b{color:var(--gate-c);}
+  .callout.proxy{border-left-color:var(--proxy-c); background:rgba(127,216,160,0.06);} .callout.proxy b{color:var(--proxy-c);}
+  .callout.shard{border-left-color:var(--shard-c); background:rgba(199,146,234,0.06);} .callout.shard b{color:var(--shard-c);}
+  .callout.survival{border-left-color:var(--gate-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--gate-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · MONTH 5 CASE STUDIES, COLD REVIEW</div>
+  <h1>Notes closed. Four designs, re-derived from nothing but a blank page.</h1>
+  <p class="lede">Month 5 built four genuinely different system designs: a chat app's stateful connections at scale, a CI/CD pipeline gated on eval thresholds instead of just tests, an nginx reverse proxy terminating TLS in front of stateless services, and a sharding/replication scheme applied to real eval data. This is the Thursday checkpoint the roadmap calls for — re-deriving every one of them cold, before looking at a single diagram.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Chat app at scale — stateful connections, delivery guarantees, pub/sub</div>
+    <div class="pipe-label b">CI/CD eval gating — a second gate beyond tests, and a rollback plan</div>
+    <div class="pipe-label c">Nginx reverse proxy — routing and the TLS termination boundary</div>
+    <div class="pipe-label d">Sharding + replication for eval data — the shard key decision</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="chat">1 · Chat App At Scale, From Scratch</a>
+  <a data-target="gating">2 · CI/CD Eval Gating, From Scratch</a>
+  <a data-target="proxy">3 · Nginx Reverse Proxy, From Scratch</a>
+  <a data-target="sharding">4 · Sharding &amp; Replication for Eval Data, From Scratch</a>
+  <a data-target="synthesis">5 · One Request, Every Design at Once</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>The roadmap's own framing:</b> "Re-derive Month 5 designs without notes." Every recall box below works the same way — read only the prompt, actually attempt an answer (out loud or on paper, timed), and only THEN open the hidden solution to check yourself. Opening the solution first defeats the entire point of a cold review.</div>
+</div>
+
+<!-- ============ SECTION 1: CHAT APP AT SCALE ============ -->
+<section id="chat">
+  <div class="kicker">01 — Cold recall, no notes</div>
+  <h2>Chat app at scale, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Set a timer for 6-9 minutes. Sketch the architecture on paper or narrate it out loud, exactly as if a live interviewer were listening and could ask a follow-up at any moment.</p>
+
+  <div class="recall chat">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, design connection management, delivery guarantees, and horizontal scaling for a chat app:</p>
+    <ul>
+      <li>Why does a chat app break the "any server can answer any request" assumption a typical stateless HTTP API relies on?</li>
+      <li>Name the three delivery guarantee levels and explain, precisely, why "exactly-once" is hard to guarantee at the transport layer — and what real systems actually build instead.</li>
+      <li>A message from a user on server A needs to reach a user connected to server B. Walk through the mechanism that makes this possible without server A knowing which specific server B holds that connection.</li>
+      <li>What single architectural property does that mechanism depend on, and what's a concrete way it could go wrong under real production conditions?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">WHY STATELESSNESS BREAKS: a typical HTTP API's statelessness means no
+server holds anything specific to any one client between requests, so a
+load balancer can route any request to any server interchangeably. A
+chat app breaks this because each online user holds one persistent,
+long-lived WebSocket connection to exactly ONE specific server process
+-- that server, and only that server, has the actual in-memory socket
+handle needed to push a message to that user. There is no way for a
+DIFFERENT server to reach that connection directly.
+
+DELIVERY GUARANTEES: at-most-once (send once, never retry -- risks
+silent loss, never duplicates), at-least-once (retry whenever delivery
+is uncertain -- guarantees eventual arrival, but may deliver more than
+once), and exactly-once (arrives precisely once, always). Exactly-once
+is hard at the transport layer because a sender can never be perfectly
+certain whether an unacknowledged send genuinely failed or simply lost
+its ACKNOWLEDGMENT on the way back -- from the sender's point of view,
+both look identical (silence), so the sender cannot distinguish "must
+retry" from "must not duplicate." Real systems approximate exactly-once
+by combining reliable at-least-once delivery (retry whenever uncertain)
+with a client-generated idempotency key (database/crud_done_right.html's
+pattern) that lets the receiver recognize and discard a duplicate --
+producing an exactly-once USER EXPERIENCE on top of an honestly
+at-least-once mechanism underneath.
+
+CROSS-SERVER DELIVERY: a pub/sub backplane (commonly Redis pub/sub) that
+every server connects to. Each server SUBSCRIBES to channels for the
+users it personally has connections to. Any server needing to deliver a
+message PUBLISHES to the recipient's channel unconditionally, with no
+knowledge of which specific server is subscribed to it. This converts
+"route this message to the right SERVER" (a problem server A has no way
+to solve on its own) into "publish to the right CHANNEL" (a problem
+server A can always solve, because channel names are just a known
+convention, e.g. user:{user_id}) -- the backplane, not application code,
+handles the actual server-to-server routing.
+
+WHAT THIS DEPENDS ON, AND WHERE IT BREAKS: the backplane itself becomes a
+new critical dependency and potential bottleneck -- every cross-server
+message now flows through it. A concrete failure mode: if the pub/sub
+backplane itself falls behind or drops a message under load, a message
+can be silently lost between publish and the recipient server's
+subscription callback firing, with NEITHER server aware anything went
+wrong -- this is exactly why delivery guarantees (the previous bullet)
+have to be enforced on TOP of the backplane, via application-level
+acknowledgment and retry, not assumed for free just because the
+backplane exists.</div>
+    </details>
+  </div>
+
+  <div class="callout chat"><b>What "re-derive cold" is testing:</b> whether you can explain WHY exactly-once is fundamentally hard (not just recite the three levels), and whether "pub/sub backplane" connects to the concrete reframing — routing to a server becomes publishing to a channel — rather than staying a buzzword.</div>
+</section>
+
+<!-- ============ SECTION 2: CI/CD EVAL GATING ============ -->
+<section id="gating">
+  <div class="kicker">02 — Cold recall, no notes</div>
+  <h2>CI/CD eval gating, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall gate">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, design a CI/CD pipeline that gates deploys on eval thresholds, not just tests:</p>
+    <ul>
+      <li>What can passing unit/integration tests NOT tell you about a model-backed system that an eval-based gate specifically closes?</li>
+      <li>Where does the eval gate sit relative to ordinary lint/test/build stages, and why there specifically?</li>
+      <li>Name the two deploy strategies that make rollback fast, and explain precisely what "fast" means for each — what operation actually happens when you roll back?</li>
+      <li>What's the concrete cost difference between an automated rollback triggered by a failed gate versus a manual rollback, beyond just "manual is slower"?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">WHAT TESTS CAN'T TELL YOU: unit/integration tests verify the CODE runs
+correctly — the right functions get called, no exceptions are thrown,
+types line up. They say nothing about whether the MODEL'S BEHAVIOR --
+answer quality, trajectory correctness, hallucination rate, cost per
+call -- has regressed, because none of that is a code-correctness
+property at all; a candidate build can pass every unit test while its
+prompts, retrieval, or a swapped model version make its actual answers
+measurably worse. An eval-based gate closes exactly this gap by running
+the SAME kind of eval suite (deterministic, model-graded, trajectory-
+based) against every candidate build as a genuinely separate, second
+check.
+
+WHERE IT SITS: after ordinary tests, as an ADDITIONAL gate -- not a
+replacement for lint/test/build's own ordering (cicd_pipeline_basics.
+html's fail-fast argument still applies: don't spend eval-suite compute
+on a build that doesn't even pass its unit tests yet). The eval gate
+runs once a candidate build genuinely exists and has already cleared
+cheaper checks, comparing the eval pass rate (or a specific critical
+eval) against a configured threshold, and blocking promotion to
+production if it's not met.
+
+TWO DEPLOY STRATEGIES AND WHAT "FAST" MEANS: blue-green deployment keeps
+TWO complete environments running -- the old, currently-live version and
+the new candidate -- and "rollback" is purely a TRAFFIC-POINTER FLIP back
+to the environment that was already fully running and already proven; no
+rebuilding, no redeploying, just re-pointing traffic. Canary releases
+instead route only a SMALL percentage of traffic to the new version while
+the majority stays on the old one; "rollback" here means routing that
+small percentage back to 0%, which is also fast because the new version
+was never fully promoted to begin with -- pulling back is a routing
+change, not a reconstruction.
+
+AUTOMATED VS MANUAL ROLLBACK COST: automated rollback triggers the
+instant a failure signal appears (a failed eval gate, a bad post-deploy
+metric) with NO human in the loop at all. Manual rollback adds two
+separate delays stacked on top of each other: a human first has to
+NOTICE the problem (a detection delay that doesn't exist for an
+automated trigger watching the signal directly), and only then DECIDE
+and EXECUTE the rollback (a decision-and-execution delay on top of the
+mechanical rollback time itself, which is the same whether triggered by
+a human or automatically). The automated path eliminates both added
+delays entirely, not just the mechanical portion.</div>
+    </details>
+  </div>
+
+  <div class="callout gate"><b>What "re-derive cold" is testing:</b> whether you can name the SPECIFIC gap between test-passing and eval-passing (not just "evals are also good to have"), and whether you can explain rollback speed as a concrete OPERATION (a traffic-pointer flip) rather than a vague "it's just faster."</div>
+</section>
+
+<!-- ============ SECTION 3: NGINX REVERSE PROXY ============ -->
+<section id="proxy">
+  <div class="kicker">03 — Cold recall, no notes</div>
+  <h2>Nginx reverse proxy, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall proxy">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, design an nginx reverse proxy sitting in front of several backend services:</p>
+    <ul>
+      <li>What does nginx's routing table actually map, and what real config directive expresses it?</li>
+      <li>Where does TLS termination happen, and why is it centralized at the proxy rather than handled independently by each backend service?</li>
+      <li>Precisely where does encryption stop, and what does that imply about the network segment between nginx and an app server?</li>
+      <li>Why does that implication matter operationally — what has to be true about that segment for terminating TLS at the proxy to be a safe design choice at all?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">ROUTING TABLE: nginx's routing maps URL PATHS (or hostnames) to specific
+UPSTREAM backend addresses -- a `location /api/orders/ { proxy_pass
+http://orders-service:8080; }` block routes any request under that path
+prefix to the orders service, while a different location block routes a
+different path to a different backend, all behind one single public
+front door / domain.
+
+WHY CENTRALIZED TLS TERMINATION: nginx accepts the incoming HTTPS
+connection, does the actual TLS handshake and certificate validation
+ONCE, at the edge, then forwards the now-decrypted request to the
+appropriate backend over HTTP (or a separately-terminated internal
+connection). Centralizing this at one place means certificate
+management, cipher configuration, and TLS version support are handled
+in exactly ONE location instead of independently -- and potentially
+inconsistently, with some services running outdated or misconfigured
+TLS -- across every single backend service.
+
+WHERE ENCRYPTION STOPS: encryption stops at nginx itself -- the
+connection from the CLIENT to nginx is encrypted (HTTPS), but the
+connection from nginx to the actual APP SERVER is typically plain HTTP,
+unencrypted. This implies the network segment between nginx and the app
+servers carries genuinely unencrypted traffic.
+
+WHY THIS IS OPERATIONALLY SAFE ONLY CONDITIONALLY: terminating TLS at
+the proxy is a safe design choice ONLY if that internal nginx-to-
+app-server segment is a TRUSTED, PRIVATE network -- typically inside the
+same VPC or a network no untrusted party can observe traffic on. If that
+internal network were exposed or shared with untrusted parties, the
+plaintext hop between nginx and the app server would leak exactly the
+data TLS was supposed to protect, meaning "TLS termination at the edge"
+is not free -- it's a deliberate trade of end-to-end encryption for
+centralized management, valid specifically because (and only because)
+the internal network segment is assumed trustworthy.</div>
+    </details>
+  </div>
+
+  <div class="callout proxy"><b>What "re-derive cold" is testing:</b> whether "TLS terminates at the proxy" connects to the concrete consequence (an unencrypted internal hop) and its precondition (a trusted internal network), rather than staying an isolated fact about where a certificate lives.</div>
+</section>
+
+<!-- ============ SECTION 4: SHARDING & REPLICATION FOR EVAL DATA ============ -->
+<section id="sharding">
+  <div class="kicker">04 — Cold recall, no notes</div>
+  <h2>Sharding &amp; replication for eval data, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall shard">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, apply Month 3's sharding and replication concepts to <code class="inline">eval_result</code> data specifically:</p>
+    <ul>
+      <li>Name three candidate shard keys for <code class="inline">eval_result</code>, and for each, describe the query pattern it makes fast versus the one it forces to fan out across every shard.</li>
+      <li>Which shard key actually wins for this workload, and why — what's the dominant real-world query this data serves?</li>
+      <li>Should eval data use synchronous or asynchronous replication? Justify using what actually happens if a follower falls behind for each option.</li>
+      <li>What's the concrete risk of an uneven/hot shard specifically for eval data, using your chosen shard key?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">THREE CANDIDATE SHARD KEYS:
+- run_id: fast for "get every result from THIS run" (a single-shard
+  query, since one run's results all share one run_id) -- but "how has
+  test case tc-882 performed across the last 10 runs" (querying ACROSS
+  runs) has to fan out across every shard, since different runs'
+  results land on different shards.
+- dataset_id: fast for "get every result ever produced against THIS
+  dataset" -- but a single eval_run's results (which typically span
+  many test cases from possibly multiple datasets, or at minimum
+  aren't naturally grouped by dataset_id alone) may not co-locate
+  cleanly, and cross-run trend queries for one test case still fan out.
+- time period (e.g. the run's started_at, bucketed by week/month): fast
+  for "show me everything from the last 7 days" (a time-range dashboard
+  query) -- but "all results for run X" or "all results for test case Y
+  over its full history" both potentially span multiple time-based
+  shards if the run/test-case's history crosses a shard boundary.
+
+WHICH KEY WINS AND WHY: run_id wins, because the DOMINANT real-world
+access pattern for eval data is "give me everything from THIS run" --
+that's what a CI/CD gate queries (compute pass rate for run X), what a
+developer investigating a specific failed run queries, and what
+dashboard views showing "the latest run's results" query. Cross-run
+trend queries (per test case, over time) DO have to fan out under this
+choice, but they're a comparatively rarer, less latency-sensitive
+analytical query (typically viewed on a dashboard, not blocking a
+CI/CD gate decision) -- a reasonable trade to make explicitly, optimizing
+the hot path (single-run lookups) at the cost of the cold path
+(cross-run trend analysis).
+
+SYNC OR ASYNC REPLICATION: asynchronous. Eval results are written once
+after a run completes and are read frequently afterward but never
+require the absolute latest write to be visible on every replica
+instantly -- a CI/CD gate reading a few hundred milliseconds of
+replication lag behind the primary write is a non-issue, since the write
+that matters (this run's results) either fully happened moments ago or
+didn't; there's no financial-transaction-style correctness requirement
+here. Synchronous replication would force every write to wait for
+follower acknowledgment before returning, adding real latency to every
+eval-result write for a durability guarantee this workload doesn't
+actually need enough to pay for -- exactly the "sync for correctness-
+critical, async for latency-sensitive-but-tolerant-of-lag" trade-off
+Month 3's replication lab established generally.
+
+HOT SHARD RISK WITH run_id: an uneven shard key would concentrate a
+disproportionate share of writes/reads onto one shard. With run_id
+specifically, the risk isn't uniform value distribution (run_ids are
+typically well-distributed, e.g. UUIDs) but TEMPORAL concentration -- if
+a CI/CD pipeline runs many eval suites back-to-back during a busy
+release window, and the shard key hashes run_id in a way that happens to
+cluster recently-created run_ids onto the same shard (a real risk with
+some naive hash-and-modulo schemes on sequential or time-correlated
+IDs), that shard becomes a hot spot exactly when write AND read volume
+are both highest -- during an active release crunch, precisely the worst
+time for a bottleneck to appear.</div>
+    </details>
+  </div>
+
+  <div class="callout shard"><b>What "re-derive cold" is testing:</b> whether you can name the ACTUAL dominant query pattern (not just list shard key options) and use it to justify a specific choice, and whether the sync-vs-async replication answer connects to a concrete tolerance for lag rather than a memorized rule.</div>
+</section>
+
+<!-- ============ SECTION 5: SYNTHESIS ============ -->
+<section id="synthesis">
+  <div class="kicker">05 — All four designs, traced through one realistic request</div>
+  <h2>One request, every design at once</h2>
+
+  <p><strong>Start here, before the trace.</strong> Sections 1-4 tested each design in isolation, the way most interview questions actually come. But in a real production system, these four pieces genuinely compose: a chat message triggers an agent response, that response gets evaluated against thresholds before its underlying model can be promoted, the whole system sits behind an nginx front door, and every eval run's results land in a sharded, replicated eval_result table. Trace one path through all four at once.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE MESSAGE'S JOURNEY — THROUGH ALL FOUR MONTH 5 DESIGNS</span>
+      <div><button class="btn secondary" id="synth-reset">Reset</button></div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-node client">CLIENT</div>
+      <div class="connect-arrow">→</div>
+      <div class="connect-node proxy" id="node-proxy">NGINX<br><span style="font-size:0.62rem;">TLS terminates here</span></div>
+      <div class="connect-arrow">→</div>
+      <div class="connect-node chat" id="node-chat">CHAT SERVER<br><span style="font-size:0.62rem;">holds this user's WebSocket</span></div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-arrow" style="transform:rotate(90deg);">→</div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-node gate" id="node-gate">EVAL GATE<br><span style="font-size:0.62rem;">this response scored against thresholds</span></div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-arrow" style="transform:rotate(90deg);">→</div>
+    </div>
+    <div class="connect-stage">
+      <div class="connect-node shard" id="node-shard">SHARDED eval_result<br><span style="font-size:0.62rem;">written to the shard for this run_id</span></div>
+    </div>
+    <button class="btn" id="synth-run">Trace one message end to end ▸</button>
+    <div class="log" id="synth-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Design</th><th>Its own job</th><th>What it does NOT do (another design's job)</th></tr>
+    <tr><td>Nginx (section 3)</td><td>Terminates TLS once at the edge, routes by path to the right upstream</td><td>Doesn't know or care that the upstream holds a stateful WebSocket — routing is per-request, connection state is the chat server's problem</td></tr>
+    <tr><td>Chat server (section 1)</td><td>Holds the persistent connection, publishes to the pub/sub backplane for cross-server delivery</td><td>Doesn't evaluate response quality or decide whether a model version is good enough to serve — that's the eval gate's job, upstream of any individual message</td></tr>
+    <tr><td>Eval gate (section 2)</td><td>Blocks promotion of a candidate model/build if its eval pass rate or latency regresses past threshold</td><td>Doesn't run per-message in the hot path — it gates entire BUILDS before they're allowed to serve any live traffic at all, not each individual response</td></tr>
+    <tr><td>Sharded eval_result (section 4)</td><td>Stores every eval run's results, fast to query per-run, replicated asynchronously</td><td>Doesn't store the live chat message itself — that's a separate, hot-path OLTP concern with entirely different access patterns and consistency needs</td></tr>
+  </table>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> it's tempting to draw the eval gate as sitting IN the live per-message request path (as if every chat response gets individually eval-scored before being sent). It doesn't — per section 2, the eval gate runs against a CANDIDATE BUILD before that build is ever promoted to serve real traffic at all. Once a build has passed the gate and is live, individual chat messages flow straight through the chat server and pub/sub backplane with no per-message eval check in the hot path — conflating "the model was evaluated" with "this specific response was evaluated" is a common mistake that breaks the whole latency budget of the chat path if taken literally.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out cold before expanding the solution. These reason across all four designs at once.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Connecting TLS termination to the eval gate's rollback strategy</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A blue-green rollback (section 2) flips traffic from the new environment back to the old one. Using section 3's nginx design, where does that traffic flip actually happen mechanically, and why does centralizing TLS termination at nginx make this flip simpler than if each backend terminated its own TLS?</p>
+    <details><summary>Show solution</summary><div class="solution">The traffic flip happens at nginx's own upstream configuration -- the
+proxy_pass / upstream block that currently points to the "green"
+environment gets updated to point back at "blue" instead (or an nginx
+config reload, or an upstream group weight change if using a more
+dynamic routing setup). Because TLS termination happens ONCE at nginx
+(section 3), the client-facing TLS session is completely unaffected by
+this flip -- clients keep talking to the same public endpoint with the
+same certificate the whole time; only the INTERNAL routing decision
+(which upstream nginx forwards decrypted traffic to) changes.
+
+If each backend instead terminated its own TLS independently, a
+blue-green flip would need to ensure BOTH environments have valid,
+correctly configured certificates for the same public hostname
+simultaneously (since either could receive traffic at flip time), and
+any TLS-related bug or misconfiguration specific to the "blue"
+environment's own certificate handling would only surface at the exact
+moment traffic flips back to it -- a new failure mode section 3's
+centralized approach eliminates entirely, since nginx's own TLS
+configuration doesn't change at all during a blue-green rollback; only
+which backend receives the already-decrypted request changes. This is a
+concrete instance of section 3's "centralizing TLS reduces surface area"
+argument, now applied specifically to why it also makes ANOTHER
+system's (the eval gate's) rollback mechanism simpler.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reasoning about the pub/sub backplane's own scaling need</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's pub/sub backplane design and section 4's sharding reasoning, would you shard the pub/sub backplane the same way you'd shard <code class="inline">eval_result</code> (by an ID field)? Why or why not?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- and the reason exposes a real difference in what each system is
+optimizing for. eval_result sharding (section 4) is chosen around a
+QUERY pattern -- which reads need to be fast and single-shard versus
+which are acceptable to fan out. A pub/sub backplane's core operation is
+different in kind: it's not being QUERIED by an arbitrary key at all,
+it's routing PUBLISH events to whichever servers are SUBSCRIBED to a
+specific channel (user:{user_id}, per section 1) at delivery time --
+there's no "give me all messages across many channels" query pattern
+analogous to eval_result's "eval results across many runs" trend query
+that section 4 needed to weigh a shard key against.
+
+If a pub/sub backplane needs to scale beyond one instance's capacity, the
+actual mechanism (in a real system like Redis Cluster) is closer to
+CONSISTENT HASHING of the channel key itself (user_id) across nodes,
+specifically to keep each channel's publish/subscribe traffic on ONE
+node so a publish never needs to fan out to multiple nodes to find the
+right subscriber -- which is actually MORE similar to section 4's run_id
+choice (optimize for single-key operations, accept that cross-key
+aggregate queries are rare and can be slower) than it might first
+appear, just applied to a fundamentally different operation (routing a
+live event) rather than a stored, queryable table.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a false sense of safety from async replication</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team argues "our eval_result data uses async replication (section 4), so a primary database failure loses zero data, since read replicas have a full up-to-date copy." Using section 4's own definition of asynchronous replication, what's wrong with this claim specifically?</p>
+    <details><summary>Show solution</summary><div class="solution">This claim conflates "async replication happens quickly, most of the
+time" with "async replication guarantees zero data loss on primary
+failure" -- and section 4's own definition of asynchronous replication
+directly contradicts the second half. Async replication means the
+PRIMARY acknowledges a write as successful WITHOUT waiting for any
+follower to confirm it has received that write -- by construction, there
+is always some window, however small under normal conditions, where a
+write exists on the primary but has NOT yet reached a follower.
+
+If the primary fails during exactly that window -- a write was accepted,
+the client was told "success," but the write had not yet replicated to
+any follower when the primary went down -- that write is genuinely lost
+when a follower is promoted to become the new primary, because the new
+primary's data is only as current as the last write it actually
+received, not the last write the OLD primary accepted. This exact
+scenario is the well-known trade-off async replication makes
+deliberately: lower write latency (no waiting for follower ACKs) in
+exchange for a real, non-zero risk of losing the most recent writes on
+an unplanned primary failure -- section 4's justification for choosing
+async for eval_result specifically was that THIS particular risk (losing
+a few of the very latest eval writes, in the rare event of a primary
+crash at exactly the wrong moment) is an acceptable trade for eval data,
+not that the risk doesn't exist. The team's claim is confusing "we
+accepted this trade because the consequence is tolerable here" with "the
+trade-off doesn't apply to us," which is a real, dangerous
+misunderstanding if repeated for a workload where losing the latest
+writes actually IS unacceptable (e.g. financial transaction data, where
+synchronous replication's cost is worth paying specifically to avoid
+this scenario).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Designing a new case study that combines two of these designs directly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Sketch, in words, what would have to change in the CI/CD eval gate design (section 2) if the system being gated were the CHAT APP itself (section 1) — specifically, what would the eval SUITE need to test that a typical single-turn agent eval suite wouldn't, given the chat app's stateful, multi-turn, cross-server nature?</p>
+    <details><summary>Show solution</summary><div class="solution">A typical eval suite (deterministic, model-graded, trajectory-based, per
+Month 5 Week 1) is usually built and run against SINGLE-turn or
+single-session interactions -- it doesn't inherently exercise section 1's
+specific concerns (cross-server delivery, connection handoff,
+backplane-mediated routing) at all, because those are INFRASTRUCTURE
+properties of the chat app, not properties of any one model response's
+quality.
+
+Gating a chat app deploy on evals would need the suite EXTENDED with
+scenarios that specifically probe section 1's guarantees: (1) a
+multi-turn scenario where the two turns are deliberately routed through
+DIFFERENT chat server instances (simulating a user's connection being
+handled by server A, then reconnecting and landing on server B after a
+network blip), verifying conversation context/state was actually
+retrievable rather than silently lost when the connection moved servers
+-- this tests whether shared conversation state (not just in-memory
+per-server state) was correctly designed; (2) a delivery-guarantee
+scenario that deliberately introduces a simulated backplane hiccup
+(section 1's own "concrete failure mode") and verifies the at-least-once
++ idempotency-key mechanism actually prevents both silent loss AND
+visible duplication on the receiving client; (3) a load/concurrency
+scenario verifying a message from a server-A user to a server-B user
+still arrives correctly under realistic concurrent connection churn
+(users connecting/disconnecting rapidly), not just in a clean, static
+two-server test.
+
+None of these are properties a standard single-turn quality eval (does
+the RESPONSE content make sense) would ever exercise, because they're
+about whether the INFRASTRUCTURE correctly preserves conversation
+continuity and delivery guarantees across the exact stateful,
+multi-server complexity section 1 introduced -- exactly the kind of gap
+a naive "just reuse the existing eval suite" approach to gating a
+NEW kind of system would miss entirely.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Full synthesis — writing your own end-to-end trace for a failure scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write (in words) a full trace, using all four designs, for this scenario: a candidate build's eval gate FAILS specifically on p95 latency (not accuracy or hallucination rate) after a deploy. Trace what happens at each of the four systems, and identify precisely which system's OWN behavior is actually responsible for triggering the block.</p>
+    <details><summary>Show solution</summary><div class="solution">A full trace: the candidate build completes its eval run (the eval
+scenario set, executed against the new build) and every result lands in
+the SHARDED eval_result table (section 4), sharded by run_id so this
+run's full result set is queryable from a single shard. The CI/CD eval
+gate (section 2) then queries that run's results -- computing not just
+pass/fail rates but also the run's aggregate p95 request-level latency
+(a metric this synthesis assumes was captured via traces during the eval
+run itself, per Month 5's tracing labs) -- and compares it against the
+configured p95 threshold. p95 exceeds the threshold; the gate blocks
+promotion. Per section 2's rollback strategy, since this is a BLOCKED
+promotion rather than a live rollback of an already-promoted build, the
+mechanism is simpler than a full rollback -- the candidate build simply
+never gets its traffic-pointer flip (blue-green) or its traffic
+percentage increase (canary); the currently-live, already-proven build
+keeps serving 100% of traffic throughout, untouched.
+
+Nginx (section 3) and the chat server's connection/backplane machinery
+(section 1) are NOT involved in this trace at all, and that's the point
+worth naming explicitly: the eval gate operates entirely BEFORE any live
+traffic (which nginx routes and the chat server serves) ever reaches the
+candidate build, exactly synthesis section 5's own callout about the
+eval gate not sitting in the live per-message path.
+
+WHICH SYSTEM IS ACTUALLY RESPONSIBLE: the eval gate (section 2) is the
+system whose OWN behavior triggers the block -- it's the one comparing
+a measured value against a configured threshold and making the
+block/promote decision. The sharded eval_result table (section 4) is
+merely where the DATA the gate needs already lives, queryable fast
+specifically because of the run_id shard key choice; it doesn't make any
+decision itself. Correctly attributing WHICH component made the decision
+versus which merely supplied data to it is exactly the kind of precision
+a system design interview is testing when it asks "walk me through what
+happens" rather than just "does it work."</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) re-derive all four Month 5 case studies cold, (2) correctly place each design's boundary — what it does and, just as importantly, what it explicitly does NOT do — and (3) trace one realistic request or failure scenario through all four systems at once, correctly attributing which component is responsible for which decision? Friday's schema finalization (<code class="inline">database/eval_trace_schema_finalization.html</code>) and Saturday's gating survival exercise (<code class="inline">evals-and-observability/cicd_eval_gating_survival_exercise.html</code>) both build directly on section 2 and section 4's designs — this cold review is the checkpoint that makes sure those foundations are actually solid before building further on them.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — month 5 case studies, cold review.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 5: SYNTHESIS TRACE DEMO */
+(function(){
+  var runBtn = document.getElementById("synth-run");
+  var resetBtn = document.getElementById("synth-reset");
+  var logEl = document.getElementById("synth-log");
+  var proxyEl = document.getElementById("node-proxy");
+  var chatEl = document.getElementById("node-chat");
+  var gateEl = document.getElementById("node-gate");
+  var shardEl = document.getElementById("node-shard");
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function clearActive(){
+    [proxyEl, chatEl, gateEl, shardEl].forEach(function(el){ el.style.boxShadow = "none"; });
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    clearActive();
+
+    log('<b>Client</b> sends a chat message over HTTPS to the public endpoint.');
+    await wait(400);
+
+    proxyEl.style.boxShadow = "0 0 14px rgba(127,216,160,0.6)";
+    log('<b style="color:var(--proxy-c);">Nginx:</b> terminates TLS here (section 3) — the connection is now plaintext internally, routed by path to the chat service upstream.');
+    await wait(550);
+    proxyEl.style.boxShadow = "none";
+
+    chatEl.style.boxShadow = "0 0 14px rgba(79,195,247,0.6)";
+    log('<b style="color:var(--chat-c);">Chat server:</b> holds this user\'s WebSocket (section 1). Generates a response via the agent, and — if the recipient is connected to a DIFFERENT server — publishes to the pub/sub backplane rather than trying to reach that server directly.');
+    await wait(600);
+    chatEl.style.boxShadow = "none";
+
+    log('Separately, and NOT in this live message\'s path: a candidate build of the underlying agent had already been evaluated before ever being allowed to serve traffic at all.');
+    await wait(400);
+
+    gateEl.style.boxShadow = "0 0 14px rgba(242,193,78,0.6)";
+    log('<b style="color:var(--gate-c);">Eval gate (section 2):</b> ran the full eval scenario set against the candidate build, checked pass rate and p95 latency against configured thresholds — this is what decided whether THIS build was ever allowed to serve live messages in the first place.');
+    await wait(600);
+    gateEl.style.boxShadow = "none";
+
+    shardEl.style.boxShadow = "0 0 14px rgba(199,146,234,0.6)";
+    log('<b style="color:var(--shard-c);">Sharded eval_result (section 4):</b> every result from that eval run landed on the shard for this run_id — fast to query in full when the gate needed to compute this run\'s pass rate, replicated asynchronously since a few hundred ms of lag here is a non-issue.');
+    await wait(500);
+    shardEl.style.boxShadow = "none";
+
+    log('<b>Trace complete.</b> Four genuinely separate systems, each with its own job: nginx routes and terminates TLS, the chat server and backplane deliver the live message, the eval gate decided (upstream, before any live traffic) whether this build was trustworthy, and the sharded table is where that decision\'s evidence lives.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    clearActive();
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

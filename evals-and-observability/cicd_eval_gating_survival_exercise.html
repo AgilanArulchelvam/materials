@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — CI/CD Eval Gating Survival Exercise</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --tool-c:#4fc3f7; --hall-c:#c792ea; --lat-c:#f2c14e; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,107,107,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:23ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--tool-c); color:var(--tool-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--hall-c); color:var(--hall-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--lat-c); color:var(--lat-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0d0d;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--accent); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line.info{border-left-color:var(--tool-c); background:rgba(79,195,247,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pipeline stage tracker, reused pattern from cicd_pipeline_basics.html, extended with an eval-gate stage */
+  .pipeline{display:flex; gap:0.5rem; flex-wrap:wrap; margin:1.4rem 0;}
+  .stage{font-family:var(--mono); font-size:0.7rem; padding:0.6rem 0.7rem; border-radius:9px; border:1.5px solid var(--rule); color:var(--ink-dim); background:var(--panel-2); transition:all .35s ease; text-align:center; flex:1; min-width:88px;}
+  .stage .stime{display:block; font-size:0.6rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .stage.pass{border-color:var(--accent); color:var(--accent); background:rgba(127,216,160,0.1);}
+  .stage.active{border-color:var(--lat-c); color:var(--lat-c); background:rgba(242,193,78,0.12); box-shadow:0 0 10px rgba(242,193,78,0.25);}
+  .stage.blocked{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.16); box-shadow:0 0 14px rgba(255,107,107,0.4); animation:shake .4s ease;}
+  @keyframes shake{0%,100%{transform:translateX(0);} 25%{transform:translateX(-3px);} 75%{transform:translateX(3px);}}
+  .stage.skipped{border-color:var(--rule); color:var(--ink-dim); background:var(--panel-2); opacity:0.4;}
+  .stage-arrow{display:flex; align-items:center; color:var(--ink-dim); font-family:var(--mono);}
+
+  /* threshold config panel */
+  .threshold-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.2rem 0;}
+  @media(max-width:760px){.threshold-grid{grid-template-columns:1fr;}}
+  .thresh-box{background:var(--panel-2); border:1px solid var(--rule); border-radius:10px; padding:1rem;}
+  .thresh-box label{display:block; font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-dim); margin-bottom:0.5rem;}
+  .thresh-box input[type=range]{width:100%; accent-color:var(--accent);}
+  .thresh-val{font-family:var(--mono); font-size:1.1rem; font-weight:700; color:var(--accent); margin-top:0.3rem;}
+
+  .deploy-picker{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;}
+
+  .gate-readout{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; margin:1rem 0;}
+  @media(max-width:700px){.gate-readout{grid-template-columns:1fr;}}
+  .gate-metric{background:var(--panel-2); border:1.5px solid var(--rule); border-radius:10px; padding:0.9rem; text-align:center; transition:all .3s ease;}
+  .gate-metric.pass{border-color:var(--accent);}
+  .gate-metric.fail{border-color:var(--bad-c); box-shadow:0 0 12px rgba(255,107,107,0.35);}
+  .gate-metric .gm-label{font-family:var(--mono); font-size:0.66rem; text-transform:uppercase; color:var(--ink-dim);}
+  .gate-metric .gm-val{font-family:var(--mono); font-size:1.3rem; font-weight:700; margin-top:0.3rem;}
+  .gate-metric.pass .gm-val{color:var(--accent);} .gate-metric.fail .gm-val{color:var(--bad-c);}
+  .gate-metric .gm-thresh{font-family:var(--mono); font-size:0.66rem; color:var(--ink-dim); margin-top:0.2rem;}
+
+  .verdict-banner{margin-top:1.2rem; padding:1rem 1.3rem; border-radius:10px; font-family:var(--mono); font-size:0.95rem; font-weight:700; text-align:center; display:none;}
+  .verdict-banner.pass{display:block; background:rgba(127,216,160,0.14); border:2px solid var(--accent); color:var(--accent);}
+  .verdict-banner.fail{display:block; background:rgba(255,107,107,0.16); border:2px solid var(--bad-c); color:var(--bad-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.checkpoint{border-left-color:var(--lat-c); background:rgba(242,193,78,0.1); font-size:1rem; font-weight:600;} .callout.checkpoint b{color:var(--lat-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · SURVIVAL EXERCISE · CI/CD EVAL GATING</div>
+  <h1>Build the gate yourself. Then make it actually stop something.</h1>
+  <p class="lede">This is Month 5's final checkpoint, and it's deliberately hands-on: <code class="inline">cicd_pipeline_basics.html</code> built lint/test/build with a <code class="inline">needs:</code> dependency chain. This lab adds a fourth stage — <strong>eval-gate</strong> — that runs the scenario set from <code class="inline">eval_scenario_design.html</code>, computes tool-selection accuracy and hallucination rate (<code class="inline">tool_selection_and_hallucination_metrics.html</code>) and p95 latency (<code class="inline">latency_and_tracing_integration.html</code>) against a candidate build, and blocks the deploy if any threshold is violated. You configure the thresholds. You run the candidate deploys. You need to actually SEE the gate block one.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Tool-selection accuracy — from this week's scenario set and metrics</div>
+    <div class="pipe-label b">Hallucination rate — grounding-checked against retrieved context</div>
+    <div class="pipe-label c">p95 latency — from the schema in eval_trace_schema_finalization.html</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="stage">1 · Adding the Eval-Gate Stage</a>
+  <a data-target="config">2 · Configure Thresholds, Run Candidate Deploys</a>
+  <a data-target="postmortem">3 · Reading a Blocked Deploy's Postmortem</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout checkpoint"><b>The roadmap's checkpoint, verbatim:</b> "Pipeline actually blocks a deployment at least once during testing." Section 2 below is not a demo — run enough candidate deploys against your configured thresholds until you actually watch one get blocked. That single blocked deploy is the whole point of this exercise.</div>
+</div>
+
+<!-- ============ SECTION 1: ADDING THE EVAL-GATE STAGE ============ -->
+<section id="stage">
+  <div class="kicker">01 — Extending cicd_pipeline_basics.html's needs: chain with a fourth stage</div>
+  <h2>Adding the eval-gate stage</h2>
+
+  <p><strong>Start here, before the YAML.</strong> Think back to <code class="inline">cicd_pipeline_basics.html</code>'s factory assembly line — a visual check, then a stress test, then final assembly, each gated on the last. This lab adds a FOURTH station to that same line, positioned after build (a real, deployable artifact now exists) and before deploy: a station that doesn't check whether the part LOOKS right or WORKS in isolation, but whether it performs correctly and fast enough under the exact conditions it'll actually face in production — a full dress rehearsal against real scenarios, not just a functional check.</p>
+
+  <div class="code"><span class="c-cmt"># .github/workflows/ci.yml — cicd_pipeline_basics.html's 3 stages,</span>
+<span class="c-cmt"># PLUS a new eval-gate stage between build and deploy</span>
+
+<span class="c-kw">jobs</span>:
+  <span class="c-key">lint</span>:    <span class="c-cmt"># unchanged from cicd_pipeline_basics.html</span>
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>: [<span class="c-cmt">"..."</span>]
+
+  <span class="c-key">test</span>:
+    <span class="c-kw">needs</span>: lint   <span class="c-cmt"># unchanged</span>
+    <span class="c-kw">steps</span>: [<span class="c-cmt">"..."</span>]
+
+  <span class="c-key">build</span>:
+    <span class="c-kw">needs</span>: test   <span class="c-cmt"># unchanged</span>
+    <span class="c-kw">steps</span>: [<span class="c-cmt">"..."</span>]
+
+  <span class="c-key">eval-gate</span>:                 <span class="c-cmt"># NEW — this week's checkpoint stage</span>
+    <span class="c-kw">needs</span>: build             <span class="c-cmt"># will NOT start unless a real artifact was built</span>
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>:
+      - <span class="c-kw">name</span>: Run the eval scenario set against the candidate build
+        <span class="c-cmt"># eval_scenario_design.html's set, executed against the just-built image</span>
+        <span class="c-kw">run</span>: run_eval_suite --image namespacelab-api:${{ github.sha }} --out results.json
+      - <span class="c-kw">name</span>: Compute tool-selection accuracy, hallucination rate, p95 latency
+        <span class="c-cmt"># tool_selection_and_hallucination_metrics.html + latency_and_tracing_integration.html</span>
+        <span class="c-kw">run</span>: compute_gate_metrics --in results.json --out metrics.json
+      - <span class="c-kw">name</span>: Compare against configured thresholds — BLOCK on any violation
+        <span class="c-kw">run</span>: check_gate_thresholds --in metrics.json --config gate_thresholds.yml
+        <span class="c-cmt"># non-zero exit code here fails this JOB, which is what stops deploy</span>
+        <span class="c-cmt"># from ever running, via ITS OWN needs: eval-gate below</span>
+
+  <span class="c-key">deploy</span>:
+    <span class="c-kw">needs</span>: eval-gate        <span class="c-cmt"># will NOT run unless every threshold passed</span>
+    <span class="c-kw">runs-on</span>: ubuntu-latest
+    <span class="c-kw">steps</span>: [<span class="c-cmt">"blue-green cutover, per backend/cicd_gating_system_design.html"</span>]</div>
+
+  <p>Notice this is a direct, mechanical extension of exactly the pattern <code class="inline">cicd_pipeline_basics.html</code> already established — <code class="inline">eval-gate</code> declares <code class="inline">needs: build</code> for the same reason <code class="inline">test</code> declared <code class="inline">needs: lint</code>: it only makes sense to run once a cheaper, earlier stage has already succeeded, and it needs an actual built artifact to test against, not just source code. <code class="inline">deploy</code> then declares <code class="inline">needs: eval-gate</code>, which is the ENTIRE mechanism that makes blocking real: if <code class="inline">check_gate_thresholds</code> exits non-zero, the <code class="inline">eval-gate</code> job itself is reported as failed, and GitHub Actions will not even attempt to start <code class="inline">deploy</code> — the exact same hard, mechanically-enforced dependency chain, now extended one link further.</p>
+
+  <table class="cmp">
+    <tr><th>Metric</th><th>Where it comes from</th><th>What "threshold violated" means</th></tr>
+    <tr><td>Tool-selection accuracy</td><td><code class="inline">tool_selection_and_hallucination_metrics.html</code>'s per-tool precision/recall, computed against <code class="inline">eval_scenario_design.html</code>'s labeled scenario set</td><td>Any individual tool's precision or recall falls below its own configured minimum — per that lab's Problem 5, a blended average is deliberately NOT what gates this</td></tr>
+    <tr><td>Hallucination rate</td><td>Reference-based grounding check against retrieved context, per that same lab's section 2</td><td>The fraction of ungrounded claims across the scenario run exceeds the configured maximum</td></tr>
+    <tr><td>p95 latency</td><td>Root-span duration across every scenario run, per <code class="inline">eval_trace_schema_finalization.html</code>'s Problem 5 query against <code class="inline">eval_span</code></td><td>The 95th-percentile request-level latency exceeds the configured maximum in milliseconds</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> a CI/CD eval gate is a pipeline stage, sequenced after build and before deploy via a hard <code class="inline">needs:</code> dependency exactly like <code class="inline">cicd_pipeline_basics.html</code>'s lint/test/build chain, that runs the full eval scenario set against the just-built candidate artifact, computes tool-selection accuracy, hallucination rate, and p95 latency from that run, and fails its own job (blocking every downstream stage, including deploy) if any individual metric violates its configured threshold. It exists because passing lint, unit tests, and a successful build only proves the CODE runs — none of them can catch a regression in the MODEL's actual behavior, which is exactly the gap this stage is built to close before it ever reaches production.</div>
+</section>
+
+<!-- ============ SECTION 2: CONFIGURE AND RUN ============ -->
+<section id="config">
+  <div class="kicker">02 — This is the exercise, not a demo — actually get a deploy blocked</div>
+  <h2>Configure thresholds, run candidate deploys</h2>
+
+  <p><strong>Start here, before touching anything.</strong> Set your own thresholds below — or use the sensible defaults — then run each of the four candidate deploys. Some are genuinely good builds. At least one is not. Your job is exactly the checkpoint's own wording: watch the pipeline actually block a bad deploy, not just read about the concept.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>GATE THRESHOLDS — YOU CONFIGURE THESE</span>
+      <div><button class="btn secondary" id="thresh-reset">Reset to defaults</button></div>
+    </div>
+    <div class="threshold-grid">
+      <div class="thresh-box">
+        <label>Min tool-selection precision (worst tool)</label>
+        <input type="range" id="th-tool" min="50" max="99" value="85">
+        <div class="thresh-val" id="th-tool-val">85%</div>
+      </div>
+      <div class="thresh-box">
+        <label>Max hallucination rate</label>
+        <input type="range" id="th-hall" min="1" max="30" value="10">
+        <div class="thresh-val" id="th-hall-val">10%</div>
+      </div>
+      <div class="thresh-box">
+        <label>Max p95 latency (ms)</label>
+        <input type="range" id="th-lat" min="500" max="5000" step="50" value="1500">
+        <div class="thresh-val" id="th-lat-val">1500ms</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>CANDIDATE DEPLOYS — RUN EACH THROUGH THE FULL PIPELINE</span>
+      <div><button class="btn secondary" id="pipe-reset">Reset pipeline</button></div>
+    </div>
+    <div class="deploy-picker">
+      <button class="btn secondary" data-deploy="clean">Deploy A — routine patch ▸</button>
+      <button class="btn secondary" data-deploy="tool">Deploy B — new tool added ▸</button>
+      <button class="btn danger" data-deploy="regressed">Deploy C — regressed model swap ▸</button>
+      <button class="btn secondary" data-deploy="slow">Deploy D — slower retrieval path ▸</button>
+    </div>
+    <div class="pipeline" id="pipeline-track">
+      <div class="stage" id="st-lint">Lint</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-test">Test</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-build">Build</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-gate">Eval-gate</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-deploy">Deploy</div>
+    </div>
+    <div class="gate-readout" id="gate-readout"></div>
+    <div class="verdict-banner" id="verdict"></div>
+    <div class="log" id="pipe-log"></div>
+  </div>
+
+  <div class="callout warn"><b>Do not skip this:</b> if every candidate deploy you ran passed, you haven't completed the checkpoint yet. Try Deploy C, or tighten your thresholds and re-run Deploy D — the exercise is only done once you've watched the <code class="inline">deploy</code> stage render as BLOCKED, with its own eyes, at least once.</div>
+</section>
+
+<!-- ============ SECTION 3: POSTMORTEM ============ -->
+<section id="postmortem">
+  <div class="kicker">03 — What actually happens after a real block, and why deploy never even starts</div>
+  <h2>Reading a blocked deploy's postmortem</h2>
+
+  <p><strong>Start here, before the breakdown.</strong> A blocked gate isn't a dead end — it's information. Once you've triggered a block above, the honest next question is the same one a real on-call engineer asks: exactly WHICH metric failed, by how much, and what's the smallest, most targeted next step, rather than a panicked full rollback of unrelated work.</p>
+
+  <table class="cmp">
+    <tr><th>What failed</th><th>What it means concretely</th><th>What deploy never got to do</th></tr>
+    <tr><td>Tool-selection precision (a specific tool)</td><td>Per <code class="inline">tool_selection_and_hallucination_metrics.html</code>'s confusion-matrix framing — this specific tool is now being called when a different tool was correct, more often than the threshold allows</td><td>Never attempted the blue-green traffic-pointer flip at all (per <code class="inline">backend/cicd_gating_system_design.html</code>) — the previously-live, already-proven build kept serving 100% of traffic throughout</td></tr>
+    <tr><td>Hallucination rate</td><td>A meaningful fraction of the candidate's claims aren't traceable to retrieved context — per <code class="inline">tool_selection_and_hallucination_metrics.html</code>'s grounding definition, regardless of whether they happen to sound plausible</td><td>Same as above — the block happens before deploy is even attempted, so production traffic is never exposed to the regression</td></tr>
+    <tr><td>p95 latency</td><td>The worst-served 5% of scenario runs exceeded the configured millisecond ceiling — per <code class="inline">latency_and_tracing_integration.html</code>'s tail-latency argument, this is real even if the AVERAGE looked fine</td><td>Same as above — no canary traffic percentage is ever increased past 0%</td></tr>
+  </table>
+
+  <p>The reason this matters as a genuine "survival exercise" rather than a purely academic one: in each case, the deploy stage's own steps — the blue-green cutover or canary ramp-up from <code class="inline">backend/cicd_gating_system_design.html</code> — never execute AT ALL. This is precisely <code class="inline">cicd_pipeline_basics.html</code>'s fail-fast principle, now applied one stage further downstream: it's far cheaper, and far safer, to catch a regression in an isolated eval run against a candidate build than to catch the same regression after it's already live and affecting real users, which is exactly what an eval gate that runs BEFORE deploy — rather than only monitoring AFTER — is built to guarantee.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a blocked eval gate is a SUCCESS of the pipeline, not a failure of it — the gate did exactly what it was built to do, catching a regression in tool-selection accuracy, hallucination rate, or p95 latency before the candidate build ever reached the deploy stage, meaning the previously-live version continues serving all production traffic, completely undisturbed, for the entire duration of the investigation. The alternative — no gate, or a gate that only monitors production AFTER deploy — means the exact same regression is instead discovered by real users, in production, which is a strictly worse outcome regardless of how quickly a subsequent rollback happens.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding whether eval-gate should run in parallel with build</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate proposes running <code class="inline">eval-gate</code> in PARALLEL with <code class="inline">build</code> (removing <code class="inline">needs: build</code>) to save pipeline time. Using section 1's design and <code class="inline">cicd_pipeline_basics.html</code>'s Problem 3 reasoning, evaluate this.</p>
+    <details><summary>Show solution</summary><div class="solution">This proposal is structurally broken, not just a speed/safety trade-off
+like cicd_pipeline_basics.html's Problem 3 lint/test parallelization
+question -- it's worse than that, because eval-gate's own steps
+genuinely DEPEND on build's output existing first. Section 1's eval-gate
+job runs `run_eval_suite --image namespacelab-api:${{ github.sha }}` --
+it needs an actual, already-built, already-pushed image to run the eval
+scenario set AGAINST. If eval-gate started in parallel with build, that
+image would not exist yet (build may still be mid-compilation), and the
+eval run would either fail outright (no image found) or, worse, silently
+run against a STALE previously-built image with the same tag, producing
+gate results that don't actually reflect the NEW candidate build at all
+-- passing or failing the gate based on the wrong artifact entirely.
+
+This is a different category of problem from cicd_pipeline_basics.html's
+Problem 3, which was a genuine trade-off between speed and fail-fast
+compute savings for two stages that COULD technically run independently
+(lint and test don't need each other's output, they just chose to be
+sequenced for cost reasons). eval-gate and build have a hard DATA
+dependency, not just a stylistic sequencing choice -- needs: build here
+isn't optional the way needs: lint arguably was for test; it's required
+for eval-gate to even have a valid, unambiguous target to test against.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a gate that passes on average but should have blocked</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A candidate build passes the eval gate with "92% tool-selection accuracy" reported as a single blended number, safely above an 85% threshold. Two weeks later, the <code class="inline">issue_refund</code> tool turns out to have been badly broken the entire time. Using <code class="inline">tool_selection_and_hallucination_metrics.html</code>'s Problem 2 and Problem 5, what should this gate's threshold logic have looked like instead?</p>
+    <details><summary>Show solution</summary><div class="solution">This is exactly tool_selection_and_hallucination_metrics.html's Problem
+2 and Problem 5 playing out for real: a single blended accuracy number
+(whether macro- or, more likely here, micro-averaged across many more
+common, easier tool calls) can comfortably clear an 85% threshold while
+one specific, possibly high-consequence tool is badly broken, simply
+because its failures are outnumbered by successes elsewhere in the
+scenario set.
+
+The gate's threshold logic should have checked PER-TOOL precision and
+recall against PER-TOOL thresholds (per that lab's Problem 5 conclusion)
+-- section 1's own gate_thresholds.yml config should define a minimum
+threshold for EACH tool individually, with issue_refund specifically
+warranting a stricter bar given its financial consequences, and the gate
+should block if ANY single tool's metric falls below ITS OWN threshold,
+not merely if the blended average falls below one shared bar. This
+lab's own section 2 threshold config (a single "min tool-selection
+precision" slider) is deliberately simplified for the interactive demo
+-- a real production gate_thresholds.yml would define this per-tool, and
+recognizing that simplification is itself part of correctly applying
+tool_selection_and_hallucination_metrics.html's lesson to this specific
+pipeline.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about what happens to in-flight requests when a gate blocks mid-rollout</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">backend/cicd_gating_system_design.html</code>'s canary strategy, what's different about a gate blocking BEFORE any traffic reaches the candidate (this lab's design) versus a hypothetical gate that only runs AFTER a canary has already received 10% of live traffic?</p>
+    <details><summary>Show solution</summary><div class="solution">In THIS lab's design, the eval-gate stage runs entirely against
+SIMULATED/scenario-set traffic (eval_scenario_design.html's labeled
+scenarios), never real user traffic -- if it blocks, ZERO real users
+were ever exposed to the regression, because deploy (which would start
+the canary ramp-up at all) never even begins, per section 1's needs:
+eval-gate dependency.
+
+The hypothetical alternative -- a gate that only runs AFTER a canary is
+already receiving 10% of live traffic -- means by the time ANY gate
+signal fires, real users have ALREADY been served by the regressed
+build for however long it took to accumulate enough canary traffic to
+compute a meaningful metric. Blocking at that point can still stop
+FURTHER rollout (preventing the canary percentage from increasing past
+10%, and triggering a rollback of that 10% back to the old version), but
+it cannot undo the fact that some real users already experienced the
+regression during the canary window -- a strictly worse outcome than
+this lab's pre-deploy gate, even though both are legitimate uses of
+"gating on thresholds." This is precisely why section 1 placed eval-gate
+BEFORE deploy (which includes the canary ramp-up) rather than treating
+canary metrics themselves as the only gate -- a pre-deploy gate against
+a controlled scenario set catches what it can before ANY real traffic is
+at risk, while canary-based monitoring (a separate, complementary
+practice) is a second, later safety net for regressions the eval
+scenario set didn't happen to cover.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Designing what happens when the eval-gate stage itself fails to run (not fails its checks)</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose the eval-gate stage's <code class="inline">run_eval_suite</code> step crashes due to an infrastructure problem (the eval-running service is temporarily down) rather than any actual threshold being violated. Using section 1's <code class="inline">needs:</code> mechanism, what happens to <code class="inline">deploy</code>, and is that the correct behavior?</p>
+    <details><summary>Show solution</summary><div class="solution">GitHub Actions' needs: mechanism does not distinguish WHY a job failed --
+it only checks whether the job reported success or failure. If
+run_eval_suite crashes for an infrastructure reason (the eval-running
+service being down, a network timeout, an out-of-memory crash unrelated
+to the candidate build's actual quality), the eval-gate job as a whole
+still reports FAILURE, and deploy's needs: eval-gate gate still refuses
+to run -- deploy is blocked exactly as if a real threshold had been
+violated, even though nothing about THIS candidate build's actual
+quality was ever measured.
+
+Is this correct? Yes, and importantly for the same reason a lint tool
+crashing (rather than reporting a real style violation) should also
+block test/build in cicd_pipeline_basics.html's original chain: the
+absence of a PASSING signal is not the same thing as evidence of
+quality, and treating "the check didn't run" as equivalent to "the check
+passed" would silently defeat the entire purpose of having the gate at
+all -- a flaky eval-running service could then become a backdoor that
+lets EVERY candidate build ship without ever actually being gated,
+simply by being unreliable enough, often enough. The correct operational
+response to an infrastructure failure here isn't to change the gating
+LOGIC (deploy should still be blocked) -- it's to alert whoever owns the
+eval-running service's reliability separately, and re-run the pipeline
+once that infrastructure problem is fixed, rather than loosening the
+gate's fail-closed behavior to work around a temporary outage.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Writing your own gate_thresholds.yml and justifying each number</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using everything from this week — <code class="inline">eval_scenario_design.html</code>'s taxonomy, <code class="inline">tool_selection_and_hallucination_metrics.html</code>'s per-tool framing, and <code class="inline">latency_and_tracing_integration.html</code>'s percentile reasoning — sketch a realistic <code class="inline">gate_thresholds.yml</code> for a customer-support agent with tools <code class="inline">lookup_order</code>, <code class="inline">get_history</code>, and <code class="inline">issue_refund</code>, and justify why <code class="inline">issue_refund</code>'s thresholds should differ from the other two.</p>
+    <details><summary>Show solution</summary><div class="solution">tool_selection:
+  lookup_order:   { min_precision: 0.90, min_recall: 0.90 }
+  get_history:    { min_precision: 0.88, min_recall: 0.90 }
+  issue_refund:   { min_precision: 0.98, min_recall: 0.95 }  # stricter
+hallucination:
+  max_rate: 0.05   # stricter than a generic default -- financial-adjacent domain
+latency:
+  max_p95_ms: 2000
+
+Justification for issue_refund's stricter thresholds, drawing directly
+on this week's reasoning: tool_selection_and_hallucination_metrics.html's
+Problem 5 established that per-tool thresholds should reflect the ACTUAL
+CONSEQUENCE of that tool's misuse, not be uniform across every tool
+regardless of stakes. A false-positive lookup_order call (the agent
+looks up the wrong order's status) is annoying but low-consequence --
+easily corrected in the same conversation, no lasting harm. A
+false-positive issue_refund call (the agent issues a refund it
+shouldn't have, or refunds the wrong order, or the wrong amount) is a
+genuine financial and trust consequence that's much harder to walk back
+after the fact -- warranting a meaningfully higher precision bar
+(0.98 vs 0.90) specifically because the COST of a rare miss is so much
+higher here, even if the base rate of issue_refund calls is much lower
+than lookup_order's, per eval_scenario_design.html's own reasoning about
+why a category needs ENOUGH instances to be trustworthy even when it's
+naturally rarer than others.
+
+The hallucination max_rate (0.05, stricter than a hypothetical generic
+0.10 default) reflects the same logic applied to grounding specifically:
+a hallucinated claim about, say, "your refund has been processed" when
+it hasn't actually been grounded in a real issue_refund tool result
+would be a directly harmful, trust-breaking false claim in this domain,
+not a merely annoying one -- warranting a tighter bound than a lower-
+stakes, purely informational agent might reasonably accept. The p95
+latency threshold (2000ms) is comparatively less domain-specific and
+more a straightforward UX/SLA call, per latency_and_tracing_integration.
+html's section 2 reasoning about p95 being the standard, defensible
+default for a deploy-gate threshold.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the eval-gate stage's YAML with the correct <code class="inline">needs:</code> chain from memory, (2) explain precisely why per-tool thresholds beat one blended accuracy number, and (3) explain why a blocked gate is a SUCCESS of the pipeline rather than a failure? Most importantly — did you actually watch a deploy get blocked in section 2, not just read about the concept? That's the checkpoint. This closes out Month 5 in full: eval frameworks (Week 1), observability (Week 2), infra (Week 3), and now a real, working gate that ties all of it together (Week 4). Month 6 starts next.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — cicd eval gating survival exercise.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: THRESHOLD SLIDERS */
+(function(){
+  var toolSlider = document.getElementById("th-tool");
+  var hallSlider = document.getElementById("th-hall");
+  var latSlider = document.getElementById("th-lat");
+  var toolVal = document.getElementById("th-tool-val");
+  var hallVal = document.getElementById("th-hall-val");
+  var latVal = document.getElementById("th-lat-val");
+
+  function sync(){
+    toolVal.textContent = toolSlider.value + "%";
+    hallVal.textContent = hallSlider.value + "%";
+    latVal.textContent = latSlider.value + "ms";
+  }
+  toolSlider.addEventListener("input", sync);
+  hallSlider.addEventListener("input", sync);
+  latSlider.addEventListener("input", sync);
+
+  document.getElementById("thresh-reset").addEventListener("click", function(){
+    toolSlider.value = 85; hallSlider.value = 10; latSlider.value = 1500;
+    sync();
+  });
+
+  sync();
+})();
+
+/* SECTION 2: PIPELINE + CANDIDATE DEPLOYS */
+(function(){
+  var DEPLOYS = {
+    clean:      {label:"Deploy A — routine patch",        toolPrecision:93, hallRate:4,  p95:900,  desc:"a small bugfix, no model or tool changes"},
+    tool:       {label:"Deploy B — new tool added",        toolPrecision:88, hallRate:6,  p95:1100, desc:"adds a new tool alongside the existing set, minor selection overlap while it beds in"},
+    regressed:  {label:"Deploy C — regressed model swap",  toolPrecision:61, hallRate:22, p95:1300, desc:"swaps the underlying model version — tool-selection precision and hallucination rate both regressed hard"},
+    slow:       {label:"Deploy D — slower retrieval path", toolPrecision:90, hallRate:5,  p95:2600, desc:"adds a richer but slower retrieval step before answering — correctness is fine, the tail got much slower"}
+  };
+
+  var stages = ["lint", "test", "build", "gate", "deploy"];
+  var stageEls = {};
+  stages.forEach(function(s){ stageEls[s] = document.getElementById("st-" + s); });
+
+  var readoutEl = document.getElementById("gate-readout");
+  var verdictEl = document.getElementById("verdict");
+  var logEl = document.getElementById("pipe-log");
+  var busy = false;
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetPipeline(){
+    stages.forEach(function(s){ stageEls[s].className = "stage"; });
+    readoutEl.innerHTML = "";
+    verdictEl.className = "verdict-banner";
+    verdictEl.textContent = "";
+    logEl.innerHTML = "";
+  }
+
+  function getThresholds(){
+    return {
+      tool: parseFloat(document.getElementById("th-tool").value),
+      hall: parseFloat(document.getElementById("th-hall").value),
+      lat: parseFloat(document.getElementById("th-lat").value)
+    };
+  }
+
+  function renderGateReadout(deploy, thresh){
+    var toolPass = deploy.toolPrecision >= thresh.tool;
+    var hallPass = deploy.hallRate <= thresh.hall;
+    var latPass = deploy.p95 <= thresh.lat;
+
+    readoutEl.innerHTML =
+      "<div class=\"gate-metric " + (toolPass ? "pass" : "fail") + "\">" +
+        "<div class=\"gm-label\">worst tool precision</div>" +
+        "<div class=\"gm-val\">" + deploy.toolPrecision + "%</div>" +
+        "<div class=\"gm-thresh\">threshold: ≥" + thresh.tool + "%</div></div>" +
+      "<div class=\"gate-metric " + (hallPass ? "pass" : "fail") + "\">" +
+        "<div class=\"gm-label\">hallucination rate</div>" +
+        "<div class=\"gm-val\">" + deploy.hallRate + "%</div>" +
+        "<div class=\"gm-thresh\">threshold: ≤" + thresh.hall + "%</div></div>" +
+      "<div class=\"gate-metric " + (latPass ? "pass" : "fail") + "\">" +
+        "<div class=\"gm-label\">p95 latency</div>" +
+        "<div class=\"gm-val\">" + deploy.p95 + "ms</div>" +
+        "<div class=\"gm-thresh\">threshold: ≤" + thresh.lat + "ms</div></div>";
+
+    return toolPass && hallPass && latPass;
+  }
+
+  async function runDeploy(key){
+    if(busy) return;
+    busy = true;
+    document.querySelectorAll(".deploy-picker .btn").forEach(function(b){ b.disabled = true; });
+    resetPipeline();
+
+    var deploy = DEPLOYS[key];
+    var thresh = getThresholds();
+
+    log("<b>Candidate:</b> " + deploy.label + " — " + deploy.desc, "info");
+    await wait(350);
+
+    stageEls.lint.classList.add("active");
+    await wait(400);
+    stageEls.lint.classList.remove("active"); stageEls.lint.classList.add("pass");
+    log("<b>Lint:</b> passed.", "ok");
+    await wait(250);
+
+    stageEls.test.classList.add("active");
+    await wait(400);
+    stageEls.test.classList.remove("active"); stageEls.test.classList.add("pass");
+    log("<b>Test:</b> passed.", "ok");
+    await wait(250);
+
+    stageEls.build.classList.add("active");
+    await wait(500);
+    stageEls.build.classList.remove("active"); stageEls.build.classList.add("pass");
+    log("<b>Build:</b> image built and pushed — namespacelab-api:" + key + Math.floor(Math.random()*900+100), "ok");
+    await wait(300);
+
+    stageEls.gate.classList.add("active");
+    log("<b>Eval-gate:</b> running eval_scenario_design.html's scenario set against this candidate...", "info");
+    await wait(700);
+
+    var passed = renderGateReadout(deploy, thresh);
+
+    if(passed){
+      stageEls.gate.classList.remove("active"); stageEls.gate.classList.add("pass");
+      log("<b style=\"color:var(--accent);\">Eval-gate PASSED</b> — every metric cleared its threshold.", "ok");
+      await wait(350);
+
+      stageEls.deploy.classList.add("active");
+      log("<b>Deploy:</b> blue-green cutover proceeding (backend/cicd_gating_system_design.html)...", "info");
+      await wait(600);
+      stageEls.deploy.classList.remove("active"); stageEls.deploy.classList.add("pass");
+      log("<b style=\"color:var(--accent);\">Deploy PASSED.</b> Traffic pointer flipped to the new candidate.", "ok");
+
+      verdictEl.className = "verdict-banner pass";
+      verdictEl.textContent = "GATE PASSED — DEPLOY SHIPPED";
+    } else {
+      stageEls.gate.classList.remove("active"); stageEls.gate.classList.add("blocked");
+      log("<b style=\"color:var(--bad-c);\">Eval-gate FAILED</b> — at least one threshold was violated. See the readout above for which.", "bad");
+      await wait(400);
+
+      stageEls.deploy.classList.add("skipped");
+      log("<b>Deploy:</b> SKIPPED — needs: eval-gate was not satisfied. The blue-green cutover never starts. The previously-live build keeps serving 100% of production traffic, completely undisturbed.", "bad");
+
+      verdictEl.className = "verdict-banner fail";
+      verdictEl.textContent = "GATE BLOCKED THE DEPLOY — checkpoint satisfied";
+    }
+
+    busy = false;
+    document.querySelectorAll(".deploy-picker .btn").forEach(function(b){ b.disabled = false; });
+  }
+
+  document.querySelectorAll(".deploy-picker .btn").forEach(function(btn){
+    btn.addEventListener("click", function(){ runDeploy(btn.dataset.deploy); });
+  });
+
+  document.getElementById("pipe-reset").addEventListener("click", function(){
+    resetPipeline();
+    busy = false;
+    document.querySelectorAll(".deploy-picker .btn").forEach(function(b){ b.disabled = false; });
+  });
+})();
+</script>
+</body>
+</html>

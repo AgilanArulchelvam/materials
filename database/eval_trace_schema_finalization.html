@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Eval/Trace Schema Finalization</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --run-c:#f2c14e; --result-c:#4fc3f7; --span-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--run-c); color:var(--run-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--result-c); color:var(--result-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--span-c); color:var(--span-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ok{border-left-color:var(--span-c); background:rgba(127,216,160,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* ERD diagram */
+  .erd{display:flex; align-items:center; justify-content:center; gap:0.7rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.74rem;}
+  .erd-box{padding:0.85rem 1rem; border-radius:10px; border:1.5px solid; text-align:left; min-width:150px;}
+  .erd-box.run{border-color:var(--run-c); color:var(--run-c); background:rgba(242,193,78,0.08);}
+  .erd-box.result{border-color:var(--result-c); color:var(--result-c); background:rgba(79,195,247,0.08);}
+  .erd-box.span{border-color:var(--span-c); color:var(--span-c); background:rgba(127,216,160,0.08);}
+  .erd-box.new{box-shadow:0 0 0 2px rgba(127,216,160,0.35);}
+  .erd-box .fields{color:var(--ink-dim); font-size:0.66rem; margin-top:0.4rem; line-height:1.5;}
+  .erd-box .fields .newfield{color:var(--span-c);}
+  .erd-arrow{color:var(--ink-dim); font-size:1.1rem;}
+
+  /* interactive schema diagram toggle */
+  .schema-toggle{display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;}
+  .chip{font-family:var(--mono); font-size:0.76rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.run{border-left-color:var(--run-c); background:rgba(242,193,78,0.06);} .callout.run b{color:var(--run-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(127,216,160,0.06);} .callout.span b{color:var(--span-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · EVAL/TRACE SCHEMA FINALIZATION</div>
+  <h1>Locking a schema means extending it without breaking a single row already in it.</h1>
+  <p class="lede"><code class="inline">eval_results_schema.html</code> built <code class="inline">eval_run</code> and <code class="inline">eval_result</code>, with a plain-text <code class="inline">trace_id</code> pointing at a trace that lived entirely OUTSIDE the database. This lab finalizes that design by bringing the trace's own structure — spans, parent/child nesting, timing — INTO the schema as real tables, via a migration that's additive and backward-compatible, not a rewrite. This is Friday's checkpoint: lock the schema, run the migration, keep every existing row intact.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">eval_run / eval_result — unchanged from Week 1, still the header/detail pair</div>
+    <div class="pipe-label b">eval_span — new table, one row per span, nested via parent_span_id</div>
+    <div class="pipe-label c">A real migration — additive, with a rollback plan, zero data loss</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="extend">1 · Extending the Schema with Real Trace Tables</a>
+  <a data-target="migration">2 · Writing the Migration</a>
+  <a data-target="diagram">3 · The Schema, Interactive</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: EXTENDING THE SCHEMA ============ -->
+<section id="extend">
+  <div class="kicker">01 — From "a pointer to a trace" to "the trace itself, queryable"</div>
+  <h2>Extending the schema with real trace tables</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Think about a library that used to keep a card catalog with just a note — "full case file available at the courthouse" — for every legal case it referenced. That's usable, but every time someone actually needs the case details, they have to leave the library entirely. Now imagine the library decides to bring PHOTOCOPIES of the actual case files into its own shelves, properly indexed and cross-referenced to the existing catalog cards — without removing or renumbering a single existing card. That's exactly what this lab does to <code class="inline">eval_results_schema.html</code>'s design: <code class="inline">trace_id</code> stays exactly where it is on <code class="inline">eval_result</code>, but now a real <code class="inline">eval_span</code> table lives in the SAME database, holding the actual span data that <code class="inline">trace_id</code> used to only point at externally.</p>
+
+  <p>Why do this at all, given <code class="inline">eval_results_schema.html</code>'s own Problem 3 argued FOR keeping the trace in a separate observability backend? Because that argument was about the LIVE, production trace pipeline — high-volume, short-retention, OpenTelemetry-shaped. This schema extension is narrower and more durable: specifically capturing the spans belonging to EVAL RUNS, which are lower-volume, need longer retention (an eval run from a month ago is still worth debugging), and benefit from being queryable with the same SQL joins as <code class="inline">eval_run</code>/<code class="inline">eval_result</code> rather than requiring a second query language against a separate observability system every time.</p>
+
+  <div class="code"><span class="c-cmt">-- unchanged from eval_results_schema.html -- not touched by this migration</span>
+<span class="c-kw">CREATE TABLE</span> eval_run ( <span class="c-cmt">/* run_id, started_at, model_version, dataset_id, suite_name, triggered_by */</span> );
+<span class="c-kw">CREATE TABLE</span> eval_result ( <span class="c-cmt">/* result_id, run_id, test_case_id, eval_type, score, passed, details, trace_id, evaluated_at */</span> );
+
+<span class="c-cmt">-- NEW: one row per SPAN belonging to the trace an eval_result references.</span>
+<span class="c-cmt">-- Mirrors opentelemetry_basics.html's nesting model exactly, as real rows.</span>
+<span class="c-kw">CREATE TABLE</span> eval_span (
+    span_id         <span class="c-kw">TEXT PRIMARY KEY</span>,             <span class="c-cmt">-- matches the OTel span_id format</span>
+    trace_id        <span class="c-kw">TEXT NOT NULL</span>,                <span class="c-cmt">-- same trace_id value already on eval_result</span>
+    parent_span_id  <span class="c-kw">TEXT REFERENCES</span> eval_span(span_id),  <span class="c-cmt">-- NULL for the root span</span>
+    span_name       <span class="c-kw">TEXT NOT NULL</span>,                <span class="c-cmt">-- e.g. "call_llm", "call_database"</span>
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    ended_at        <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    duration_ms     <span class="c-kw">NUMERIC GENERATED ALWAYS AS</span>
+                        (<span class="c-kw">EXTRACT</span>(<span class="c-kw">EPOCH FROM</span> ended_at - started_at) * <span class="c-num">1000</span>) <span class="c-kw">STORED</span>,
+    attributes      <span class="c-kw">JSONB</span>                        <span class="c-cmt">-- e.g. {"llm.model": "...", "llm.output_tokens": 142}</span>
+);
+
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_trace <span class="c-kw">ON</span> eval_span(trace_id);
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_parent <span class="c-kw">ON</span> eval_span(parent_span_id);</div>
+
+  <p>Notice what makes this a genuine EXTENSION rather than a redesign: <code class="inline">eval_run</code> and <code class="inline">eval_result</code>'s own column lists are completely untouched — not one column added, removed, or retyped on either table. <code class="inline">eval_span.trace_id</code> is deliberately the SAME kind of value already stored on <code class="inline">eval_result.trace_id</code>, so the join between them is immediate and requires no new mapping table. And <code class="inline">parent_span_id</code> as a self-referencing foreign key is exactly <code class="inline">opentelemetry_basics.html</code>'s nesting model, now expressed as a real, queryable relational constraint instead of an implicit "current span" context that only exists at instrumentation time.</p>
+
+  <div class="erd">
+    <div class="erd-box run">eval_run<div class="fields">run_id (PK)<br>model_version<br>dataset_id<br>suite_name</div></div>
+    <div class="erd-arrow">→ 1:N →</div>
+    <div class="erd-box result">eval_result<div class="fields">result_id (PK)<br>run_id (FK)<br>eval_type, score<br>trace_id</div></div>
+    <div class="erd-arrow">→ 1:N →</div>
+    <div class="erd-box span new">eval_span <span style="color:var(--span-c); font-size:0.62rem;">(NEW)</span><div class="fields">span_id (PK)<br><span class="newfield">trace_id (matches result.trace_id)</span><br><span class="newfield">parent_span_id (self-FK)</span><br><span class="newfield">started_at, ended_at</span></div></div>
+  </div>
+
+  <p>Referential integrity across the new relationship is worth being precise about: <code class="inline">eval_span.trace_id</code> is NOT a formal foreign key to <code class="inline">eval_result.trace_id</code> — the same reasoning <code class="inline">eval_results_schema.html</code>'s Problem 3 gave for why <code class="inline">trace_id</code> itself isn't a true FK applies here too, but for a subtly different reason now: <code class="inline">eval_result.trace_id</code> isn't even guaranteed UNIQUE (a single trace could, in principle, back multiple eval_result rows if several test cases were scored from the same execution), so it can't serve as a REFERENCES target the way a primary key can. The join between <code class="inline">eval_result</code> and <code class="inline">eval_span</code> is enforced at the QUERY level (<code class="inline">JOIN eval_span ON eval_span.trace_id = eval_result.trace_id</code>), exactly like the original external trace_id link — just now joining two tables in the SAME database instead of reaching into a separate system.</p>
+
+  <div class="callout span"><b>Interview-ready definition:</b> finalizing an eval/trace schema means extending the existing header/detail pair (<code class="inline">eval_run</code>, <code class="inline">eval_result</code>) with a genuinely new table (<code class="inline">eval_span</code>) capturing trace-specific structure — span_id, trace_id, parent_span_id for nesting, start/end timing, and attributes — without altering a single existing column on the tables already in production. The new table's <code class="inline">trace_id</code> matches the value already stored on <code class="inline">eval_result</code>, making the two joinable directly, while <code class="inline">parent_span_id</code>'s self-referencing foreign key gives OpenTelemetry's nesting model a real, relationally-enforced structure instead of an externally-inferred one.</div>
+</section>
+
+<!-- ============ SECTION 2: THE MIGRATION ============ -->
+<section id="migration">
+  <div class="kicker">02 — Additive, reversible, and safe to run against a live table with existing rows</div>
+  <h2>Writing the migration</h2>
+
+  <p><strong>Start here, before the SQL.</strong> Think about renovating a house that people are still living in. A destructive rewrite would mean tearing the whole house down and rebuilding — nobody can live there during that, and everything inside is lost unless separately backed up first. A responsible renovation instead adds a new room onto the existing structure: the people living there are never displaced, everything that already existed keeps working exactly as before, and if the new room turns out to have a problem, it can be sealed back off without touching the rest of the house. A schema migration for a table already holding production data needs to be built the second way, always.</p>
+
+  <div class="code"><span class="c-cmt">-- migrations/0007_add_eval_span.sql -- ADDITIVE, backward-compatible</span>
+
+<span class="c-cmt">-- Up migration: pure addition. Does not touch eval_run or eval_result</span>
+<span class="c-cmt">-- at all -- no ALTER TABLE against either existing table, no data rewrite.</span>
+<span class="c-kw">CREATE TABLE</span> eval_span (
+    span_id         <span class="c-kw">TEXT PRIMARY KEY</span>,
+    trace_id        <span class="c-kw">TEXT NOT NULL</span>,
+    parent_span_id  <span class="c-kw">TEXT REFERENCES</span> eval_span(span_id),
+    span_name       <span class="c-kw">TEXT NOT NULL</span>,
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    ended_at        <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    duration_ms     <span class="c-kw">NUMERIC GENERATED ALWAYS AS</span>
+                        (<span class="c-kw">EXTRACT</span>(<span class="c-kw">EPOCH FROM</span> ended_at - started_at) * <span class="c-num">1000</span>) <span class="c-kw">STORED</span>,
+    attributes      <span class="c-kw">JSONB</span>
+);
+
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_trace  <span class="c-kw">ON</span> eval_span(trace_id);
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_parent <span class="c-kw">ON</span> eval_span(parent_span_id);
+
+<span class="c-cmt">-- Down migration (rollback plan): drop only what this migration added.</span>
+<span class="c-cmt">-- eval_run and eval_result are never referenced here because they were</span>
+<span class="c-cmt">-- never touched -- rollback is exactly as safe as the up migration was.</span>
+<span class="c-kw">DROP TABLE IF EXISTS</span> eval_span;</div>
+
+  <p>Three properties make this migration genuinely safe to run against a live table with existing rows, and each is worth naming explicitly because each is a real way a migration can go wrong if skipped:</p>
+
+  <table class="cmp">
+    <tr><th>Property</th><th>Why it matters here</th></tr>
+    <tr><td><strong>Additive</strong></td><td><code class="inline">CREATE TABLE</code> for a brand-new table never locks, rewrites, or risks corrupting <code class="inline">eval_run</code> or <code class="inline">eval_result</code>'s EXISTING rows, because it doesn't touch those tables at all. Every eval_result row written before this migration still reads back exactly as it did before.</td></tr>
+    <tr><td><strong>Backward-compatible</strong></td><td>Any application code that was written against the OLD schema (only knowing about <code class="inline">eval_run</code>/<code class="inline">eval_result</code>) keeps working unmodified after this migration runs — it simply doesn't know <code class="inline">eval_span</code> exists yet. This means the migration can be deployed BEFORE the application code that populates <code class="inline">eval_span</code>, with zero downtime window where old code breaks against the new schema.</td></tr>
+    <tr><td><strong>Has a rollback plan</strong></td><td>The down migration is symmetric and safe — <code class="inline">DROP TABLE eval_span</code> removes exactly what the up migration added, nothing more, meaning a bad rollout of the span-writing feature can be reverted without any risk to the eval_run/eval_result data that predates it.</td></tr>
+  </table>
+
+  <p>Compare this against the destructive alternative a less careful migration might attempt: altering <code class="inline">eval_result</code> to REPLACE its plain <code class="inline">trace_id</code> column with a foreign key into a redesigned trace table, or worse, dropping and recreating <code class="inline">eval_result</code> entirely to "clean up" the schema. Either would require a data migration step to preserve every existing row's data, introduce real downtime or locking while the rewrite runs, and — critically — leaves NO safe rollback path once existing rows have been transformed, because reversing a destructive rewrite means reconstructing the exact prior row shapes, which is error-prone and sometimes not even fully possible if any information was lost in the transform.</p>
+
+  <div class="callout warn"><b>What "locking a schema" actually means:</b> it does not mean the schema can never change again — <code class="inline">database/migrations_and_sql_vs_nosql_revisited.html</code> already established that schemas evolve. It means committing to a stable CORE (here, <code class="inline">eval_run</code> and <code class="inline">eval_result</code>'s existing columns) that future work builds ON TOP OF via additive migrations like this one, rather than a core that gets rewritten out from under existing consumers every time a new requirement appears.</div>
+</section>
+
+<!-- ============ SECTION 3: INTERACTIVE SCHEMA DIAGRAM ============ -->
+<section id="diagram">
+  <div class="kicker">03 — Toggle between before and after, and walk a real query across the join</div>
+  <h2>The schema, interactive</h2>
+
+  <p><strong>Start here, before clicking.</strong> Toggle between the schema BEFORE this migration and AFTER, then run a real query that joins across all three tables — exactly what "did a specific eval_result's trace actually get properly instrumented" now looks like as one SQL statement instead of two separate lookups into two separate systems.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SCHEMA VIEW</span></div>
+    <div class="schema-toggle">
+      <span class="chip active" data-view="before">Before migration</span>
+      <span class="chip" data-view="after">After migration</span>
+    </div>
+    <div id="schema-erd"></div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>QUERY: "Show me every span for the trace behind a specific failed eval_result"</span>
+      <div><button class="btn secondary" id="join-reset">Reset</button></div>
+    </div>
+    <div class="code" style="margin-top:0;"><span class="c-kw">SELECT</span> s.span_name, s.started_at, s.duration_ms, s.attributes
+<span class="c-kw">FROM</span> eval_result r
+<span class="c-kw">JOIN</span> eval_span s <span class="c-kw">ON</span> s.trace_id = r.trace_id
+<span class="c-kw">WHERE</span> r.result_id = <span class="c-str">'res-4471'</span>
+<span class="c-kw">ORDER BY</span> s.started_at;</div>
+    <button class="btn" id="join-run">Run this query, step by step ▸</button>
+    <div class="log" id="join-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> before the migration, answering "what did the trace behind this failure actually look like" required leaving the database entirely — a lookup into a separate observability system by <code class="inline">trace_id</code>. After, it's one JOIN, in the same transaction-consistent database, using an index on <code class="inline">eval_span.trace_id</code> that costs nothing extra to add alongside the new table.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding whether parent_span_id needs a NOT NULL constraint</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's DDL defines <code class="inline">parent_span_id</code> as nullable. A teammate proposes making it <code class="inline">NOT NULL</code> for data-quality reasons. Evaluate this proposal using <code class="inline">opentelemetry_basics.html</code>'s nesting model.</p>
+    <details><summary>Show solution</summary><div class="solution">The proposal is wrong, and section 1's own design already reflects why:
+opentelemetry_basics.html's nesting model requires exactly one ROOT span
+per trace -- the span representing the entire request (e.g.
+handle_request) that has no parent of its own, by definition, since
+nothing else in the trace contains it. If parent_span_id were NOT NULL,
+there would be no valid way to represent that root span's row at all --
+every single span, including the root, would be forced to reference SOME
+other span as its parent, which is structurally false for the root and
+would require either fabricating a fake self-referencing or sentinel
+parent (corrupting the data to satisfy a constraint that shouldn't
+exist) or refusing to ever write the root span row (losing exactly the
+span most likely to be queried first, since it holds the overall
+request-level duration).
+
+The correct constraint is exactly what section 1 already has: nullable,
+with NULL meaning "this is the root span of its trace." This is the
+same NULL-as-meaningful-value pattern used elsewhere in this schema
+family -- eval_result.score being nullable for eval types that don't
+produce a numeric score is a comparable case -- NULL isn't "missing
+data," it's a legitimate, meaningful state (here, "has no parent") that
+a NOT NULL constraint would make impossible to express.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reasoning about why duration_ms is a generated column, not a stored, independently-written value</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 defines <code class="inline">duration_ms</code> as <code class="inline">GENERATED ALWAYS AS (...) STORED</code> rather than a plain column the application writes directly. What specific data-integrity problem does this prevent, connecting to <code class="inline">opentelemetry_basics.html</code>'s Practice Problem 3?</p>
+    <details><summary>Show solution</summary><div class="solution">A GENERATED column is computed by the database itself FROM started_at
+and ended_at, and can never be written directly or independently by
+application code -- it's mechanically impossible for duration_ms to
+disagree with (ended_at - started_at), because the database recomputes
+it from those two columns every time, rather than trusting whatever
+value application code happened to calculate and send separately.
+
+The specific integrity problem this prevents: if duration_ms were
+instead a plain column the application computed and wrote independently
+alongside started_at/ended_at, a bug in that application-side
+calculation (a timezone handling error, an off-by-one in unit
+conversion, or simply forgetting to update duration_ms after a
+started_at/ended_at correction) could leave a row where duration_ms
+doesn't actually match the real gap between started_at and ended_at --
+silently wrong data with no mechanism to catch or prevent it. This
+connects directly to opentelemetry_basics.html's Practice Problem 3,
+which established that a parent span's duration is an INDEPENDENTLY
+MEASURED quantity, not derivable by simply summing children -- but
+within a SINGLE span, duration is always exactly (ended_at - started_at)
+by definition, with no such ambiguity, which is precisely why it's safe
+and correct to enforce that relationship mechanically via a generated
+column here, even though the cross-span relationship (parent vs sum of
+children) that Problem 3 discussed is NOT something a database
+constraint could enforce the same way.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a migration that looks additive but isn't</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate's draft migration adds <code class="inline">eval_span</code> exactly as section 2 describes, but also includes <code class="inline">ALTER TABLE eval_result ALTER COLUMN trace_id SET NOT NULL;</code> (trace_id was previously nullable). Is this still a safe, additive migration? What could break?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- this line breaks section 2's "additive and backward-compatible"
+guarantee, even though it looks like a minor addition (just a
+constraint, not a new column). ALTER COLUMN ... SET NOT NULL is a
+DESTRUCTIVE-STYLE change with respect to EXISTING rows specifically: if
+even one existing eval_result row currently has trace_id = NULL (a
+realistic possibility -- eval_results_schema.html's original design
+never required every result to have a trace_id, e.g. a deterministic
+eval_type check might never have needed a traced execution at all), this
+ALTER statement will FAIL outright when run, because Postgres validates
+the NOT NULL constraint against every existing row at migration time --
+the migration doesn't silently succeed and corrupt data, it just refuses
+to run, which is at least loud rather than silent, but still breaks
+section 2's "safe to run against a live table with existing rows"
+guarantee.
+
+Even setting aside whether it fails outright, this line also breaks
+BACKWARD COMPATIBILITY the way section 2 defined it: any existing
+application code path that currently writes an eval_result row WITHOUT a
+trace_id (again, plausible for eval types with no traced execution)
+would start failing immediately after this migration runs, with no
+grace period -- exactly the "old code breaks against the new schema"
+failure mode section 2's backward-compatibility property was designed
+to avoid. The fix: either leave trace_id nullable (it's a legitimate,
+pre-existing state, same as Problem 1's parent_span_id reasoning), or if
+NOT NULL is genuinely desired going forward, handle it as its own
+carefully staged migration -- first backfilling or auditing existing
+NULL rows, THEN adding the constraint -- rather than bundling it
+silently into what's supposed to be a purely additive migration for an
+unrelated new table.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Extending the retention policy to cover the new table</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">eval_results_schema.html</code>'s Problem 4 retention tiering (full detail for 30-90 days, then summarized), propose a retention rule for <code class="inline">eval_span</code> specifically, and explain whether it should match <code class="inline">eval_result</code>'s retention window exactly or differ from it.</p>
+    <details><summary>Show solution</summary><div class="solution">eval_span rows should follow the SAME retention window as the
+eval_result rows whose trace_id they belong to, not an independently-set
+window -- and the reason is a direct consequence of section 1's join
+mechanism. eval_span only has VALUE in this schema as evidence supporting
+a specific eval_result's scored outcome (per eval_results_schema.html's
+core argument: "an eval result with no trace is a number nobody can
+trust"). Once the eval_result row itself has aged past its own retention
+window and been rolled into a coarser per-run summary (per that lab's
+Problem 4), the SPECIFIC eval_span rows tied to its trace_id no longer
+have anything to attach evidentiary value TO -- keeping them around
+independently past that point preserves span data with no result row
+left to explain what it was evidence FOR.
+
+Concretely: when an eval_run (and its eval_result rows) crosses the
+30-90 day full-detail retention boundary and gets summarized, the
+CASCADE should extend to eval_span as well -- either a scheduled cleanup
+job deletes eval_span rows whose trace_id no longer matches any
+still-full-detail eval_result row, or (cleaner, and worth setting up
+directly rather than relying on a separate cleanup job matching by
+value) an ON DELETE CASCADE-style relationship could be considered if
+eval_result rows are themselves eventually hard-deleted rather than just
+summarized -- though note section 1 established trace_id isn't a formal
+FK between the two tables, so true cascading delete isn't mechanically
+available without adding one, meaning in practice this is most likely
+enforced by an explicit cleanup job matching trace_id values, run
+immediately after eval_result's own retention job, rather than a
+database-level cascade. Either way, the key design decision is that
+eval_span's retention should be COUPLED to eval_result's, not set as an
+independent, possibly-longer or possibly-shorter window of its own.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Writing the query the CI/CD eval gate needs against the finalized schema</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using this lab's <code class="inline">eval_span</code> table and <code class="inline">latency_and_tracing_integration.html</code>'s p95 definition, write a query that computes p95 REQUEST-LEVEL latency (the root span's duration) across every scenario in a specific eval run — exactly the number <code class="inline">cicd_eval_gating_survival_exercise.html</code> needs to gate on.</p>
+    <details><summary>Show solution</summary><div class="solution">SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY s.duration_ms)
+       AS p95_latency_ms
+FROM eval_result r
+JOIN eval_span s ON s.trace_id = r.trace_id
+WHERE r.run_id = :target_run_id
+  AND s.parent_span_id IS NULL;   -- root span only, per Problem 1's
+                                   -- NULL-means-root convention
+
+The WHERE clause's second condition is the whole point, and connects
+directly to latency_and_tracing_integration.html's section 1 distinction:
+this query needs REQUEST-LEVEL latency specifically (one number per
+scenario, representing the full end-to-end duration a user or gate
+actually cares about), not span-level latency for every individual
+child span in every trace -- joining eval_span without filtering to
+parent_span_id IS NULL would instead be aggregating a mix of root spans
+AND every nested child span together into one meaningless blended
+percentile, conflating "how long did the whole request take" with "how
+long did one specific database call inside it take," which is a
+different question entirely.
+
+percentile_cont(0.95) WITHIN GROUP (ORDER BY ...) is Postgres's native
+continuous-percentile aggregate -- it computes the same percentile
+concept latency_and_tracing_integration.html's Problem 1 worked out with
+nearest-rank by hand, but interpolating between the two nearest ranks
+rather than snapping to a single one, which is the standard, more
+statistically defensible approach a real production query would use
+rather than hand-implementing nearest-rank in application code. This is
+exactly the query cicd_eval_gating_survival_exercise.html's gate stage
+runs immediately after an eval run completes, comparing its result
+against the configured p95 threshold to decide whether to block the
+deploy.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the <code class="inline">eval_span</code> DDL from memory including the self-referencing parent_span_id, (2) explain precisely what makes a migration additive and backward-compatible versus destructive, and (3) write the root-span-only p95 query unaided? Saturday's checkpoint, <code class="inline">evals-and-observability/cicd_eval_gating_survival_exercise.html</code>, runs exactly this query as part of the gate that decides whether a candidate deploy is actually allowed to ship.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — eval/trace schema finalization.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: SCHEMA VIEW TOGGLE */
+(function(){
+  var erdEl = document.getElementById("schema-erd");
+
+  var BEFORE_HTML =
+    "<div class=\"erd\">" +
+    "<div class=\"erd-box run\">eval_run<div class=\"fields\">run_id (PK)<br>model_version<br>dataset_id<br>suite_name</div></div>" +
+    "<div class=\"erd-arrow\">→ 1:N →</div>" +
+    "<div class=\"erd-box result\">eval_result<div class=\"fields\">result_id (PK)<br>run_id (FK)<br>eval_type, score<br>trace_id</div></div>" +
+    "<div class=\"erd-arrow\">→ points to →</div>" +
+    "<div class=\"erd-box\" style=\"border-color:var(--rule); color:var(--ink-dim);\">trace (external observability backend)<div class=\"fields\">not queryable via SQL<br>separate system entirely</div></div>" +
+    "</div>";
+
+  var AFTER_HTML =
+    "<div class=\"erd\">" +
+    "<div class=\"erd-box run\">eval_run<div class=\"fields\">run_id (PK)<br>model_version<br>dataset_id<br>suite_name</div></div>" +
+    "<div class=\"erd-arrow\">→ 1:N →</div>" +
+    "<div class=\"erd-box result\">eval_result<div class=\"fields\">result_id (PK)<br>run_id (FK)<br>eval_type, score<br>trace_id</div></div>" +
+    "<div class=\"erd-arrow\">→ 1:N (via trace_id) →</div>" +
+    "<div class=\"erd-box span new\">eval_span <span style=\"color:var(--span-c); font-size:0.6rem;\">(NEW)</span><div class=\"fields\">span_id (PK)<br><span class=\"newfield\">trace_id</span><br><span class=\"newfield\">parent_span_id (self-FK)</span><br><span class=\"newfield\">started_at, ended_at, duration_ms</span></div></div>" +
+    "</div>";
+
+  function render(view){
+    erdEl.innerHTML = view === "before" ? BEFORE_HTML : AFTER_HTML;
+  }
+
+  document.querySelectorAll(".schema-toggle .chip").forEach(function(chip){
+    chip.addEventListener("click", function(){
+      document.querySelectorAll(".schema-toggle .chip").forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      render(chip.dataset.view);
+    });
+  });
+
+  render("before");
+})();
+
+/* SECTION 3: JOIN QUERY WALKTHROUGH */
+(function(){
+  var runBtn = document.getElementById("join-run");
+  var resetBtn = document.getElementById("join-reset");
+  var logEl = document.getElementById("join-log");
+
+  var STEPS = [
+    {ok:true, text:'<b>Step 1:</b> Look up eval_result WHERE result_id = \'res-4471\' — found: run_id=run-88, eval_type=trajectory, passed=false, trace_id="7f3a9c".'},
+    {ok:true, text:'<b>Step 2:</b> JOIN eval_span ON eval_span.trace_id = \'7f3a9c\' — using the idx_eval_span_trace index (section 1), matches 4 rows instantly, no external system lookup required.'},
+    {ok:false, text:'<b>Step 3 — the spans returned, ordered by started_at:</b> handle_request (root, duration_ms=940), call_database (parent=handle_request, duration_ms=210), call_llm (parent=handle_request, duration_ms=480), tokenize_prompt (parent=call_llm, duration_ms=90).'},
+    {ok:true, text:'<b style="color:var(--span-c);">Done.</b> One SQL statement, one round trip, fully joined against a specific failed eval_result — this is exactly what section 1 meant by "the trace itself, queryable," compared to eval_results_schema.html\'s original design, which needed a second, separate lookup into an entirely different system to get this same answer.'}
+  ];
+
+  var idx = 0;
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + (step.ok ? "ok" : "bad");
+    p.innerHTML = step.text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener("click", function(){
+    if(idx === 0){ logEl.innerHTML = ""; }
+    if(idx >= STEPS.length){ return; }
+    log(STEPS[idx]);
+    idx++;
+    if(idx >= STEPS.length){
+      runBtn.disabled = true;
+      runBtn.textContent = "Query fully executed";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    runBtn.disabled = false;
+    runBtn.textContent = "Run this query, step by step ▸";
+    logEl.innerHTML = "";
+  });
+})();
+</script>
+</body>
+</html>

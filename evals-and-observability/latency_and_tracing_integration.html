@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Latency Measurement &amp; Tracing Integration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --p50-c:#7fd8a0; --p95-c:#f2c14e; --p99-c:#ff6b6b; --accent:#f2c14e; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--p95-c); color:var(--p95-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--p99-c); color:var(--p99-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.35rem 0.55rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* waterfall reused pattern */
+  .waterfall{margin:1.2rem 0;}
+  .wf-row{display:flex; align-items:center; gap:0.6rem; margin:0.45rem 0; font-family:var(--mono); font-size:0.72rem;}
+  .wf-row .wf-label{width:170px; flex-shrink:0; color:var(--ink-dim); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wf-track{flex:1; height:22px; background:var(--panel-2); border-radius:5px; position:relative; overflow:hidden;}
+  .wf-bar{position:absolute; height:100%; border-radius:5px; background:var(--span-c); opacity:0.95; display:flex; align-items:center; padding-left:0.4rem; color:#0b0d11; font-size:0.64rem; font-weight:700; white-space:nowrap;}
+
+  /* histogram */
+  .histogram{display:flex; align-items:flex-end; gap:2px; height:140px; margin:1.2rem 0; border-bottom:1px solid var(--rule); padding-bottom:2px;}
+  .hbar{flex:1; background:var(--span-c); border-radius:2px 2px 0 0; min-height:2px; transition:height .3s ease, background .3s ease; position:relative;}
+  .hbar.p50-mark{background:var(--p50-c);}
+  .hbar.p95-mark{background:var(--p95-c);}
+  .hbar.p99-mark{background:var(--p99-c);}
+  .pctl-readout{display:flex; gap:1.2rem; flex-wrap:wrap; margin-top:0.8rem; font-family:var(--mono); font-size:0.8rem;}
+  .pctl-readout span{padding:0.4rem 0.8rem; border-radius:8px; border:1.5px solid;}
+  .pctl-readout .p50{border-color:var(--p50-c); color:var(--p50-c);}
+  .pctl-readout .p95{border-color:var(--p95-c); color:var(--p95-c);}
+  .pctl-readout .p99{border-color:var(--p99-c); color:var(--p99-c);}
+  .pctl-readout .avg{border-color:var(--ink-dim); color:var(--ink-dim);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--p50-c);} .dc-col.a h4{color:var(--p50-c);}
+  .dc-col.b{border-color:var(--p99-c);} .dc-col.b h4{color:var(--p99-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · LATENCY MEASUREMENT &amp; TRACING INTEGRATION</div>
+  <h1>The average hides exactly the requests you most need to see.</h1>
+  <p class="lede"><code class="inline">opentelemetry_basics.html</code> built the trace/span tree; this lab wires actual latency MEASUREMENT into that same model end to end — span-level vs request-level timing, and why p50/p95/p99 percentiles, not averages, are the number a real gate should watch. This is the third measurement <code class="inline">cicd_eval_gating_survival_exercise.html</code> needs, alongside tool-selection accuracy and hallucination rate.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Span-level latency — one unit of work's own duration, from the same tree</div>
+    <div class="pipe-label b">p95 — the number that shows what your worst-served 5% actually experience</div>
+    <div class="pipe-label c">p99 — the tail that a mean can hide completely</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="spans">1 · Span-Level vs Request-Level Latency</a>
+  <a data-target="percentiles">2 · Why Percentiles, Not Averages</a>
+  <a data-target="waterfall">3 · A Request Waterfall Across Many Runs, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SPAN-LEVEL VS REQUEST-LEVEL ============ -->
+<section id="spans">
+  <div class="kicker">01 — The same trace tree, now with every span's duration as the actual measurement</div>
+  <h2>Span-level vs request-level latency</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about timing a relay race. You can time the WHOLE race, start gun to finish line — that's one number, useful for "did we win." But if you want to know WHY you lost, you need each runner's individual leg time — maybe three of your four runners ran a personal best, and the fourth runner's leg alone cost you the race. The whole-race time and the individual-leg times are both real, both useful, and answer genuinely different questions. Latency in a traced system works exactly the same way.</p>
+
+  <p><code class="inline">opentelemetry_basics.html</code> already established that a trace is a tree of spans, each with its own start and end time. Latency measurement is just USING that timing data deliberately, at two different granularities:</p>
+
+  <table class="cmp">
+    <tr><th>Granularity</th><th>What it measures</th><th>What it answers</th></tr>
+    <tr><td><strong>Request-level</strong></td><td>The root span's own duration — end-to-end, from the moment the request entered the system to the moment a response left it</td><td>"How long did the USER actually wait?" — the number that matters for a latency-based SLA or a user-facing p95 target</td></tr>
+    <tr><td><strong>Span-level</strong></td><td>Each individual child span's own duration — one specific unit of work inside the request</td><td>"WHERE inside a slow request did the time actually go?" — the number that matters for diagnosing WHY the request-level number is high</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt"># extending opentelemetry_basics.html's handle_request example --</span>
+<span class="c-cmt"># latency is just reading span.duration, which OTel already computes</span>
+<span class="c-cmt"># as end_time - start_time for every span in the tree</span>
+
+<span class="c-kw">def</span> <span class="c-fn">handle_request</span>(request):
+    <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"handle_request"</span>) <span class="c-kw">as</span> root_span:
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"call_database"</span>) <span class="c-kw">as</span> db_span:
+            orders = query_orders(request)
+        <span class="c-cmt"># db_span.duration is now fixed -- e.g. 210ms</span>
+
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"call_llm"</span>) <span class="c-kw">as</span> llm_span:
+            summary = summarize(orders)
+        <span class="c-cmt"># llm_span.duration is now fixed -- e.g. 480ms</span>
+
+        <span class="c-kw">return</span> summary
+    <span class="c-cmt"># root_span.duration -- e.g. 940ms -- is the REQUEST-LEVEL latency.</span>
+    <span class="c-cmt"># db_span.duration and llm_span.duration are SPAN-LEVEL latencies --</span>
+    <span class="c-cmt"># the SAME 940ms, broken down into where it was actually spent.</span></div>
+
+  <p>Nothing new needs to be built to get this — the timing data already exists on every span from the moment <code class="inline">opentelemetry_basics.html</code>'s nesting model was set up; "latency measurement" is the discipline of actually READING and AGGREGATING that data deliberately, at both the request root (for an SLA/gate number) and per-span (for diagnosis), rather than only ever looking at the root span's duration and treating everything inside it as an opaque black box.</p>
+
+  <div class="callout span"><b>Interview-ready definition:</b> request-level latency is the root span's own duration — how long the user actually waited, end to end — and is the number a latency SLA or a CI/CD gate threshold should be defined against. Span-level latency is each individual child span's own duration, already present in the same trace tree, and is what you read to diagnose WHERE inside a slow request the time went once request-level latency has already told you THAT something is slow. Both live in the exact same trace data structure <code class="inline">opentelemetry_basics.html</code> built — latency measurement adds no new instrumentation, it's a deliberate choice of which level of the existing tree to aggregate and alert on.</div>
+</section>
+
+<!-- ============ SECTION 2: PERCENTILES NOT AVERAGES ============ -->
+<section id="percentiles">
+  <div class="kicker">02 — The average is a summary that erases the exact requests you'd want to investigate</div>
+  <h2>Why percentiles, not averages</h2>
+
+  <p><strong>Start here, before the math.</strong> Think about a restaurant's wait times. If 99 customers wait exactly 5 minutes and 1 customer waits 3 hours (a kitchen disaster on their order), the AVERAGE wait time comes out to about 7 minutes — a number that describes almost nobody's actual experience: the 99 who waited close to 5 minutes, and definitely not the 1 who waited 3 hours. Averages get pulled hard by outliers in one direction but SMOOTH them into invisibility in the reported number — exactly the opposite of what you want when the outlier IS the thing you need to catch.</p>
+
+  <p>A percentile instead answers "what's the latency BELOW WHICH X% of requests fall" — and unlike an average, it lets you deliberately choose to look at the TAIL, not the center:</p>
+
+  <table class="cmp">
+    <tr><th>Percentile</th><th>Meaning</th><th>Why it matters</th></tr>
+    <tr><td><strong>p50 (median)</strong></td><td>Half of requests are faster than this, half are slower</td><td>The "typical" experience — resistant to outliers unlike a mean, since one 3-hour wait barely moves the median at all</td></tr>
+    <tr><td><strong>p95</strong></td><td>95% of requests are faster than this; 5% are slower</td><td>The standard "how bad does it get for a meaningful minority" number most latency SLAs are actually defined against</td></tr>
+    <tr><td><strong>p99</strong></td><td>99% of requests are faster than this; only 1% are slower</td><td>The deep tail — at real traffic volume (millions of requests/day), 1% is still thousands of genuinely bad experiences per day, invisible in p50 and often even in p95</td></tr>
+  </table>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Average — smooths the outlier away</h4>
+      <p>99 requests at 200ms, 1 request at 8000ms. Average = (99×200 + 8000)/100 = 278ms. A dashboard showing "278ms average" looks fine — nobody investigating it would guess a request took 8 seconds.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>p99 — surfaces exactly what the average hid</h4>
+      <p>The SAME 100 requests, sorted: the 99th value (p99) is the 8000ms request itself. A dashboard showing "p99 = 8000ms" immediately tells you something is badly wrong for your worst-served requests, even while p50 stays a healthy 200ms.</p>
+    </div>
+  </div>
+
+  <p>The reason this matters more, not less, as a system scales: at low traffic, a single bad outlier might be a fluke. At real production volume — say a million requests a day — a 1% tail (p99) is <strong>ten thousand requests a day</strong> experiencing that bad latency, a real, systemic problem worth fixing, not statistical noise. A gate or alert defined only on the average would never surface this at all, because by construction the average is designed to smooth exactly this signal away.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> percentiles (p50/p95/p99) are preferred over averages for latency measurement because an average is pulled toward outliers in aggregate but never reveals them individually — a single catastrophic outlier gets diluted into a slightly-elevated mean that still looks acceptable, while a percentile lets you deliberately inspect the TAIL of the distribution (the worst-served 5% or 1%) directly. p50 describes the typical experience; p95 is the standard SLA/threshold number; p99 catches the deep tail that, at real production volume, represents a genuinely large absolute number of bad experiences per day even though it's a tiny percentage — exactly the signal an average is mathematically designed to smooth away.</div>
+</section>
+
+<!-- ============ SECTION 3: WATERFALL + HISTOGRAM LIVE ============ -->
+<section id="waterfall">
+  <div class="kicker">03 — Simulate many requests, watch the percentiles emerge from the distribution</div>
+  <h2>A request waterfall across many runs, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below: one request's span waterfall (exactly <code class="inline">opentelemetry_basics.html</code>'s tree, now with real millisecond durations), plus a button to simulate 200 runs of the SAME request shape with realistic jitter and occasional slow outliers. Watch the histogram build and p50/p95/p99 markers land in genuinely different places on the same distribution.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE REQUEST — call_database → call_llm span waterfall</span></div>
+    <div class="waterfall" id="single-waterfall">
+      <div class="wf-row"><div class="wf-label">handle_request (root)</div><div class="wf-track"><div class="wf-bar" id="bar-root" style="width:100%; background:var(--ink-dim); color:var(--ink);"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ call_database</div><div class="wf-track"><div class="wf-bar" id="bar-db" style="left:0%; width:22%; background:var(--span-c);"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ call_llm</div><div class="wf-track"><div class="wf-bar" id="bar-llm" style="left:24%; width:60%; background:var(--p95-c); color:#14100c;"></div></div></div>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>200 SIMULATED RUNS — request-level latency distribution</span>
+      <div><button class="btn secondary" id="lat-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="lat-run">Simulate 200 runs ▸</button>
+    <div class="histogram" id="lat-histogram"></div>
+    <div class="pctl-readout" id="lat-readout"></div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> run the simulation and compare the AVERAGE readout against p99 — the average sits close to p50, dragged only slightly by the rare slow outliers, while p99 lands squarely in the long tail where those outliers actually are. A gate checking only the average would pass even while a real, reproducible slow-tail problem exists in the same data.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing p50, p95, and p99 by hand from a small dataset</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given these 20 request-level latencies in ms, sorted: 180, 190, 195, 200, 200, 205, 210, 210, 215, 220, 220, 225, 230, 235, 240, 250, 260, 300, 450, 1200 — compute p50, p95, and p99 using the "nearest-rank" method (index = ceil(percentile × N)).</p>
+    <details><summary>Show solution</summary><div class="solution">Nearest-rank method: for percentile P and N=20 values, index = ceil(P *
+N), then read the value at that 1-indexed position in the sorted list.
+
+p50: ceil(0.50 * 20) = ceil(10) = 10th value = 220ms
+p95: ceil(0.95 * 20) = ceil(19) = 19th value = 450ms
+p99: ceil(0.99 * 20) = ceil(19.8) = 20th value = 1200ms
+
+(With only 20 samples, p95 and p99 both land on values near the very
+top of the sorted list -- this is itself a real, important limitation:
+with small sample sizes, p99 in particular becomes highly sensitive to
+literally the single worst observation, which is why percentile
+estimates from small windows are noisy and why production systems
+typically compute percentiles over much larger sample counts, often
+using approximation algorithms like t-digest rather than exact sorting,
+to get a stable estimate.)
+
+For comparison, the mean of these 20 values is (180+190+195+200+200+205
++210+210+215+220+220+225+230+235+240+250+260+300+450+1200)/20 = 5035/20
+= 251.75ms -- noticeably pulled up by the single 1200ms outlier, but
+still nowhere near revealing that a 1200ms request actually happened,
+exactly section 2's argument made concrete with real numbers: the mean
+(251.75ms) looks only mildly elevated, while p99 (1200ms) makes the
+actual worst case fully visible.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding which percentile a CI/CD gate should actually threshold on</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's reasoning, would you gate a deploy on p50, p95, or p99 latency — and what's the concrete risk of picking the wrong one?</p>
+    <details><summary>Show solution</summary><div class="solution">p95 is the standard, defensible default for a deploy gate, and the
+reasoning is a genuine trade-off between two failure modes, not an
+arbitrary convention. Gating on p50 is too LENIENT: a regression that
+specifically makes the slowest 10-20% of requests meaningfully worse
+(e.g. a new code path that's slow only when a particular cache misses)
+can leave the MEDIAN completely unchanged, since p50 by definition only
+reflects the middle of the distribution -- p50 could sail through a gate
+while a real, user-visible regression ships to a meaningful fraction of
+traffic.
+
+Gating on p99 is too NOISY, especially with the sample sizes a CI/CD
+eval run typically has available (per Problem 1's finding that p99 gets
+highly sensitive to individual worst-case observations at small N) --
+p99 in a small eval run can swing wildly between runs of the exact SAME
+code just from a single unlucky slow sample, causing FLAKY gate
+failures unrelated to any actual regression, undermining trust in the
+gate.
+
+p95 sits at a genuinely useful middle point: sensitive enough to catch a
+regression affecting a meaningful minority of requests (unlike p50), but
+stable enough across a reasonably-sized eval run's sample count to avoid
+p99's flakiness. Many teams DO also track p99 for monitoring/alerting in
+production (where sample sizes are naturally much larger and the
+noise problem is smaller), even while using p95 specifically as the
+CI/CD gate threshold where eval-run sample sizes are typically much
+smaller.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a slow request-level p95 using span-level data</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A dashboard shows request-level p95 latency jumped from 900ms to 2400ms after a deploy. Using section 1's span-level/request-level distinction, describe the concrete next step to find WHERE the extra 1500ms went, and why request-level data alone can't answer this.</p>
+    <details><summary>Show solution</summary><div class="solution">Request-level latency alone (the root span's duration) is, by
+definition, a single aggregate number per request -- it can tell you
+THAT a request got slower, but has no internal structure to tell you
+WHERE inside that request the extra time occurred, because it was never
+broken down into parts in the first place. Answering "where" requires
+section 1's second granularity: pulling actual TRACES from around the
+p95-latency requests specifically (not just any traces -- the ones that
+are actually IN that slow tail) and reading their SPAN-level durations.
+
+Concrete next step: query the tracing backend for traces where the root
+span's duration falls at or above the new p95 threshold, open several of
+them, and compare each child span's duration against a baseline from
+BEFORE the deploy. If, say, call_llm's span duration jumped from 400ms
+to 1900ms specifically while call_database's span duration stayed flat
+at 200ms, that isolates the regression to whatever changed in the LLM
+call path during the deploy (a model version change, a prompt length
+increase, a provider-side slowdown) -- exactly opentelemetry_basics.html's
+core argument about WHY per-span attributes and nesting matter, now
+applied specifically to a latency regression instead of a correctness
+bug. Request-level data alone would have told you "something got 1500ms
+slower" and stopped there, with zero information about which of
+potentially many child spans caused it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about percentile aggregation across services</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A candidate proposes computing an overall p95 by averaging each individual service's own p95 (service A's p95 is 200ms, service B's p95 is 300ms, so overall p95 = 250ms). Explain precisely why this is mathematically wrong, using percentiles' actual definition from section 2.</p>
+    <details><summary>Show solution</summary><div class="solution">Percentiles are NOT linear -- you cannot average them the way you can
+average a mean, because averaging means literally sums values and
+divides, while a percentile is a positional statistic (a specific ranked
+VALUE within a sorted distribution, per Problem 1's nearest-rank
+method), and averaging two different distributions' RANKED VALUES does
+not produce the ranked value of their COMBINED distribution.
+
+Concretely: service A's p95 (200ms) is the specific 95th-percentile
+VALUE within service A's own request distribution; service B's p95
+(300ms) is the 95th-percentile value within a DIFFERENT distribution
+entirely. Combining them into one number by simple averaging (250ms)
+produces a number that isn't the p95 of anything real -- it's not
+guaranteed to be the 95th-percentile value of A's requests, B's
+requests, or the two combined. The mathematically correct way to
+compute an overall p95 across two services: pool ALL individual request
+latencies from both services into one combined dataset (not the two
+pre-computed p95 values), sort THAT combined dataset, and compute the
+95th percentile of the combined distribution directly -- which requires
+access to the raw per-request latency data, not just each service's
+already-summarized p95 number. This is exactly why raw span/trace data
+(section 1) needs to be RETAINED somewhere queryable, at least in
+aggregate histogram form, rather than only ever storing pre-computed
+percentile summaries -- pre-computed percentiles can't be correctly
+re-aggregated across services or time windows after the fact.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting latency measurement to the trace pipeline for a CI/CD gate</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Sketch (in words) how a CI/CD pipeline stage would compute p95 latency for a candidate deploy using this lab's mechanics plus <code class="inline">opentelemetry_basics.html</code>'s trace model, and name one thing that must be true about how traces are collected during the eval run for the p95 number to be trustworthy.</p>
+    <details><summary>Show solution</summary><div class="solution">The pipeline stage: run the full eval scenario set (eval_scenario_
+design.html) against the candidate build, with tracing enabled so every
+scenario's execution produces a real trace (opentelemetry_basics.html's
+tree) with an accurate root-span duration. Collect every root span's
+duration across all N scenario runs into one array, sort it, and apply
+section 2's percentile computation (Problem 1's nearest-rank method, or
+a production-grade approximation like t-digest at larger N) to get p50/
+p95/p99 for this candidate build specifically. Compare the resulting p95
+against the configured threshold (per cicd_eval_gating_survival_exercise.
+html's gate logic) -- block the deploy if it's exceeded.
+
+One thing that must hold for this number to be trustworthy: the eval
+run's SAMPLE SIZE has to be large enough that p95 isn't dominated by
+noise the way Problem 1 showed p99 becomes at N=20. A scenario set of
+only 50 scenarios (eval_scenario_design.html's target) gives p95 a
+nearest-rank index of ceil(0.95*50) = 48 -- meaning p95 is essentially
+determined by just the 3rd-worst of 50 runs, which is a genuinely noisy
+estimate that could easily flip between two runs of literally identical
+code due to normal system jitter alone. A pipeline gating on p95 with
+this few samples either needs to (a) run each scenario multiple times
+and pool all the resulting latencies before computing the percentile,
+substantially increasing the effective N, or (b) accept p95 as a rougher
+signal at this sample size and pair it with a wider tolerance band or a
+requirement that a threshold be exceeded across multiple consecutive
+runs before actually blocking, to avoid a single noisy sample
+triggering a false block.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain the difference between span-level and request-level latency using the same trace tree, (2) compute p50/p95/p99 from a small sorted dataset by hand, and (3) explain precisely why percentiles can't be averaged across services the way means can? <code class="inline">cicd_eval_gating_survival_exercise.html</code> is where all three of this week's measurement labs — scenario design, tool-selection/hallucination metrics, and this lab's latency percentiles — get wired into one real gate that can actually block a deploy.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — latency measurement and tracing integration.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: SINGLE WATERFALL LABELS */
+(function(){
+  document.getElementById("bar-db").textContent = "call_database — 210ms";
+  document.getElementById("bar-llm").textContent = "call_llm — 480ms";
+  document.getElementById("bar-root").textContent = "handle_request — 940ms total";
+})();
+
+/* SECTION 3: 200-RUN SIMULATION */
+(function(){
+  var runBtn = document.getElementById("lat-run");
+  var resetBtn = document.getElementById("lat-reset");
+  var histEl = document.getElementById("lat-histogram");
+  var readoutEl = document.getElementById("lat-readout");
+
+  function gaussianJitter(mean, stddev){
+    var u1 = Math.random(), u2 = Math.random();
+    var z = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+    return mean + z * stddev;
+  }
+
+  function simulate(n){
+    var samples = [];
+    for(var i = 0; i < n; i++){
+      var base = gaussianJitter(220, 25); // typical request
+      // ~4% chance of a slow-tail outlier (e.g. LLM provider hiccup, cold cache)
+      if(Math.random() < 0.04){
+        base += gaussianJitter(900, 300);
+      }
+      samples.push(Math.max(60, Math.round(base)));
+    }
+    return samples;
+  }
+
+  function percentile(sorted, p){
+    var idx = Math.ceil(p * sorted.length) - 1;
+    idx = Math.max(0, Math.min(sorted.length - 1, idx));
+    return sorted[idx];
+  }
+
+  function renderHistogram(samples){
+    var sorted = samples.slice().sort(function(a,b){ return a - b; });
+    var min = sorted[0], max = sorted[sorted.length - 1];
+    var buckets = 30;
+    var bucketWidth = Math.max(1, (max - min) / buckets);
+    var counts = new Array(buckets).fill(0);
+    sorted.forEach(function(v){
+      var b = Math.min(buckets - 1, Math.floor((v - min) / bucketWidth));
+      counts[b]++;
+    });
+    var maxCount = Math.max.apply(null, counts);
+
+    var p50 = percentile(sorted, 0.50);
+    var p95 = percentile(sorted, 0.95);
+    var p99 = percentile(sorted, 0.99);
+
+    histEl.innerHTML = "";
+    counts.forEach(function(c, i){
+      var bar = document.createElement("div");
+      bar.className = "hbar";
+      var bucketStart = min + i * bucketWidth;
+      var bucketEnd = bucketStart + bucketWidth;
+      if(p50 >= bucketStart && p50 < bucketEnd + 1) bar.classList.add("p50-mark");
+      if(p95 >= bucketStart && p95 < bucketEnd + 1) bar.classList.add("p95-mark");
+      if(p99 >= bucketStart && p99 < bucketEnd + 1) bar.classList.add("p99-mark");
+      var h = maxCount > 0 ? (c / maxCount) * 100 : 0;
+      bar.style.height = h + "%";
+      bar.title = Math.round(bucketStart) + "-" + Math.round(bucketEnd) + "ms: " + c + " requests";
+      histEl.appendChild(bar);
+    });
+
+    var mean = sorted.reduce(function(a,b){ return a+b; }, 0) / sorted.length;
+
+    readoutEl.innerHTML =
+      "<span class=\"avg\">average: " + mean.toFixed(0) + "ms</span>" +
+      "<span class=\"p50\">p50: " + p50 + "ms</span>" +
+      "<span class=\"p95\">p95: " + p95 + "ms</span>" +
+      "<span class=\"p99\">p99: " + p99 + "ms</span>";
+  }
+
+  runBtn.addEventListener("click", function(){
+    var samples = simulate(200);
+    renderHistogram(samples);
+  });
+
+  resetBtn.addEventListener("click", function(){
+    histEl.innerHTML = "";
+    readoutEl.innerHTML = "";
+  });
+})();
+</script>
+</body>
+</html>

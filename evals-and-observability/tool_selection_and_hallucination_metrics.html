@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Tool-Selection &amp; Hallucination Metrics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --tp-c:#7fd8a0; --fp-c:#ff6b6b; --fn-c:#f2c14e; --hall-c:#c792ea; --accent:#4fc3f7; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--tp-c); color:var(--tp-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--fp-c); color:var(--fp-c); background:rgba(255,107,107,0.08);}
+  .pipe-label.c{border-color:var(--hall-c); color:var(--hall-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(79,195,247,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.tp{border-left-color:var(--tp-c); background:rgba(127,216,160,0.06);}
+  .log .line.fp{border-left-color:var(--fp-c); background:rgba(255,107,107,0.06);}
+  .log .line.fn{border-left-color:var(--fn-c); background:rgba(242,193,78,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* confusion matrix */
+  .cmatrix{display:grid; grid-template-columns:auto repeat(3, 1fr); gap:2px; margin:1.4rem 0; font-family:var(--mono); font-size:0.76rem; max-width:560px;}
+  .cmatrix .cell{padding:0.7rem 0.5rem; text-align:center; border-radius:6px;}
+  .cmatrix .hdr{background:var(--panel-2); color:var(--ink-dim); font-size:0.68rem;}
+  .cmatrix .diag{background:rgba(127,216,160,0.14); color:var(--tp-c); font-weight:700;}
+  .cmatrix .off{background:rgba(255,107,107,0.1); color:var(--fp-c); font-weight:600;}
+  .cmatrix .zero{background:var(--panel-2); color:var(--ink-dim);}
+
+  /* calculator */
+  .calc-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.8rem; margin:1rem 0;}
+  @media(max-width:700px){.calc-grid{grid-template-columns:1fr;}}
+  .calc-box{background:var(--panel-2); border:1px solid var(--rule); border-radius:10px; padding:0.9rem 1rem; text-align:center;}
+  .calc-box .cval{font-family:var(--mono); font-size:1.6rem; font-weight:700; color:var(--accent); margin:0.3rem 0;}
+  .calc-box .clabel{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  .run-row{display:flex; align-items:center; gap:0.6rem; margin:0.4rem 0; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .run-row select{background:var(--panel-2); border:1px solid var(--rule); color:var(--ink); font-family:var(--mono); font-size:0.76rem; padding:0.3rem 0.5rem; border-radius:6px;}
+  .run-row .rid{width:34px; color:var(--ink-dim);}
+  .run-row .rtask{flex:1; min-width:200px; color:#cdd0d8;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(79,195,247,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.hall{border-left-color:var(--hall-c); background:rgba(199,146,234,0.06);} .callout.hall b{color:var(--hall-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · TOOL-SELECTION &amp; HALLUCINATION METRICS</div>
+  <h1>"It mostly picks the right tool" isn't a number anyone can gate a deploy on.</h1>
+  <p class="lede"><code class="inline">eval_scenario_design.html</code> built a scenario set with tool-selection traps and ambiguous requests deliberately mixed in. This lab turns runs against that set into two concrete, computable metrics: <strong>tool-selection accuracy</strong> — precision and recall against a labeled correct tool per scenario — and <strong>hallucination rate</strong> — how often a claim in the output isn't actually grounded in anything real. Both are the exact numbers <code class="inline">cicd_eval_gating_survival_exercise.html</code> will gate a deploy on later this week.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Tool-selection accuracy — precision/recall against a labeled correct tool</div>
+    <div class="pipe-label b">Confusion matrix — which WRONG tool gets picked, and how often</div>
+    <div class="pipe-label c">Hallucination rate — grounding-check against retrieved context</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="selection">1 · Tool-Selection Accuracy as Precision/Recall</a>
+  <a data-target="hallucination">2 · Measuring Hallucination Rate</a>
+  <a data-target="calc">3 · A Metrics Calculator, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TOOL-SELECTION ACCURACY ============ -->
+<section id="selection">
+  <div class="kicker">01 — Not just "right or wrong" — precision, recall, and where each mistake actually happens</div>
+  <h2>Tool-selection accuracy as precision/recall</h2>
+
+  <p><strong>Start here, before any formula.</strong> Think about a hospital triage nurse whose job is to route each incoming patient to the correct department — cardiology, orthopedics, or the ER. "Accuracy" alone (percent of patients sent to the right department) hides two very different kinds of mistake: sending a patient who NEEDED the ER somewhere else (a dangerous miss), versus sending a patient who didn't need the ER to the ER anyway (a wasteful over-caution). A single accuracy number can't tell you which of these is happening, or how often, or between which SPECIFIC pair of departments the confusion keeps occurring. Tool-selection measurement needs exactly this same finer-grained view.</p>
+
+  <p>Concretely: every scenario in a labeled eval set (per <code class="inline">eval_scenario_design.html</code>) has a known CORRECT tool (or correct sequence of tools). Running the agent against that scenario produces an ACTUAL tool call. Comparing actual against correct, per tool, gives you the standard classification quantities:</p>
+
+  <div class="code"><span class="c-cmt"># For a given tool T, across all scenarios in the eval set:</span>
+<span class="c-cmt"># True Positive  (TP) -- agent correctly called T when T was the right tool</span>
+<span class="c-cmt"># False Positive (FP) -- agent called T when a DIFFERENT tool was correct</span>
+<span class="c-cmt"># False Negative (FN) -- agent did NOT call T when T was actually the right tool</span>
+
+precision_T = TP / (TP + FP)   <span class="c-cmt"># of all the times the agent called T, how often was T actually right?</span>
+recall_T    = TP / (TP + FN)   <span class="c-cmt"># of all the times T was actually right, how often did the agent call it?</span>
+
+<span class="c-cmt"># aggregate across every tool -- macro-average treats each tool equally,</span>
+<span class="c-cmt"># regardless of how often it appears in the eval set</span>
+macro_precision = mean(precision_T <span class="c-kw">for</span> T <span class="c-kw">in</span> all_tools)
+macro_recall    = mean(recall_T    <span class="c-kw">for</span> T <span class="c-kw">in</span> all_tools)</div>
+
+  <p>Precision and recall diverge specifically because they answer different questions about the SAME confusion. A tool with low precision but high recall is being OVER-called — the agent reaches for it too eagerly, catching every case it's actually needed for (high recall) but also firing it in cases where a different tool was correct (low precision, lots of false positives). A tool with high precision but low recall is being UNDER-called — every time the agent does call it, it's genuinely right (high precision), but it's missing many cases where it should have been called at all (low recall, lots of false negatives). These are opposite failure directions, and a single blended "accuracy" number averages them into invisibility.</p>
+
+  <div class="cmatrix">
+    <div class="cell hdr"></div>
+    <div class="cell hdr">Predicted: lookup_order</div>
+    <div class="cell hdr">Predicted: get_history</div>
+    <div class="cell hdr">Predicted: refund</div>
+    <div class="cell hdr">Actual: lookup_order</div>
+    <div class="cell diag">18</div>
+    <div class="cell off">3</div>
+    <div class="cell zero">0</div>
+    <div class="cell hdr">Actual: get_history</div>
+    <div class="cell off">1</div>
+    <div class="cell diag">14</div>
+    <div class="cell zero">0</div>
+    <div class="cell hdr">Actual: refund</div>
+    <div class="cell zero">0</div>
+    <div class="cell off">2</div>
+    <div class="cell diag">9</div>
+  </div>
+
+  <p>This confusion matrix is the honest, non-averaged version of the same data: the diagonal (green) is every correct call; off-diagonal cells (red) show SPECIFICALLY which wrong tool got called instead. Here, <code class="inline">lookup_order</code> was mistakenly called 3 times when <code class="inline">get_history</code> was actually correct — that specific 3-cell tells you exactly where to focus a fix (probably the exact tool-selection-trap pattern <code class="inline">eval_scenario_design.html</code>'s scenario s11 was designed to catch), in a way "78% tool-selection accuracy" alone never could.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> tool-selection accuracy is properly measured as per-tool precision (of every call to tool T, what fraction were actually correct) and recall (of every scenario where T was actually correct, what fraction did the agent actually call T for), not as one blended accuracy number — because precision and recall diverge in opposite directions (over-calling vs under-calling a specific tool) that a single number averages into invisibility. A confusion matrix goes one level further, showing exactly WHICH wrong tool gets substituted for which correct one, turning "the agent is 78% accurate at tool selection" into an actionable "the agent confuses lookup_order for get_history specifically, 3 times out of 21 legitimate get_history cases."</div>
+</section>
+
+<!-- ============ SECTION 2: HALLUCINATION RATE ============ -->
+<section id="hallucination">
+  <div class="kicker">02 — Grounding a claim isn't the same as checking if it's plausible</div>
+  <h2>Measuring hallucination rate</h2>
+
+  <p><strong>Start here, before any technique.</strong> Think about fact-checking a news article. A lazy fact-checker just asks "does this sentence SOUND true" — plausible-sounding claims sail through even when fabricated. A real fact-checker instead asks, for every factual claim in the article, "is there an actual SOURCE — an interview transcript, a document, a database record — that this claim can be traced back to?" A claim with no traceable source is flagged, regardless of how confident or fluent it sounds. Measuring hallucination rate in an agent's output requires exactly this second, harder discipline — grounding, not plausibility.</p>
+
+  <p>Two structurally different approaches, each with a real trade-off:</p>
+
+  <table class="cmp">
+    <tr><th>Approach</th><th>How it works</th><th>Trade-off</th></tr>
+    <tr><td><strong>Reference-based</strong> (grounding check)</td><td>Extract discrete factual claims from the agent's output, then check each one against the actual retrieved context / tool results the agent had access to. A claim not traceable to any retrieved source is a hallucination.</td><td>Precise and auditable — you can point to exactly which claim and why. Requires you to actually capture and keep the retrieved context alongside the output (exactly why <code class="inline">audit_trail_schema.html</code>'s full-fidelity logging matters here).</td></tr>
+    <tr><td><strong>Reference-free</strong> (self-consistency / judge)</td><td>No ground-truth context is checked directly — instead, sample the model multiple times on the same input and measure how consistent the claims are across samples, or use an LLM judge to assess internal plausibility/consistency without a source document.</td><td>Works even when no retrieved context exists to check against (e.g. the model reasoning from parametric knowledge). Structurally weaker: a model can be CONSISTENTLY wrong across every sample, and reference-free methods have no way to catch that — consistency is not the same thing as truth.</td></tr>
+  </table>
+
+  <p>The reference-based approach is the one worth building first for any agent that retrieves or calls tools before answering, because it's exactly a <strong>claim-extraction-then-verification</strong> pipeline: (1) extract atomic factual claims from the response (usually via an LLM prompted specifically to decompose an answer into individually-checkable statements), (2) for each claim, search the retrieved context / tool outputs for supporting evidence, (3) mark the claim grounded, contradicted, or unsupported. Hallucination rate is then just the fraction of extracted claims marked unsupported or contradicted:</p>
+
+  <div class="code"><span class="c-kw">def</span> <span class="c-fn">hallucination_rate</span>(claims, retrieved_context):
+    unsupported = <span class="c-num">0</span>
+    <span class="c-kw">for</span> claim <span class="c-kw">in</span> claims:
+        <span class="c-cmt"># grounded: does retrieved_context actually contain evidence for this claim?</span>
+        <span class="c-kw">if not</span> is_grounded(claim, retrieved_context):
+            unsupported += <span class="c-num">1</span>
+    <span class="c-kw">return</span> unsupported / len(claims)  <span class="c-cmt"># fraction of claims with no traceable source</span></div>
+
+  <p>The critical distinction this whole approach depends on: <code class="inline">is_grounded</code> is checking traceability, NOT plausibility. A claim can be perfectly plausible, even true in the real world, and still count as a hallucination for this specific measurement if the agent never actually retrieved evidence for it — because from the agent's own epistemic position, a plausible-sounding but ungrounded claim and a genuinely false one are indistinguishable failure modes: both mean the agent asserted something it didn't actually verify against what it had access to.</p>
+
+  <div class="callout hall"><b>Interview-ready definition:</b> hallucination rate measures the fraction of an agent's factual claims that aren't traceable to actual retrieved context or tool output — reference-based grounding checks extract atomic claims and verify each against the source material the agent actually had, marking a claim a hallucination if it's unsupported or contradicted regardless of whether it happens to be true in the real world, because the failure being measured is the agent asserting something without verification, not the world being wrong. Reference-free methods (self-consistency, LLM-judge plausibility) are a fallback for when no ground-truth context exists to check against, but structurally cannot catch a model being consistently, confidently wrong across every sample.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE CALCULATOR ============ -->
+<section id="calc">
+  <div class="kicker">03 — Compute both metrics from real example run data</div>
+  <h2>A metrics calculator, live</h2>
+
+  <p><strong>Start here, before touching anything.</strong> Below are 8 example eval runs, each with a labeled correct tool and an actual tool the agent called, plus a grounding verdict on its final claim. Toggle the ACTUAL tool the agent supposedly called for a few rows and watch precision, recall, and hallucination rate recompute live — this is exactly section 1 and 2's formulas running against real numbers, not abstractions.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>8 EVAL RUNS — CORRECT TOOL vs ACTUAL TOOL CALLED, PLUS GROUNDING VERDICT</span>
+      <div><button class="btn secondary" id="mc-reset">Reset to defaults</button></div>
+    </div>
+    <div id="mc-runs"></div>
+    <div class="calc-grid" id="mc-metrics"></div>
+    <div class="log" id="mc-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> change run #3's actual tool from <code class="inline">get_history</code> to <code class="inline">lookup_order</code> and watch <code class="inline">lookup_order</code>'s precision drop (a new false positive) while <code class="inline">get_history</code>'s recall drops (a new false negative) — the SAME single mistake moves two different tools' metrics in two different directions simultaneously, exactly section 1's confusion-matrix argument made numeric.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing precision and recall by hand from a confusion matrix</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's confusion matrix (lookup_order: 18 correct, 3 false-positive rows where get_history was correct but lookup_order was called; get_history: 14 correct, 1 false positive, 2 false negatives where refund was miscalled for it; refund: 9 correct, 2 false negatives), compute precision and recall for <code class="inline">get_history</code> specifically.</p>
+    <details><summary>Show solution</summary><div class="solution">Reading the matrix precisely: the "Actual: get_history" row shows what
+happened to the 15 scenarios where get_history was genuinely correct --
+14 landed on the diagonal (correctly called get_history), and 1
+landed in the "Predicted: lookup_order" column (a false negative for
+get_history, and simultaneously a false positive for lookup_order).
+
+The "Predicted: get_history" column shows every time the agent actually
+called get_history -- 14 from its own correct row, plus 3 from
+"Actual: lookup_order" row (agent wrongly called get_history when
+lookup_order was correct) and 2 from "Actual: refund" row (agent wrongly
+called get_history when refund was correct) = 14 + 3 + 2 = 19 total
+calls to get_history.
+
+TP (get_history) = 14
+FP (get_history) = 3 + 2 = 5   (called get_history when something else was correct)
+FN (get_history) = 1           (get_history was correct but something else was called)
+
+precision_get_history = TP / (TP + FP) = 14 / (14 + 5) = 14/19 ≈ 0.737
+recall_get_history    = TP / (TP + FN) = 14 / (14 + 1) = 14/15 ≈ 0.933
+
+Interpretation: get_history is called correctly the large majority of
+the time it's actually needed (93.3% recall -- rarely missed), but a
+meaningful fraction of ITS calls are actually mistaken substitutions for
+lookup_order or refund (73.7% precision -- over-called relative to how
+often it's truly correct). This is precisely the "high recall, lower
+precision = over-called" pattern section 1 described.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing why macro-average can hide a badly-performing rare tool</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team reports "macro-average tool-selection precision: 91%" across 5 tools. One of those tools, used in only 2 of 200 scenarios, has 0% precision (every call to it was wrong). Explain precisely how the macro-average can still land at 91%, and why this matters for a CI/CD gate.</p>
+    <details><summary>Show solution</summary><div class="solution">Macro-average, per section 1's formula, is the unweighted MEAN of each
+tool's OWN precision -- mean(precision_T for T in all_tools) -- treating
+every tool equally regardless of how often it actually appears in the
+eval set. If the other 4 tools each score close to 100% precision (they
+appear in the other 198 scenarios and are handled reliably), the
+macro-average is roughly (100 + 100 + 100 + 100 + 0) / 5 = 80%... but if
+those other 4 tools score, say, 98.75% each, (98.75*4 + 0) / 5 = 79% --
+still visibly dragged down. For the number to land at a HIGH 91% despite
+one 0%-precision tool, the other four would need to average around
+113.75%, which is impossible (precision caps at 100%) -- meaning a
+genuine 0%-precision tool, correctly macro-averaged, could NOT actually
+produce 91% with only 5 tools total. This is the tell: if a reported
+91% macro-average coexists with a genuinely broken rare tool, either the
+"macro-average" label is wrong (it's actually a MICRO-average, weighted
+by frequency, where the rare tool's 2 failing calls are diluted into
+198 correct ones from other tools and barely move the number at all), or
+the broken tool wasn't actually included in the average at all.
+
+Why this matters for a CI/CD gate specifically: a MICRO-averaged metric
+(or any metric that implicitly weights by frequency) can pass a gate
+threshold while a rare-but-critical tool -- imagine issue_refund used
+rarely but with real financial consequences when wrong -- is silently
+completely broken, because its failures are outnumbered and diluted by
+hundreds of correct calls to a common, easy tool like search. A gate
+that only checks an aggregate number, without also checking each
+individual tool's own precision/recall against its own threshold
+(exactly this lab's confusion-matrix per-tool breakdown), can let a
+genuinely dangerous regression through cleanly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Distinguishing a hallucination from an honest "I don't know"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An agent retrieves an order record with no listed delivery date and responds "I don't have a delivery date on file for this order." Using section 2's grounding definition, is this a hallucination? What if instead it responded "It should arrive within 3-5 business days" with no delivery estimate anywhere in the retrieved context?</p>
+    <details><summary>Show solution</summary><div class="solution">The first response is NOT a hallucination -- it makes no factual claim
+requiring grounding at all. "I don't have a delivery date on file" is a
+claim ABOUT THE AGENT'S OWN KNOWLEDGE STATE (that the retrieved context
+lacks this field), which is itself directly verifiable against the
+retrieved context (the delivery_date field is indeed absent or null) --
+so it passes is_grounded trivially, and correctly so. This is actually
+the DESIRED behavior section 2 is measuring FOR: an agent that
+correctly recognizes and states the absence of grounding, rather than
+fabricating a plausible-sounding answer anyway.
+
+The second response IS a hallucination under section 2's definition, and
+precisely because of the plausibility trap the section warned about: "3-5
+business days" is an extremely common, generic shipping estimate --
+plausible-sounding, probably even statistically correct much of the time
+in the real world -- but it has zero support in the actual retrieved
+context for THIS specific order. claim_extraction would pull out "arrival
+within 3-5 business days" as an atomic claim, and is_grounded would
+correctly mark it unsupported, because no field in the retrieved order
+record actually said this. The claim being independently plausible or
+even often-true is explicitly irrelevant to this measurement -- section
+2's whole point is that grounding checks traceability to the SPECIFIC
+context the agent had, not real-world plausibility.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Deciding between reference-based and reference-free hallucination measurement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An agent answers general knowledge questions with no retrieval or tool calls involved at all (pure parametric-knowledge Q&amp;A). Using section 2's table, which hallucination-measurement approach is even AVAILABLE here, and what's the concrete limitation you inherit by using it?</p>
+    <details><summary>Show solution</summary><div class="solution">Reference-based grounding is not available here at all -- section 2's
+approach fundamentally requires retrieved context or tool output to
+check claims AGAINST, and by the problem's own setup, there is none;
+the agent is answering purely from parametric knowledge with no
+retrieval step to capture and audit. This immediately forces the
+reference-free approach: sampling the model multiple times on the same
+question and measuring claim consistency across samples, or using an
+LLM judge to assess plausibility without a source document to check
+against.
+
+The concrete limitation inherited: section 2 explicitly named it --
+reference-free methods cannot distinguish "consistently correct" from
+"consistently, confidently WRONG." If the model has a specific
+parametric misconception (say, a commonly-confused historical date or a
+plausible-sounding but incorrect technical fact it learned wrong during
+training), it will likely reproduce that SAME wrong answer across
+repeated samples with high consistency -- self-consistency measurement
+would score this as low-hallucination-risk (high agreement across
+samples) precisely because the model is uniformly, confidently wrong,
+which is the opposite of what you'd want the metric to report. The only
+way to actually catch this would be an external, independent ground
+truth (e.g. cross-checking against a trusted reference source), which
+is no longer "reference-free" at all -- it's really a reference-based
+check where the reference is a general knowledge base instead of
+retrieved-per-request context, an option worth considering as a real
+mitigation rather than accepting reference-free's blind spot as
+unavoidable.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Setting per-tool thresholds vs one blended threshold for a CI/CD gate</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using Problem 2's reasoning, and knowing <code class="inline">cicd_eval_gating_survival_exercise.html</code> will need a concrete pass/fail rule, would you gate a deploy on ONE blended tool-selection accuracy threshold, or per-tool precision/recall thresholds? Justify using this lab's own confusion-matrix and macro-vs-micro-average reasoning.</p>
+    <details><summary>Show solution</summary><div class="solution">Per-tool thresholds, not one blended number -- directly following from
+Problem 2's demonstration that a single aggregate metric (whether
+macro- or micro-averaged) can pass comfortably while a specific,
+possibly high-consequence tool (issue_refund) is badly broken, simply
+because its failures are outnumbered or averaged away by other tools'
+successes. A gate that only checks one blended number inherits exactly
+that blind spot.
+
+The concrete gating rule this argues for: define a MINIMUM precision and
+recall threshold PER TOOL (not necessarily the same threshold for every
+tool -- a financially consequential tool like issue_refund might
+warrant a stricter threshold, e.g. 98% precision, than a low-stakes tool
+like search_knowledge_base, e.g. 85% precision is acceptable), and block
+the deploy if ANY individual tool's own precision or recall falls below
+ITS threshold -- not just if the blended average falls below a single
+bar. This is a direct generalization of database/eval_results_schema.html's
+own gating example (Q1's per-eval-type pass rate, not one overall pass
+rate) to tool-selection specifically: the principle in both cases is
+that an aggregate number is a useful SUMMARY for a dashboard, but a
+gating DECISION needs the finer-grained, per-category (per-tool, per-
+eval-type) breakdown, because that's the only view that can't hide one
+badly broken slice behind many healthy ones.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) compute precision and recall for a specific tool from a confusion matrix by hand, (2) explain why grounding measures traceability rather than truth, and (3) explain concretely why a blended macro-average can hide a badly broken rare tool? <code class="inline">latency_and_tracing_integration.html</code> picks up the third measurement this checkpoint needs — these two metrics tell you WHAT went wrong; latency tells you how FAST it went wrong, and both feed the same gate.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — tool-selection and hallucination metrics.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: METRICS CALCULATOR */
+(function(){
+  var TOOLS = ["lookup_order", "get_history", "refund"];
+
+  var DEFAULT_RUNS = [
+    {id:1, task:"\"What's the status of order #4471?\"", correct:"lookup_order", actual:"lookup_order", grounded:true},
+    {id:2, task:"\"Show me all my past orders.\"", correct:"get_history", actual:"get_history", grounded:true},
+    {id:3, task:"\"Has my order from last Tuesday shipped?\"", correct:"get_history", actual:"lookup_order", grounded:false},
+    {id:4, task:"\"Refund order #8820, it's damaged.\"", correct:"refund", actual:"refund", grounded:true},
+    {id:5, task:"\"Cancel my most recent order.\"", correct:"get_history", actual:"get_history", grounded:true},
+    {id:6, task:"\"Refund my last order.\"", correct:"refund", actual:"get_history", grounded:false},
+    {id:7, task:"\"When will order #9102 arrive?\"", correct:"lookup_order", actual:"lookup_order", grounded:false},
+    {id:8, task:"\"I want a refund for order #3391.\"", correct:"refund", actual:"refund", grounded:true},
+  ];
+
+  var runs = DEFAULT_RUNS.map(function(r){ return Object.assign({}, r); });
+
+  var runsEl = document.getElementById("mc-runs");
+  var metricsEl = document.getElementById("mc-metrics");
+  var logEl = document.getElementById("mc-log");
+
+  function renderRuns(){
+    runsEl.innerHTML = "";
+    runs.forEach(function(r, idx){
+      var row = document.createElement("div");
+      row.className = "run-row";
+      var opts = TOOLS.map(function(t){
+        return "<option value=\"" + t + "\"" + (t === r.actual ? " selected" : "") + ">" + t + "</option>";
+      }).join("");
+      row.innerHTML = "<span class=\"rid\">#" + r.id + "</span>" +
+        "<span class=\"rtask\">" + r.task + "</span>" +
+        "<span style=\"color:var(--ink-dim);\">correct: <b style=\"color:var(--tp-c);\">" + r.correct + "</b></span>" +
+        "<span style=\"color:var(--ink-dim);\">actual:</span> <select data-idx=\"" + idx + "\">" + opts + "</select>" +
+        "<label style=\"display:flex; align-items:center; gap:0.3rem; color:var(--ink-dim);\"><input type=\"checkbox\" data-gidx=\"" + idx + "\"" + (r.grounded ? " checked" : "") + "> grounded final claim</label>";
+      runsEl.appendChild(row);
+    });
+
+    runsEl.querySelectorAll("select").forEach(function(sel){
+      sel.addEventListener("change", function(){
+        runs[parseInt(sel.dataset.idx, 10)].actual = sel.value;
+        recompute();
+      });
+    });
+    runsEl.querySelectorAll("input[type=checkbox]").forEach(function(cb){
+      cb.addEventListener("change", function(){
+        runs[parseInt(cb.dataset.gidx, 10)].grounded = cb.checked;
+        recompute();
+      });
+    });
+  }
+
+  function computeMetrics(){
+    var stats = {};
+    TOOLS.forEach(function(t){ stats[t] = {tp:0, fp:0, fn:0}; });
+
+    runs.forEach(function(r){
+      if(r.correct === r.actual){
+        stats[r.correct].tp++;
+      } else {
+        stats[r.correct].fn++; // the correct tool was needed but not called
+        stats[r.actual].fp++;  // the actual tool was called wrongly
+      }
+    });
+
+    var precisions = [], recalls = [];
+    TOOLS.forEach(function(t){
+      var s = stats[t];
+      var p = (s.tp + s.fp) > 0 ? s.tp / (s.tp + s.fp) : 1;
+      var r = (s.tp + s.fn) > 0 ? s.tp / (s.tp + s.fn) : 1;
+      precisions.push(p);
+      recalls.push(r);
+    });
+
+    var macroP = precisions.reduce(function(a,b){return a+b;}, 0) / precisions.length;
+    var macroR = recalls.reduce(function(a,b){return a+b;}, 0) / recalls.length;
+
+    var ungrounded = runs.filter(function(r){ return !r.grounded; }).length;
+    var hallRate = ungrounded / runs.length;
+
+    return {stats:stats, macroP:macroP, macroR:macroR, hallRate:hallRate};
+  }
+
+  function renderMetrics(m){
+    metricsEl.innerHTML =
+      "<div class=\"calc-box\"><div class=\"clabel\">Macro precision</div><div class=\"cval\">" + (m.macroP*100).toFixed(1) + "%</div></div>" +
+      "<div class=\"calc-box\"><div class=\"clabel\">Macro recall</div><div class=\"cval\">" + (m.macroR*100).toFixed(1) + "%</div></div>" +
+      "<div class=\"calc-box\"><div class=\"clabel\">Hallucination rate</div><div class=\"cval\" style=\"color:var(--hall-c);\">" + (m.hallRate*100).toFixed(1) + "%</div></div>";
+
+    var lines = TOOLS.map(function(t){
+      var s = m.stats[t];
+      var p = (s.tp + s.fp) > 0 ? s.tp / (s.tp + s.fp) : 1;
+      var r = (s.tp + s.fn) > 0 ? s.tp / (s.tp + s.fn) : 1;
+      return "<div class=\"line\"><b>" + t + ":</b> TP=" + s.tp + " FP=" + s.fp + " FN=" + s.fn +
+        " &nbsp;→&nbsp; precision=" + (p*100).toFixed(0) + "%, recall=" + (r*100).toFixed(0) + "%</div>";
+    });
+    logEl.innerHTML = lines.join("");
+  }
+
+  function recompute(){
+    var m = computeMetrics();
+    renderMetrics(m);
+  }
+
+  document.getElementById("mc-reset").addEventListener("click", function(){
+    runs = DEFAULT_RUNS.map(function(r){ return Object.assign({}, r); });
+    renderRuns();
+    recompute();
+  });
+
+  renderRuns();
+  recompute();
+})();
+</script>
+</body>
+</html>
