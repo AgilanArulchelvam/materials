@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Stateful Graphs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --node-c:#4fc3f7; --edge-c:#9aa0ad; --branch-c:#f2c14e; --escalate-c:#ff6b6b; --accent:#7fd8a0; --ok-c:#7fd8a0;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--node-c); color:var(--node-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--branch-c); color:var(--branch-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--accent); color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#12141a; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* graph diagram, hand-built with divs and svg lines */
+  .graph-wrap{position:relative; margin:1.4rem 0; overflow-x:auto;}
+  .graph-svg{width:100%; min-width:640px; height:340px; display:block;}
+  .graph-node{font-family:var(--mono); font-size:0.72rem; text-align:center;}
+  .gn-rect{fill:var(--panel-2); stroke:var(--rule); stroke-width:1.5; rx:10;}
+  .gn-rect.active{stroke:var(--node-c); stroke-width:2.5; filter:drop-shadow(0 0 6px rgba(79,195,247,0.5));}
+  .gn-text{fill:var(--ink); font-family:'JetBrains Mono',monospace; font-size:11px;}
+  .gn-sub{fill:var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:9px;}
+  .gn-edge{stroke:var(--edge-c); stroke-width:1.5; fill:none; marker-end:url(#arrow);}
+  .gn-edge.active{stroke:var(--node-c); stroke-width:2.5; marker-end:url(#arrow-active);}
+  .gn-edge-label{fill:var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:9px;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#12141a; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--node-c);} .dc-col.a h4{color:var(--node-c);}
+  .dc-col.b{border-color:var(--branch-c);} .dc-col.b h4{color:var(--branch-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--escalate-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--escalate-c);}
+  .callout.node{border-left-color:var(--node-c); background:rgba(79,195,247,0.06);} .callout.node b{color:var(--node-c);}
+  .callout.branch{border-left-color:var(--branch-c); background:rgba(242,193,78,0.06);} .callout.branch b{color:var(--branch-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · STATEFUL GRAPHS</div>
+  <h1>An agent's workflow isn't one long script — it's a graph of states, and the path through it depends on what happens.</h1>
+  <p class="lede">Both the ReAct loop and Plan-and-Solve have an implicit control flow. Modeling that flow EXPLICITLY as a graph — nodes as states, edges as conditional transitions — makes the workflow inspectable, debuggable, and resumable in a way a bare loop or a linear plan isn't. This lab builds a concrete customer-support agent graph and animates a real request taking a specific conditional path through it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Nodes — a step or state in the workflow</div>
+    <div class="pipe-label b">Edges — conditional transitions between states</div>
+    <div class="pipe-label c">A request flowing through, live</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="idea">1 · Workflows as State Machines</a>
+  <a data-target="graph">2 · Nodes, Edges &amp; Conditional Transitions</a>
+  <a data-target="live">3 · A Request Flowing Through the Graph</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE IDEA ============ -->
+<section id="idea">
+  <div class="kicker">01 — The workflow itself becomes a diagram, not just a mental model</div>
+  <h2>Modeling agent workflows as state machines</h2>
+
+  <p><strong>Start here, before any diagram.</strong> A vending machine is a genuinely simple state machine: it's in exactly one state at a time (idle, coin-inserted, dispensing, out-of-stock), and a specific EVENT (inserting a coin, pressing a button, running empty) causes a well-defined TRANSITION to exactly one next state — never two states at once, and never a transition that isn't explicitly defined for the current state. You've already seen this idea applied to a network connection in the Month 2 WebSocket lifecycle lab (<code class="inline">CONNECTING → OPEN → CLOSING → CLOSED</code>) — a connection is always in exactly one of those states, and specific events move it to the next one.</p>
+
+  <p>An agent's workflow can be modeled the exact same way, just with richer states: instead of "idle / dispensing," a state might be "classify the user's intent" or "escalate to a human," and instead of "coin inserted," a transition might be triggered by "the classification step returned billing" rather than a physical event. The core idea carries over unchanged — the agent is always in exactly one node of the graph, and a specific transition, chosen based on what just happened, moves it to the next one.</p>
+
+  <div class="callout node"><b>Interview-ready definition:</b> modeling an agent workflow as a stateful graph means representing the workflow as a directed graph where each NODE is a distinct step or state the agent can be in (e.g. "classify intent," "handle billing," "escalate"), and each EDGE is a transition between two states, often conditional on the output of the state the edge leaves from. At any point during execution, the agent occupies exactly one node — the same fundamental state-machine property as a WebSocket connection's lifecycle states — and the specific path taken through the graph for a given run is determined dynamically by which conditional edges fire, not fixed in advance.</div>
+</section>
+
+<!-- ============ SECTION 2: NODES, EDGES, TRANSITIONS ============ -->
+<section id="graph">
+  <div class="kicker">02 — A concrete example graph: a customer support agent</div>
+  <h2>Nodes, edges, and explicit conditional transitions</h2>
+
+  <p><strong>Start here, before the code.</strong> Below is a real, concrete graph for a customer support agent: a request always starts at <code class="inline">classify_intent</code>, which conditionally branches to exactly ONE of three next nodes depending on what the classification found, and every path eventually reaches <code class="inline">generate_response</code> before the workflow ends.</p>
+
+  <div class="graph-wrap">
+    <svg class="graph-svg" viewBox="0 0 640 340" id="graph-svg">
+      <defs>
+        <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--edge-c)"></path></marker>
+        <marker id="arrow-active" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--node-c)"></path></marker>
+      </defs>
+
+      <!-- edges (drawn first, under nodes) -->
+      <path id="edge-classify-billing" class="gn-edge" d="M280,60 C220,90 160,110 130,140"></path>
+      <text class="gn-edge-label" x="150" y="95">intent = billing</text>
+
+      <path id="edge-classify-tech" class="gn-edge" d="M320,80 L320,140"></path>
+      <text class="gn-edge-label" x="330" y="115">intent = technical</text>
+
+      <path id="edge-classify-escalate" class="gn-edge" d="M360,60 C440,90 500,110 520,140"></path>
+      <text class="gn-edge-label" x="440" y="95">intent = angry / unclear</text>
+
+      <path id="edge-billing-response" class="gn-edge" d="M130,180 C180,220 250,240 300,255"></path>
+      <path id="edge-tech-response" class="gn-edge" d="M320,180 L320,240"></path>
+      <path id="edge-escalate-response" class="gn-edge" d="M520,180 C470,220 400,240 350,255"></path>
+
+      <!-- nodes -->
+      <g class="graph-node" id="node-classify">
+        <rect class="gn-rect" x="240" y="20" width="160" height="46" rx="10"></rect>
+        <text class="gn-text" x="320" y="42" text-anchor="middle">classify_intent</text>
+        <text class="gn-sub" x="320" y="56" text-anchor="middle">entry node</text>
+      </g>
+
+      <g class="graph-node" id="node-billing">
+        <rect class="gn-rect" x="50" y="140" width="160" height="46" rx="10"></rect>
+        <text class="gn-text" x="130" y="162" text-anchor="middle">handle_billing</text>
+        <text class="gn-sub" x="130" y="176" text-anchor="middle">billing sub-flow</text>
+      </g>
+
+      <g class="graph-node" id="node-tech">
+        <rect class="gn-rect" x="240" y="140" width="160" height="46" rx="10"></rect>
+        <text class="gn-text" x="320" y="162" text-anchor="middle">handle_technical</text>
+        <text class="gn-sub" x="320" y="176" text-anchor="middle">technical sub-flow</text>
+      </g>
+
+      <g class="graph-node" id="node-escalate">
+        <rect class="gn-rect" x="440" y="140" width="160" height="46" rx="10"></rect>
+        <text class="gn-text" x="520" y="162" text-anchor="middle">escalate_to_human</text>
+        <text class="gn-sub" x="520" y="176" text-anchor="middle">hands off, no response node</text>
+      </g>
+
+      <g class="graph-node" id="node-response">
+        <rect class="gn-rect" x="240" y="255" width="160" height="46" rx="10"></rect>
+        <text class="gn-text" x="320" y="277" text-anchor="middle">generate_response</text>
+        <text class="gn-sub" x="320" y="291" text-anchor="middle">exit node</text>
+      </g>
+    </svg>
+  </div>
+
+  <p>Notice <code class="inline">classify_intent</code> has exactly THREE outgoing edges, each with a different condition attached — the agent takes exactly ONE of them per run, never zero and never more than one, based on what the classification step's own output actually was. This is the graph-native way of expressing what would otherwise be a chain of nested if/elif statements — but represented as data (nodes and edges) rather than buried inside procedural code, which is exactly what makes it inspectable as a standalone diagram, the way this SVG itself is one.</p>
+
+  <div class="code"><span class="c-cmt"># the graph as data -- nodes are functions, edges are conditional routes</span>
+<span class="c-kw">def</span> <span class="c-fn">classify_intent</span>(state: <span class="c-fn">dict</span>) -> <span class="c-fn">dict</span>:
+    intent = classify(state[<span class="c-str">"message"</span>])   <span class="c-cmt"># e.g. an LLM call or classifier model</span>
+    state[<span class="c-str">"intent"</span>] = intent
+    <span class="c-kw">return</span> state
+
+<span class="c-kw">def</span> <span class="c-fn">route_after_classify</span>(state: <span class="c-fn">dict</span>) -> <span class="c-fn">str</span>:
+    <span class="c-cmt"># this function IS the conditional edge -- it decides which node is next</span>
+    <span class="c-kw">if</span> state[<span class="c-str">"intent"</span>] == <span class="c-str">"billing"</span>:
+        <span class="c-kw">return</span> <span class="c-str">"handle_billing"</span>
+    <span class="c-kw">elif</span> state[<span class="c-str">"intent"</span>] == <span class="c-str">"technical"</span>:
+        <span class="c-kw">return</span> <span class="c-str">"handle_technical"</span>
+    <span class="c-kw">else</span>:  <span class="c-cmt"># angry, unclear, or anything not confidently classified</span>
+        <span class="c-kw">return</span> <span class="c-str">"escalate_to_human"</span>
+
+GRAPH = {
+    <span class="c-str">"classify_intent"</span>:    {<span class="c-str">"fn"</span>: classify_intent,    <span class="c-str">"router"</span>: route_after_classify},
+    <span class="c-str">"handle_billing"</span>:     {<span class="c-str">"fn"</span>: handle_billing,     <span class="c-str">"next"</span>: <span class="c-str">"generate_response"</span>},
+    <span class="c-str">"handle_technical"</span>:   {<span class="c-str">"fn"</span>: handle_technical,   <span class="c-str">"next"</span>: <span class="c-str">"generate_response"</span>},
+    <span class="c-str">"escalate_to_human"</span>:  {<span class="c-str">"fn"</span>: escalate_to_human,  <span class="c-str">"next"</span>: <span class="c-kw">None</span>},   <span class="c-cmt"># terminal -- hands off, no response generated here</span>
+    <span class="c-str">"generate_response"</span>:  {<span class="c-str">"fn"</span>: generate_response,  <span class="c-str">"next"</span>: <span class="c-kw">None</span>},   <span class="c-cmt"># terminal -- workflow ends</span>
+}
+
+<span class="c-kw">def</span> <span class="c-fn">run_graph</span>(start_node: <span class="c-fn">str</span>, state: <span class="c-fn">dict</span>):
+    node = start_node
+    <span class="c-kw">while</span> node <span class="c-kw">is not None</span>:
+        entry = GRAPH[node]
+        state = entry[<span class="c-str">"fn"</span>](state)                       <span class="c-cmt"># run this node's step</span>
+        node = entry[<span class="c-str">"router"</span>](state) <span class="c-kw">if</span> <span class="c-str">"router"</span> <span class="c-kw">in</span> entry <span class="c-kw">else</span> entry[<span class="c-str">"next"</span>]
+    <span class="c-kw">return</span> state</div>
+
+  <p>The state dictionary itself (<code class="inline">state["intent"]</code>, and whatever each node adds to it) is exactly what carries information FORWARD through the graph from one node to the next — this is the "state" a stateful graph is named for: not just "which node am I in," but the accumulated data that travels along with the execution as it moves node to node, available to every subsequent node's logic and to whichever conditional router decides the next edge.</p>
+
+  <div class="callout branch"><b>Interview-ready definition:</b> in a stateful agent graph, nodes are steps that transform a shared state object, and edges are transitions between nodes — either fixed (always go to the same next node) or conditional (a router function inspects the current state and returns which of several possible next nodes to visit). The graph's structure makes branching logic an explicit, inspectable part of the workflow's DEFINITION rather than logic buried inside a monolithic function — the same request can take genuinely different paths through the SAME graph depending on what earlier nodes produced, exactly the way <code class="inline">classify_intent</code>'s three outgoing edges route to three different sub-flows depending on the classification result.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE REQUEST FLOW ============ -->
+<section id="live">
+  <div class="kicker">03 — Same graph, three different sample classifications, three different paths</div>
+  <h2>Watch a request flow through the graph, live</h2>
+
+  <p><strong>Start here, before running it.</strong> Pick a sample classification result below, then run it — watch the SAME graph from section 2 light up a genuinely different path depending on which condition the router matches, exactly the way section 2's <code class="inline">route_after_classify</code> function would behave for each case.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ROUTE A REQUEST THROUGH THE SUPPORT AGENT GRAPH</span>
+      <div><button class="btn secondary" id="graph-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-intent="billing">Classification: "billing"</button>
+      <button class="chip" data-intent="technical">Classification: "technical"</button>
+      <button class="chip" data-intent="unclear">Classification: "unclear / angry"</button>
+    </div>
+    <button class="btn" id="graph-run">Run the request through the graph ▸</button>
+    <div class="log" id="graph-log"><span class="line">Pick a classification result, then run — watch which path lights up.</span></div>
+  </div>
+
+  <div class="callout"><b>What this connects to:</b> the graph itself never changes between these three runs — the SAME node/edge definitions from section 2 are reused every time. What changes is only which conditional edge <code class="inline">route_after_classify</code> selects, based on the state produced by <code class="inline">classify_intent</code>. This is the concrete payoff of representing a workflow as a graph rather than an implicit sequence buried in code: the set of POSSIBLE paths is fixed and inspectable ahead of time, even though which ACTUAL path a specific request takes is only known once execution reaches each conditional node.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Identifying the state-machine invariant a bad implementation violates</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A buggy version of <code class="inline">route_after_classify</code> is rewritten so that, for <code class="inline">intent == "billing"</code>, it returns BOTH <code class="inline">"handle_billing"</code> and <code class="inline">"handle_technical"</code> (e.g. by mistakenly appending both to a list and the executor calling both). Which core state-machine property from section 1 does this violate, and using the WebSocket lifecycle analogy, why is it a real bug rather than just extra work being done?</p>
+    <details><summary>Show solution</summary><div class="solution">This violates the property section 1 calls out explicitly: at any point,
+the agent should occupy EXACTLY ONE node, never two at once -- the same
+invariant a WebSocket connection maintains by always being in exactly one
+of CONNECTING/OPEN/CLOSING/CLOSED, never two simultaneously. Running both
+handle_billing AND handle_technical means the workflow has effectively
+forked into two concurrent executions from what was supposed to be a
+single conditional branch point.
+
+Why this is a real bug, not just wasted work: handle_technical will now
+run against a request that was actually a billing issue, potentially
+producing an irrelevant or actively wrong technical-support response that
+then flows into generate_response alongside (or instead of) the correct
+billing response -- depending on how the executor combines two "next node"
+results, this could silently overwrite the correct output, produce two
+conflicting responses, or corrupt the shared state object if both nodes
+write to overlapping keys. A state machine's exactly-one-state-at-a-time
+property isn't a stylistic preference -- it's what makes the SYSTEM's
+behavior predictable and traceable to a single path through the graph;
+violating it means you can no longer reason about "what happened" as one
+coherent sequence of node visits.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing what a NEW intent value does to the existing graph</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The classifier is upgraded to also detect a new intent category, <code class="inline">"refund_request"</code>, but section 2's <code class="inline">route_after_classify</code> code is left unchanged. Using the code exactly as written, what node does a <code class="inline">"refund_request"</code> classification actually route to, and is that necessarily wrong?</p>
+    <details><summary>Show solution</summary><div class="solution">Tracing route_after_classify exactly as written: intent == "billing" is
+False (it's "refund_request"), intent == "technical" is also False, so
+execution falls through to the else branch, which returns
+"escalate_to_human" -- the catch-all case section 2 documents as handling
+"angry, unclear, or anything not confidently classified."
+
+Whether this is "wrong" depends entirely on intent: if refund requests
+genuinely need human judgment (policy exceptions, fraud review), routing
+them to escalate_to_human might be exactly the RIGHT temporary behavior
+until a dedicated handle_refund node is added -- the else branch is
+explicitly designed to catch cases the graph doesn't yet have a specific
+node for, which is a reasonable safety default rather than a crash. But if
+refund requests are common and mostly routine, silently escalating every
+single one to a human is a real product/cost problem masquerading as
+correct behavior, since nothing in the code or the graph structure
+signals that this case is being handled by the DEFAULT branch rather than
+a purpose-built one -- someone reading only the graph diagram (section
+2's SVG) would have no way to tell "refund_request" wasn't an intentional
+design decision to route through escalation specifically. This is exactly
+why a stateful graph's node/edge structure needs to be kept in sync with
+whatever's actually producing the classifications feeding into it --
+the graph doesn't automatically know about new possible states of its own
+inputs.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why escalate_to_human has no outgoing edge to generate_response</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In section 2's graph, <code class="inline">escalate_to_human</code>'s <code class="inline">"next"</code> is <code class="inline">None</code> — unlike <code class="inline">handle_billing</code> and <code class="inline">handle_technical</code>, which both route to <code class="inline">generate_response</code>. Why is this the correct structural choice, not an oversight?</p>
+    <details><summary>Show solution</summary><div class="solution">handle_billing and handle_technical are sub-flows where the AGENT still
+owns producing the final reply -- it gathers whatever information it
+needs and then generate_response formats and returns an actual answer to
+the user, which is why both routes correctly to that shared exit node.
+
+escalate_to_human is structurally different: its entire job is to hand
+the conversation OFF to a human agent -- the automated workflow's
+involvement ends at the handoff itself, not at producing a response,
+because the actual response (whatever the human eventually says) isn't
+something this graph generates or even has visibility into. Routing
+escalate_to_human to generate_response anyway would be actively
+misleading -- it would suggest the automated system is still going to
+produce the reply, when the whole point of escalating is that it should
+NOT. Setting "next": None here correctly marks escalate_to_human as its
+own terminal node -- the workflow legitimately ends there, just via a
+different kind of ending (a handoff) than handle_billing and
+handle_technical's ending (a generated response). A graph can have more
+than one kind of "done," and modeling that explicitly, rather than forcing
+every path through the same exit node, is exactly the kind of nuance a
+diagram like section 2's makes visible at a glance.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Comparing a stateful graph to a bare ReAct loop for this exact task</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Could the customer-support routing in section 2 have been implemented as a ReAct loop instead (the model deciding, via Thoughts, which "tool" — handle_billing, handle_technical, escalate — to call next)? What does the explicit graph give you that a bare ReAct loop over the same three functions wouldn't?</p>
+    <details><summary>Show solution</summary><div class="solution">Mechanically, yes -- nothing stops you from exposing handle_billing,
+handle_technical, and escalate_to_human as tools and letting a ReAct loop
+(react_pattern.html) decide which one to call based on a Thought reasoning
+about the classification. Both approaches can PRODUCE the same routing
+decision for a given request.
+
+What the explicit graph gives you that the bare loop doesn't: the full set
+of POSSIBLE paths through the workflow is visible and inspectable as a
+static artifact -- section 2's SVG diagram, or the GRAPH dictionary itself
+-- before any request ever runs, the same reviewability advantage
+plan_and_solve_pattern.html's Problem 3 describes for approval gates. A
+ReAct loop's possible behaviors are only ever implicit in what the model
+COULD choose to do at each Thought -- there's no artifact you can point at
+and say "here are all the paths this workflow can take" the way the graph
+literally IS that artifact. This matters concretely for this specific use
+case: a customer support workflow is exactly the kind of system where a
+team wants to audit "what are all the ways a request can be handled" (for
+compliance, QA, or just onboarding a new engineer) without needing to
+enumerate every possible model reasoning trace to reconstruct it -- the
+graph makes that audit a matter of reading the diagram, not guessing at
+model behavior. The trade-off is the graph's routing logic (here, a plain
+if/elif on a classification label) is less flexible than letting a model
+reason freely about ambiguous cases -- exactly the kind of case-by-case
+nuance ReAct's Thought step handles naturally and a rigid router function
+does not.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about resumability, a property loops don't get for free</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A request reaches <code class="inline">handle_billing</code>, and the process crashes before <code class="inline">generate_response</code> runs. Using section 2's <code class="inline">run_graph</code> structure, what would need to be true about how <code class="inline">state</code> is stored for this workflow to be resumable from exactly where it left off, rather than restarted from <code class="inline">classify_intent</code>?</p>
+    <details><summary>Show solution</summary><div class="solution">For resumability, the CURRENT node name and the current state dictionary
+(everything accumulated so far -- the classification result, whatever
+handle_billing had already written into state before the crash) both need
+to be persisted somewhere DURABLE -- e.g. written to a database or a
+durable queue -- after each node completes, not just held in the crashed
+process's in-memory variables the way section 2's run_graph loop does by
+default (its `node` and `state` local variables vanish entirely when the
+process dies).
+
+With that persistence in place, resuming means: on restart, look up the
+last successfully completed node and its resulting state for this
+request, set `node = "generate_response"` (the node AFTER the last
+completed one, per GRAPH["handle_billing"]["next"]) and `state` to the
+persisted value, then continue the same while loop from there -- rather
+than re-running classify_intent and handle_billing from scratch, which
+would be wasteful at best (re-doing completed work) and actively wrong at
+worst if handle_billing had a side effect (e.g. actually issuing a partial
+refund) that shouldn't happen twice, the same double-execution risk the
+database CRUD lab's idempotency-key lesson covers for retried requests
+generally.
+
+This is precisely the practical advantage an EXPLICIT graph representation
+provides over an implicit control flow buried in a function: because the
+workflow's progress is expressible as "which node, plus what state,"
+that's a natural, serializable checkpoint to persist -- a bare while-loop
+or a deeply nested chain of function calls has no equally clean
+equivalent to snapshot and resume from, since "where you are" in that case
+is smeared across the call stack rather than being one clean, explicit
+value.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch a new 3-node graph with at least one conditional branch for a different domain and identify its terminal nodes, (2) explain why "exactly one active node at a time" is the same invariant a WebSocket connection's lifecycle maintains, and (3) explain what specifically about a graph's node/state structure makes a workflow checkpointable and resumable in a way a bare loop typically isn't? This graph-based way of structuring an agent's control flow shows up again directly in Week 3's loop-termination-logic topic, where "which node am I in, and when do I stop" becomes the central design question.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — stateful graphs.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: GRAPH ROUTING DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-intent]");
+  var runBtn = document.getElementById("graph-run");
+  var resetBtn = document.getElementById("graph-reset");
+  var logEl = document.getElementById("graph-log");
+  var selected = "billing";
+
+  var ROUTES = {
+    billing: {edge: "edge-classify-billing", node: "node-billing", responseEdge: "edge-billing-response", label: "handle_billing", cond: 'intent == "billing"'},
+    technical: {edge: "edge-classify-tech", node: "node-tech", responseEdge: "edge-tech-response", label: "handle_technical", cond: 'intent == "technical"'},
+    unclear: {edge: "edge-classify-escalate", node: "node-escalate", responseEdge: null, label: "escalate_to_human", cond: 'else (angry / unclear)'}
+  };
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearHighlights(){
+    document.querySelectorAll(".gn-rect").forEach(function(el){ el.classList.remove("active"); });
+    document.querySelectorAll(".gn-edge").forEach(function(el){ el.classList.remove("active"); });
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.intent;
+    });
+  });
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    clearHighlights();
+    logEl.innerHTML = "";
+    runBtn.disabled = true;
+
+    var route = ROUTES[selected];
+
+    document.querySelector("#node-classify .gn-rect").classList.add("active");
+    log('<b>Node: classify_intent</b> runs — classifier returns intent = "' + selected + '".');
+    await wait(500);
+
+    document.getElementById(route.edge).classList.add("active");
+    log('<b>Router: route_after_classify</b> evaluates state["intent"] — condition matched: <b>' + route.cond + '</b> → next node = "' + route.label + '".');
+    await wait(500);
+
+    document.querySelector("#" + route.node + " .gn-rect").classList.add("active");
+    log('<b>Node: ' + route.label + '</b> runs, using and extending the shared state.');
+    await wait(500);
+
+    if(route.responseEdge){
+      document.getElementById(route.responseEdge).classList.add("active");
+      document.querySelector("#node-response .gn-rect").classList.add("active");
+      log('<b>Node: generate_response</b> runs — exit node reached, workflow ends with a generated reply.');
+    } else {
+      log('<b style="color:var(--escalate-c);">Terminal:</b> escalate_to_human has no outgoing edge (GRAPH["escalate_to_human"]["next"] is None) — the workflow ends here via handoff, NOT by reaching generate_response.');
+    }
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    clearHighlights();
+    logEl.innerHTML = '<span class="line">Pick a classification result, then run — watch which path lights up.</span>';
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

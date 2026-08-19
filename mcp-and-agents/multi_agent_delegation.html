@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Multi-Agent Delegation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --coord-c:#f2c14e; --sub1-c:#4fc3f7; --sub2-c:#c792ea; --ok-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--coord-c); color:var(--coord-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--sub1-c); color:var(--sub1-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--sub2-c); color:var(--sub2-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* delegation diagram */
+  .deleg-stage{display:flex; flex-direction:column; align-items:center; gap:1rem; margin:1.4rem 0;}
+  .deleg-coord{font-family:var(--mono); font-size:0.8rem; padding:0.8rem 1.2rem; border-radius:10px; border:1.5px solid var(--coord-c); color:var(--coord-c); background:rgba(242,193,78,0.08); text-align:center; font-weight:600; transition:all .3s ease;}
+  .deleg-coord.active{box-shadow:0 0 14px rgba(242,193,78,0.5);}
+  .deleg-arrows{display:flex; gap:3rem; font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim);}
+  .deleg-subs{display:flex; gap:1.5rem; flex-wrap:wrap; justify-content:center;}
+  .deleg-sub{font-family:var(--mono); font-size:0.75rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); text-align:center; min-width:160px; transition:all .3s ease;}
+  .deleg-sub.sub1{border-color:var(--sub1-c);}
+  .deleg-sub.sub2{border-color:var(--sub2-c);}
+  .deleg-sub.active.sub1{color:var(--sub1-c); background:rgba(79,195,247,0.12); box-shadow:0 0 10px rgba(79,195,247,0.4);}
+  .deleg-sub.active.sub2{color:var(--sub2-c); background:rgba(199,146,234,0.12); box-shadow:0 0 10px rgba(199,146,234,0.4);}
+  .deleg-sub.done{color:var(--ok-c); border-color:var(--ok-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--sub1-c);} .dc-col.a h4{color:var(--sub1-c);}
+  .dc-col.b{border-color:var(--sub2-c);} .dc-col.b h4{color:var(--sub2-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.coord{border-left-color:var(--coord-c); background:rgba(242,193,78,0.06);} .callout.coord b{color:var(--coord-c);}
+  .callout.ok{border-left-color:var(--ok-c); background:rgba(127,216,160,0.06);} .callout.ok b{color:var(--ok-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · MULTI-AGENT DELEGATION</div>
+  <h1>One agent trying to do everything is a bottleneck wearing a single hat. Split the hats.</h1>
+  <p class="lede">A complex task often decomposes naturally into distinct sub-tasks that benefit from different specializations — one agent good at finding sources, another good at writing prose. Multi-agent delegation formalizes this: a coordinator breaks a task apart, hands each piece to a specialized sub-agent, and combines their results. This lab builds a real "research and summarize" example end to end, then animates the coordinator dispatching and merging.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Coordinator — breaks the task apart</div>
+    <div class="pipe-label b">Sub-agents — specialized, dispatched (often in parallel)</div>
+    <div class="pipe-label c">Combine — coordinator merges their results</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="pattern">1 · A Coordinator Handing Off Subtasks</a>
+  <a data-target="implement">2 · Implementing Delegator + Sub-Agents</a>
+  <a data-target="live">3 · Watch the Delegation Flow, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE PATTERN ============ -->
+<section id="pattern">
+  <div class="kicker">01 — Different sub-tasks, different specialists, one coordinator tying it together</div>
+  <h2>A coordinator handing off subtasks</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about a newsroom editor assigning a story: the editor doesn't personally go interview sources AND write the final copy AND fact-check it — they break the story into pieces, hand "go get quotes from these three people" to a reporter and "turn this into a polished 800-word piece" to a writer, then combine what comes back into the published article. The editor's actual skill is knowing HOW to break the story apart and WHO should get which piece — not necessarily being the best reporter or the best writer themselves.</p>
+
+  <p>Multi-agent delegation applies this exact structure to agentic systems: a <strong>coordinator</strong> agent receives a complex task, decomposes it into distinct subtasks, dispatches each subtask to a <strong>specialized sub-agent</strong> built (or prompted) specifically for that kind of work, and then combines whatever the sub-agents return into a single final result. Concretely, for a "research and summarize" task on some topic:</p>
+
+  <div class="code"><span class="c-cmt">Task:</span> <span class="c-str">"Research and summarize recent developments in fusion energy."</span>
+
+<span class="c-cmt">Coordinator's decomposition:</span>
+  Subtask A -&gt; research_agent:  <span class="c-str">"Find 3-5 credible recent sources on fusion energy developments."</span>
+  Subtask B -&gt; writer_agent:    <span class="c-str">"Write a 150-word summary from the sources research_agent finds."</span>
+
+<span class="c-cmt">Dispatch order matters here:</span> B genuinely depends on A's output (the
+writer needs sources to summarize) -- so unlike section 3's fully
+independent case, these two subtasks run <span class="c-kw">sequentially</span>, not in parallel.
+
+<span class="c-cmt">Coordinator combines:</span> takes research_agent's source list AND
+writer_agent's summary, packages them together as the final deliverable
+(a summary WITH citations, not just a summary).</div>
+
+  <p>Notice the two sub-agents here have genuinely different jobs, not just an arbitrary split of the same work — <code class="inline">research_agent</code> is good at finding and evaluating sources; <code class="inline">writer_agent</code> is good at turning source material into readable prose. Neither would necessarily do the OTHER'S job as well; the value of delegation comes specifically from routing each subtask to whichever specialist is actually suited to it, exactly the way the newsroom editor routes reporting and writing to different people rather than expecting one person to be excellent at both.</p>
+
+  <div class="callout coord"><b>Interview-ready definition:</b> multi-agent delegation is a pattern where a coordinator agent decomposes a complex task into distinct subtasks and dispatches each one to a specialized sub-agent built or prompted for that specific kind of work, then combines the sub-agents' results into a single final output. The coordinator's own core competency is decomposition and integration — deciding what the subtasks are, which specialist should handle each, and how to merge what comes back — rather than performing every subtask itself, mirroring how a human coordinator (an editor, a project lead) routes work to specialists rather than doing every specialist's job personally.</div>
+</section>
+
+<!-- ============ SECTION 2: IMPLEMENTING IT ============ -->
+<section id="implement">
+  <div class="kicker">02 — Real code: a coordinator function calling specialized sub-agent functions</div>
+  <h2>Implementing a simple delegator + sub-agent</h2>
+
+  <p><strong>Start here, before the code.</strong> Mechanically, each "sub-agent" here is just a function (or a full model call with its own specialized prompt) that does one well-scoped job and returns a result — the coordinator is the function that calls them in the right order, with the right inputs, and assembles what they return. Nothing about this REQUIRES separate models or separate infrastructure; the essential structural idea is separation of concerns between decomposition/orchestration (coordinator) and specialized execution (sub-agents), which can be implemented at any scale from simple Python functions up to fully independent deployed services.</p>
+
+  <div class="code"><span class="c-kw">async def</span> <span class="c-fn">research_agent</span>(topic: <span class="c-fn">str</span>) -> <span class="c-fn">list</span>:
+    <span class="c-cmt"># specialized: good at finding and evaluating sources, nothing else</span>
+    prompt = <span class="c-fn">f"Find 3-5 credible recent sources on: {topic}. Return as a list of (title, url)."</span>
+    response = <span class="c-kw">await</span> call_model(prompt, tools=[web_search_tool])
+    <span class="c-kw">return</span> parse_sources(response)
+
+<span class="c-kw">async def</span> <span class="c-fn">writer_agent</span>(topic: <span class="c-fn">str</span>, sources: <span class="c-fn">list</span>) -> <span class="c-fn">str</span>:
+    <span class="c-cmt"># specialized: good at turning source material into readable prose</span>
+    prompt = <span class="c-fn">f"Write a 150-word summary of {topic} using only these sources: {sources}"</span>
+    response = <span class="c-kw">await</span> call_model(prompt)
+    <span class="c-kw">return</span> response.text
+
+<span class="c-kw">async def</span> <span class="c-fn">coordinator</span>(task: <span class="c-fn">str</span>, topic: <span class="c-fn">str</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-cmt"># STEP 1: decompose -- decide what subtasks this task breaks into</span>
+    <span class="c-cmt"># STEP 2: dispatch -- call each sub-agent with the right inputs, in the</span>
+    <span class="c-cmt"># right order (sequential here, since writer_agent NEEDS research_agent's</span>
+    <span class="c-cmt"># output -- section 3 shows a case where subtasks CAN run in parallel)</span>
+    sources = <span class="c-kw">await</span> research_agent(topic)
+    summary = <span class="c-kw">await</span> writer_agent(topic, sources)
+
+    <span class="c-cmt"># STEP 3: combine -- the coordinator's own job, not delegated to either sub-agent</span>
+    <span class="c-kw">return</span> {
+        <span class="c-str">"summary"</span>: summary,
+        <span class="c-str">"sources"</span>: sources,
+    }</div>
+
+  <p>The coordinator here never itself calls <code class="inline">web_search_tool</code> or writes prose directly — its entire job is orchestration: deciding sub-agents exist for this task, calling them with the right arguments in the right order, and assembling the final <code class="inline">dict</code>. This separation is what makes each piece independently improvable — <code class="inline">research_agent</code>'s prompt or tools can be refined without touching <code class="inline">writer_agent</code> at all, and vice versa, because neither depends on the other's internal implementation, only on the shape of data passed between them.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a simple delegator implementation is a coordinator function that (1) decomposes a task into an explicit set of subtasks, (2) calls each corresponding specialized sub-agent function with the right inputs — in whichever order their actual data dependencies require — and (3) combines the sub-agents' return values into the task's final result, without performing any sub-agent's specialized work itself. Each sub-agent is independently a well-scoped function (or model call with its own dedicated prompt/tools) responsible for exactly one kind of work, letting each be developed, tested, and improved in isolation from the others.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DELEGATION FLOW ============ -->
+<section id="live">
+  <div class="kicker">03 — Coordinator splits the task, dispatches, and merges — watch it happen</div>
+  <h2>Watch the delegation flow, live</h2>
+
+  <p><strong>Start here, before running it.</strong> This animates the coordinator receiving the "research and summarize fusion energy" task, splitting it into the two subtasks from sections 1 and 2, dispatching to both sub-agents, and combining their results. Toggle between sequential (writer waits on research, since it genuinely needs research's output) and a second scenario where two subtasks are truly independent and can be dispatched in parallel.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>COORDINATOR DISPATCHING TO SUB-AGENTS</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="sequential">Sequential (writer depends on research's output)</button>
+      <button class="chip" data-mode="parallel">Parallel (two genuinely independent subtasks)</button>
+    </div>
+    <div class="deleg-stage">
+      <div class="deleg-coord" id="deleg-coord-el">COORDINATOR<br><span style="font-size:0.65rem;">decompose → dispatch → combine</span></div>
+      <div class="deleg-arrows"><span>↙ dispatch</span><span>dispatch ↘</span></div>
+      <div class="deleg-subs">
+        <div class="deleg-sub sub1" id="sub1-el">research_agent<br><span style="font-size:0.65rem;">idle</span></div>
+        <div class="deleg-sub sub2" id="sub2-el">writer_agent<br><span style="font-size:0.65rem;">idle</span></div>
+      </div>
+    </div>
+    <button class="btn" id="deleg-run">Run: "Research and summarize fusion energy" ▸</button>
+    <div class="log" id="deleg-log"></div>
+  </div>
+
+  <div class="callout ok"><b>What to notice:</b> in sequential mode, <code class="inline">writer_agent</code> doesn't even START until <code class="inline">research_agent</code>'s sources are available — it structurally can't, since its prompt requires them as input. In parallel mode, both sub-agents start at the same time because neither's input depends on the other's output — the coordinator dispatches both immediately and simply waits for both to finish before combining. The coordinator's own logic (decompose, dispatch, combine) doesn't fundamentally change between the two modes — what changes is only whether the DATA DEPENDENCY between subtasks forces sequential execution or permits parallel execution.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding whether a task is worth decomposing at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A task is "translate this one sentence into French." Should a coordinator decompose this into sub-agents, or handle it directly? Using section 1's reasoning, justify your answer.</p>
+    <details><summary>Show solution</summary><div class="solution">This task should be handled directly, with no delegation at all -- it's a
+single, atomic unit of work that doesn't naturally decompose into
+genuinely DIFFERENT kinds of specialized work the way "research and
+summarize" does (finding sources vs. writing prose are different skills;
+translating one sentence is just... translating one sentence). Section 1's
+newsroom analogy is instructive here: an editor doesn't split "write one
+short caption" into a reporting subtask and a writing subtask -- that
+split only makes sense when a task genuinely has multiple distinct
+specialties it benefits from, and a one-sentence translation doesn't.
+
+Forcing decomposition onto a task that doesn't need it adds pure overhead
+-- the coordination logic (deciding subtasks, dispatching, combining
+results) costs extra model calls and latency without providing any of
+delegation's actual benefit (routing to genuinely better-suited
+specialists), since there's no meaningful specialization gap for a single-
+sentence translation to exploit. This mirrors react_pattern.html's
+Problem 4 lesson about ReAct's adaptivity not paying off on tasks that
+don't need it: an architectural pattern's cost should be paid only when
+its benefit is actually available to be captured.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a coordinator that dispatches in the wrong order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A buggy coordinator calls <code class="inline">writer_agent(topic, sources)</code> BEFORE <code class="inline">research_agent(topic)</code> has actually returned — passing an empty or placeholder <code class="inline">sources</code> value. Using section 2's code, what actually happens, and why is this a genuinely different kind of bug than the plan_and_solve_pattern lab's plan-staleness problem?</p>
+    <details><summary>Show solution</summary><div class="solution">writer_agent would receive an empty (or garbage placeholder) sources
+list and generate its summary prompt as "Write a 150-word summary of
+{topic} using only these sources: []" -- the model would either produce a
+summary with no actual grounding in real sources (likely hallucinating
+content, since it was explicitly told to use sources that don't exist),
+or refuse/hedge because it has nothing to summarize. Either way, the
+final combined result section 2's coordinator returns would be
+substantively broken -- a summary that isn't actually derived from
+research_agent's findings at all, defeating the entire point of
+delegating the research subtask in the first place.
+
+This differs from plan_and_solve_pattern.html's plan-staleness problem in
+an important way: that lab's issue was an early PLAN STEP's assumption
+becoming outdated relative to what a LATER step actually discovered mid-
+execution -- a timing/adaptivity problem. This bug is simpler and more
+fundamental: it's a straightforward DATA DEPENDENCY violation -- the
+coordinator's own code called writer_agent before the data it structurally
+needs (sources, an actual function parameter) existed at all. This isn't
+about adapting to unexpected results; it's about the coordinator failing
+to respect an ordering constraint that was already fully knowable in
+advance from section 2's function signatures alone (writer_agent's second
+parameter is literally named sources and is used directly in its prompt)
+-- a straightforward implementation bug, not a fundamental limitation of
+the delegation pattern itself.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing sequential vs. parallel dispatch correctly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A coordinator has three subtasks: "find sources on topic A," "find sources on topic B," and "write a combined summary of both." Which of the three should be dispatched in parallel, which must wait, and why — using section 3's distinction?</p>
+    <details><summary>Show solution</summary><div class="solution">"Find sources on topic A" and "find sources on topic B" should be
+dispatched in PARALLEL -- neither depends on the other's output at all
+(finding sources on topic A doesn't require or benefit from knowing
+anything about topic B's sources), exactly the genuinely-independent case
+section 3's parallel mode demonstrates. Dispatching them sequentially
+here would be pure wasted time -- there's no data dependency forcing the
+wait, so making them wait on each other anyway just makes the whole
+task take longer for no benefit, the same "you're not gaining anything by
+being sequential when nothing requires it" point react_pattern.html's
+Problem 4 made about independent ReAct lookups.
+
+"Write a combined summary of both" MUST wait for both source-finding
+subtasks to complete first -- it structurally needs BOTH sets of sources
+as input (a combined summary of A and B can't be written knowing only
+one), so it cannot start until both parallel subtasks return, even though
+those two subtasks themselves don't depend on each other. This is a
+common real shape for delegation: a "fan out" of independent subtasks
+followed by a "fan in" step that depends on ALL of them completing --
+correctly identifying which subtasks can run in parallel (no shared data
+dependency between them) versus which have to wait (this coordinator's
+combining step depending on both fan-out results) is exactly the
+judgment call a coordinator's decomposition logic has to get right for
+delegation to actually be efficient rather than just correct.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Handling a sub-agent that fails</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the graceful-error-handling principle from <code class="inline">mcp_client_basics.html</code> and the retry/DLQ reasoning from <code class="inline">backend/async_tool_job_queue_design.html</code>, what should section 2's coordinator do if <code class="inline">research_agent</code> raises an exception (e.g. its web search tool times out)?</p>
+    <details><summary>Show solution</summary><div class="solution">The coordinator should not let research_agent's exception simply
+propagate up uncaught and crash the whole delegation flow -- exactly the
+graceful-error-handling principle mcp_client_basics.html established for
+individual tool calls, now applied one level up, to an entire sub-agent
+invocation. A reasonable approach:
+
+    try:
+        sources = await research_agent(topic)
+    except ToolTimeoutError as e:
+        # option 1: retry with backoff (async_tool_job_queue_design's
+        # pattern, applied to a sub-agent call instead of a queued job)
+        sources = await retry_with_backoff(research_agent, topic)
+        # option 2: degrade gracefully -- proceed without sources, but
+        # tell writer_agent (and ultimately the user) that no sources
+        # were found, rather than silently proceeding as if sources=[]
+        # were a normal, successful result
+        # option 3: fail the whole task explicitly, returning a clear
+        # error rather than a broken or misleadingly empty summary
+
+Which option is right depends on the task's tolerance for partial
+failure -- but ALL three are meaningfully better than either crashing
+uncaught or (as Problem 2's bug does) silently proceeding with garbage
+input as if nothing went wrong. The key shared idea across all three
+options: a sub-agent's failure is treated as a real, expected outcome the
+coordinator's logic explicitly accounts for, exactly the same posture
+mcp_client_basics.html argued for at the level of a single MCP tool call
+-- multi-agent delegation doesn't get to skip this just because the
+"tool call" here happens to be an entire sub-agent rather than a single
+function.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Comparing multi-agent delegation to a single agent using multiple tools</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's "research and summarize" task could also be done by ONE agent with access to both a search tool and no special writing constraints, reasoning through the whole thing itself via a ReAct loop. What does splitting it into two SEPARATE sub-agents actually buy you that a single capable agent with the right tools wouldn't already provide?</p>
+    <details><summary>Show solution</summary><div class="solution">A single sufficiently capable agent with the right tools genuinely CAN
+accomplish the same end result -- multi-agent delegation isn't the only
+way to solve this task, and for a simple enough version of it, a single
+ReAct loop (react_pattern.html) calling a search tool and then reasoning
+its way to a summary might be entirely sufficient, echoing Problem 1's
+point that decomposition isn't free and shouldn't be applied
+reflexively.
+
+What separate sub-agents specifically buy, when the task justifies it:
+(1) each sub-agent can have a NARROWER, more specialized prompt/context --
+research_agent's entire prompt and context can be focused purely on
+source evaluation without also needing instructions about prose style,
+and vice versa for writer_agent, which can reduce the surface area for
+either to get confused about competing objectives within one prompt; (2)
+each sub-agent is independently testable, improvable, and swappable --
+you can upgrade or fine-tune JUST the research capability without
+touching the writer at all, which section 2 already noted as a benefit of
+the separation; (3) sub-agents can genuinely run in PARALLEL when their
+subtasks are independent (section 3), something a single sequential
+ReAct loop fundamentally cannot do since it only ever takes one action at
+a time; and (4) for larger, more complex tasks with many distinct
+specialties (not just two), a single agent's context and reasoning can
+become genuinely overloaded trying to hold every specialty's
+considerations at once, whereas delegation keeps each specialist's
+context scoped to just its own job. The trade-off is real added
+complexity -- orchestration logic, inter-agent data-passing, and
+coordination failure modes (Problem 2, Problem 4) that a single agent
+simply doesn't have to deal with -- which is exactly why "does this task
+actually need multiple specialists" (Problem 1) is the right question to
+ask before reaching for delegation by default.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch a coordinator + 2 sub-agent decomposition for a new complex task and justify why each subtask needs its own specialist, (2) correctly identify which subtasks in a 3-subtask scenario can run in parallel versus which must wait, using data dependencies (not intuition) as the deciding factor, and (3) explain what a coordinator should do when a sub-agent fails, connecting it to the same graceful-error-handling posture from earlier this month's MCP client lab? This closes out Week 2 of Month 4 — ReAct's step-by-step loop, Plan-and-Solve's upfront strategy, stateful graphs modeling workflow structure explicitly, an async job queue for slow tool calls, a conversation history schema that survives branching and multiple sessions, and now a coordinator splitting work across specialists — six different shapes of the same underlying question: how should an agent actually get things done.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — multi-agent delegation.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: DELEGATION FLOW DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-mode]");
+  var runBtn = document.getElementById("deleg-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("deleg-log");
+  var coordEl = document.getElementById("deleg-coord-el");
+  var sub1El = document.getElementById("sub1-el");
+  var sub2El = document.getElementById("sub2-el");
+  var mode = "sequential";
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function resetVisual(){
+    coordEl.classList.remove("active");
+    [sub1El, sub2El].forEach(function(el){
+      el.classList.remove("active", "done");
+    });
+    sub1El.innerHTML = 'research_agent<br><span style="font-size:0.65rem;">idle</span>';
+    sub2El.innerHTML = 'writer_agent<br><span style="font-size:0.65rem;">idle</span>';
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      mode = c.dataset.mode;
+      resetVisual();
+      logEl.innerHTML = "";
+    });
+  });
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    resetVisual();
+    logEl.innerHTML = "";
+
+    coordEl.classList.add("active");
+    log('<b>Coordinator:</b> receives task — "Research and summarize recent developments in fusion energy."');
+    await wait(400);
+
+    if(mode === "sequential"){
+      log('<b>Coordinator decomposes:</b> Subtask A → research_agent (find sources). Subtask B → writer_agent (summarize) — B needs A\'s output, so dispatch is SEQUENTIAL.');
+      await wait(400);
+
+      sub1El.classList.add("active");
+      sub1El.innerHTML = 'research_agent<br><span style="font-size:0.65rem;">searching...</span>';
+      log('<b>Dispatch A:</b> await research_agent("fusion energy") — coordinator waits here, writer_agent has not started.');
+      await wait(700);
+
+      sub1El.classList.remove("active");
+      sub1El.classList.add("done");
+      sub1El.innerHTML = 'research_agent<br><span style="font-size:0.65rem; color:var(--ok-c);">done — 4 sources</span>';
+      log('<b style="color:var(--sub1-c);">research_agent returns:</b> 4 sources found.');
+      await wait(400);
+
+      sub2El.classList.add("active");
+      sub2El.innerHTML = 'writer_agent<br><span style="font-size:0.65rem;">writing...</span>';
+      log('<b>Dispatch B:</b> await writer_agent("fusion energy", sources) — only NOW possible, since it needs A\'s actual result.');
+      await wait(700);
+
+      sub2El.classList.remove("active");
+      sub2El.classList.add("done");
+      sub2El.innerHTML = 'writer_agent<br><span style="font-size:0.65rem; color:var(--ok-c);">done — 150-word summary</span>';
+      log('<b style="color:var(--sub2-c);">writer_agent returns:</b> 150-word summary grounded in the 4 sources.');
+      await wait(400);
+
+      log('<b style="color:var(--ok-c);">Coordinator combines:</b> {"summary": ..., "sources": [...]} — final result returned.');
+    } else {
+      log('<b>Coordinator decomposes:</b> two genuinely independent subtasks this time — neither needs the other\'s output — so BOTH dispatch in PARALLEL.');
+      await wait(400);
+
+      sub1El.classList.add("active");
+      sub1El.innerHTML = 'research_agent<br><span style="font-size:0.65rem;">searching...</span>';
+      sub2El.classList.add("active");
+      sub2El.innerHTML = 'writer_agent<br><span style="font-size:0.65rem;">drafting outline...</span>';
+      log('<b>Dispatch A + B simultaneously:</b> both sub-agents start at the same time — coordinator awaits both together (e.g. asyncio.gather).');
+      await wait(750);
+
+      sub1El.classList.remove("active");
+      sub1El.classList.add("done");
+      sub1El.innerHTML = 'research_agent<br><span style="font-size:0.65rem; color:var(--ok-c);">done</span>';
+      log('<b style="color:var(--sub1-c);">research_agent returns</b> — finished independently of writer_agent.');
+      await wait(200);
+
+      sub2El.classList.remove("active");
+      sub2El.classList.add("done");
+      sub2El.innerHTML = 'writer_agent<br><span style="font-size:0.65rem; color:var(--ok-c);">done</span>';
+      log('<b style="color:var(--sub2-c);">writer_agent returns</b> — finished independently of research_agent, in roughly the SAME wall-clock time, not after it.');
+      await wait(400);
+
+      log('<b style="color:var(--ok-c);">Coordinator combines:</b> both results merged — total time was roughly max(A, B), not A + B, because neither waited on the other.');
+    }
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    resetVisual();
+    logEl.innerHTML = "";
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

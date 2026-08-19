@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Conversation History Schema</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --branch-c:#c792ea; --idx-c:#4fc3f7; --edit-c:#f2c14e; --ok-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--branch-c); color:var(--branch-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.b{border-color:var(--idx-c); color:var(--idx-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--edit-c); color:var(--edit-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:320px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* branch tree visual */
+  .branch-tree{font-family:var(--mono); font-size:0.78rem; margin:1.2rem 0; padding:1rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; overflow-x:auto;}
+  .branch-node{display:flex; align-items:center; gap:0.6rem; margin:0.35rem 0; white-space:nowrap;}
+  .branch-node .dot{width:9px; height:9px; border-radius:50%; background:var(--ink-dim); flex-shrink:0;}
+  .branch-node.main .dot{background:var(--idx-c);}
+  .branch-node.branch .dot{background:var(--branch-c);}
+  .branch-node.edited .dot{background:var(--edit-c);}
+  .branch-node .msg{color:#cdd0d8;}
+  .branch-node .meta{color:var(--ink-dim); font-size:0.7rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--ok-c);} .dc-col.b h4{color:var(--ok-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.branch{border-left-color:var(--branch-c); background:rgba(199,146,234,0.06);} .callout.branch b{color:var(--branch-c);}
+  .callout.idx{border-left-color:var(--idx-c); background:rgba(79,195,247,0.06);} .callout.idx b{color:var(--idx-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · CONVERSATION HISTORY SCHEMA</div>
+  <h1>A conversation isn't always a straight line. Sometimes it branches — and the schema has to survive that.</h1>
+  <p class="lede"><code class="inline">agent_memory_schemas.html</code> already covered the base <code class="inline">conversation_turns</code> table — one row per message, roles, tool-call pairs. This lab goes deeper into what that base schema doesn't handle on its own: a user editing a past message and forking the conversation from that point, multiple parallel agent sessions sharing the same underlying history, and — critically — the exact index shape that makes "give me the last N turns" fast at real scale.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Branching — an edited message forks the thread</div>
+    <div class="pipe-label b">Shared history — multiple sessions, one lineage</div>
+    <div class="pipe-label c">The index shape for "last N turns," fast</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="branching">1 · Branching Conversations &amp; Edited Messages</a>
+  <a data-target="shared">2 · Multiple Sessions Referencing Shared History</a>
+  <a data-target="retrieval">3 · Efficient Retrieval of Recent Context</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: BRANCHING ============ -->
+<section id="branching">
+  <div class="kicker">01 — Editing a past message doesn't overwrite history, it forks it</div>
+  <h2>Schema for branching conversations and edited messages</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Think about editing a sent email in a thread everyone's already replied to — you can't actually rewrite what people already read and responded to. What editing tools really do instead is create a NEW version of that message, and everything that happens after the edit builds on the new version, while the OLD version and its own replies still exist, just no longer part of the "current" thread. A conversation history schema needs the same idea: editing turn 5 of a 10-turn conversation doesn't erase turns 6-10 — it forks the conversation, creating a new branch from turn 5 onward, while the original branch remains intact underneath.</p>
+
+  <p><code class="inline">agent_memory_schemas.html</code>'s <code class="inline">conversation_turns</code> table modeled a conversation as a strictly linear sequence, ordered by <code class="inline">created_at</code>. That linear model breaks the moment a message can be edited after later turns already exist — it has no way to represent "two different possible turn 6's" for the same conversation. Branching support adds exactly that:</p>
+
+  <div class="code"><span class="c-kw">CREATE TABLE</span> conversation_turns (
+    turn_id         <span class="c-kw">BIGSERIAL PRIMARY KEY</span>,
+    conversation_id <span class="c-kw">UUID NOT NULL REFERENCES</span> conversations(conversation_id),
+    parent_turn_id  <span class="c-kw">BIGINT REFERENCES</span> conversation_turns(turn_id),  <span class="c-cmt">-- NULL only for the first turn</span>
+    branch_id       <span class="c-kw">UUID NOT NULL</span>,                     <span class="c-cmt">-- which branch this turn belongs to</span>
+    role            <span class="c-kw">TEXT NOT NULL CHECK</span> (role <span class="c-kw">IN</span> (<span class="c-str">'user'</span>, <span class="c-str">'assistant'</span>, <span class="c-str">'tool'</span>)),
+    content         <span class="c-kw">TEXT</span>,
+    is_edited_from  <span class="c-kw">BIGINT REFERENCES</span> conversation_turns(turn_id),  <span class="c-cmt">-- the turn this one supersedes, if an edit</span>
+    turn_number     <span class="c-kw">INT NOT NULL</span>,                      <span class="c-cmt">-- position within ITS branch, not global</span>
+    created_at      <span class="c-kw">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="c-cmt">-- editing turn 5 does NOT update its row. It inserts a NEW row:</span>
+<span class="c-kw">INSERT INTO</span> conversation_turns
+    (conversation_id, parent_turn_id, branch_id, role, content, is_edited_from, turn_number)
+<span class="c-kw">VALUES</span>
+    (<span class="c-str">'conv-88a1'</span>, <span class="c-num">4</span>, <span class="c-fn">gen_random_uuid</span>(), <span class="c-str">'user'</span>, <span class="c-str">'Actually, what about Berlin instead?'</span>, <span class="c-num">5</span>, <span class="c-num">5</span>);
+    <span class="c-cmt">-- parent_turn_id=4 (same parent as the ORIGINAL turn 5) -- this is the fork point
+    -- is_edited_from=5 -- traceable link back to what this replaces
+    -- new branch_id -- everything built on THIS turn belongs to the new branch
+    -- the original turn 5, and turns 6-10 built on it, are untouched and still exist</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE CONVERSATION, ONE EDIT, TWO BRANCHES</span></div>
+    <div class="branch-tree" id="branch-tree"></div>
+    <div class="log" id="branch-log"><span class="line">Turn 5 gets edited after turns 6-7 already existed on the original branch — notice the original branch is untouched, not deleted.</span></div>
+  </div>
+
+  <p>The <strong>fork point</strong> is exactly where <code class="inline">parent_turn_id</code> matters: the edited turn 5 shares the SAME <code class="inline">parent_turn_id</code> (turn 4) as the original turn 5 — both are valid continuations of turn 4, just on different branches. <code class="inline">is_edited_from</code> is a separate, orthogonal link: it doesn't affect the conversation's tree structure at all, it's purely a traceability pointer saying "this turn is an edited version of that one," useful for showing a user an edit history or for the extraction pipeline from <code class="inline">agent_memory_schemas.html</code> to know not to treat both versions as independently meaningful facts.</p>
+
+  <div class="callout branch"><b>Interview-ready definition:</b> a branching conversation schema replaces a single linear turn order with a tree: each turn has a <code class="inline">parent_turn_id</code> pointing to the turn it continues from, and a <code class="inline">branch_id</code> identifying which line of the tree it belongs to. Editing a past message doesn't update or delete existing rows — it inserts a new turn sharing the edited turn's <code class="inline">parent_turn_id</code> (creating a sibling, and therefore a fork) with an <code class="inline">is_edited_from</code> pointer back to the turn it replaces, so both the original branch and the new one remain fully intact and independently reconstructable.</div>
+</section>
+
+<!-- ============ SECTION 2: SHARED SESSIONS ============ -->
+<section id="shared">
+  <div class="kicker">02 — Several agent sessions, one underlying history, not several copies of it</div>
+  <h2>Multiple parallel agent sessions referencing shared history</h2>
+
+  <p><strong>Start here, before the schema.</strong> Think about several people editing shared meeting notes at once, each scrolled to a different section — they're all working against the SAME underlying document, not private copies of it, and a change one person makes is visible to the others without anyone needing to manually sync files. A multi-agent or multi-session system wants the same property for conversation history: several agent SESSIONS (maybe different specialized sub-agents, per <code class="inline">multi_agent_delegation.html</code>, or the same user resuming from two devices) reading and appending to ONE shared history, rather than each maintaining its own disconnected copy.</p>
+
+  <div class="code"><span class="c-kw">CREATE TABLE</span> agent_sessions (
+    session_id      <span class="c-kw">UUID PRIMARY KEY</span>,
+    conversation_id <span class="c-kw">UUID NOT NULL REFERENCES</span> conversations(conversation_id),
+    branch_id       <span class="c-kw">UUID NOT NULL</span>,          <span class="c-cmt">-- which branch THIS session is currently reading/writing on</span>
+    agent_role      <span class="c-kw">TEXT</span>,                   <span class="c-cmt">-- e.g. 'coordinator', 'research_subagent' -- see multi_agent_delegation</span>
+    last_read_turn_id <span class="c-kw">BIGINT REFERENCES</span> conversation_turns(turn_id),  <span class="c-cmt">-- this session's read position</span>
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL DEFAULT</span> now(),
+    last_active_at  <span class="c-kw">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="c-cmt">-- two sessions, same conversation, same branch -- both see every turn either writes</span>
+<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> conversation_turns
+<span class="c-kw">WHERE</span> conversation_id = <span class="c-str">'conv-88a1'</span> <span class="c-kw">AND</span> branch_id = <span class="c-str">'branch-main'</span>
+<span class="c-kw">ORDER BY</span> turn_number <span class="c-kw">ASC</span>;
+<span class="c-cmt">-- session A's coordinator and session B's research sub-agent both run this
+-- same query against the same rows -- there is exactly ONE copy of this
+-- conversation's turns, not one private copy per session</span></div>
+
+  <p>The key design decision here: <code class="inline">agent_sessions</code> is a thin table tracking WHO is participating and WHERE each session currently is in the shared history (<code class="inline">last_read_turn_id</code>) — it does NOT duplicate any turn content. This mirrors a principle already established for long-term memory in <code class="inline">agent_memory_schemas.html</code>: keep exactly one authoritative copy of the actual data (there, memories scoped by user; here, turns scoped by conversation+branch), and let multiple consumers (sessions, sub-agents) reference it rather than each maintaining redundant copies that could drift out of sync with each other.</p>
+
+  <div class="callout idx"><b>Interview-ready definition:</b> supporting multiple parallel sessions against shared conversation history means sessions are tracked in a separate, lightweight table recording which conversation/branch each session is reading or writing (and its current read position), while the actual turn content lives in exactly one place — <code class="inline">conversation_turns</code> — that every session queries directly rather than copies. This avoids the consistency problem of N sessions maintaining N independent copies of the same conversation that could diverge; every session sees writes from every other session because there is only ever one underlying set of rows being read.</div>
+</section>
+
+<!-- ============ SECTION 3: EFFICIENT RETRIEVAL ============ -->
+<section id="retrieval">
+  <div class="kicker">03 — "Give me the last N turns" has to stay fast as history grows</div>
+  <h2>Efficient retrieval of recent context</h2>
+
+  <p><strong>Start here, before the index.</strong> <code class="inline">database/indexing.html</code> established the leftmost-prefix rule for composite indexes: an index on <code class="inline">(A, B)</code> serves queries that filter on <code class="inline">A</code> alone, or on <code class="inline">A</code> AND <code class="inline">B</code> together, efficiently — but not a query that filters on <code class="inline">B</code> alone. The dominant query against this lab's schema is "give me the last N turns of THIS conversation's THIS branch" — an equality filter on <code class="inline">(conversation_id, branch_id)</code> combined with sorting by <code class="inline">turn_number</code> (or <code class="inline">created_at</code>) descending. That's exactly the shape a composite index needs to be built around.</p>
+
+  <div class="code"><span class="c-kw">CREATE INDEX</span> idx_turns_conv_branch_recency
+    <span class="c-kw">ON</span> conversation_turns (conversation_id, branch_id, turn_number <span class="c-kw">DESC</span>);
+    <span class="c-cmt">-- leftmost-prefix: conversation_id filters first, branch_id narrows
+    -- within it, turn_number DESC means the index is ALREADY in the exact
+    -- order "most recent turn first" needs -- no separate sort step required</span>
+
+<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> conversation_turns
+<span class="c-kw">WHERE</span> conversation_id = <span class="c-str">'conv-88a1'</span> <span class="c-kw">AND</span> branch_id = <span class="c-str">'branch-main'</span>
+<span class="c-kw">ORDER BY</span> turn_number <span class="c-kw">DESC</span>
+<span class="c-kw">LIMIT</span> <span class="c-num">20</span>;
+<span class="c-cmt">-- EXPLAIN ANALYZE shows: Index Scan using idx_turns_conv_branch_recency
+-- (not a Seq Scan) -- Postgres narrows directly to this conversation's
+-- this branch's rows, already sorted, and stops after 20 -- it never
+-- touches rows from OTHER conversations or OTHER branches at all</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHY (conversation_id, branch_id, turn_number DESC) IS THE RIGHT SHAPE</span>
+      <div><button class="btn secondary" id="idx-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-idx="right">Index: (conversation_id, branch_id, turn_number DESC)</button>
+      <button class="chip" data-idx="wrong">Index: (turn_number DESC) alone</button>
+      <button class="chip" data-idx="none">No index</button>
+    </div>
+    <button class="btn" id="idx-run">Run "last 20 turns of conv-88a1 / branch-main" ▸</button>
+    <div class="log" id="idx-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Index shape</th><th>What happens for this query</th><th>Why</th></tr>
+    <tr><td><code>(conversation_id, branch_id, turn_number DESC)</code></td><td>Direct index scan, narrows to exact rows needed, already sorted</td><td>Matches the query's equality filters (leftmost columns) AND its sort order (trailing DESC column) in one structure — <code>database/indexing.html</code>'s leftmost-prefix rule applied to 2 filter columns plus a sort column</td></tr>
+    <tr><td><code>(turn_number DESC)</code> alone</td><td>Index technically usable for the sort, but can't narrow to one conversation/branch first — still touches far more rows than needed, or Postgres may just seq scan instead</td><td>An index with no leading equality columns can't answer "which conversation" at all — it only helps with global ordering, which isn't the actual access pattern</td></tr>
+    <tr><td>No index</td><td>Full table scan of every turn ever written, across every conversation, filtering and sorting in memory afterward</td><td>Cost grows linearly with TOTAL rows in the table, not with the size of one conversation — exactly the difference the indexing lab measured directly for range queries</td></tr>
+  </table>
+
+  <p>This is the same reasoning <code class="inline">agent_memory_schemas.html</code> applied to its simpler <code class="inline">(conversation_id, created_at)</code> index, extended one level further: branching (section 1) means <code class="inline">conversation_id</code> alone is no longer enough to identify "the current thread" — a conversation with 3 branches has 3 different valid "last 20 turns" answers depending on which branch is being read, so <code class="inline">branch_id</code> has to be part of the equality-filter prefix too, not bolted on afterward as a filter applied to an already-fetched result set.</p>
+
+  <div class="callout warn"><b>A trap worth naming directly:</b> it's tempting to index <code class="inline">(conversation_id, turn_number DESC)</code> and filter <code class="inline">branch_id</code> in application code after fetching — this technically "works" but throws away exactly the narrowing the index was supposed to provide: the database still has to scan every branch's turns for that conversation (not just the one branch actually needed) before the application can discard the irrelevant ones. For a conversation with many branches (frequent edits, many forks), this can mean fetching several times more rows than necessary on every single retrieval — the fix is including <code class="inline">branch_id</code> IN the index's leftmost-prefix columns, not filtering it out afterward.</div>
+
+  <div class="callout idx"><b>Interview-ready definition:</b> efficient retrieval of recent conversation context requires a composite index whose leftmost columns match the query's equality filters (<code class="inline">conversation_id</code>, and — once branching is supported — <code class="inline">branch_id</code>) followed by the sort column in the same direction the query needs it (<code class="inline">turn_number DESC</code> for "most recent first"), letting the database satisfy both the filter and the ordering from one index structure without a separate sort step or a scan of irrelevant rows. Omitting a necessary equality column from the index's prefix — even if it's still applied as a filter afterward — forces the database to scan more rows than the query logically needs, silently degrading exactly the "give me the last N turns" access pattern this schema exists to serve fast.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Distinguishing a fork from a plain new turn</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's schema, how would you write a query to determine whether a given <code class="inline">turn_id</code> is a fork point (i.e. has more than one child turn) versus a normal, non-branching turn?</p>
+    <details><summary>Show solution</summary><div class="solution">A fork point is exactly a turn_id that appears as parent_turn_id for MORE
+THAN ONE row in conversation_turns -- section 1 established that an edit
+creates a new row sharing the edited turn's ORIGINAL parent_turn_id,
+meaning two turns (the original and its edited replacement) both point
+back to the same parent. A query like:
+
+    SELECT parent_turn_id, COUNT(*) AS child_count
+    FROM conversation_turns
+    WHERE parent_turn_id = ?
+    GROUP BY parent_turn_id
+    HAVING COUNT(*) > 1;
+
+If this returns a row, the given turn_id is a fork point -- more than one
+valid continuation exists from it, meaning more than one branch_id has a
+turn whose parent is this turn. A turn with exactly one child is a normal,
+non-branching link in the chain; a turn with zero children is simply the
+current tip of whichever branch it belongs to. This is a genuinely useful
+query for UI purposes too -- it's exactly what you'd run to decide whether
+to show a user "this message has alternate versions" affordance.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reconstructing one branch's full history in order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given section 1's schema, why is <code class="inline">WHERE conversation_id = ? AND branch_id = ? ORDER BY turn_number ASC</code> sufficient to reconstruct one branch's full conversation in order — without needing to walk <code class="inline">parent_turn_id</code> pointers one at a time the way you might reconstruct a generic tree?</p>
+    <details><summary>Show solution</summary><div class="solution">Because branch_id is assigned to EVERY turn that belongs to that branch
+at write time (section 1's edit example gives the new forked turn a NEW
+branch_id, and by extension every subsequent turn built on it would
+inherit or reference that same branch_id) -- meaning branch_id already
+encodes "which single line of the tree this turn belongs to" directly as
+a column value, not something that has to be DERIVED by walking
+parent_turn_id links at read time. Combined with turn_number (this turn's
+position specifically within its own branch, as section 1 notes turn_number
+is "position within ITS branch, not global"), a simple filter-plus-sort
+query reconstructs the full ordered sequence directly.
+
+This is a deliberate schema design choice, not an accident: many tree
+structures (e.g. a raw parent-pointer-only tree with no branch_id) DO
+require walking parent links recursively to reconstruct a path, which is
+considerably more expensive as a query (often a recursive CTE) than a
+single indexed filter-and-sort. Materializing branch_id as its own column
+at write time trades a small amount of write-time bookkeeping (deciding
+and storing the correct branch_id when a turn is inserted) for a much
+cheaper, more directly indexable read pattern -- exactly the kind of
+trade section 3's indexing discussion is built around: paying a cost
+where writes happen once, to save cost on reads that happen far more
+often.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a stale read across two sessions</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two sessions (per section 2's <code class="inline">agent_sessions</code> table) are both active on <code class="inline">conversation_id = 'conv-88a1'</code>, <code class="inline">branch_id = 'branch-main'</code>. Session A writes a new turn. Should session B automatically see it on its next read, and what — if anything — has to be true about the schema for that to hold?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, session B should see session A's new turn on its very next SELECT
+against conversation_turns for that same conversation_id/branch_id --
+this is exactly the property section 2 establishes: because there is only
+ONE authoritative copy of the turn data (not one private copy per
+session), any query session B runs is reading from the same underlying
+rows session A just wrote to, with no synchronization step required
+between them. This is a direct consequence of NOT duplicating turn content
+per session, unlike the shared-agent-history problem section 2 explicitly
+frames in contrast to per-session private copies.
+
+What has to be true for this to actually hold in practice, beyond just
+the schema shape: the database's isolation level (transactions_and_isolation.html)
+needs to guarantee session A's committed write is visible to a
+subsequently-issued query from session B -- true under any standard
+isolation level for a plain committed INSERT followed by a fresh SELECT,
+so this isn't usually a real risk with a normal relational database. Where
+it COULD go wrong: if session B is instead reading from a STALE CACHE of
+the conversation's turns (e.g. an in-memory copy fetched once at session
+start and never refreshed) rather than querying conversation_turns
+directly on each read -- that's not a schema problem, it's an application-
+layer caching decision that would need its own explicit invalidation
+strategy, similar to the cache-freshness trade-offs the caching_layer_design
+lab covered generally.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing the right index when branch_id wasn't in the equality filter</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team indexes <code class="inline">conversation_turns</code> as <code class="inline">(branch_id, conversation_id, turn_number DESC)</code> — same three columns as section 3's recommended index, but with <code class="inline">branch_id</code> listed FIRST instead of second. Using the leftmost-prefix rule, does this index serve the "last 20 turns of this conversation's this branch" query just as well?</p>
+    <details><summary>Show solution</summary><div class="solution">In practice, yes for THIS specific query, because both conversation_id
+and branch_id are used as EQUALITY filters together (WHERE conversation_id
+= ? AND branch_id = ?) -- the leftmost-prefix rule cares about which
+columns are the LEADING equality-filtered columns as a SET when they're
+all present with equality conditions, and Postgres's planner can use a
+composite index efficiently regardless of which of the two equality
+columns is listed first, as long as both appear before the sort column in
+the index definition. So (branch_id, conversation_id, turn_number DESC)
+and (conversation_id, branch_id, turn_number DESC) perform comparably for
+this exact query.
+
+Where the choice of ORDER between the two equality columns WOULD matter:
+if there's ALSO a common query that filters by branch_id alone (unlikely
+here, since branch_id isn't meaningful without knowing which conversation
+it belongs to) or by conversation_id alone (section 3's earlier,
+pre-branching index actually was exactly this: (conversation_id,
+created_at) with no branch_id at all) -- in THAT case, whichever column is
+listed first is the one a single-column-equivalent query can still use via
+the leftmost-prefix rule, while the second column would NOT help a query
+filtering only on itself. Since conversation_id alone (without branch_id)
+is a much more plausible standalone query pattern than branch_id alone
+(a UUID that's meaningless without its conversation), putting
+conversation_id first, as section 3 does, is the safer choice for
+supporting BOTH the full two-column filter and a plausible
+conversation_id-only fallback query -- not because the two-column query
+itself cares about the order.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Extending agent_memory_schemas's extraction pipeline for branches</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;"><code class="inline">agent_memory_schemas.html</code>'s extraction pipeline reads recent turns from <code class="inline">conversation_turns</code> to populate long-term memory. With branching now in the schema, what does the extraction step need to decide that it didn't before, and why does getting this wrong risk polluting long-term memory?</p>
+    <details><summary>Show solution</summary><div class="solution">With branching, extraction needs to decide WHICH branch's turns to read
+from -- a conversation with multiple branches (e.g. an original path plus
+an edited fork) has multiple, genuinely DIFFERENT possible histories, and
+naively reading ALL turns for a conversation_id regardless of branch_id
+would mix content from mutually exclusive alternate versions of the
+conversation together, as if they all actually happened, when in reality
+only ONE branch represents what the user actually ended up seeing/saying.
+
+Concretely, using section 1's edit example: the ORIGINAL turn 5 ("what
+about the weather in Lisbon") and the edited turn 5 ("actually, what about
+Berlin instead") are alternate, mutually exclusive versions of the SAME
+point in the conversation -- a user never said BOTH; they said one, then
+changed it to the other. If extraction reads turns from BOTH branches
+without distinguishing them, it risks generating a long-term memory entry
+like "user asked about Lisbon and Berlin weather" as if both were genuinely
+part of one continuous exchange, when the more accurate fact is "user
+initially asked about Lisbon, then corrected themselves to Berlin" --
+information the branch_id and is_edited_from columns preserve precisely,
+but only if the extraction query actually filters to ONE branch
+(typically whichever branch_id currently represents the "live," most
+recently active line of conversation) rather than pulling from
+conversation_turns for a conversation_id with no branch_id filter at all.
+This is a direct, concrete consequence of adding branching to the schema:
+every downstream consumer that assumed "conversation_id uniquely
+identifies one linear history" -- including agent_memory_schemas's own
+extraction pipeline -- now needs to be updated to also filter by
+branch_id, or it will silently produce corrupted or misleading results
+once branching data actually exists in the table.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch how an edited message becomes two sibling rows sharing a parent_turn_id and explain why that's a fork rather than an overwrite, (2) explain why multiple agent sessions read/write ONE shared set of rows rather than private copies, and (3) justify the exact column order of the recommended composite index using the leftmost-prefix rule, including what breaks if branch_id is left out of it entirely? This schema is exactly what a coordinator and its sub-agents from the next lab, multi_agent_delegation, would be reading from and writing to if they needed to share conversation context rather than working from disconnected copies.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — conversation history schema.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: BRANCH TREE RENDER */
+(function(){
+  var treeEl = document.getElementById("branch-tree");
+  var logEl = document.getElementById("branch-log");
+
+  var NODES = [
+    {n:1, cls:"main", msg:'"What is the weather in Lisbon?"', meta:"turn 1 · branch-main · parent: none"},
+    {n:2, cls:"main", msg:'"18°C and partly cloudy."', meta:"turn 2 · branch-main · parent: 1"},
+    {n:3, cls:"main", msg:'"And tomorrow?"', meta:"turn 3 · branch-main · parent: 2"},
+    {n:4, cls:"main", msg:'"Around 20°C, mostly sunny."', meta:"turn 4 · branch-main · parent: 3"},
+    {n:5, cls:"main", msg:'"What about the population?"', meta:"turn 5 (ORIGINAL) · branch-main · parent: 4"},
+    {n:6, cls:"main", msg:'"About 2.1 million."', meta:"turn 6 · branch-main · parent: 5"},
+    {n:7, cls:"edited", msg:'"Actually, what about Berlin instead?"', meta:"turn 5 (EDITED) · branch-edit1 · parent: 4 · is_edited_from: 5"},
+    {n:8, cls:"branch", msg:'"Berlin has about 3.7 million people."', meta:"turn 6 · branch-edit1 · parent: 7"}
+  ];
+
+  function render(){
+    treeEl.innerHTML = "";
+    NODES.forEach(function(node){
+      var row = document.createElement("div");
+      row.className = "branch-node " + node.cls;
+      row.innerHTML = '<span class="dot"></span><span class="msg">' + node.msg + '</span><span class="meta">— ' + node.meta + '</span>';
+      treeEl.appendChild(row);
+    });
+  }
+  render();
+})();
+
+/* SECTION 3: INDEX COMPARISON DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-idx]");
+  var runBtn = document.getElementById("idx-run");
+  var resetBtn = document.getElementById("idx-reset");
+  var logEl = document.getElementById("idx-log");
+  var selected = "right";
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.idx;
+    });
+  });
+
+  runBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    log('<b>Query:</b> SELECT * FROM conversation_turns WHERE conversation_id = \'conv-88a1\' AND branch_id = \'branch-main\' ORDER BY turn_number DESC LIMIT 20;');
+
+    if(selected === "right"){
+      log('<b>Plan:</b> Index Scan using idx_turns_conv_branch_recency, filtering on (conversation_id, branch_id) then reading turn_number DESC directly from the index.');
+      log('<b style="color:var(--ok-c);">Result:</b> narrows directly to ~20 rows read total — matches this conversation, this branch, already in the right order. No sort step, no irrelevant rows touched.');
+    } else if(selected === "wrong"){
+      log('<b>Plan:</b> the (turn_number DESC)-only index has no leading equality columns for conversation_id or branch_id — it can supply GLOBAL ordering but can\'t narrow to this conversation/branch at all.');
+      log('<b style="color:var(--bad-c);">Result:</b> Postgres either falls back to a Seq Scan (checking every row\'s conversation_id and branch_id in application-visible filtering) or scans a large portion of the globally-ordered index discarding almost everything — touching far more than the ~20 rows actually needed, and cost grows with TOTAL rows across every conversation.');
+    } else {
+      log('<b>Plan:</b> Seq Scan on conversation_turns — no usable index at all.');
+      log('<b style="color:var(--bad-c);">Result:</b> every single row in the entire table is read and checked against the WHERE clause, then sorted in memory. Cost scales with the FULL table size, not with this one conversation\'s branch — exactly the linear-scan cost database/indexing.html measured directly for range queries with no index.');
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+  });
+})();
+</script>
+</body>
+</html>

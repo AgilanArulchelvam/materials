@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — ReAct Pattern</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --thought-c:#c792ea; --action-c:#4fc3f7; --obs-c:#7fd8a0; --final-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--thought-c); color:var(--thought-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.b{border-color:var(--action-c); color:var(--action-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:420px; overflow-y:auto;}
+  .log .line{margin:0.4rem 0; padding:0.5rem 0.7rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.thought{border-left-color:var(--thought-c); background:rgba(199,146,234,0.06);}
+  .log .line.action{border-left-color:var(--action-c); background:rgba(79,195,247,0.06);}
+  .log .line.obs{border-left-color:var(--obs-c); background:rgba(127,216,160,0.06);}
+  .log .line.final{border-left-color:var(--final-c); background:rgba(242,193,78,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .loop-diagram{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .loop-node{padding:0.6rem 0.9rem; border-radius:10px; border:1.5px solid; text-align:center;}
+  .loop-node.thought{border-color:var(--thought-c); color:var(--thought-c); background:rgba(199,146,234,0.08);}
+  .loop-node.action{border-color:var(--action-c); color:var(--action-c); background:rgba(79,195,247,0.08);}
+  .loop-node.obs{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+  .loop-arrow{color:var(--ink-dim); font-size:1rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--thought-c);} .dc-col.a h4{color:var(--thought-c);}
+  .dc-col.b{border-color:var(--obs-c);} .dc-col.b h4{color:var(--obs-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.thought{border-left-color:var(--thought-c); background:rgba(199,146,234,0.06);} .callout.thought b{color:var(--thought-c);}
+  .callout.action{border-left-color:var(--action-c); background:rgba(79,195,247,0.06);} .callout.action b{color:var(--action-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · REACT PATTERN</div>
+  <h1>A model that thinks, acts, looks at what happened, then thinks again — out loud, every step.</h1>
+  <p class="lede">ReAct (Reason + Act) is the pattern behind most tool-using agent loops: instead of trying to answer in one shot, the model interleaves explicit reasoning with tool calls, one step at a time, reading each result before deciding what to do next. This lab builds the loop, worked by hand on a real question, then animates the exact transcript it produces.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Thought — what does the model reason next</div>
+    <div class="pipe-label b">Action — a tool call it decides to make</div>
+    <div class="pipe-label c">Observation — the result fed back in</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="pattern">1 · The Thought → Action → Observation Loop</a>
+  <a data-target="loop">2 · Implementing a Basic ReAct Loop</a>
+  <a data-target="live">3 · Watch the Transcript Build, Step by Step</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE PATTERN ============ -->
+<section id="pattern">
+  <div class="kicker">01 — Reasoning and acting, interleaved, not separated</div>
+  <h2>The core loop: Thought → Action → Observation</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about how you'd actually answer "what's the population of the capital of France?" if you didn't already know the answer cold. You wouldn't silently work it out and blurt a final number — you'd reason out loud in stages: "first I need to know the capital of France" (thought), so you'd look it up (action), see "Paris" come back (observation), then think again: "now I need Paris's population" (thought), look THAT up (action), see "~2.1 million" come back (observation), and only THEN give your final answer. Each step depends on what the previous lookup actually returned — you couldn't have planned the second lookup before seeing the first result, because you didn't yet know what city to look up.</p>
+
+  <p>That's exactly what <strong>ReAct</strong> does with a language model driving the loop: at each step, the model produces a <strong>Thought</strong> (its reasoning about what to do next), then an <strong>Action</strong> (a tool call, chosen based on that reasoning), then receives an <strong>Observation</strong> (the tool's actual result) — which becomes the input to the NEXT thought. The loop repeats until the model decides it has enough information to produce a <strong>Final Answer</strong> instead of another action.</p>
+
+  <div class="loop-diagram">
+    <div class="loop-node thought">Thought</div><div class="loop-arrow">→</div>
+    <div class="loop-node action">Action</div><div class="loop-arrow">→</div>
+    <div class="loop-node obs">Observation</div><div class="loop-arrow">→</div>
+    <div class="loop-node thought">Thought</div><div class="loop-arrow">→</div>
+    <div class="loop-node action">Action</div><div class="loop-arrow">→</div>
+    <div class="loop-node obs">Observation</div><div class="loop-arrow">→</div>
+    <div class="loop-node" style="border-color:var(--final-c); color:var(--final-c); background:rgba(242,193,78,0.1);">Final Answer</div>
+  </div>
+
+  <p>Worked example, in full, for "What's the population of the capital of France?" using a single <code class="inline">lookup(query)</code> tool:</p>
+
+  <div class="code"><span class="c-cmt">Thought 1:</span> I need to find the capital of France before I can find its population.
+<span class="c-cmt">Action 1:</span>  lookup(<span class="c-str">"capital of France"</span>)
+<span class="c-cmt">Observation 1:</span> Paris
+
+<span class="c-cmt">Thought 2:</span> Now I know the capital is Paris. I need its population next.
+<span class="c-cmt">Action 2:</span>  lookup(<span class="c-str">"population of Paris"</span>)
+<span class="c-cmt">Observation 2:</span> approximately 2.1 million (city proper)
+
+<span class="c-cmt">Thought 3:</span> I now have both facts I need to answer the original question.
+<span class="c-cmt">Final Answer:</span> The capital of France is Paris, which has a population of
+approximately 2.1 million people.</div>
+
+  <p>Notice <strong>Action 2 could not have been planned before Observation 1 arrived</strong> — the model didn't know to look up "population of Paris" until the first lookup told it the capital WAS Paris. This is the defining property of ReAct: each action is chosen in light of what actually happened in the previous step, not decided in advance as part of some larger plan. The <code class="inline">plan_and_solve_pattern</code> lab covers exactly the alternative — committing to a full plan up front — and works through why that trade-off cuts the other way.</p>
+
+  <div class="callout thought"><b>Interview-ready definition:</b> ReAct (Reason + Act) is an agent pattern that interleaves explicit reasoning steps (Thoughts) with tool invocations (Actions) and their results (Observations) in a single repeating loop — Thought → Action → Observation, repeated until the model emits a Final Answer instead of another action. Each Thought is conditioned on the most recent Observation, meaning the model's next action is chosen adaptively, in response to what it just learned, rather than committed to ahead of time.</div>
+</section>
+
+<!-- ============ SECTION 2: IMPLEMENTING THE LOOP ============ -->
+<section id="loop">
+  <div class="kicker">02 — Parse the model's output, run the tool, feed the result back in, repeat</div>
+  <h2>Implementing a basic ReAct loop</h2>
+
+  <p><strong>Start here, before the code.</strong> Mechanically, a ReAct loop is a text-generation loop wearing a strict format: the model is prompted to always produce its next step as "Thought: ... / Action: tool_name(args) / " and then STOP — the calling code parses that action out, actually executes the tool, appends the result as "Observation: ..." to the running transcript, and calls the model again with the whole transcript so far as its prompt. The model never "sees" the tool run — it only ever sees text, some of which happens to be an observation that was inserted by code, not generated by the model itself.</p>
+
+  <div class="code"><span class="c-kw">SYSTEM_PROMPT</span> = <span class="c-str">"""You solve problems using this exact loop, one step at a time:
+Thought: &lt;your reasoning about what to do next&gt;
+Action: lookup(&lt;query&gt;)
+(then STOP -- wait for an Observation before continuing)
+
+Once you have enough information, instead of another Action, write:
+Thought: &lt;final reasoning&gt;
+Final Answer: &lt;your answer&gt;
+"""</span>
+
+<span class="c-kw">def</span> <span class="c-fn">parse_action</span>(model_output: <span class="c-fn">str</span>):
+    <span class="c-cmt"># real parsing -- pull the tool name and argument out of the model's</span>
+    <span class="c-cmt"># own text, e.g. "Action: lookup(\"population of Paris\")"</span>
+    match = re.search(<span class="c-str">r'Action:\s*(\w+)\((.*)\)'</span>, model_output)
+    <span class="c-kw">if not</span> match:
+        <span class="c-kw">return None</span>
+    tool_name, raw_arg = match.group(<span class="c-num">1</span>), match.group(<span class="c-num">2</span>).strip(<span class="c-str">'"'</span>)
+    <span class="c-kw">return</span> {<span class="c-str">"tool"</span>: tool_name, <span class="c-str">"arg"</span>: raw_arg}
+
+<span class="c-kw">def</span> <span class="c-fn">react_loop</span>(question: <span class="c-fn">str</span>, tools: <span class="c-fn">dict</span>, max_steps: <span class="c-fn">int</span> = <span class="c-num">6</span>) -> <span class="c-fn">str</span>:
+    transcript = <span class="c-fn">f"Question: {question}\n"</span>
+
+    <span class="c-kw">for</span> step <span class="c-kw">in</span> <span class="c-fn">range</span>(max_steps):
+        <span class="c-cmt"># STEP 1: prompt the model with everything so far -- it produces the</span>
+        <span class="c-cmt"># next Thought and either an Action or a Final Answer</span>
+        model_output = call_model(<span class="c-kw">SYSTEM_PROMPT</span> + transcript)
+        transcript += model_output
+
+        <span class="c-cmt"># STEP 2: check whether the model decided it's done</span>
+        <span class="c-kw">if</span> <span class="c-str">"Final Answer:"</span> <span class="c-kw">in</span> model_output:
+            <span class="c-kw">return</span> model_output.split(<span class="c-str">"Final Answer:"</span>)[-<span class="c-num">1</span>].strip()
+
+        <span class="c-cmt"># STEP 3: parse the Action out of the model's own generated text</span>
+        action = parse_action(model_output)
+        <span class="c-kw">if</span> action <span class="c-kw">is None</span>:
+            <span class="c-kw">raise</span> ValueError(<span class="c-str">f"Model output didn't match the expected format:\n{model_output}"</span>)
+
+        <span class="c-cmt"># STEP 4: actually execute the tool -- this is real code running,</span>
+        <span class="c-cmt"># not something the model does itself</span>
+        result = tools[action[<span class="c-str">"tool"</span>]](action[<span class="c-str">"arg"</span>])
+
+        <span class="c-cmt"># STEP 5: feed the observation back into the transcript, then loop</span>
+        transcript += <span class="c-fn">f"Observation: {result}\n"</span>
+
+    <span class="c-kw">raise</span> RuntimeError(<span class="c-str">"Exceeded max_steps without a Final Answer"</span>)</div>
+
+  <p>Two details carry real weight here. First, <code class="inline">max_steps</code> is not decoration — without a hard cap, a model that never converges on a Final Answer would loop indefinitely, a failure mode the Week 3 <code class="inline">loop-termination-logic</code> topic will formalize much further. Second, the ENTIRE transcript (every prior Thought/Action/Observation) is re-sent as the prompt on every single step — the model has no persistent memory of the loop between calls; its only continuity is whatever text is physically in the prompt each time it's called again.</p>
+
+  <div class="callout action"><b>Interview-ready definition:</b> a basic ReAct loop repeatedly (1) prompts the model with the full transcript so far, formatted to elicit a Thought followed by either an Action or a Final Answer, (2) checks for a Final Answer and returns it if present, (3) otherwise parses the requested tool call out of the model's own generated text, (4) actually executes that tool call in application code, and (5) appends the result as an Observation onto the transcript before looping back to step 1 — bounded by a maximum step count to guarantee termination even if the model never emits a Final Answer.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE TRANSCRIPT ============ -->
+<section id="live">
+  <div class="kicker">03 — The same worked example, animated one step at a time</div>
+  <h2>Watch the transcript build, live</h2>
+
+  <p><strong>Start here, before running it.</strong> This runs section 1's worked example through section 2's exact loop structure, one call at a time — each click advances the loop by one Thought → Action → Observation cycle, so you can see precisely what's known at each point and how the NEXT action depends on what the PREVIOUS observation returned.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ReAct LOOP — "What's the population of the capital of France?"</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="live-step">Run next step ▸</button>
+    <div class="log" id="live-log"><span class="line">Click "Run next step" to advance the loop one Thought/Action/Observation cycle at a time.</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice as it runs:</b> the SECOND action ("lookup population of Paris") only becomes possible once the first observation reveals the capital's name — nothing in the loop's code hard-codes "Paris" anywhere; it's a genuine consequence of the first tool call's actual result. This adaptive, step-by-step quality is exactly what the next lab's Plan-and-Solve approach gives up in exchange for committing to a full plan upfront — worth comparing directly once you've watched this run through.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing what changes if the first lookup returns something unexpected</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose <code class="inline">lookup("capital of France")</code> had returned "Paris (disputed — some sources cite Versailles historically)" instead of a clean "Paris". Using section 1's loop, what would Thought 2 need to do differently, and why couldn't this have been anticipated at Thought 1?</p>
+    <details><summary>Show solution</summary><div class="solution">Thought 2 would need to reason about the ambiguity itself before
+proceeding -- e.g. deciding to treat "Paris" as the intended answer for a
+population lookup (since Versailles is not the modern capital), or
+explicitly asking a follow-up lookup to resolve which interpretation is
+correct, rather than blindly assuming the first lookup returned a single,
+clean value. This couldn't have been anticipated at Thought 1 because
+Thought 1 was reasoning about what to look up NEXT, not about what the
+result of that lookup would contain -- the model has no way to know in
+advance whether Observation 1 will be clean or ambiguous, since it hasn't
+happened yet.
+
+This is exactly the property section 1 calls out: each Thought is
+conditioned on the most recent Observation. A model running ReAct handles
+this kind of surprise gracefully because its NEXT reasoning step naturally
+incorporates whatever the tool actually returned, ambiguous or not --
+whereas a plan committed to in advance (the plan_and_solve_pattern lab's
+approach) would have no natural point to revise its strategy mid-execution
+without an explicit re-planning step, since the plan was fixed before any
+observation existed to reveal the ambiguity.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a parsing failure</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's <code class="inline">parse_action</code> regex (<code class="inline">r'Action:\s*(\w+)\((.*)\)'</code>), what happens if the model generates <code class="inline">"Action: lookup population of Paris"</code> — no parentheses at all — instead of the expected <code class="inline">"Action: lookup(\"population of Paris\")"</code>? Walk through the loop's actual behavior.</p>
+    <details><summary>Show solution</summary><div class="solution">The regex requires literal parentheses containing the argument -- with no
+parentheses present at all, re.search finds no match, so parse_action
+returns None. Back in react_loop, the code explicitly checks "if action is
+None: raise ValueError(...)" -- so the loop raises an exception and stops,
+rather than silently guessing what the model might have meant or crashing
+with some unrelated, harder-to-diagnose error deeper in the tool-execution
+step.
+
+This is a deliberate design choice worth noticing: the loop treats a
+malformed Action as a HARD failure rather than trying to fuzzy-parse
+around it. A more permissive design might try several regex patterns or
+ask the model to retry in-loop, but the version here fails loudly and
+immediately with the exact malformed text included in the error message
+-- which is far easier to debug than silently misinterpreting "lookup
+population of Paris" as, say, a tool named "lookup" with no arguments, or
+worse, matching it against a different tool name accidentally. Whether to
+fail loudly (as here) or retry automatically is a real design decision the
+Week 3 "deterministic parsing of model output" topic goes into in more
+depth -- but failing loudly is the safer default in a lab specifically
+trying to teach you what "malformed model output" looks like.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about why the full transcript is re-sent every step</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's loop re-sends the ENTIRE transcript (every prior Thought/Action/Observation) as the prompt on every single call to <code class="inline">call_model</code>. Why can't the loop instead just send the single most recent Observation each time, to save tokens?</p>
+    <details><summary>Show solution</summary><div class="solution">The model itself has no memory between calls -- each call to call_model
+is a fresh, independent request with no built-in continuity from the
+previous call (this is the same statelessness property covered in
+systems/stateless_vs_stateful.html, now showing up at the level of a
+single model call rather than a whole service). If the loop only sent the
+most recent Observation, the model would have no way to know WHY that
+observation matters, what the original question was, or what it already
+concluded in Thought 1 -- it would be reasoning from a single disconnected
+fact with zero context, unable to even remember that it was in the middle
+of a multi-step lookup at all.
+
+The full transcript IS the model's only form of memory across the loop's
+steps -- every Thought, Action, and Observation the model needs to
+"remember" has to be physically present in the next prompt, because
+nothing else persists between calls. This does mean token usage grows with
+every step (a real cost, and part of why max_steps in section 2 matters
+for cost control too, not just termination), but truncating the
+transcript risks the model losing track of the original question or
+earlier reasoning entirely -- exactly the token-budget-vs-completeness
+trade-off the storage-and-rag token_budget_management lab covered for
+conversation history generally, now applying specifically to an agent
+loop's own working transcript.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Comparing ReAct's adaptivity to a scenario where it doesn't help</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A task requires exactly 3 independent lookups that don't depend on each other at all (e.g. "what are the capitals of France, Japan, and Brazil?" — each lookup is unrelated to the others' results). Does ReAct's step-by-step adaptivity provide any real benefit here compared to just deciding all 3 actions upfront?</p>
+    <details><summary>Show solution</summary><div class="solution">Not much, and this is a genuinely useful edge case to notice. ReAct's core
+advantage -- letting each action be informed by the PREVIOUS observation
+-- only pays off when a later action's parameters or choice actually
+depend on an earlier result. Here, none of the 3 lookups depend on each
+other's outputs at all: "capital of Japan" doesn't need to know what
+"capital of France" returned. Running them one at a time through a full
+Thought/Action/Observation cycle each still WORKS, but it pays the cost of
+3 separate round trips to the model (3 full re-sends of a growing
+transcript, per Problem 3) to accomplish something that gains nothing from
+being sequential and adaptive.
+
+This is precisely the kind of task where Plan-and-Solve's upfront
+approach -- or better, recognizing the 3 lookups are independent and
+could be dispatched in parallel rather than sequentially at all -- would
+be strictly more efficient, since there's no genuine information
+dependency forcing them to happen one after another. ReAct isn't wrong
+here, it's just not buying you anything: its adaptivity is a real
+advantage specifically when later steps genuinely depend on earlier
+results (like this lab's capital-then-population example, where the
+second lookup's query literally can't be known until the first resolves)
+-- and a comparatively unnecessary overhead when they don't.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing for a tool call that returns an error, not a result</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's loop assumes <code class="inline">tools[action["tool"]](action["arg"])</code> always succeeds and returns a usable result. Using the graceful-error-handling reasoning from <code class="inline">mcp_client_basics.html</code>, how should the loop change to handle the lookup tool raising an exception (e.g. the query matched nothing)?</p>
+    <details><summary>Show solution</summary><div class="solution">The tool call should be wrapped in explicit error handling, and -- this is
+the key move -- the ERROR itself should be fed back into the transcript as
+the Observation, rather than letting the exception crash the whole loop:
+
+    try:
+        result = tools[action["tool"]](action["arg"])
+        transcript += f"Observation: {result}\n"
+    except ToolError as e:
+        transcript += f"Observation: Error - {e}\n"
+
+This mirrors mcp_client_basics.html's core lesson exactly: a tool call
+failing is an expected, recoverable outcome in an agentic loop, not a
+reason to crash the entire process. By feeding "Observation: Error - no
+results found for query" back into the transcript instead of raising, the
+NEXT Thought the model generates gets to see that the lookup failed and
+can react accordingly -- rephrasing the query, trying a different tool, or
+concluding it can't answer and saying so honestly in a Final Answer --
+exactly the self-correcting behavior an agent loop needs to survive
+routine, expected failures along the way rather than dying on the first
+one. Treating a failed Observation as just another kind of Observation
+(rather than a special crash case) is what keeps the loop uniform and
+robust.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write out the Thought → Action → Observation → ... → Final Answer sequence for a new 2-hop question from memory, (2) explain precisely why the model's next action can't be decided before the previous observation arrives, and (3) sketch the 5-step loop body (prompt, check for final answer, parse action, execute tool, append observation) well enough to spot a missing step in someone else's implementation? The next lab, plan_and_solve_pattern, solves the exact same kind of question a fundamentally different way — worth having this loop fresh in mind before reading it.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — react pattern.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: LIVE TRANSCRIPT STEPPER */
+(function(){
+  var stepBtn = document.getElementById("live-step");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var idx = 0;
+
+  var STEPS = [
+    {cls: "thought", html: '<b>Thought 1:</b> I need to find the capital of France before I can find its population.'},
+    {cls: "action", html: '<b>Action 1:</b> lookup("capital of France")'},
+    {cls: "obs", html: '<b>Observation 1:</b> Paris'},
+    {cls: "thought", html: '<b>Thought 2:</b> Now I know the capital is Paris. I need its population next — this action was not possible before Observation 1 arrived.'},
+    {cls: "action", html: '<b>Action 2:</b> lookup("population of Paris")'},
+    {cls: "obs", html: '<b>Observation 2:</b> approximately 2.1 million (city proper)'},
+    {cls: "thought", html: '<b>Thought 3:</b> I now have both facts needed to answer the original question.'},
+    {cls: "final", html: '<b>Final Answer:</b> The capital of France is Paris, which has a population of approximately 2.1 million people.'}
+  ];
+
+  function log(step){
+    var p = document.createElement("div");
+    p.className = "line fadein " + step.cls;
+    p.innerHTML = step.html;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  stepBtn.addEventListener("click", function(){
+    if(idx === 0){ logEl.innerHTML = ""; }
+    if(idx >= STEPS.length){ return; }
+    log(STEPS[idx]);
+    idx++;
+    if(idx >= STEPS.length){
+      stepBtn.disabled = true;
+      stepBtn.textContent = "Loop complete";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    stepBtn.disabled = false;
+    stepBtn.textContent = "Run next step ▸";
+    logEl.innerHTML = '<span class="line">Click "Run next step" to advance the loop one Thought/Action/Observation cycle at a time.</span>';
+  });
+})();
+</script>
+</body>
+</html>

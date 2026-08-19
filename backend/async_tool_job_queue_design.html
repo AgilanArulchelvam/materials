@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Async Tool Job Queue Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --queue-c:#f2c14e; --worker-c:#4fc3f7; --retry-c:#c792ea; --back-c:#ff6b6b; --accent:#7fd8a0; --ok-c:#7fd8a0;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--queue-c); color:var(--queue-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--retry-c); color:var(--retry-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--back-c); color:var(--back-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#12141a; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--back-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:290px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* queue + worker diagram */
+  .queue-stage{display:flex; align-items:center; justify-content:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .queue-box{font-family:var(--mono); font-size:0.75rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--queue-c); color:var(--queue-c); background:rgba(242,193,78,0.08); text-align:center; min-width:140px;}
+  .queue-slots{display:flex; gap:4px; margin-top:0.5rem; flex-wrap:wrap; justify-content:center;}
+  .queue-job{width:18px; height:18px; border-radius:4px; background:var(--queue-c); opacity:0.85;}
+  .worker-box{font-family:var(--mono); font-size:0.72rem; padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--worker-c); color:var(--worker-c); background:rgba(79,195,247,0.08); text-align:center; transition:all .3s ease;}
+  .worker-box.busy{border-color:var(--ok-c); color:var(--ok-c); background:rgba(127,216,160,0.12); box-shadow:0 0 10px rgba(127,216,160,0.4);}
+  .queue-arrow{color:var(--ink-dim); font-size:1.2rem;}
+
+  /* retry timeline */
+  .retry-timeline{display:flex; align-items:flex-end; gap:0.8rem; min-height:120px; margin:1.2rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.72rem;}
+  .retry-attempt{display:flex; flex-direction:column; align-items:center; gap:0.4rem;}
+  .retry-bar{width:34px; border-radius:5px 5px 0 0; background:var(--rule); transition:height .4s ease, background .3s ease;}
+  .retry-bar.fail{background:var(--back-c);}
+  .retry-bar.success{background:var(--ok-c);}
+  .retry-wait{color:var(--ink-dim); font-size:0.68rem;}
+  .dlq-box{margin-top:1rem; padding:1rem 1.2rem; border-radius:10px; border:1.5px dashed var(--back-c); background:rgba(255,107,107,0.06); color:var(--back-c); font-family:var(--mono); font-size:0.8rem; opacity:0; transform:translateY(8px); transition:all .4s ease;}
+  .dlq-box.show{opacity:1; transform:translateY(0);}
+
+  /* backpressure meter */
+  .bp-meter{width:100%; height:28px; border-radius:8px; background:var(--panel-2); border:1px solid var(--rule); overflow:hidden; position:relative; margin:0.8rem 0;}
+  .bp-fill{height:100%; background:linear-gradient(90deg, var(--ok-c), var(--queue-c) 70%, var(--back-c) 100%); width:0%; transition:width .3s ease;}
+  .bp-label{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); margin-top:0.3rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#12141a; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--ok-c);} .dc-col.a h4{color:var(--ok-c);}
+  .dc-col.b{border-color:var(--back-c);} .dc-col.b h4{color:var(--back-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--back-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--back-c);}
+  .callout.queue{border-left-color:var(--queue-c); background:rgba(242,193,78,0.06);} .callout.queue b{color:var(--queue-c);}
+  .callout.retry{border-left-color:var(--retry-c); background:rgba(199,146,234,0.06);} .callout.retry b{color:var(--retry-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · ASYNC TOOL JOB QUEUE DESIGN</div>
+  <h1>An agent that blocks on a slow tool call is an agent that can only do one thing at a time.</h1>
+  <p class="lede">Some tool calls are slow — a long-running data export, a video render, a batch API call to a rate-limited third party. Instead of an agent thread sitting idle waiting for one of these, this lab builds the pattern of enqueueing the call and letting a separate worker pick it up: the queue itself, retrying failed jobs with backoff into a dead-letter queue, and what to do when jobs arrive faster than workers can drain them — at the same bar as <code class="inline">backend/rate_limiter_design.html</code> and <code class="inline">backend/notification_service_design.html</code>.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Enqueue → worker picks up → result available</div>
+    <div class="pipe-label b">Retry with backoff → dead-letter queue</div>
+    <div class="pipe-label c">Backpressure when producers outpace workers</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="queueing">1 · Queueing Tool Calls for Async Execution</a>
+  <a data-target="retries">2 · Retries, Backoff &amp; the Dead-Letter Queue</a>
+  <a data-target="backpressure">3 · Backpressure Handling</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: QUEUEING ============ -->
+<section id="queueing">
+  <div class="kicker">01 — Don't wait on the slow thing, hand it off</div>
+  <h2>Queueing tool calls for async execution</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about dropping off a roll of film at a photo shop instead of standing at the counter waiting for it to be developed. You hand it over, get a claim ticket, and go do something else — a separate person in the back actually does the developing, on their own schedule, and you come back later (or get a call) when it's ready. You were never blocked standing at the counter the whole time it took to develop.</p>
+
+  <p>An agent facing a slow tool call can use exactly this pattern instead of blocking: rather than <code class="inline">await</code>-ing a call that might take minutes, it <strong>enqueues</strong> a job describing the work (which tool, what arguments) and immediately continues — free to handle other requests, or to tell the user "working on it, I'll have results shortly." A separate <strong>worker</strong> process, running independently, picks jobs off the queue and actually executes them, writing the result somewhere the original caller (or a later poll) can retrieve it.</p>
+
+  <div class="code"><span class="c-cmt"># enqueueing side -- the agent's request-handling path, never blocks on the slow work</span>
+<span class="c-kw">async def</span> <span class="c-fn">handle_tool_call</span>(tool_name: <span class="c-fn">str</span>, arguments: <span class="c-fn">dict</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-kw">if</span> tool_name <span class="c-kw">in</span> SLOW_TOOLS:   <span class="c-cmt"># e.g. "generate_video_report", "run_batch_export"</span>
+        job_id = <span class="c-fn">str</span>(uuid4())
+        <span class="c-kw">await</span> queue.enqueue({
+            <span class="c-str">"job_id"</span>: job_id,
+            <span class="c-str">"tool_name"</span>: tool_name,
+            <span class="c-str">"arguments"</span>: arguments,
+            <span class="c-str">"status"</span>: <span class="c-str">"queued"</span>,
+            <span class="c-str">"attempts"</span>: <span class="c-num">0</span>,
+        })
+        <span class="c-kw">return</span> {<span class="c-str">"job_id"</span>: job_id, <span class="c-str">"status"</span>: <span class="c-str">"queued"</span>}   <span class="c-cmt"># returns IMMEDIATELY, no blocking</span>
+    <span class="c-kw">return</span> <span class="c-kw">await</span> execute_tool_directly(tool_name, arguments)  <span class="c-cmt"># fast tools run inline, unchanged</span>
+
+<span class="c-cmt"># worker side -- a SEPARATE process, running continuously, independent of any request</span>
+<span class="c-kw">async def</span> <span class="c-fn">worker_loop</span>():
+    <span class="c-kw">while True</span>:
+        job = <span class="c-kw">await</span> queue.dequeue()          <span class="c-cmt"># blocks HERE, not in the agent's request path</span>
+        result = <span class="c-kw">await</span> execute_tool_directly(job[<span class="c-str">"tool_name"</span>], job[<span class="c-str">"arguments"</span>])
+        <span class="c-kw">await</span> results_store.set(job[<span class="c-str">"job_id"</span>], {<span class="c-str">"status"</span>: <span class="c-str">"done"</span>, <span class="c-str">"result"</span>: result})
+
+<span class="c-cmt"># caller polls (or gets notified) for the result later</span>
+<span class="c-kw">async def</span> <span class="c-fn">get_job_result</span>(job_id: <span class="c-fn">str</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-kw">return</span> <span class="c-kw">await</span> results_store.get(job_id) <span class="c-kw">or</span> {<span class="c-str">"status"</span>: <span class="c-str">"queued"</span>}</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>A JOB GETS ENQUEUED, PICKED UP, AND RESOLVED</span>
+      <div><button class="btn secondary" id="q-reset">Reset</button></div>
+    </div>
+    <div class="queue-stage">
+      <div class="queue-box" id="q-box">QUEUE<br><span style="font-size:0.65rem;">jobs waiting</span>
+        <div class="queue-slots" id="q-slots"></div>
+      </div>
+      <div class="queue-arrow">→</div>
+      <div class="worker-box" id="q-worker">Worker<br><span style="font-size:0.65rem;">idle</span></div>
+      <div class="queue-arrow">→</div>
+      <div class="worker-box" id="q-result">Result store<br><span style="font-size:0.65rem;">empty</span></div>
+    </div>
+    <button class="btn" id="q-run">Enqueue "generate_video_report" job ▸</button>
+    <div class="log" id="q-log"><span class="line">Click to enqueue a slow tool call and watch it move from queue → worker → result store, without ever blocking the caller.</span></div>
+  </div>
+
+  <div class="callout queue"><b>Interview-ready definition:</b> queueing tool calls for async execution means a slow tool invocation is represented as a job (tool name, arguments, a generated job ID) written to a queue rather than awaited directly in the request path, letting the caller return immediately with a job ID it can poll or be notified against. A separate, independently-running worker process dequeues jobs and actually executes them, writing results to a store the caller reads from later — decoupling "accepting the request" from "doing the slow work" so that one slow tool call never blocks the agent's ability to handle anything else in the meantime.</div>
+</section>
+
+<!-- ============ SECTION 2: RETRIES & DLQ ============ -->
+<section id="retries">
+  <div class="kicker">02 — Failures happen; retrying forever isn't the answer, dropping silently isn't either</div>
+  <h2>Handling failures &amp; retries in the queue</h2>
+
+  <p><strong>Start here, before the code.</strong> This is the exact retry-and-dead-letter-queue pattern from <code class="inline">backend/notification_service_design.html</code>, applied here to tool-call jobs instead of notification deliveries. A job can fail for reasons that have nothing to do with whether it was a good idea to try — a downstream API rate-limited the worker, a transient network blip, a momentary resource shortage. Retrying with <strong>exponential backoff</strong> (waiting longer between each successive attempt) gives a transient failure room to resolve itself without hammering an already-struggling downstream system.</p>
+
+  <div class="code"><span class="c-kw">MAX_ATTEMPTS</span> = <span class="c-num">4</span>
+<span class="c-kw">BASE_DELAY_SECONDS</span> = <span class="c-num">2</span>
+
+<span class="c-kw">async def</span> <span class="c-fn">process_job</span>(job: <span class="c-fn">dict</span>):
+    <span class="c-kw">try</span>:
+        result = <span class="c-kw">await</span> execute_tool_directly(job[<span class="c-str">"tool_name"</span>], job[<span class="c-str">"arguments"</span>])
+        <span class="c-kw">await</span> results_store.set(job[<span class="c-str">"job_id"</span>], {<span class="c-str">"status"</span>: <span class="c-str">"done"</span>, <span class="c-str">"result"</span>: result})
+    <span class="c-kw">except</span> ToolExecutionError <span class="c-kw">as</span> e:
+        job[<span class="c-str">"attempts"</span>] += <span class="c-num">1</span>
+        <span class="c-kw">if</span> job[<span class="c-str">"attempts"</span>] >= <span class="c-kw">MAX_ATTEMPTS</span>:
+            <span class="c-cmt"># exhausted retries -- move to the dead-letter queue, don't retry forever</span>
+            <span class="c-kw">await</span> dead_letter_queue.push({**job, <span class="c-str">"final_error"</span>: <span class="c-fn">str</span>(e)})
+            <span class="c-kw">await</span> results_store.set(job[<span class="c-str">"job_id"</span>], {<span class="c-str">"status"</span>: <span class="c-str">"failed"</span>, <span class="c-str">"error"</span>: <span class="c-fn">str</span>(e)})
+        <span class="c-kw">else</span>:
+            <span class="c-cmt"># exponential backoff: 2s, 4s, 8s, ... before this job is eligible again</span>
+            delay = <span class="c-kw">BASE_DELAY_SECONDS</span> * (<span class="c-num">2</span> ** (job[<span class="c-str">"attempts"</span>] - <span class="c-num">1</span>))
+            <span class="c-kw">await</span> queue.enqueue_delayed(job, delay_seconds=delay)</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>A JOB THAT FAILS, RETRIES WITH BACKOFF, THEN LANDS IN THE DLQ</span>
+      <div><button class="btn secondary" id="retry-reset">Reset</button></div>
+    </div>
+    <div class="retry-timeline" id="retry-timeline"></div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;">
+      <button class="btn" id="retry-success">Simulate: fails twice, then succeeds ▸</button>
+      <button class="btn danger" id="retry-fail">Simulate: fails all 4 attempts → DLQ ▸</button>
+    </div>
+    <div class="log" id="retry-log"></div>
+    <div class="dlq-box" id="retry-dlq">Job moved to the DEAD-LETTER QUEUE after exhausting MAX_ATTEMPTS — preserved intact for inspection, no longer consuming worker retry capacity.</div>
+  </div>
+
+  <p>The dead-letter queue solves the same two problems here that it solved for notifications: it stops the worker pool from looping on a job that can never succeed (freeing capacity for healthy jobs), and it preserves the failed job's full payload and failure history instead of silently discarding it, so a human can inspect why it failed and potentially reprocess it once the underlying cause is fixed.</p>
+
+  <div class="callout retry"><b>Interview-ready definition:</b> a job queue handles failures by retrying a failed job a bounded number of times with exponential backoff — waiting progressively longer between attempts so a transient failure has room to resolve without amplifying load on a struggling downstream dependency — and, once a job exhausts its retry budget, moving it to a dead-letter queue rather than retrying indefinitely or dropping it silently. The DLQ preserves the job's full payload and failure history for later human inspection or manual reprocessing, which is what makes bounded retries a safe default rather than a way of quietly losing failed work.</div>
+</section>
+
+<!-- ============ SECTION 3: BACKPRESSURE ============ -->
+<section id="backpressure">
+  <div class="kicker">03 — What happens when jobs arrive faster than workers can drain them</div>
+  <h2>Backpressure handling</h2>
+
+  <p><strong>Start here, before the meter.</strong> A sink with the faucet running faster than the drain can empty it will overflow eventually, no matter how big the sink is — the only real fixes are slowing the faucet, widening the drain, or deliberately refusing more water once the sink is nearly full. A job queue faces the identical problem: if producers enqueue jobs faster than workers can process them, the queue's backlog grows without bound unless something actively pushes back.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>QUEUE DEPTH UNDER A PRODUCER BURST</span>
+      <div><button class="btn secondary" id="bp-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.6rem;">Threshold: 20 jobs. Past this depth, new enqueue requests are rejected outright rather than accepted into an ever-growing backlog.</p>
+    <div class="bp-meter"><div class="bp-fill" id="bp-fill"></div></div>
+    <div class="bp-label" id="bp-label">Queue depth: 0 / 20</div>
+    <button class="btn" id="bp-run">Simulate a burst: 30 jobs arrive, workers drain slowly ▸</button>
+    <div class="log" id="bp-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Approach</th><th>What it does</th><th>Trade-off</th></tr>
+    <tr><td>Reject past a queue-depth threshold</td><td>New enqueue calls fail fast once the queue passes a set depth (this lab's approach)</td><td>Simple and predictable, but the caller now has to decide what to do with a rejected job (retry later, surface an error, drop it)</td></tr>
+    <tr><td>Slow the producer</td><td>The enqueue call itself blocks or is rate-limited once the queue is deep, naturally throttling how fast new jobs can arrive</td><td>Couples producer speed to queue depth, which can cascade backpressure upstream to whatever is calling the producer</td></tr>
+    <tr><td>Scale workers horizontally</td><td>Add more worker instances to increase drain rate and catch up with the backlog</td><td>Doesn't help with a genuine, sustained overload — only helps if the burst is temporary and workers can be added fast enough</td></tr>
+    <tr><td>Do nothing (unbounded queue)</td><td>Accept every job regardless of backlog size</td><td>Not actually a solution — the backlog grows without bound, memory/storage eventually exhausts, and jobs queued now may not run for hours</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why "just accept everything" isn't actually safe:</b> an unbounded queue doesn't fail loudly when overwhelmed — it fails quietly, by growing. Every accepted job LOOKS successful ("job_id: queued") right up until someone notices results aren't coming back in any reasonable time, or the queue's storage backend runs out of capacity and fails in a much less controlled way. Rejecting new jobs past a depth threshold turns an eventual, uncontrolled failure into an immediate, controlled one — the caller finds out RIGHT NOW that the system is overloaded, rather than discovering it much later when a job that "succeeded" at enqueue time never actually completes.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> backpressure handling means a job queue actively signals or resists accepting more work once its backlog reaches a threshold it can't drain in a reasonable time, rather than growing unboundedly — concretely, by rejecting new enqueue requests past a depth threshold, throttling the producer's rate of new jobs, or (within limits) scaling workers to increase drain rate. The alternative — accepting every job regardless of backlog — isn't actually safer, since it just delays and obscures the moment of failure rather than preventing it, converting an immediate, diagnosable rejection into a much harder-to-diagnose, unbounded resource exhaustion later.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding which tool calls belong in the queue at all</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's code checks <code class="inline">if tool_name in SLOW_TOOLS</code> before deciding to enqueue rather than execute inline. Why not just queue EVERY tool call, even fast ones, for consistency?</p>
+    <details><summary>Show solution</summary><div class="solution">Queueing every tool call, including fast ones, would add the queue's
+overhead (serialization, a round trip through the queue backend, a worker
+picking it up on its own schedule rather than immediately) to calls that
+were already fast enough to just execute inline and return a result in
+the same request. For a tool that completes in milliseconds, this
+overhead can easily dominate the actual work being done -- turning a
+sub-100ms operation into one that takes as long as the queue's polling
+interval or worker availability allows, purely for architectural
+uniformity that provides no real benefit here.
+
+The SLOW_TOOLS check exists specifically to apply the async-queue pattern
+only where it earns its cost: tools whose execution time is long enough
+that BLOCKING the caller on it would be a real problem (per section 1's
+photo-shop analogy) benefit from being handed off; tools that finish
+quickly don't have that problem in the first place, so forcing them
+through the same indirection just adds latency and complexity without
+solving anything. This mirrors a broader principle worth stating
+directly: introducing async/queueing infrastructure is a trade-off, not a
+free win -- it should be applied where blocking is actually costly, not
+uniformly to every operation regardless of how fast it already is.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing the exact backoff delays for a specific job</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's code (<code class="inline">BASE_DELAY_SECONDS = 2</code>, <code class="inline">MAX_ATTEMPTS = 4</code>), a job fails on its first 3 attempts and succeeds on the 4th. What are the exact delays before each retry, and how long does the job take in total (ignoring actual execution time)?</p>
+    <details><summary>Show solution</summary><div class="solution">Using delay = BASE_DELAY_SECONDS * (2 ** (attempts - 1)):
+
+After attempt 1 fails (job["attempts"] becomes 1): delay = 2 * 2^0 = 2
+seconds before attempt 2.
+After attempt 2 fails (attempts becomes 2): delay = 2 * 2^1 = 4 seconds
+before attempt 3.
+After attempt 3 fails (attempts becomes 3): delay = 2 * 2^2 = 8 seconds
+before attempt 4.
+Attempt 4 succeeds -- no further delay, the job completes.
+
+Total elapsed time waiting between attempts: 2 + 4 + 8 = 14 seconds (plus
+whatever each attempt's actual execution time was, and note attempts ==
+MAX_ATTEMPTS (4) is checked BEFORE this success -- had attempt 4 also
+failed, job["attempts"] would reach 4, matching MAX_ATTEMPTS, and the job
+would move to the dead-letter queue instead of getting a 5th attempt).
+This exponential growth (2, 4, 8, ...) is exactly what gives a struggling
+downstream dependency increasingly more room to recover between attempts,
+rather than hammering it at a constant retry rate the whole time.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a DLQ that quietly fills up unnoticed</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team implements the dead-letter queue from section 2 correctly, but nobody ever looks at it or alerts on its size. Six months later, thousands of failed jobs sit there, none reprocessed. Is the DLQ "working" in this scenario? What's actually missing?</p>
+    <details><summary>Show solution</summary><div class="solution">Mechanically, yes, the DLQ is doing exactly what section 2 describes --
+preserving failed jobs' full payload and failure history rather than
+losing them, and freeing worker capacity from retrying jobs that can never
+succeed. But section 2's stated PURPOSE of the DLQ was "so a human can
+inspect it later, understand why it failed, fix the root cause, and
+potentially reprocess it" -- and none of that is actually happening here.
+The DLQ has become a place where failed work goes to be technically
+preserved but functionally forgotten, which is barely better than
+silently dropping it in terms of actual business outcomes (the underlying
+tasks those jobs represented are still not getting done), even though it's
+strictly better in terms of not having LOST the information about what
+failed.
+
+What's missing is the operational half of the DLQ pattern, not the
+storage half: monitoring/alerting on DLQ size or growth rate (so a spike
+in failures gets noticed close to when it happens, not six months later),
+and an actual process -- automated or human -- for periodically reviewing
+DLQ contents and either fixing the root cause and reprocessing, or
+deciding the jobs are genuinely unrecoverable and can be discarded. A DLQ
+without this operational loop is a data structure, not a reliability
+mechanism -- the reliability benefit only materializes if something
+actually acts on what accumulates there.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing a backpressure strategy for a specific failure mode</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A queue backing an agent's tool-call jobs is fed by many different agent instances simultaneously, and the downstream tool (a third-party API) has a hard, fixed rate limit regardless of how many workers you run. Which backpressure strategy from section 3's table fits best, and why does "scale workers horizontally" specifically NOT help here?</p>
+    <details><summary>Show solution</summary><div class="solution">"Reject past a queue-depth threshold" (or throttling the producer side)
+fits best here; "scale workers horizontally" is specifically the WRONG
+lever for this scenario. Section 3's table already flags this exact
+limitation: scaling workers only helps when the bottleneck is worker
+PROCESSING CAPACITY -- more workers genuinely drain the queue faster when
+what's limiting throughput is CPU/IO capacity to do the work. But here the
+bottleneck is an external, fixed constraint (the third-party API's rate
+limit) that doesn't budge no matter how many workers are asking it to do
+work -- adding a 10th worker doesn't make the third-party API accept
+requests any faster; it just means 10 workers are now contending for the
+same fixed-rate resource, likely making things WORSE by triggering more
+429/rate-limit errors (feeding directly back into section 2's retry logic,
+potentially compounding the problem) rather than better.
+
+The right response is to accept that throughput is capped by the
+downstream rate limit regardless of internal architecture, and apply
+backpressure UPSTREAM of that constraint: reject or delay new jobs once
+the queue depth suggests the backlog already exceeds what the rate-limited
+downstream can drain in a reasonable time, rather than accepting jobs the
+system has no realistic path to completing promptly. This is a good
+illustration of why "backpressure" isn't one universal fix -- the right
+mechanism depends on WHERE the actual bottleneck is, and applying the
+wrong one (more workers, when the bottleneck is external and fixed) can
+waste effort or actively worsen the situation.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting job queue backpressure to the agent that's enqueueing work</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's <code class="inline">handle_tool_call</code> enqueues a job and returns immediately with a job ID. If the queue rejects the enqueue attempt due to backpressure (section 3), what should the CALLING agent actually do with that rejection, and why is silently retrying forever not a good default?</p>
+    <details><summary>Show solution</summary><div class="solution">The calling agent should treat a backpressure rejection as a real, first-
+class outcome to reason about -- not something to paper over by blindly
+retrying the enqueue call in a tight loop until it succeeds. A reasonable
+response mirrors the graceful-error-handling lesson from
+mcp_client_basics.html: surface the rejection as a structured result (e.g.
+"the job queue is currently at capacity, try again shortly" or "this
+particular request couldn't be queued right now") that the agent's own
+reasoning loop -- if it's running something like the ReAct loop from
+react_pattern.html -- can incorporate into its next Thought, potentially
+deciding to wait and retry after a delay, try a different (faster,
+inline) approach if one exists, or tell the user directly that the system
+is currently overloaded rather than silently appearing to hang.
+
+Silently retrying forever is a bad default for the same reason unbounded
+retries were flagged as a problem in section 2's job-processing logic
+generally: it can turn a single overloaded moment into sustained,
+compounding pressure on the very queue that's already struggling -- every
+rejected-then-immediately-retried enqueue attempt is itself extra load on
+a system section 3 already established is past its comfortable capacity.
+A bounded retry with backoff (the SAME pattern section 2 already uses for
+job execution failures, just applied one level up, to the enqueue attempt
+itself) is the more defensible default: give the queue a real chance to
+drain before hammering it again, and eventually surface a clear failure
+rather than retrying indefinitely with no visible signal that anything is
+wrong.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch the enqueue → worker → result-store flow and explain exactly what makes the caller's path non-blocking, (2) trace a job's exact backoff delays across several failed attempts and explain what happens once MAX_ATTEMPTS is hit, and (3) name at least two distinct backpressure strategies and identify which failure mode each one actually addresses, including one scenario where the wrong strategy makes things worse? This queue sits directly downstream of any agent loop calling tools — the ReAct and Plan-and-Solve loops from earlier this week are exactly the kind of caller that would enqueue a slow tool call here instead of blocking on it.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — async tool job queue design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: QUEUE -> WORKER -> RESULT DEMO */
+(function(){
+  var runBtn = document.getElementById('q-run');
+  var resetBtn = document.getElementById('q-reset');
+  var logEl = document.getElementById('q-log');
+  var slotsEl = document.getElementById('q-slots');
+  var workerEl = document.getElementById('q-worker');
+  var resultEl = document.getElementById('q-result');
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener('click', async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = '';
+    slotsEl.innerHTML = '';
+    workerEl.classList.remove('busy');
+    workerEl.innerHTML = 'Worker<br><span style="font-size:0.65rem;">idle</span>';
+    resultEl.innerHTML = 'Result store<br><span style="font-size:0.65rem;">empty</span>';
+
+    log('<b>Caller:</b> await handle_tool_call("generate_video_report", {...}) — tool is in SLOW_TOOLS.');
+    await wait(400);
+
+    var jobDot = document.createElement('div'); jobDot.className = 'queue-job';
+    slotsEl.appendChild(jobDot);
+    log('<b>Enqueue:</b> job written to the queue with job_id + status "queued". <b style="color:var(--ok-c);">Caller returns immediately</b> — no blocking, even though the actual work has not started.');
+    await wait(500);
+
+    workerEl.classList.add('busy');
+    workerEl.innerHTML = 'Worker<br><span style="font-size:0.65rem;">executing job</span>';
+    slotsEl.removeChild(jobDot);
+    log('<b>Worker (separate process):</b> dequeues the job on its own schedule, independent of the original request, and starts executing the actual tool.');
+    await wait(700);
+
+    workerEl.classList.remove('busy');
+    workerEl.innerHTML = 'Worker<br><span style="font-size:0.65rem;">idle</span>';
+    resultEl.innerHTML = 'Result store<br><span style="font-size:0.65rem; color:var(--ok-c);">result available</span>';
+    log('<b style="color:var(--ok-c);">Result stored.</b> results_store.set(job_id, {"status": "done", "result": ...}) — the caller (or a later poll via get_job_result) can now retrieve it.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener('click', function(){
+    logEl.innerHTML = '<span class="line">Click to enqueue a slow tool call and watch it move from queue → worker → result store, without ever blocking the caller.</span>';
+    slotsEl.innerHTML = '';
+    workerEl.classList.remove('busy');
+    workerEl.innerHTML = 'Worker<br><span style="font-size:0.65rem;">idle</span>';
+    resultEl.innerHTML = 'Result store<br><span style="font-size:0.65rem;">empty</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+
+/* SECTION 2: RETRY + DLQ DEMO */
+(function(){
+  var successBtn = document.getElementById('retry-success');
+  var failBtn = document.getElementById('retry-fail');
+  var resetBtn = document.getElementById('retry-reset');
+  var timelineEl = document.getElementById('retry-timeline');
+  var logEl = document.getElementById('retry-log');
+  var dlqEl = document.getElementById('retry-dlq');
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function addAttempt(n, outcome, delay){
+    var wrap = document.createElement('div'); wrap.className = 'retry-attempt';
+    var bar = document.createElement('div'); bar.className = 'retry-bar ' + outcome;
+    bar.style.height = (outcome === 'success' ? 70 : 45) + 'px';
+    var label = document.createElement('div');
+    label.textContent = 'Attempt ' + n;
+    var waitLabel = document.createElement('div'); waitLabel.className = 'retry-wait';
+    waitLabel.textContent = delay ? ('wait ' + delay + 's') : '';
+    wrap.appendChild(bar); wrap.appendChild(label); wrap.appendChild(waitLabel);
+    timelineEl.appendChild(wrap);
+  }
+
+  async function run(finalOutcome){
+    if(busy) return;
+    busy = true;
+    successBtn.disabled = true; failBtn.disabled = true;
+    timelineEl.innerHTML = ''; logEl.innerHTML = ''; dlqEl.classList.remove('show');
+
+    var BASE = 2, MAX_ATTEMPTS = 4;
+    var attempts = 0;
+
+    while(attempts < MAX_ATTEMPTS){
+      attempts++;
+      var willSucceed = (finalOutcome === 'success' && attempts === MAX_ATTEMPTS);
+      if(willSucceed){
+        addAttempt(attempts, 'success', null);
+        log('<b>Attempt ' + attempts + ':</b> <b style="color:var(--ok-c);">SUCCEEDS</b> — job marked "done", result stored.');
+        await wait(500);
+        break;
+      } else {
+        addAttempt(attempts, 'fail', null);
+        log('<b>Attempt ' + attempts + ':</b> <b style="color:var(--back-c);">fails</b> (ToolExecutionError).');
+        await wait(400);
+        if(attempts >= MAX_ATTEMPTS){
+          log('<b>attempts (' + attempts + ') >= MAX_ATTEMPTS (' + MAX_ATTEMPTS + ')</b> — retry budget exhausted.');
+          await wait(400);
+          dlqEl.classList.add('show');
+          log('<b style="color:var(--back-c);">Moved to dead-letter queue</b> — full payload + failure history preserved, worker moves on to other jobs.');
+        } else {
+          var delay = BASE * Math.pow(2, attempts - 1);
+          log('Backoff: wait ' + delay + 's before attempt ' + (attempts + 1) + ' (delay = ' + BASE + ' × 2^' + (attempts - 1) + ').');
+          await wait(500);
+        }
+      }
+    }
+
+    busy = false;
+    successBtn.disabled = false; failBtn.disabled = false;
+  }
+
+  successBtn.addEventListener('click', function(){ run('success'); });
+  failBtn.addEventListener('click', function(){ run('fail'); });
+
+  resetBtn.addEventListener('click', function(){
+    timelineEl.innerHTML = '';
+    logEl.innerHTML = '';
+    dlqEl.classList.remove('show');
+    busy = false;
+    successBtn.disabled = false; failBtn.disabled = false;
+  });
+})();
+
+/* SECTION 3: BACKPRESSURE DEMO */
+(function(){
+  var runBtn = document.getElementById('bp-run');
+  var resetBtn = document.getElementById('bp-reset');
+  var fillEl = document.getElementById('bp-fill');
+  var labelEl = document.getElementById('bp-label');
+  var logEl = document.getElementById('bp-log');
+  var busy = false;
+  var THRESHOLD = 20;
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function render(depth){
+    var pct = Math.min(100, (depth / THRESHOLD) * 100);
+    fillEl.style.width = pct + '%';
+    labelEl.textContent = 'Queue depth: ' + depth + ' / ' + THRESHOLD + (depth >= THRESHOLD ? '  — AT CAPACITY' : '');
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener('click', async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = '';
+    var depth = 0;
+    render(depth);
+    log('30 jobs arrive in a burst. Workers drain roughly 1 job per 2 "ticks" — enqueue requests keep arriving faster than that.');
+    await wait(400);
+
+    var accepted = 0, rejected = 0;
+    for(var i = 1; i <= 30; i++){
+      // workers drain slowly: roughly 1 out of every 3 ticks
+      if(i % 3 === 0 && depth > 0){ depth--; }
+      if(depth < THRESHOLD){
+        depth++;
+        accepted++;
+        render(depth);
+        log('Job ' + i + ' → <b style="color:var(--ok-c);">accepted</b> (depth now ' + depth + '/' + THRESHOLD + ').');
+      } else {
+        rejected++;
+        log('Job ' + i + ' → <b style="color:var(--back-c);">REJECTED</b> — queue at capacity (' + depth + '/' + THRESHOLD + '). Caller must decide: retry later, or surface a clear "system overloaded" error now.');
+      }
+      await wait(120);
+    }
+
+    log('<b>Result:</b> ' + accepted + ' accepted, ' + rejected + ' rejected outright. Rejected callers found out IMMEDIATELY the system was overloaded — much easier to diagnose than an unbounded queue silently growing to 30 backlogged jobs with no signal anything was wrong.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener('click', function(){
+    render(0);
+    logEl.innerHTML = '';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  render(0);
+})();
+</script>
+</body>
+</html>
