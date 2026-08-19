@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Migrations &amp; SQL vs NoSQL Revisited</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --up-c:#7fd8a0; --down-c:#ff6b6b; --auto-c:#f2c14e; --doc-c:#c792ea; --accent:#4fc3f7;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--up-c); color:var(--up-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--auto-c); color:var(--auto-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--doc-c); color:var(--doc-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(79,195,247,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#e9e6dd;} .code .c-dec{color:#f2c14e;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--down-c); color:#2a0d0d;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* migration ladder */
+  .migration-ladder{display:flex; flex-direction:column; gap:0.5rem; margin:1.2rem 0;}
+  .rung{display:flex; align-items:center; gap:0.8rem; padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.78rem; opacity:0.3; transition:all .3s;}
+  .rung.visible{opacity:1;}
+  .rung.head{border-color:var(--up-c); color:var(--up-c);}
+  .rung .rid{padding:0.15rem 0.5rem; border-radius:12px; font-size:0.68rem; background:var(--panel); border:1px solid var(--rule); color:var(--ink-dim);}
+
+  /* schema table */
+  .row-table{border:1.5px solid var(--rule); border-radius:10px; overflow:hidden; margin:1rem 0;}
+  .row-table .tname{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; background:var(--panel-2); padding:0.5rem 0.9rem; color:var(--ink-dim); border-bottom:1px solid var(--rule);}
+  .row-table table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.8rem;}
+  .row-table th{background:var(--panel-2); padding:0.5rem 0.8rem; text-align:left; border-bottom:1.5px solid var(--rule); font-weight:600; color:var(--ink-dim); font-size:0.72rem; text-transform:uppercase;}
+  .row-table td{padding:0.45rem 0.8rem; border-bottom:1px solid var(--rule); color:#cdd0d8;}
+  .row-table tr:last-child td{border-bottom:none;}
+  .row-table td.new{color:var(--auto-c); font-weight:600;}
+
+  /* autogenerate confidence meter */
+  .conf-row{display:flex; align-items:center; gap:0.8rem; margin:0.5rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .conf-bar-track{flex:1; height:10px; border-radius:6px; background:var(--panel-2); border:1px solid var(--rule); overflow:hidden;}
+  .conf-bar-fill{height:100%; border-radius:6px;}
+  .conf-bar-fill.good{background:var(--up-c);}
+  .conf-bar-fill.bad{background:var(--down-c);}
+  .conf-label{min-width:220px;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.sql{border-color:#6ea8fe;} .dc-col.sql h4{color:#6ea8fe;}
+  .dc-col.nosql{border-color:var(--doc-c);} .dc-col.nosql h4{color:var(--doc-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.88rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(79,195,247,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.up{border-left-color:var(--up-c); background:rgba(127,216,160,0.06);} .callout.up b{color:var(--up-c);}
+  .callout.auto{border-left-color:var(--auto-c); background:rgba(242,193,78,0.06);} .callout.auto b{color:var(--auto-c);}
+  .callout.doc{border-left-color:var(--doc-c); background:rgba(199,146,234,0.06);} .callout.doc b{color:var(--doc-c);}
+  .callout.warn{border-left-color:var(--down-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--down-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · MIGRATIONS &amp; SQL VS NOSQL REVISITED</div>
+  <h1>A migration is a diff of your schema — with a promise that it can run backwards, too.</h1>
+  <p class="lede">Alembic turns "I changed a model" into two ordered, reversible SQL scripts: <code class="inline">upgrade()</code> and <code class="inline">downgrade()</code>. This lab builds a real migration end to end, is honest about exactly where autogenerate can be trusted and where it silently gets things wrong, and revisits SQL vs NoSQL with a concrete decision this month's notification service actually has to make — not the abstract trade-offs from Month 1.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">upgrade() / downgrade()</div>
+    <div class="pipe-label b">Autogenerate vs hand-written</div>
+    <div class="pipe-label c">SQL vs NoSQL, for one real service</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="alembic">1 · Writing &amp; Running an Alembic Migration</a>
+  <a data-target="autogen">2 · Autogenerate vs Hand-Written</a>
+  <a data-target="revisited">3 · SQL vs NoSQL, Revisited</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ALEMBIC MIGRATION ============ -->
+<section id="alembic">
+  <div class="kicker">01 — A schema change that can be applied, and un-applied</div>
+  <h2>Writing and running an Alembic migration</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a schema migration like a single step in a hiking trail with trail markers pointing both directions — one set of arrows says "this is how you got here from the last checkpoint," and a separate, equally maintained set says "this is exactly how to walk back to the last checkpoint if you need to." A migration file isn't just "here's the new schema" — it's a pair of directions, forward and backward, both of which have to actually work, not just the forward one.</p>
+
+  <p>Alembic is SQLAlchemy's migration tool. Every migration is a Python file with two functions: <code class="inline">upgrade()</code>, which applies the change, and <code class="inline">downgrade()</code>, which undoes it. Alembic tracks which migrations have already been applied to a given database (in a small table it manages itself, typically <code class="inline">alembic_version</code>), so it always knows exactly which direction to run and how far.</p>
+
+  <div class="code"><span class="c-cmt"># alembic/versions/a1b2c3d4e5f6_add_last_login_to_users.py
+# Generated by: alembic revision --autogenerate -m "add last_login to users"</span>
+
+<span class="c-kw">from</span> alembic <span class="c-kw">import</span> op
+<span class="c-kw">import</span> sqlalchemy <span class="c-kw">as</span> sa
+
+<span class="c-cmt"># identifiers used by Alembic to order and chain migrations</span>
+revision = <span class="c-str">"a1b2c3d4e5f6"</span>
+down_revision = <span class="c-str">"f9e8d7c6b5a4"</span>   <span class="c-cmt"># the migration this one comes directly after</span>
+branch_labels = <span class="c-kw">None</span>
+depends_on = <span class="c-kw">None</span>
+
+<span class="c-kw">def</span> <span class="c-fn">upgrade</span>() -> <span class="c-kw">None</span>:
+    op.add_column(
+        <span class="c-str">"users"</span>,
+        sa.Column(<span class="c-str">"last_login"</span>, sa.DateTime(timezone=<span class="c-kw">True</span>), nullable=<span class="c-kw">True</span>)
+    )
+
+<span class="c-kw">def</span> <span class="c-fn">downgrade</span>() -> <span class="c-kw">None</span>:
+    op.drop_column(<span class="c-str">"users"</span>, <span class="c-str">"last_login"</span>)</div>
+
+  <p>The <code class="inline">revision</code> and <code class="inline">down_revision</code> identifiers form a linked list: Alembic follows that chain to figure out exactly which migrations need to run, and in what order, to get a database from wherever it currently is to wherever you're asking it to go — whether that's "latest," a specific revision, or "one step back."</p>
+
+  <div class="code"><span class="c-cmt"># The actual commands, in the order you'd run them</span>
+alembic revision --autogenerate -m <span class="c-str">"add last_login to users"</span>
+<span class="c-out"># -> creates the migration file above by diffing your SQLAlchemy models
+# against the current database schema</span>
+
+alembic upgrade head
+<span class="c-out"># -> runs upgrade() for every migration not yet applied, in order,
+# up through the newest ("head") revision</span>
+
+alembic downgrade -1
+<span class="c-out"># -> runs downgrade() for just the most recently applied migration,
+# reverting the database by exactly one step</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH A MIGRATION CHAIN APPLY, THEN PARTIALLY ROLL BACK</span>
+      <div><button class="btn secondary" id="mig-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Three migrations exist. Run them forward to head, then roll back one step and watch exactly which downgrade() runs.</p>
+    <div class="migration-ladder" id="mig-ladder"></div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;">
+      <button class="btn" id="mig-up">alembic upgrade head ▸</button>
+      <button class="btn danger" id="mig-down">alembic downgrade -1 ▸</button>
+    </div>
+    <div class="log" id="mig-log"><span class="line">Click "upgrade head" to apply all pending migrations in order.</span></div>
+  </div>
+
+  <div class="callout up"><b>Interview-ready definition:</b> an Alembic migration is a versioned Python file exposing <code class="inline">upgrade()</code> and <code class="inline">downgrade()</code>, chained to adjacent migrations via <code class="inline">revision</code>/<code class="inline">down_revision</code> identifiers, so Alembic can deterministically compute the exact ordered sequence of forward or backward steps needed to move a database between any two points in that chain. <code class="inline">alembic upgrade head</code> applies every unapplied migration's <code class="inline">upgrade()</code> in order; <code class="inline">alembic downgrade -1</code> runs only the most recently applied migration's <code class="inline">downgrade()</code>, reverting exactly one step — the reversibility is the entire point: a migration that only knows how to move forward isn't safely deployable, because a bad deploy has no clean way back.</div>
+</section>
+
+<!-- ============ SECTION 2: AUTOGENERATE VS HAND-WRITTEN ============ -->
+<section id="autogen">
+  <div class="kicker">02 — What the diff tool actually sees, and what it can't</div>
+  <h2>Autogenerate vs hand-written migrations</h2>
+
+  <p><strong>Start here, before the examples.</strong> Imagine a proofreading tool that compares two drafts of a document and highlights every added or deleted sentence — genuinely useful, and it'll never miss a sentence that was fully added or fully removed. But now imagine a sentence was just REWORDED, moved to a different paragraph, and slightly repurposed. The tool sees that as "one sentence deleted here, one unrelated new sentence added there" — technically not wrong about the characters on the page, but it has completely missed the actual intent: this wasn't two unrelated edits, it was one rename-and-move. Alembic's <code class="inline">--autogenerate</code> has exactly this blind spot, and it's a specific, well-understood one, not a vague "sometimes it's wrong."</p>
+
+  <p><code class="inline">alembic revision --autogenerate</code> works by diffing your current SQLAlchemy model definitions against the database's actual current schema (introspected via reflection), then generating <code class="inline">op.*</code> calls for whatever differences it finds. It's genuinely reliable for a specific, narrow class of changes, and genuinely unreliable — sometimes silently wrong — for others.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHAT AUTOGENERATE CATCHES RELIABLY VS WHAT IT GETS WRONG</span></div>
+    <div class="conf-row"><span class="conf-label">Add a new column</span><div class="conf-bar-track"><div class="conf-bar-fill good" style="width:95%;"></div></div><span style="color:var(--up-c);">reliable</span></div>
+    <div class="conf-row"><span class="conf-label">Drop a column</span><div class="conf-bar-track"><div class="conf-bar-fill good" style="width:90%;"></div></div><span style="color:var(--up-c);">reliable</span></div>
+    <div class="conf-row"><span class="conf-label">Add/drop a simple index</span><div class="conf-bar-track"><div class="conf-bar-fill good" style="width:80%;"></div></div><span style="color:var(--up-c);">mostly reliable</span></div>
+    <div class="conf-row"><span class="conf-label">Rename a column</span><div class="conf-bar-track"><div class="conf-bar-fill bad" style="width:15%;"></div></div><span style="color:var(--down-c);">gets it wrong by default</span></div>
+    <div class="conf-row"><span class="conf-label">Change a composite index's column order</span><div class="conf-bar-track"><div class="conf-bar-fill bad" style="width:30%;"></div></div><span style="color:var(--down-c);">often misses or misdetects</span></div>
+    <div class="conf-row"><span class="conf-label">Backfilling/transforming existing DATA</span><div class="conf-bar-track"><div class="conf-bar-fill bad" style="width:5%;"></div></div><span style="color:var(--down-c);">cannot generate this at all</span></div>
+  </div>
+
+  <h3>What autogenerate handles well</h3>
+  <p>Structural changes with a clean, unambiguous before/after: adding a column, dropping a column, adding or dropping a table, adding a straightforward single-column index or constraint. These all show up as an unambiguous structural diff between "what the models say" and "what the database currently has" — there's exactly one reasonable interpretation of the change, so Alembic generates it correctly essentially every time.</p>
+
+  <h3>Renames look like drop-then-add, not a rename</h3>
+  <p>This is the single most common autogenerate trap. If you rename a model's <code class="inline">username</code> column to <code class="inline">handle</code>, Alembic's diff sees "a column called <code class="inline">username</code> that no longer exists" and "a new column called <code class="inline">handle</code> that didn't exist before" — it has no way to know these are actually the SAME logical column, just renamed, rather than two unrelated changes. Left unedited, the generated migration does exactly what it detected:</p>
+
+  <div class="code"><span class="c-cmt"># What autogenerate produces for a RENAME, by default -- WRONG</span>
+<span class="c-kw">def</span> <span class="c-fn">upgrade</span>() -> <span class="c-kw">None</span>:
+    op.drop_column(<span class="c-str">"users"</span>, <span class="c-str">"username"</span>)          <span class="c-cmt"># destroys every existing value!</span>
+    op.add_column(<span class="c-str">"users"</span>, sa.Column(<span class="c-str">"handle"</span>, sa.String(), nullable=<span class="c-kw">True</span>))
+
+<span class="c-cmt"># What you actually need to hand-write instead -- CORRECT</span>
+<span class="c-kw">def</span> <span class="c-fn">upgrade</span>() -> <span class="c-kw">None</span>:
+    op.alter_column(<span class="c-str">"users"</span>, <span class="c-str">"username"</span>, new_column_name=<span class="c-str">"handle"</span>)
+    <span class="c-cmt"># -- preserves every existing row's value, just under the new name</span></div>
+
+  <p>The drop-then-add version isn't just cosmetically different — it's destructive. Every existing user's <code class="inline">username</code> value is gone the moment that migration runs, replaced by a brand-new, entirely empty <code class="inline">handle</code> column. Nothing about running <code class="inline">alembic upgrade head</code> would warn you; the migration "succeeds" and the schema ends up looking correct, while the actual data silently didn't survive.</p>
+
+  <h3>Data migrations: autogenerate can't see this at all</h3>
+  <p>Autogenerate only diffs schema STRUCTURE — column names, types, constraints — by comparing model definitions to the reflected database schema. It has no concept of transforming existing row VALUES, because there's no "before" and "after" model definition to diff for that; the models look identical whether or not the data inside matches them. Backfilling a new non-nullable column with a computed default for existing rows, splitting one column's data into two, or normalizing inconsistent existing values — all of these require hand-written <code class="inline">op.execute()</code> calls with real SQL (or batched Python), because there is nothing in your model definitions for autogenerate to diff against in the first place.</p>
+
+  <div class="code"><span class="c-cmt"># A hand-written DATA migration -- autogenerate would never produce this</span>
+<span class="c-kw">def</span> <span class="c-fn">upgrade</span>() -> <span class="c-kw">None</span>:
+    op.add_column(<span class="c-str">"orders"</span>, sa.Column(<span class="c-str">"status"</span>, sa.String(), nullable=<span class="c-kw">True</span>))
+    <span class="c-cmt"># backfill existing rows based on other columns' current values --
+    # this is business logic, not a structural diff, so it has to be
+    # written by hand</span>
+    op.execute(<span class="c-str">"UPDATE orders SET status = 'completed' WHERE shipped_at IS NOT NULL"</span>)
+    op.execute(<span class="c-str">"UPDATE orders SET status = 'pending' WHERE shipped_at IS NULL"</span>)
+    op.alter_column(<span class="c-str">"orders"</span>, <span class="c-str">"status"</span>, nullable=<span class="c-kw">False</span>)  <span class="c-cmt"># now safe to enforce NOT NULL</span></div>
+
+  <div class="callout warn"><b>The workflow this implies:</b> always read a generated migration before running it, never trust it blindly, especially for renames, composite index changes, or anything touching a column that already has production data in it. Autogenerate is a first draft, not a final answer — it correctly detects "the schema differs," but it cannot know your INTENT (was this a rename, or a genuine drop-and-add?), and it never knows anything about the values already living in the affected rows.</div>
+
+  <div class="callout auto"><b>Interview-ready definition:</b> <code class="inline">alembic revision --autogenerate</code> generates a migration by diffing SQLAlchemy model metadata against the database's reflected schema, and is reliable for unambiguous structural changes (column/table/simple-index add or drop) but is not intent-aware: a column rename is detected as an unrelated drop-plus-add (destroying existing data unless hand-corrected to <code class="inline">op.alter_column(..., new_column_name=...)</code>), and it cannot generate data migrations at all, since backfilling or transforming existing row values has no corresponding "before/after" difference in model structure for the diff to detect. Every autogenerated migration should be read and, where needed, hand-edited before being trusted — treat it as a draft, not a guarantee.</div>
+</section>
+
+<!-- ============ SECTION 3: SQL VS NOSQL REVISITED ============ -->
+<section id="revisited">
+  <div class="kicker">03 — Not "which is better," but "which fits THIS service's actual access pattern"</div>
+  <h2>SQL vs NoSQL, revisited with a concrete service</h2>
+
+  <p><strong>Start here, before the decision.</strong> The Month 1 SQL vs NoSQL lab covered the abstract trade-offs — schema-on-write vs schema-on-read, ACID guarantees vs horizontal scale, joins vs denormalized documents. This section does something different: it applies that framework to one real, specific decision this month's own notification service design has to make, using the actual read/write pattern of that specific system rather than a generic example.</p>
+
+  <p>The question: <strong>where should notification delivery history live — Postgres, or a document store?</strong> Every time a notification is sent (or attempted, or retried, or DLQ'd), that event needs to be recorded somewhere durable, queryable, and auditable.</p>
+
+  <h3>The actual access pattern for this specific service</h3>
+  <p>Recall the notification service's shape from earlier this month: one logical event fans out to multiple channels (email, push, SMS), each channel attempt can retry with backoff, and a failed attempt eventually lands in a dead-letter queue with its full failure history preserved. What does the delivery-history record for ONE notification attempt actually need to hold?</p>
+
+  <div class="row-table">
+    <div class="tname">notification_delivery_log — one row per delivery ATTEMPT</div>
+    <table id="ndl-table">
+      <tr><th>Field</th><th>Example value</th></tr>
+      <tr><td>notification_id</td><td>notif_88213</td></tr>
+      <tr><td>channel</td><td>email</td></tr>
+      <tr><td>attempt_number</td><td>2</td></tr>
+      <tr><td>status</td><td>failed</td></tr>
+      <tr><td>provider_response</td><td class="new">{"code": 451, "provider": "sendgrid", "raw_headers": {...}, "retry_after": 30}</td></tr>
+      <tr><td>attempted_at</td><td>2026-08-19T14:03:21Z</td></tr>
+    </table>
+  </div>
+
+  <p>Most of that row is a clean, fixed relational shape: an ID, a channel name, an integer attempt number, a status enum, a timestamp. But <code class="inline">provider_response</code> is genuinely different — its shape varies by channel and even by provider (SendGrid's error payload looks nothing like Twilio's, which looks nothing like APNs's), it's write-once and rarely queried by its internal fields (mostly read back whole, for a human debugging one specific failure), and new fields can appear in it any time a vendor changes their API without warning.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WEIGH THE ACTUAL ACCESS PATTERN</span>
+      <div><button class="btn secondary" id="dec-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-dec="postgres">If: mostly queried by structured fields</button>
+      <button class="chip" data-dec="hybrid">If: also needs flexible provider payloads</button>
+    </div>
+    <div class="log" id="dec-log"><span class="line">Pick a framing to see how the access pattern drives the storage decision.</span></div>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col sql">
+      <h4>All-Postgres (relational, with a JSONB column)</h4>
+      <p>Use Postgres for everything: a normal relational table for the fixed fields (notification_id, channel, status, timestamps) with proper indexes for the actual query patterns ("show me all failed attempts for notification X," "count failures per channel this week"), and a <code class="inline">JSONB</code> column for <code class="inline">provider_response</code> to hold the variable, vendor-specific payload without needing a schema migration every time a new provider is added or a vendor changes their response shape.</p>
+    </div>
+    <div class="dc-col nosql">
+      <h4>Separate document store</h4>
+      <p>Push the entire delivery log into a document database (e.g. MongoDB or DynamoDB), reasoning that the record is "mostly unstructured anyway." This trades away Postgres's transactional guarantees and its ability to JOIN delivery-log rows against the rest of the relational schema (e.g. the notifications table, the users table) in a single query, in exchange for schema flexibility this specific case doesn't actually need as much as it looks like it does.</p>
+    </div>
+  </div>
+
+  <p>The right call here is the all-Postgres approach with a <code class="inline">JSONB</code> column, and the reasoning matters more than the conclusion: the WRITE pattern (one row per delivery attempt, append-only, never updated after the fact) and the READ pattern (mostly structured queries — "attempts for notification X," "failure rate per channel," "everything currently in the DLQ" — occasionally a human reading one row's full <code class="inline">provider_response</code> for debugging) are both patterns relational databases handle well, AS LONG AS the one genuinely variable field is isolated into a JSONB column rather than forcing the whole record into a rigid, brittle fixed schema. Reaching for a full separate NoSQL document store here would mean giving up transactional consistency with the rest of the relational schema (can this delivery-log write and a corresponding notifications-table status update ever need to be atomic together? — yes, plausibly) for a flexibility need that a single JSONB column already satisfies.</p>
+
+  <table class="cmp">
+    <tr><th>Consideration</th><th>Favors Postgres+JSONB</th><th>Would favor a separate NoSQL store</th></tr>
+    <tr><td>Most fields are fixed &amp; structured</td><td>Yes — this service's fields mostly are</td><td>Only if almost everything is genuinely schemaless</td></tr>
+    <tr><td>Need to JOIN against notifications/users tables</td><td>Yes — trivial in the same DB</td><td>Requires app-level joins across two systems</td></tr>
+    <tr><td>Need atomic writes with other relational tables</td><td>Yes — same transaction is possible</td><td>Cross-store atomicity is hard or impossible</td></tr>
+    <tr><td>Query volume against the DB overall</td><td>Fine at this service's actual scale</td><td>Matters only if this table alone needs to scale far beyond the rest of the schema</td></tr>
+    <tr><td>Variable, vendor-specific payload shape</td><td>Solved by one JSONB column</td><td>Only wins if MOST fields were like this, not just one</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The mistake this revisits from Month 1:</b> "this data has some unstructured parts" is not, by itself, a reason to leave a relational database. Modern relational databases (Postgres in particular) support a JSONB column right alongside strictly-typed columns in the SAME row, which handles exactly this "mostly structured, one field genuinely variable" shape without paying the cost of a second storage system, a second connection pool, a second set of migrations, and the loss of transactional consistency with the rest of the schema. The decision should follow the ACTUAL proportion and criticality of the unstructured part, not just its presence.</div>
+
+  <div class="callout doc"><b>Interview-ready definition:</b> the SQL vs NoSQL decision for a specific service should be driven by that service's actual read/write access pattern — not a generic "structured data → SQL, unstructured data → NoSQL" heuristic. For the notification delivery log specifically: the majority of fields are fixed and relational (IDs, enums, timestamps), the query patterns are structured (filter by notification, channel, or status), and cross-table consistency with the rest of the relational schema matters — all of which favor Postgres. The one genuinely variable field (vendor-specific provider responses) is handled by a single JSONB column rather than justifying a wholesale move to a document store, since a hybrid relational-plus-JSONB design captures the schema flexibility benefit without sacrificing joins, transactions, or a single unified storage system.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing a migration chain by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A database is currently at migration <code class="inline">c3</code>. The chain is <code class="inline">c1 → c2 → c3 → c4 → c5</code> (each arrow meaning "down_revision points back to the previous one"). Someone runs <code class="inline">alembic upgrade head</code>. Which migrations' <code class="inline">upgrade()</code> functions run, and in what order?</p>
+    <details><summary>Show solution</summary><div class="solution">c4's upgrade() runs first, then c5's upgrade() runs second. c1, c2, and
+c3 do NOT run again -- they're already applied (the database is currently
+AT c3, meaning everything up through and including c3 has already run).
+Alembic tracks the current revision in its own version table, walks the
+down_revision chain to find every migration between the current position
+and "head" (the newest revision, c5), and applies each one's upgrade()
+in order from oldest-not-yet-applied to newest -- here, that's exactly
+c4 then c5.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Fixing an autogenerated rename before it runs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You rename a model field from <code class="inline">email_addr</code> to <code class="inline">email</code> and run <code class="inline">alembic revision --autogenerate</code>. The generated file contains <code class="inline">op.drop_column("users", "email_addr")</code> followed by <code class="inline">op.add_column("users", sa.Column("email", sa.String()))</code>. What's wrong, and what's the corrected version?</p>
+    <details><summary>Show solution</summary><div class="solution">Running this as generated would DELETE every existing user's email
+address -- the drop_column destroys the column and all its data, and the
+subsequent add_column creates a brand new, entirely empty "email" column
+with no relationship to what used to be in "email_addr". Autogenerate
+detected this as two unrelated changes (one column disappeared, a
+different one appeared) because it has no way to infer that a rename was
+the actual intent behind those two changes.
+
+Corrected version, replacing both generated lines with a single
+alter_column call:
+
+  def upgrade() -> None:
+      op.alter_column("users", "email_addr", new_column_name="email")
+
+  def downgrade() -> None:
+      op.alter_column("users", "email", new_column_name="email_addr")
+
+This preserves every existing row's value under the new column name in
+both directions, instead of destroying and recreating the column.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding whether a change needs a hand-written data migration</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Which of these three changes can autogenerate handle correctly on its own, and which need a hand-written migration: (a) adding a nullable <code class="inline">phone_number</code> column to <code class="inline">users</code>, (b) adding a NOT NULL <code class="inline">country_code</code> column to a table with 2 million existing rows, (c) splitting an existing <code class="inline">full_name</code> column into separate <code class="inline">first_name</code> and <code class="inline">last_name</code> columns?</p>
+    <details><summary>Show solution</summary><div class="solution">(a) Autogenerate handles this fine on its own. A nullable column add is
+exactly the unambiguous structural change autogenerate is reliable for --
+existing rows simply get NULL in the new column, no data transformation
+needed.
+
+(b) Needs a hand-written migration. A NOT NULL column with no default
+cannot be added to a table that already has 2 million rows without
+SOME value for every existing row -- autogenerate will generate the
+add_column call, but naively adding it as NOT NULL with no default would
+fail against existing data. The real migration needs to: add the column
+as nullable first, backfill a value for all 2 million existing rows
+(op.execute(...) with real logic, or a default derived from other data),
+THEN alter the column to NOT NULL once every row has a value -- a
+three-step hand-written sequence autogenerate cannot produce on its own.
+
+(c) Needs a hand-written migration. This is a data transformation
+(parsing "full_name" into two parts for every existing row), not a
+structural rename -- autogenerate would only see "full_name disappeared,
+first_name and last_name appeared" as an unrelated drop+add, and even a
+corrected non-destructive version still requires hand-written logic
+(likely op.execute() with a string-splitting UPDATE, or a Python-level
+batch operation) to actually populate first_name/last_name from each
+existing full_name value before dropping the old column.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Applying the notification-service reasoning to a different service</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the same reasoning framework from section 3 (majority field shape, actual query pattern, need for joins/transactions with other tables), would you store a URL shortener's click-analytics data (one row per click: short_code, timestamp, referrer, user_agent, rough geolocation) in Postgres or a document/columnar store? Justify using the specific access pattern, not a general preference.</p>
+    <details><summary>Show solution</summary><div class="solution">This one genuinely leans toward NOT plain Postgres, or at least not the
+SAME Postgres instance serving the shortener's core redirect lookups --
+and the reasoning is the interesting part, since it differs from the
+notification-log case despite looking superficially similar (also "one
+row per event").
+
+Key differences in the actual access pattern: click-analytics data is
+extremely high VOLUME and WRITE-heavy (every single redirect potentially
+generates a row, at whatever scale the shortener's read traffic already
+runs at), it is rarely if ever JOINed against the shortener's core
+short_code -> long_url table in a single transactional query, and it is
+typically queried in AGGREGATE ("clicks per day for code X over the last
+month") rather than row-by-row. That access pattern -- high write volume,
+rarely joined transactionally with core relational data, mostly queried
+in bulk/aggregate -- is a much better fit for either a columnar/analytics-
+oriented store or a NoSQL store optimized for high-throughput appends
+and aggregation, kept SEPARATE from the core relational database serving
+the actual redirect lookups, so that a click-analytics write storm never
+risks degrading the latency-critical redirect path.
+
+Contrast with the notification log: lower relative volume, frequently
+queried by structured filters (notification_id, channel, status), and
+plausibly needs transactional consistency with the rest of the relational
+schema -- which is why Postgres+JSONB was the right call there. Same
+framework, different answer, because the actual access pattern differs.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Writing the downgrade() for a hand-written data migration</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">For the backfill migration in section 1's data-migration example (adding <code class="inline">orders.status</code>, backfilling it from <code class="inline">shipped_at</code>, then setting it NOT NULL), write a reasonable <code class="inline">downgrade()</code>. What's the fundamental limitation of any downgrade() for a migration like this?</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable downgrade():
+
+  def downgrade() -> None:
+      op.alter_column("orders", "status", nullable=True)
+      op.drop_column("orders", "status")
+
+The fundamental limitation: this downgrade can cleanly reverse the
+STRUCTURAL part (removing the column), but it cannot truly "undo" the
+migration in the sense of restoring the exact pre-migration state,
+because the backfill in upgrade() was a lossy computation -- it derived
+status from shipped_at, but nothing about that process is reversible in
+the other direction (there was no "status" column before this migration
+to derive shipped_at FROM). Once this migration's upgrade() has run and
+the status column is later used for OTHER purposes -- say, a support
+agent manually overrides a specific order's status -- running downgrade()
+still just drops the whole column, silently losing that override along
+with everything else, with no way to recover it.
+
+This is a general, important truth about data migrations: downgrade()
+for a structural change (add/drop a column) is almost always cleanly
+reversible, but downgrade() for a DATA migration is frequently only a
+partial or best-effort reversal, since real information can be created,
+derived, or overwritten between the upgrade and any later downgrade.
+This is exactly why production teams treat "can we roll this back" as a
+real design question for data migrations specifically, not an assumption
+that downgrade() always makes you whole again.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely what breaks in an autogenerated migration for a column rename and how to fix it, (2) why data migrations can never be produced by autogenerate at all, and (3) the specific access-pattern reasoning (not just a rule of thumb) that puts the notification service's delivery log in Postgres with a JSONB column rather than a separate document store? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — migrations and sql vs nosql revisited.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: MIGRATION LADDER DEMO */
+(function(){
+  var ladderEl = document.getElementById('mig-ladder');
+  var upBtn = document.getElementById('mig-up');
+  var downBtn = document.getElementById('mig-down');
+  var resetBtn = document.getElementById('mig-reset');
+  var logEl = document.getElementById('mig-log');
+  var timers = [];
+  var running = false;
+
+  var MIGRATIONS = [
+    {id: "b7f1_create_users_table", desc: "CREATE TABLE users(id, email)"},
+    {id: "c2a4_add_email_index", desc: "CREATE INDEX ix_users_email"},
+    {id: "d9e0_add_last_login", desc: "ADD COLUMN last_login"}
+  ];
+  var currentIndex = -1; // -1 = nothing applied
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function render(){
+    ladderEl.innerHTML = MIGRATIONS.map(function(m, i){
+      var visible = i <= currentIndex ? 'visible' : '';
+      var head = i === currentIndex ? 'head' : '';
+      return '<div class="rung ' + visible + ' ' + head + '"><span class="rid">' + m.id.slice(0,4) + '</span><span>' + m.id + ' — ' + m.desc + '</span>' + (i === currentIndex ? '<span style="margin-left:auto; color:var(--up-c);">← current head</span>' : '') + '</div>';
+    }).join('');
+  }
+  render();
+
+  function setButtons(disabled){
+    upBtn.disabled = disabled;
+    downBtn.disabled = disabled;
+  }
+
+  upBtn.addEventListener('click', function(){
+    if(running) return;
+    if(currentIndex >= MIGRATIONS.length - 1){
+      log('Already at head — nothing to upgrade.');
+      return;
+    }
+    running = true;
+    setButtons(true);
+    log('<b>alembic upgrade head</b> — applying every unapplied migration in order.');
+    var toRun = [];
+    for(var i = currentIndex + 1; i < MIGRATIONS.length; i++){ toRun.push(i); }
+    toRun.forEach(function(i, idx){
+      var t = setTimeout(function(){
+        currentIndex = i;
+        render();
+        log('upgrade() ran for <b>' + MIGRATIONS[i].id + '</b> — ' + MIGRATIONS[i].desc);
+      }, (idx+1) * 600);
+      timers.push(t);
+    });
+    var finalT = setTimeout(function(){
+      log('<b style="color:var(--up-c);">Now at head.</b> All migrations applied.');
+      running = false;
+      setButtons(false);
+    }, (toRun.length+1) * 600);
+    timers.push(finalT);
+  });
+
+  downBtn.addEventListener('click', function(){
+    if(running) return;
+    if(currentIndex < 0){
+      log('Nothing applied yet — nothing to downgrade.');
+      return;
+    }
+    running = true;
+    setButtons(true);
+    var reverting = MIGRATIONS[currentIndex];
+    log('<b>alembic downgrade -1</b> — reverting exactly the most recently applied migration.');
+    var t = setTimeout(function(){
+      log('downgrade() ran for <b>' + reverting.id + '</b> — undoing: ' + reverting.desc + '. Earlier migrations are untouched.');
+      currentIndex -= 1;
+      render();
+      running = false;
+      setButtons(false);
+    }, 700);
+    timers.push(t);
+  });
+
+  resetBtn.addEventListener('click', function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    running = false;
+    setButtons(false);
+    currentIndex = -1;
+    render();
+    logEl.innerHTML = '<span class="line">Click "upgrade head" to apply all pending migrations in order.</span>';
+  });
+})();
+
+/* SECTION 3: ACCESS PATTERN DECISION DEMO */
+(function(){
+  var chips = document.querySelectorAll('[data-dec]');
+  var logEl = document.getElementById('dec-log');
+
+  var CONTENT = {
+    postgres: [
+      "Framing: most queries are 'attempts for notification X', 'failures per channel this week', 'everything currently in the DLQ'.",
+      "These are all structured, indexable, relational query shapes — Postgres with normal B-tree indexes on notification_id/channel/status handles this cleanly.",
+      "<b style=\"color:var(--up-c);\">→ Favors Postgres.</b> A separate document store would add operational cost for a query pattern that's already relational-shaped."
+    ],
+    hybrid: [
+      "Framing: provider_response varies by vendor (SendGrid vs Twilio vs APNs) and changes shape whenever a vendor updates their API.",
+      "This ONE field is genuinely schemaless — but it's a minority of the record, rarely queried by its internal structure, mostly read back whole for debugging.",
+      "<b style=\"color:var(--up-c);\">→ Still favors Postgres — with a JSONB column for just this field.</b> A single flexible column solves the variability without abandoning joins, transactions, or a unified schema for everything else."
+    ]
+  };
+
+  function log(msgs){
+    logEl.innerHTML = '';
+    msgs.forEach(function(m, i){
+      setTimeout(function(){
+        var p = document.createElement('div'); p.className = 'line fadein';
+        p.innerHTML = m;
+        logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+      }, i * 500);
+    });
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener('click', function(){
+      chips.forEach(function(x){ x.classList.remove('active'); });
+      c.classList.add('active');
+      log(CONTENT[c.dataset.dec]);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Survival Exercise: Load Testing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --conn-c:#4fc3f7; --fd-c:#f2c14e; --pool-c:#c792ea; --mem-c:#ff9d80; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--conn-c); color:var(--conn-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--fd-c); color:var(--fd-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--pool-c); color:var(--pool-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.d{border-color:var(--mem-c); color:var(--mem-c); background:rgba(255,157,128,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-self{color:#e9e6dd;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* connection flood grid */
+  .conn-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(14px,1fr)); gap:3px; margin:1.2rem 0; max-height:140px; overflow:hidden;}
+  .conn-cell{aspect-ratio:1/1; border-radius:2px; background:var(--panel-2); border:1px solid var(--rule); transition:background .2s;}
+  .conn-cell.open{background:var(--conn-c);}
+  .conn-cell.dropped{background:var(--bad-c);}
+  .conn-counter{font-family:var(--mono); font-size:0.85rem; margin:0.6rem 0; color:var(--ink-dim);}
+  .conn-counter b{color:var(--ink); font-size:1.1rem;}
+
+  /* failure mode cards */
+  .fail-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:760px){.fail-grid{grid-template-columns:1fr;}}
+  .fail-card{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2); cursor:pointer; transition:all .2s;}
+  .fail-card:hover{border-color:var(--accent);}
+  .fail-card.active{border-color:var(--fd-c); box-shadow:0 0 16px rgba(242,193,78,0.15);}
+  .fail-card h4{font-family:var(--mono); font-size:0.78rem; margin:0 0 0.4rem; color:var(--ink);}
+  .fail-card p{font-size:0.82rem; margin:0; color:var(--ink-dim);}
+  .fail-detail{margin-top:1.2rem; padding:1rem 1.2rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); font-size:0.88rem;}
+  .fail-detail .symptom{font-family:var(--mono); font-size:0.8rem; color:var(--bad-c); background:#0b0d11; border:1px solid var(--rule); border-radius:6px; padding:0.6rem 0.8rem; margin-top:0.6rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.conn{border-left-color:var(--conn-c); background:rgba(79,195,247,0.06);} .callout.conn b{color:var(--conn-c);}
+  .callout.fd{border-left-color:var(--fd-c); background:rgba(242,193,78,0.06);} .callout.fd b{color:var(--fd-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.survival{border-left-color:var(--fd-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--fd-c);}
+  .callout.checkpoint{border-left-color:var(--accent); background:rgba(127,216,160,0.1); font-size:0.95rem;}
+  .callout.checkpoint b{color:var(--accent);}
+  .callout.checkpoint ul{margin:0.6rem 0 0; padding-left:1.3rem;}
+  .callout.checkpoint li{margin:0.4rem 0;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · SURVIVAL EXERCISE — LOAD TESTING</div>
+  <h1>Load testing a streaming service means counting open doors, not counting requests.</h1>
+  <p class="lede">Every prior tool this month gets exercised for real here: the streaming service from this week, the rate limiter and connection pool from earlier weeks, and the migrations from yesterday. This lab covers what load testing actually measures for a WebSocket/SSE service, a real connection-flooding script, the three most common causes of dropped connections under load, and how to tell which one you're actually looking at from the error messages alone.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Concurrent connections, not req/sec</div>
+    <div class="pipe-label b">File descriptor limits</div>
+    <div class="pipe-label c">Connection pool exhaustion</div>
+    <div class="pipe-label d">Memory pressure</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="measure">1 · What Load Testing a Stream Actually Measures</a>
+  <a data-target="flood">2 · A Real Connection-Flooding Script</a>
+  <a data-target="dropped">3 · Diagnosing Dropped Connections</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 4 survival exercise:</b> the roadmap's checkpoint for this exercise reads: <em>"Load test the streaming service. Fix dropped-connection issues under load. Confirm schema + migrations hold up."</em> Everything below builds toward that directly, and it's also the final piece of Month 2 as a whole — by the end of this lab you should be able to load test a real streaming service, correctly diagnose why connections drop under pressure, and explain every failure mode without notes.</div>
+</div>
+
+<!-- ============ SECTION 1: WHAT LOAD TESTING MEASURES ============ -->
+<section id="measure">
+  <div class="kicker">01 — Not the same question as "how fast is one request"</div>
+  <h2>What load testing actually measures for a streaming service</h2>
+
+  <p><strong>Start here, before any tooling.</strong> Think about stress-testing a restaurant two completely different ways. One way: how fast can the kitchen produce a single dish, over and over, back to back — that's throughput for quick, self-contained transactions, and it's what a typical HTTP load test measures (requests per second, latency per request). The other way: how many tables can the restaurant simultaneously seat and keep occupied, each one lingering for an hour, before it runs out of chairs, staff attention, or floor space — that's a completely different question, about how many things can be held open AT ONCE, not how fast any one of them gets served.</p>
+
+  <p>A normal HTTP load test (hammering a REST endpoint) measures <strong>requests per second</strong> and per-request latency, because each request is quick and self-contained — it arrives, gets handled, and is gone. A streaming service's load test has to measure something structurally different: <strong>concurrent connection count</strong> — how many WebSocket or SSE connections can the service hold open AT THE SAME TIME, for realistic durations, without connections failing, memory climbing unboundedly, or the server refusing new connections.</p>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Typical HTTP load test</th><th>Streaming service load test</th></tr>
+    <tr><td>Primary metric</td><td>Requests per second, p50/p95/p99 latency</td><td>Maximum concurrent open connections sustained without failure</td></tr>
+    <tr><td>Connection lifetime</td><td>Milliseconds — open, respond, close</td><td>Minutes to hours — deliberately held open</td></tr>
+    <tr><td>What actually gets exhausted</td><td>CPU/thread time per request</td><td>File descriptors, connection pool slots, per-connection memory — resources that accumulate the LONGER connections stay open, not just how often new ones arrive</td></tr>
+    <tr><td>A "passing" run looks like</td><td>High req/sec at low latency, sustained</td><td>N concurrent connections held open for the full test duration with zero unexpected drops</td></tr>
+  </table>
+
+  <p>This distinction matters because a tool or test plan built purely around "hit this endpoint N times per second" will systematically under-test a streaming service — it might never even attempt to hold more than a handful of connections open simultaneously, since a normal HTTP load generator's whole model is open-request-close-repeat, not open-and-hold. The <a href="streaming_architecture_integration.html" style="color:var(--conn-c);">streaming architecture integration lab</a> covered why WebSockets and SSE both involve connections that are deliberately kept open far longer than a typical request — that's exactly the property this kind of load test has to stress.</p>
+
+  <div class="callout conn"><b>Interview-ready definition:</b> load testing a streaming (WebSocket/SSE) service measures concurrent connection capacity — how many long-lived connections the service can hold open simultaneously, for realistic durations, without dropping existing connections or refusing new ones — rather than requests-per-second, which is the wrong metric for a service whose defining property is holding a connection open rather than completing it quickly. The resources under real pressure in a streaming load test (file descriptors, pool slots, per-connection memory) accumulate with concurrent OPEN connections over time, not with request arrival rate, which is why a load test designed around throughput alone will miss the failure modes that actually matter for this kind of service.</div>
+</section>
+
+<!-- ============ SECTION 2: CONNECTION-FLOODING SCRIPT ============ -->
+<section id="flood">
+  <div class="kicker">02 — Actually opening (and holding) thousands of connections</div>
+  <h2>A real connection-flooding script</h2>
+
+  <p><strong>Start here, before the code.</strong> To measure how many tables a restaurant can seat at once, you don't ask one customer to eat very fast — you actually seat many customers at once and see when the restaurant runs out of chairs. Load testing a streaming service works the same way: you need a script that actually opens many connections concurrently and, critically, HOLDS them open (doesn't immediately close them), because the failure modes this lab cares about only show up once a large number of connections are simultaneously alive, not just simultaneously opened-and-closed.</p>
+
+  <p>A simple asyncio-based flooding script does exactly this — open N WebSocket connections concurrently, keep each one alive with periodic pings, and track how many stay open successfully versus how many fail:</p>
+
+  <div class="code"><span class="c-kw">import</span> asyncio
+<span class="c-kw">import</span> websockets
+
+<span class="c-kw">async def</span> <span class="c-fn">hold_one_connection</span>(conn_id: int, url: str, results: dict):
+    <span class="c-kw">try</span>:
+        <span class="c-kw">async with</span> websockets.connect(url) <span class="c-kw">as</span> ws:
+            results[<span class="c-str">"opened"</span>] += <span class="c-num">1</span>
+            <span class="c-cmt"># hold the connection open, sending a lightweight ping periodically
+            # so it doesn't look idle/abandoned to the server or any proxy</span>
+            <span class="c-kw">while</span> <span class="c-kw">True</span>:
+                <span class="c-kw">await</span> ws.send(<span class="c-str">f'{{"type": "ping", "conn_id": {conn_id}}}'</span>)
+                <span class="c-kw">await</span> asyncio.sleep(<span class="c-num">15</span>)   <span class="c-cmt"># realistic keep-alive interval, not a tight loop</span>
+    <span class="c-kw">except</span> Exception <span class="c-kw">as</span> e:
+        results[<span class="c-str">"dropped"</span>] += <span class="c-num">1</span>
+        results[<span class="c-str">"errors"</span>].append(<span class="c-fn">str</span>(e))
+
+<span class="c-kw">async def</span> <span class="c-fn">flood</span>(url: str, num_connections: int):
+    results = {<span class="c-str">"opened"</span>: <span class="c-num">0</span>, <span class="c-str">"dropped"</span>: <span class="c-num">0</span>, <span class="c-str">"errors"</span>: []}
+    <span class="c-cmt"># launch all connections CONCURRENTLY, not one after another --
+    # sequential opening would never actually stress "N open at once"</span>
+    tasks = [hold_one_connection(i, url, results) <span class="c-kw">for</span> i <span class="c-kw">in</span> <span class="c-fn">range</span>(num_connections)]
+    <span class="c-kw">await</span> asyncio.gather(*tasks, return_exceptions=<span class="c-kw">True</span>)
+    <span class="c-kw">return</span> results
+
+<span class="c-cmt"># ramp up in stages, checking results at each stage --
+# don't jump straight to 10,000, since that tells you almost nothing
+# about WHERE things start failing</span>
+<span class="c-kw">for</span> n <span class="c-kw">in</span> [<span class="c-num">100</span>, <span class="c-num">1000</span>, <span class="c-num">5000</span>, <span class="c-num">10000</span>]:
+    asyncio.run(flood(<span class="c-str">"ws://localhost:8000/ws/chat/room1"</span>, n))
+    <span class="c-cmt"># inspect results["dropped"] and results["errors"] before ramping further</span></div>
+
+  <p>Two design choices in that script matter more than they look: launching every connection concurrently via <code class="inline">asyncio.gather</code> (not a sequential loop, which would never produce a real spike of simultaneously-open connections), and holding each one open with a periodic keep-alive rather than connecting and immediately disconnecting (a connect-and-drop loop tests connection SETUP throughput, a completely different thing from concurrent connection CAPACITY). A production-grade version of this exact idea is what a tool like <strong>Locust</strong> provides out of the box, with built-in ramp-up scheduling, live metrics, and a web UI for watching results as the test runs — but the asyncio script above is exactly what Locust (or any such tool) is doing underneath for a WebSocket target.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SIMULATE RAMPING UP CONCURRENT CONNECTIONS</span>
+      <div><button class="btn secondary" id="fl-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Each cell represents one connection attempt. Watch what happens as concurrency ramps from 100 toward a ceiling the server can't sustain.</p>
+    <div class="conn-counter">Concurrent open connections: <b id="fl-open">0</b> / <span id="fl-target">0</span> attempted &nbsp;·&nbsp; Dropped: <b id="fl-dropped" style="color:var(--bad-c);">0</b></div>
+    <div class="conn-grid" id="fl-grid"></div>
+    <button class="btn" id="fl-run">Ramp: 100 → 1,000 → 5,000 concurrent connections ▸</button>
+    <div class="log" id="fl-log"><span class="line">Click to ramp up concurrent connections in stages and watch where the server starts dropping them.</span></div>
+  </div>
+
+  <div class="callout conn"><b>Interview-ready definition:</b> a connection-flooding load test opens many connections CONCURRENTLY (not sequentially) against a streaming endpoint and holds each one open with periodic keep-alive traffic, tracking how many remain successfully open versus how many fail, typically ramped in stages (100 → 1,000 → 5,000...) rather than jumping straight to a target number — staged ramping is what lets you identify the approximate concurrency level where failures begin, rather than just learning "it broke somewhere below 10,000" with no more precision than that.</div>
+</section>
+
+<!-- ============ SECTION 3: DIAGNOSING DROPPED CONNECTIONS ============ -->
+<section id="dropped">
+  <div class="kicker">03 — Same symptom, three different root causes</div>
+  <h2>Common causes of dropped connections under load, and how to tell them apart</h2>
+
+  <p><strong>Start here, before the diagnosis.</strong> Imagine your car won't start, and there are three completely different possible reasons: the battery is dead, the fuel tank is empty, or the starter motor itself is broken. All three produce a similar surface symptom ("it won't start"), but each has a distinct, checkable signal that tells you which one it actually is — the dashboard lights don't come on at all (battery), the engine cranks but doesn't catch (fuel), or you hear a click but no crank (starter). Diagnosing "connections are dropping under load" works the same way: the same broad symptom can come from at least three genuinely different root causes, each with its own distinct error signature.</p>
+
+  <div class="fail-grid" id="fail-cards"></div>
+  <div class="fail-detail" id="fail-detail"></div>
+
+  <h3>File descriptor limits</h3>
+  <p>Every open socket (every WebSocket or SSE connection) consumes one operating-system file descriptor, and every process has a ceiling on how many it's allowed to hold open at once — the <code class="inline">ulimit -n</code> value, often defaulting to a surprisingly low number (1024 on many systems) unless explicitly raised. Once a process hits that ceiling, it cannot open any MORE file descriptors — new connection attempts fail outright, and depending on how the accepting code handles the error, existing connections may also start failing if the process can't even open descriptors for other internal operations (like writing a log line) anymore.</p>
+
+  <div class="code"><span class="c-cmt"># Checking and raising the file descriptor limit</span>
+ulimit -n
+<span class="c-out"># 1024   <- the default ceiling on many systems, often far too low
+# for a service meant to hold thousands of concurrent connections</span>
+
+ulimit -n 65536   <span class="c-cmt"># raise it for the current shell/process</span>
+
+<span class="c-cmt"># the actual OS-level error when the ceiling is hit:</span>
+<span class="c-cmt"># OSError: [Errno 24] Too many open files</span></div>
+
+  <h3>Exhausted connection pools</h3>
+  <p>This is a different resource entirely from OS file descriptors: it's the application-level database connection pool covered in the <code class="inline">connection_pooling.html</code> lab from earlier this month. Every incoming WebSocket connection that needs to touch the database (say, to persist a chat message) borrows a connection from that pool for the duration of its query, then returns it. Under a flood of concurrent streaming connections, if each one holds onto its borrowed DB connection for longer than expected (or if the pool size was sized for typical HTTP request volume, not this many simultaneous streaming clients each occasionally needing a DB connection), the pool runs out of available slots, and any NEW request needing a database connection blocks or times out waiting for one to free up — even though the OS-level sockets and file descriptors are completely fine.</p>
+
+  <h3>Memory pressure</h3>
+  <p>Each open connection isn't free even when it's idle — the server keeps some in-memory state per connection (buffers, the connection object itself, any per-connection application state like "which chat room is this socket subscribed to"). At a few hundred or even a few thousand connections this is negligible, but at tens of thousands of concurrent connections, the CUMULATIVE per-connection memory overhead can genuinely approach or exceed the process's available memory, causing the OS to start killing the process (an OOM kill) or the server to slow to a crawl under garbage-collection/paging pressure well before any explicit "connection refused" error appears.</p>
+
+  <table class="cmp">
+    <tr><th>Failure mode</th><th>What you'll see</th><th>How to confirm it's THIS one</th></tr>
+    <tr><td>File descriptor limit</td><td><code>OSError: [Errno 24] Too many open files</code>, new connections refused outright, existing ones sometimes also failing</td><td>Check <code>ulimit -n</code> against the actual concurrent connection count the server is holding; the failure count tracks closely against hitting that exact ceiling</td></tr>
+    <tr><td>Connection pool exhaustion</td><td>Timeouts specifically on operations that touch the database (not on the streaming connection itself), e.g. <code>TimeoutError: QueuePool limit exceeded</code></td><td>The WebSocket/SSE connections themselves stay open and healthy; only DB-dependent operations inside them start failing or hanging</td></tr>
+    <tr><td>Memory pressure</td><td>Gradual slowdown across the whole process, then an OOM kill (process dies entirely) or the OS starts swapping heavily</td><td>Watch process memory (RSS) climb roughly linearly with concurrent connection count over the course of the ramp, well before the fd or pool limits are hit</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The trap:</b> all three failure modes can produce a vague, generic symptom like "some clients report their connection dropped" if you're only watching client-side behavior. The actual root cause is only visible from SERVER-side signals — the specific exception type and where in the stack it originates, the OS-level fd count, the connection pool's own metrics, and process memory over time. Diagnosing "which one is it" without server-side logs and metrics is close to guessing; this is exactly why observability (structured logging with the specific exception, and basic resource metrics) has to exist BEFORE you run a load test, not be added afterward once something breaks.</div>
+
+  <div class="callout fd"><b>Interview-ready definition:</b> the three most common causes of dropped connections under load for a streaming service are (1) OS-level file descriptor exhaustion — the process hits its <code class="inline">ulimit -n</code> ceiling on open sockets, surfacing as <code class="inline">OSError: Too many open files</code>; (2) application-level connection pool exhaustion — a database connection pool sized for typical request volume runs out of available slots under many concurrent streaming clients, surfacing as pool timeout errors specifically on DB-touching operations, with the streaming connections themselves staying healthy; and (3) memory pressure — cumulative per-connection state across tens of thousands of open connections approaches available process memory, surfacing as gradual slowdown followed by an OOM kill rather than an explicit connection-refused error. Each has a distinct server-side signature, which is why diagnosis requires server-side observability, not just observing that clients are disconnecting.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing from a specific error message</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">During a load test ramping toward 8,000 concurrent WebSocket connections, the server logs start showing <code class="inline">OSError: [Errno 24] Too many open files</code> at around connection #4,096, and new connection attempts start being refused outright, while all previously-open connections keep working fine. Which of the three failure modes is this, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">This is file descriptor exhaustion. The specific error (Errno 24, "Too
+many open files") is the OS-level signal for exactly this failure mode,
+and the fact that it hits at a specific, round-ish number (4,096 is a
+very common default/soft ulimit value, or half of a 8192-ish limit
+combined with other fds the process already had open for logs, listening
+sockets, etc.) rather than climbing gradually is consistent with hitting
+a hard ceiling rather than a resource degrading progressively. The fact
+that EXISTING connections keep working is also consistent -- the process
+already holds those file descriptors; it's only NEW open() calls (new
+incoming connections) that fail once the ceiling is hit.
+
+Fix: raise the process's file descriptor limit before running the
+service under this kind of load -- ulimit -n 65536 (or an appropriate
+higher value based on expected peak concurrency) in the process's startup
+environment, not just in an interactive shell that won't apply to how the
+service is actually deployed (e.g. in a systemd unit file's LimitNOFILE=
+setting, or the container/orchestrator's ulimit configuration if
+containerized).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Distinguishing pool exhaustion from fd exhaustion</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">At 3,000 concurrent chat connections, clients report messages aren't being saved (though the chat connection itself stays open and messages still broadcast to other users in the room in real time). Is this more likely file descriptor exhaustion or connection pool exhaustion? Justify using the specific symptom.</p>
+    <details><summary>Show solution</summary><div class="solution">Connection pool exhaustion, not file descriptor exhaustion -- and the
+key diagnostic detail is exactly what's stated: the WebSocket connection
+itself stays open and healthy (messages still broadcast live to other
+users), while only the DATABASE-touching part of the operation (saving
+the message) is failing. If this were file descriptor exhaustion, the
+WEBSOCKET connections themselves (which are also just file descriptors)
+would be failing to open or would be getting dropped -- fd exhaustion
+doesn't selectively spare the socket layer while breaking only DB writes,
+because sockets and DB connections both consume file descriptors from
+the SAME OS-level pool of them.
+
+The pattern here -- streaming layer fine, only DB-dependent operations
+failing/timing out -- is specifically what happens when the application-
+level connection pool (a fixed number of DB connection slots, sized based
+on some assumption about concurrent DB usage) runs out of available
+slots under 3,000 concurrent chat connections each occasionally needing
+one to persist a message. The fix is either increasing pool size (with
+awareness of the underlying database's own max-connections ceiling) or
+reducing how long each borrowed connection is held per operation, not
+touching the OS file descriptor limit at all -- that's the wrong lever
+for this specific symptom.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reading a memory-pressure symptom correctly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A load test shows the server's process memory climbing steadily and roughly linearly as concurrent connections ramp from 1,000 to 20,000, with no explicit error messages at any point — until the process is suddenly killed by the OS partway through the ramp to 25,000. What failure mode is this, and why does it look so different from the fd-exhaustion case in Problem 1?</p>
+    <details><summary>Show solution</summary><div class="solution">This is memory pressure culminating in an OOM (out-of-memory) kill. It
+looks structurally different from fd exhaustion because the underlying
+resource behaves differently: file descriptors are a HARD, discrete
+ceiling (ulimit -n) that either has room or doesn't -- hitting it produces
+an immediate, specific error (Errno 24) the moment the ceiling is
+crossed, with no gradual warning beforehand from the OS itself. Memory
+is a SOFT, continuous resource that degrades gradually as it's consumed
+-- there's no single "memory ceiling reached" error from the kernel the
+way there is for file descriptors; instead the OS silently allows memory
+use to climb (each additional connection's buffers, connection object,
+and per-connection app state adding a small, roughly constant amount)
+right up until the process either can't allocate any more and crashes on
+its own, or the OS's out-of-memory killer decides to forcibly terminate
+the process to protect the rest of the system -- which is exactly the
+"suddenly killed" behavior described here, with no graceful error
+message from the application's own code, because the process didn't get
+a chance to log one before being killed externally.
+
+The practical implication: memory pressure needs to be caught via
+PROACTIVE monitoring (watching RSS/process memory climb during the
+ramp, well before it's exhausted) rather than reactive error handling,
+since by the time the symptom is "the process got killed," there's no
+clean error to catch or handle -- the fix has to happen earlier, either
+by reducing per-connection memory footprint or by capping the maximum
+concurrent connections the service will accept before that ceiling is
+ever approached.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Designing a staged ramp and explaining why it beats a single big jump</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate proposes load testing by immediately opening 20,000 concurrent connections in one shot, reasoning "if it survives 20,000, we're done, and if it doesn't, we know we have a problem." What's lost by skipping the staged ramp (100 → 1,000 → 5,000 → ...) from section 2?</p>
+    <details><summary>Show solution</summary><div class="solution">Jumping straight to 20,000 tells you PASS or FAIL at 20,000, but not
+WHERE in that range things actually start breaking, nor WHICH failure
+mode is responsible -- and this lab's whole diagnostic section depends on
+being able to correlate a failure with a specific concurrency level and
+a specific server-side symptom. If the single-jump test fails, you're
+left knowing only "something broke somewhere between 0 and 20,000
+connections," which could be fd exhaustion at 4,096, pool exhaustion at
+9,000, memory pressure starting around 15,000, or some combination
+overlapping and compounding each other -- with no way to tell which,
+since all the resource pressure arrived at once.
+
+A staged ramp (100 → 1,000 → 5,000 → 10,000...) with server-side metrics
+checked at EACH stage isolates roughly where each failure mode's
+threshold sits: if 5,000 succeeds cleanly but 10,000 shows Errno 24
+specifically, you've narrowed the fd ceiling to somewhere between those
+two numbers, with a clean error signature pointing at exactly which
+resource it was. This is the same reasoning as binary-searching for a
+bug rather than guessing at the whole range at once -- staged, observed
+ramping turns "it broke somewhere" into "it broke at approximately N
+connections, and here's the specific error that tells us why."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Confirming schema and migrations hold up under the same load test</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The Week 4 survival exercise checkpoint also says to "confirm schema + migrations hold up." Concretely, what would you actually check here, connecting this back to the migrations lab from earlier this week?</p>
+    <details><summary>Show solution</summary><div class="solution">This means running the SAME load test against a database that has
+already had the week's Alembic migrations applied (e.g. the
+notification_delivery_log table with its JSONB provider_response
+column, or the "add last_login to users" example), and confirming two
+separate things under real concurrent load, not just correctness in
+isolation:
+
+1. The migrated schema performs acceptably under the SAME concurrency
+   this lab is stress-testing -- e.g. does the notification_delivery_log
+   table's indexing hold up when thousands of concurrent connections are
+   each writing delivery-attempt rows simultaneously, or does write
+   contention on that table become its own bottleneck alongside (or
+   instead of) the three connection-level failure modes covered in
+   section 3? This is a genuinely different question from "does the
+   migration run correctly once" -- a migration can be structurally
+   correct and still perform poorly under concurrent write load if, say,
+   a needed index was missed.
+
+2. The migration's REVERSIBILITY doesn't get invalidated by data written
+   during the load test -- if the load test itself writes a large volume
+   of new rows using the post-migration schema, running downgrade() (as
+   covered in Problem 5 of the migrations lab) afterward should still
+   behave predictably, not fail or silently corrupt the freshly-written
+   load-test data. This is a practical check that the migration's
+   downgrade() path was genuinely tested, not just written and assumed
+   to work, before treating it as safe to deploy.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely why "requests per second" is the wrong metric for a streaming service's load test, (2) the distinct server-side error signature for each of the three dropped-connection causes well enough to diagnose one from a log line alone, and (3) why a staged ramp reveals more than a single jump straight to peak concurrency? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<section id="checkpoint-section" style="border-bottom:none;">
+  <div class="callout checkpoint">
+    <b>Month 2 Checkpoint</b>
+    <p style="margin:0.6rem 0 0; color:#dcd9d0;">The roadmap's final checkpoint for Month 2 as a whole reads:</p>
+    <ul>
+      <li><em>"Design a schema for a feature request in under 20 minutes and defend indexing choices."</em> — this draws on the normalization, indexing, and transactions labs from earlier in the month, plus the migrations mechanics from this week: can you sketch a schema, justify WHICH columns get indexes and why (not just "index everything"), and know how you'd migrate an existing table toward that design?</li>
+      <li><em>"Service survives a basic load test without dropped connections."</em> — this is exactly what this lab builds toward: run the staged connection-flooding ramp from section 2 against a real streaming service, watch for the specific error signatures from section 3, and fix whichever of the three failure modes shows up (raise <code class="inline">ulimit -n</code>, resize the connection pool, or reduce per-connection memory footprint / cap max concurrency) before calling the service load-tested.</li>
+    </ul>
+    <p style="margin:0.8rem 0 0; color:#dcd9d0;">Passing both of these cold — without notes, on a schema and a service you haven't seen the answer to in advance — is the actual bar for calling Month 2 complete.</p>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — survival exercise: load testing.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2: CONNECTION FLOOD DEMO */
+(function(){
+  var gridEl = document.getElementById('fl-grid');
+  var openEl = document.getElementById('fl-open');
+  var targetEl = document.getElementById('fl-target');
+  var droppedEl = document.getElementById('fl-dropped');
+  var runBtn = document.getElementById('fl-run');
+  var resetBtn = document.getElementById('fl-reset');
+  var logEl = document.getElementById('fl-log');
+  var timers = [];
+  var running = false;
+  var cellCount = 0;
+  var openCount = 0;
+  var droppedCount = 0;
+  var MAX_CELLS = 400; // visual cap, each cell represents a batch at higher stages
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function addCells(n, dropRatio){
+    for(var i = 0; i < n; i++){
+      if(cellCount >= MAX_CELLS) break;
+      var cell = document.createElement('div');
+      cell.className = 'conn-cell';
+      var isDropped = Math.random() < dropRatio;
+      gridEl.appendChild(cell);
+      cellCount++;
+      (function(cell, isDropped){
+        setTimeout(function(){
+          if(isDropped){
+            cell.classList.add('dropped');
+            droppedCount++;
+          } else {
+            cell.classList.add('open');
+            openCount++;
+          }
+          openEl.textContent = openCount;
+          droppedEl.textContent = droppedCount;
+        }, Math.random() * 300);
+      })(cell, isDropped);
+    }
+  }
+
+  function reset(){
+    gridEl.innerHTML = '';
+    cellCount = 0; openCount = 0; droppedCount = 0;
+    openEl.textContent = '0'; targetEl.textContent = '0'; droppedEl.textContent = '0';
+    logEl.innerHTML = '<span class="line">Click to ramp up concurrent connections in stages and watch where the server starts dropping them.</span>';
+  }
+
+  var STAGES = [
+    {target: 100, cells: 40, dropRatio: 0.0, note: "100 concurrent connections — well under any limit, everything opens cleanly."},
+    {target: 1000, cells: 120, dropRatio: 0.0, note: "1,000 concurrent connections — still fine, comfortably under the fd ceiling and pool size."},
+    {target: 5000, cells: 200, dropRatio: 0.18, note: "5,000 concurrent connections — server starts hitting Errno 24 (too many open files) for a fraction of new attempts. This is the file descriptor ceiling."}
+  ];
+
+  runBtn.addEventListener('click', function(){
+    if(running) return;
+    running = true;
+    runBtn.disabled = true;
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    reset();
+    logEl.innerHTML = '';
+    log('<b>Starting staged ramp.</b> Each stage opens more connections concurrently and holds them, checking server-side signals before advancing.');
+
+    STAGES.forEach(function(stage, i){
+      var t = setTimeout(function(){
+        targetEl.textContent = stage.target.toLocaleString();
+        log('<b>Stage ' + (i+1) + ':</b> ramping to ' + stage.target.toLocaleString() + ' concurrent connections...');
+        addCells(stage.cells, stage.dropRatio);
+        setTimeout(function(){
+          log(stage.note);
+        }, 500);
+      }, i * 1800);
+      timers.push(t);
+    });
+
+    var finalT = setTimeout(function(){
+      log('<b style="color:var(--bad-c);">Result: the fd ceiling was hit somewhere between 1,000 and 5,000 concurrent connections.</b> This staged ramp — not a single jump straight to 5,000 — is what lets you narrow down roughly where, and the specific Errno 24 error is what tells you WHICH of the three failure modes it is.');
+      running = false;
+      runBtn.disabled = false;
+    }, STAGES.length * 1800 + 800);
+    timers.push(finalT);
+  });
+
+  resetBtn.addEventListener('click', function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    running = false;
+    runBtn.disabled = false;
+    reset();
+  });
+
+  reset();
+})();
+
+/* SECTION 3: FAILURE MODE CARDS */
+(function(){
+  var container = document.getElementById('fail-cards');
+  var detailEl = document.getElementById('fail-detail');
+
+  var MODES = [
+    {
+      id: "fd",
+      title: "File descriptor limits",
+      short: "ulimit -n ceiling on open sockets per process",
+      symptom: "OSError: [Errno 24] Too many open files",
+      full: "Every open socket consumes one OS file descriptor, and every process has a ceiling (ulimit -n) on how many it can hold at once. Once hit, NEW connections are refused outright with this exact error, while already-open connections typically keep working."
+    },
+    {
+      id: "pool",
+      title: "Exhausted connection pools",
+      short: "the DB connection pool from connection_pooling.html runs out of slots",
+      symptom: "TimeoutError / QueuePool limit exceeded (on DB-touching operations only)",
+      full: "A fixed-size application-level DB connection pool, sized for typical request volume, runs out of available slots under many concurrent streaming clients each occasionally needing a DB connection. The streaming connection itself stays healthy; only DB-dependent operations inside it fail or hang."
+    },
+    {
+      id: "mem",
+      title: "Memory pressure",
+      short: "cumulative per-connection state approaches available memory",
+      symptom: "Gradual slowdown, then an OOM kill — no single explicit error before the crash",
+      full: "Each open connection holds some in-memory state (buffers, connection object, app-level state). At tens of thousands of connections this adds up, causing memory (RSS) to climb roughly linearly until the OS kills the process (OOM) or it starts swapping heavily — with no discrete 'limit reached' error the way fd exhaustion has."
+    }
+  ];
+
+  function render(){
+    container.innerHTML = MODES.map(function(m){
+      return '<div class="fail-card" id="fc-' + m.id + '" data-id="' + m.id + '"><h4>' + m.title + '</h4><p>' + m.short + '</p></div>';
+    }).join('');
+    container.querySelectorAll('.fail-card').forEach(function(card){
+      card.addEventListener('click', function(){
+        container.querySelectorAll('.fail-card').forEach(function(c){ c.classList.remove('active'); });
+        card.classList.add('active');
+        var mode = MODES.find(function(m){ return m.id === card.dataset.id; });
+        detailEl.innerHTML = '<b>' + mode.title + '</b><br>' + mode.full + '<div class="symptom">' + mode.symptom + '</div>';
+      });
+    });
+  }
+  render();
+  detailEl.innerHTML = '<span style="color:var(--ink-dim);">Click one of the three cards above to see its full description and exact server-side symptom.</span>';
+})();
+</script>
+</body>
+</html>

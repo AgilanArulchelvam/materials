@@ -72,7 +72,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Forty-nine labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Fifty-three labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, and backend API design — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -270,7 +270,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">5 labs</span>
+      <span class="count">8 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -315,13 +315,19 @@
         <p>The idempotency-key mechanism that prevents a double-charge on retry, optimistic vs pessimistic locking animated side by side, and soft delete vs hard delete trade-offs.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/migrations_and_sql_vs_nosql_revisited.html">
+        <span class="tag">Alembic Migrations &amp; SQL vs NoSQL Revisited</span>
+        <h3>Migrations &amp; SQL vs NoSQL Revisited</h3>
+        <p>A real upgrade()/downgrade() pair, exactly where Alembic's autogenerate gets renames wrong, and a concrete Postgres-vs-document-store call for the notification service's delivery log.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">15 labs</span>
+      <span class="count">18 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -414,6 +420,24 @@
         <p>A money-transfer example showing exactly what breaks without a transaction wrapping both steps, plus savepoints for a partial rollback mid-transaction.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/streaming_architecture_integration.html">
+        <span class="tag">Integration — WebSockets + SSE + Middleware</span>
+        <h3>Streaming Architecture Integration</h3>
+        <p>Chat over WebSocket and notifications over SSE on the same backend, a normalized event envelope across both, and why rate limiting has to apply at connection-open time AND per-message.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/system_design_review_cold.html">
+        <span class="tag">Cold Recall — 3 System Designs Compared</span>
+        <h3>System Design Review, Cold</h3>
+        <p>Re-derive the URL shortener, rate limiter, and notification service designs with no notes, then compare what breaks first for each at 10x scale.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/survival_exercise_load_test.html">
+        <span class="tag">Survival Exercise — Load Testing Streams</span>
+        <h3>Load Testing a Streaming Service</h3>
+        <p>What load testing measures for WebSockets/SSE (concurrent connections, not req/sec), a real asyncio connection-flooding script, and diagnosing fd limits vs pool exhaustion vs memory pressure.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -470,7 +494,7 @@
 
 </main>
 
-<footer>materials/ · forty-nine standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · fifty-three standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Streaming Architecture Integration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --ws-c:#4fc3f7; --sse-c:#7fd8a0; --envelope-c:#f2c14e; --mw-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--ws-c); color:var(--ws-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--sse-c); color:var(--sse-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--envelope-c); color:var(--envelope-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.d{border-color:var(--mw-c); color:var(--mw-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* architecture diagram */
+  .arch-diagram{display:flex; align-items:center; justify-content:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .arch-box{border:1.5px solid var(--rule); border-radius:10px; padding:0.8rem 1.1rem; background:var(--panel-2); text-align:center; min-width:130px; transition:all .3s;}
+  .arch-box.ws{border-color:var(--ws-c); color:var(--ws-c);}
+  .arch-box.sse{border-color:var(--sse-c); color:var(--sse-c);}
+  .arch-box.core{border-color:var(--mw-c); color:var(--mw-c); background:rgba(199,146,234,0.08);}
+  .arch-arrow{color:var(--ink-dim); font-size:1.1rem;}
+
+  /* connection table rows */
+  .conn-row{display:flex; gap:0.8rem; align-items:center; margin:0.5rem 0; font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.8rem; border-radius:8px; border:1px solid var(--rule); background:var(--panel-2); opacity:0.3; transition:all .3s;}
+  .conn-row.visible{opacity:1;}
+  .conn-row.ws{border-color:var(--ws-c);}
+  .conn-row.sse{border-color:var(--sse-c);}
+  .conn-row .ctag{padding:0.15rem 0.5rem; border-radius:12px; font-size:0.65rem; text-transform:uppercase; background:var(--panel); border:1px solid var(--rule);}
+
+  /* rate limit gate visualization */
+  .gate-stage{display:flex; align-items:center; gap:1rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.8rem;}
+  .gate-box{border:2px solid var(--envelope-c); border-radius:10px; padding:1rem 1.4rem; background:rgba(242,193,78,0.06); text-align:center; color:var(--envelope-c); min-width:160px;}
+  .gate-msg{border:1.5px solid var(--rule); border-radius:8px; padding:0.6rem 0.9rem; background:var(--panel-2); min-width:110px; text-align:center; opacity:0; transform:translateX(-20px); transition:all .5s ease;}
+  .gate-msg.show{opacity:1; transform:translateX(0);}
+  .gate-msg.pass{border-color:var(--sse-c); color:var(--sse-c);}
+  .gate-msg.block{border-color:var(--bad-c); color:var(--bad-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.ws{border-color:var(--ws-c);} .dc-col.ws h4{color:var(--ws-c);}
+  .dc-col.sse{border-color:var(--sse-c);} .dc-col.sse h4{color:var(--sse-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.88rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.ws{border-left-color:var(--ws-c); background:rgba(79,195,247,0.06);} .callout.ws b{color:var(--ws-c);}
+  .callout.sse{border-left-color:var(--sse-c); background:rgba(127,216,160,0.06);} .callout.sse b{color:var(--sse-c);}
+  .callout.envelope{border-left-color:var(--envelope-c); background:rgba(242,193,78,0.06);} .callout.envelope b{color:var(--envelope-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · STREAMING ARCHITECTURE INTEGRATION</div>
+  <h1>Two streaming protocols, one service, and the middleware that wasn't built for either of them.</h1>
+  <p class="lede">Chat needs bidirectional messaging — that's a WebSocket. Live notifications only need to flow one way, server to client — that's SSE. A real product often needs both, served by the same backend, but neither fits the request/response shape that rate limiting and error-handling middleware were designed around. This lab wires all four previous weeks' pieces together — WebSockets, SSE, rate limiting, and custom middleware — into one coherent picture, and is explicit about exactly where the seams don't line up.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">WebSocket — chat</div>
+    <div class="pipe-label b">SSE — notifications</div>
+    <div class="pipe-label c">Normalized event envelope</div>
+    <div class="pipe-label d">Rate limit + error middleware</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="combine">1 · One Service, Two Streaming Protocols</a>
+  <a data-target="envelope">2 · Normalizing the Event Schema</a>
+  <a data-target="middleware">3 · Rate Limiting &amp; Error Middleware on Streams</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: COMBINING ============ -->
+<section id="combine">
+  <div class="kicker">01 — Same backend, two different jobs</div>
+  <h2>Combining WebSockets and SSE in one service</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a hotel front desk that does two unrelated things: it runs an intercom line to your room for two-way calls with the concierge (you can ring them, they can ring you, either direction, any time), and it also has a lobby announcement speaker that only ever broadcasts outward — "checkout is at 11am," "the pool is closed for cleaning" — that you never talk back into. Both systems are run by the same front desk staff and the same building wiring, but they're fundamentally different channels serving different needs. Forcing the lobby announcements through the two-way intercom, or vice versa, would be over-engineering one and under-serving the other.</p>
+
+  <p>That's the real shape of "combine WebSockets and SSE in one service." It does not mean picking one protocol and using it for everything. It means recognizing that <strong>different features have different communication shapes</strong>, and building one backend that serves each feature over the protocol that actually matches it:</p>
+
+  <ul style="color:#cdd0d8; max-width:72ch;">
+    <li><strong>Chat</strong> needs true bidirectional, low-latency messaging — a user sends a message, another user's client needs to receive it instantly, and either side can initiate at any moment. This is exactly what the <a href="websockets.html" style="color:var(--ws-c);">WebSockets lab</a> covered: a single HTTP request upgrades via <code class="inline">101 Switching Protocols</code> into a full-duplex connection where both sides can speak whenever they want.</li>
+    <li><strong>Live notifications</strong> ("your export finished," "you have a new comment") only ever flow one direction: server to client. The client never needs to push anything back over that same channel — if the user wants to react, that's a completely separate normal HTTP POST. This is exactly the shape the <a href="sse.html" style="color:var(--sse-c);">Server-Sent Events lab</a> covered: a long-lived HTTP response with <code class="inline">Content-Type: text/event-stream</code>, one direction only, with automatic client-side reconnection built into the browser's <code class="inline">EventSource</code> API.</li>
+  </ul>
+
+  <div class="arch-diagram">
+    <div class="arch-box ws">Chat feature<br>WebSocket<br>(full-duplex)</div>
+    <div class="arch-arrow">↘</div>
+    <div class="arch-box core">Same FastAPI app<br>same process,<br>same deploy</div>
+    <div class="arch-arrow">↙</div>
+    <div class="arch-box sse">Notifications feature<br>SSE<br>(one-way)</div>
+  </div>
+
+  <div class="code"><span class="c-cmt"># One FastAPI app, two endpoints, two different streaming protocols</span>
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> FastAPI, WebSocket
+<span class="c-kw">from</span> fastapi.responses <span class="c-kw">import</span> StreamingResponse
+
+app = FastAPI()
+
+<span class="c-cmt"># Chat: bidirectional -- a WebSocket, upgraded once, held open both ways</span>
+<span class="c-fn">@app.websocket</span>(<span class="c-str">"/ws/chat/{room_id}"</span>)
+<span class="c-kw">async def</span> <span class="c-fn">chat_socket</span>(websocket: WebSocket, room_id: str):
+    <span class="c-kw">await</span> websocket.accept()
+    <span class="c-kw">async for</span> message <span class="c-kw">in</span> websocket.iter_text():
+        <span class="c-kw">await</span> broadcast_to_room(room_id, message)   <span class="c-cmt"># fans out to other connected clients</span>
+
+<span class="c-cmt"># Notifications: one-way -- SSE, a plain GET held open, server pushes only</span>
+<span class="c-fn">@app.get</span>(<span class="c-str">"/notifications/stream"</span>)
+<span class="c-kw">async def</span> <span class="c-fn">notification_stream</span>(user_id: str):
+    <span class="c-kw">async def</span> <span class="c-fn">event_generator</span>():
+        <span class="c-kw">async for</span> event <span class="c-kw">in</span> subscribe_user_notifications(user_id):
+            <span class="c-kw">yield</span> <span class="c-str">f"event: notification\ndata: {event.json()}\n\n"</span>
+    <span class="c-kw">return</span> StreamingResponse(event_generator(), media_type=<span class="c-str">"text/event-stream"</span>)</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH BOTH CONNECTION TYPES COEXIST ON ONE SERVICE</span>
+      <div><button class="btn secondary" id="cx-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Simulate several clients connecting to the same backend process for different features.</p>
+    <div id="cx-rows"></div>
+    <button class="btn" id="cx-run">Open 4 connections (2 chat, 2 notification) ▸</button>
+    <div class="log" id="cx-log"><span class="line">Click above to watch WebSocket and SSE connections open side by side against the same server process.</span></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>WebSocket (chat)</th><th>SSE (notifications)</th></tr>
+    <tr><td>Direction</td><td>Bidirectional, either side initiates</td><td>Server → client only</td></tr>
+    <tr><td>Underlying transport</td><td>Upgraded connection, own framing protocol</td><td>Plain long-lived HTTP response</td></tr>
+    <tr><td>Reconnection</td><td>App has to implement it manually</td><td>Built into the browser's <code>EventSource</code>, with <code>Last-Event-ID</code></td></tr>
+    <tr><td>Why this feature uses it</td><td>Users send and receive chat messages both ways</td><td>Client never needs to push anything back over this channel</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The trap:</b> using WebSockets for everything "because it's more powerful" is a real anti-pattern here. The notification feed never needs the client to send anything back over that channel — building it as a WebSocket anyway means carrying the operational cost of a bidirectional connection (more complex reconnection logic, a connection that can be misused to send unexpected client→server traffic, no built-in <code class="inline">EventSource</code> reconnection) for a feature that never uses the "bidirectional" half of what it's paying for.</div>
+
+  <div class="callout ws"><b>Interview-ready definition:</b> combining WebSockets and SSE in one service means recognizing that different features within the same product have genuinely different communication shapes — bidirectional-and-interactive versus one-way-and-broadcast — and serving each over the protocol that matches it, from the same backend process and deployment. It is not "pick one streaming protocol for the whole app"; a single FastAPI (or any ASGI) service can expose a <code class="inline">@app.websocket</code> route for chat and a separate <code class="inline">StreamingResponse</code>-based SSE route for notifications simultaneously, because they're just two different endpoint types on the same running application.</div>
+</section>
+
+<!-- ============ SECTION 2: ENVELOPE ============ -->
+<section id="envelope">
+  <div class="kicker">02 — One consistent shape, no matter which protocol carried it</div>
+  <h2>Normalizing the schema for streamed data</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine getting mail from three different senders, each using a completely different envelope format: one hand-writes the date in the corner, one stamps it on the back, one doesn't include a date at all and expects you to infer it from the postmark. Sorting and processing that mail means writing separate handling logic for each sender's quirks. Now imagine every sender instead used the exact same envelope template — return address here, date there, tracking number there — regardless of what's actually inside. Sorting becomes trivial: you always know where to look, no matter who sent it or what the letter says.</p>
+
+  <p>A chat message and a notification are structurally different payloads — one has a sender and room ID, the other has a user ID and a notification type — but consumers on the client side (and any shared logging/monitoring code on the server side) benefit enormously from every streamed event, regardless of which protocol or feature produced it, sharing one consistent outer <strong>envelope</strong>. The inner <code class="inline">payload</code> varies; the outer shape does not.</p>
+
+  <div class="code"><span class="c-cmt">// Consistent envelope shape -- same three top-level keys for every event,
+// whether it arrived over the WebSocket or the SSE stream</span>
+{
+  <span class="c-str">"type"</span>: <span class="c-str">"chat.message"</span>,          <span class="c-cmt">// or "notification.export_ready", etc.</span>
+  <span class="c-str">"timestamp"</span>: <span class="c-str">"2026-08-19T14:03:21Z"</span>,
+  <span class="c-str">"payload"</span>: {
+    <span class="c-str">"room_id"</span>: <span class="c-str">"room_42"</span>,
+    <span class="c-str">"sender"</span>: <span class="c-str">"alex"</span>,
+    <span class="c-str">"text"</span>: <span class="c-str">"be there in 5"</span>
+  }
+}
+
+<span class="c-cmt">// A notification event -- DIFFERENT payload shape, SAME envelope</span>
+{
+  <span class="c-str">"type"</span>: <span class="c-str">"notification.export_ready"</span>,
+  <span class="c-str">"timestamp"</span>: <span class="c-str">"2026-08-19T14:04:02Z"</span>,
+  <span class="c-str">"payload"</span>: {
+    <span class="c-str">"user_id"</span>: <span class="c-str">"u_991"</span>,
+    <span class="c-str">"export_id"</span>: <span class="c-str">"exp_113"</span>,
+    <span class="c-str">"download_url"</span>: <span class="c-str">"https://.../exp_113.csv"</span>
+  }
+}</div>
+
+  <p>Without this, every client-side consumer needs special-case parsing logic per event type before it can do even the most basic thing — log it, route it to a handler, or figure out when it happened. With the envelope, one small piece of dispatch code handles literally everything the stream will ever emit, present or future:</p>
+
+  <div class="code"><span class="c-cmt"># One dispatcher, regardless of how many event "type" values exist</span>
+<span class="c-kw">def</span> <span class="c-fn">handle_event</span>(raw_json):
+    event = json.loads(raw_json)
+    handler = HANDLERS.get(event[<span class="c-str">"type"</span>])   <span class="c-cmt"># dict lookup, not a growing if/elif chain</span>
+    <span class="c-kw">if</span> handler:
+        handler(event[<span class="c-str">"payload"</span>], event[<span class="c-str">"timestamp"</span>])
+    <span class="c-kw">else</span>:
+        log_unknown_event_type(event[<span class="c-str">"type"</span>])  <span class="c-cmt"># forward-compatible: new types don't crash old clients</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>WITH VS WITHOUT A NORMALIZED ENVELOPE</span>
+      <div><button class="btn secondary" id="env-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-env="without">Without a normalized envelope</button>
+      <button class="chip" data-env="with">With a normalized envelope</button>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Three different event types arrive on the stream. Watch what the client-side dispatcher has to do in each mode.</p>
+    <button class="btn" id="env-run">Receive 3 events (chat, notification, presence) ▸</button>
+    <div class="log" id="env-log"><span class="line">Pick a mode, then click to stream 3 different event types through the client dispatcher.</span></div>
+  </div>
+
+  <div class="callout envelope"><b>Interview-ready definition:</b> a normalized event envelope is a consistent outer shape — typically <code class="inline">{type, timestamp, payload}</code> — applied to every event a streaming service emits, regardless of which feature or protocol produced it. The <code class="inline">type</code> field lets a single generic dispatcher route events without bespoke per-type parsing; the <code class="inline">timestamp</code> field is always in the same place for logging, ordering, and client-side "time since" display; and the <code class="inline">payload</code> field is where feature-specific structure is free to vary. This decouples the transport (WebSocket vs SSE) and the event's specific shape from the consumer's dispatch logic, which only ever needs to understand the envelope, not every payload variant that has ever existed or will exist.</div>
+</section>
+
+<!-- ============ SECTION 3: MIDDLEWARE ON STREAMS ============ -->
+<section id="middleware">
+  <div class="kicker">03 — Middleware built for one request, applied to a connection that never ends</div>
+  <h2>Wiring rate-limiting and error middleware into streaming connections</h2>
+
+  <p><strong>Start here, before any code.</strong> Picture a bouncer at a club whose entire job is designed around "check ID, let one person in, done" — that model works great for a steady stream of individual customers. Now imagine a customer who, once let in, never leaves and instead keeps a permanently open tab running all night. The bouncer's per-person check-at-the-door model has nothing to say about "how much should this one customer, who's been inside for six hours, be allowed to keep ordering" — that's a genuinely different kind of gate, checked on a different rhythm, not at the door but continuously, or per-order, for as long as the customer stays.</p>
+
+  <p>The <a href="custom_middleware.html" style="color:var(--mw-c);">custom middleware lab</a> covered <code class="inline">BaseHTTPMiddleware</code>'s core shape: wrap <code class="inline">call_next(request)</code>, do something before, do something with the single response that comes back after. That model assumes a request has a beginning, an end, and exactly one response — which is exactly what a WebSocket or SSE connection does NOT have. A streaming connection is opened once and then may stay open for minutes or hours, sending an unbounded number of individual messages (WebSocket) or events (SSE) over that single connection's lifetime. <code class="inline">call_next()</code> either never returns (the connection is still open) or, if it did return, the "request" would already be over — there's no clean point to run typical after-the-response middleware logic mid-stream.</p>
+
+  <p>This is the specific complication the roadmap calls out: rate limiting and error-handling middleware, as built for typical request/response traffic, don't cleanly apply to a long-lived streaming connection. The fix isn't to abandon rate limiting or error handling for streams — it's to apply them at different points than "wrap the single response":</p>
+
+  <div class="dc-compare">
+    <div class="dc-col ws">
+      <h4>Rate limiting a normal HTTP request</h4>
+      <p>Checked once, at the top of the middleware stack, before the route handler runs. One request, one check, one decision (allow or 429). The <a href="rate_limiter_design.html" style="color:var(--ws-c);">rate limiter design lab</a>'s token bucket or sliding window logic runs exactly once per request.</p>
+    </div>
+    <div class="dc-col sse">
+      <h4>Rate limiting a streaming connection</h4>
+      <p>Has to happen at TWO different points instead: (1) at connection-open time — should this client be allowed to open a new WebSocket/SSE connection at all right now — and (2) per-message or per-event, continuously, for the entire lifetime of the now-open connection, since a single connection can otherwise emit unlimited messages once it's past the door.</p>
+    </div>
+  </div>
+
+  <div class="code"><span class="c-cmt"># Rate limiting applied at BOTH points for a WebSocket connection</span>
+<span class="c-fn">@app.websocket</span>(<span class="c-str">"/ws/chat/{room_id}"</span>)
+<span class="c-kw">async def</span> <span class="c-fn">chat_socket</span>(websocket: WebSocket, room_id: str, user_id: str):
+    <span class="c-cmt"># (1) connection-open check -- same idea as a normal request's rate limit,
+    # but gating whether the CONNECTION is allowed to open at all</span>
+    <span class="c-kw">if not</span> <span class="c-kw">await</span> connection_rate_limiter.allow(user_id):
+        <span class="c-kw">await</span> websocket.close(code=<span class="c-num">1008</span>, reason=<span class="c-str">"rate limited"</span>)
+        <span class="c-kw">return</span>
+
+    <span class="c-kw">await</span> websocket.accept()
+    <span class="c-kw">async for</span> message <span class="c-kw">in</span> websocket.iter_text():
+        <span class="c-cmt"># (2) PER-MESSAGE check -- the connection is open, but each individual
+        # message still has to pass its own rate-limit gate</span>
+        <span class="c-kw">if not</span> <span class="c-kw">await</span> message_rate_limiter.allow(user_id):
+            <span class="c-kw">await</span> websocket.send_json({<span class="c-str">"type"</span>: <span class="c-str">"error"</span>, <span class="c-str">"payload"</span>: {<span class="c-str">"reason"</span>: <span class="c-str">"slow down"</span>}})
+            <span class="c-kw">continue</span>  <span class="c-cmt"># drop this message, but do NOT close the connection over it</span>
+        <span class="c-kw">await</span> broadcast_to_room(room_id, message)</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>RATE LIMITING A STREAM: OPEN-TIME VS PER-MESSAGE</span>
+      <div><button class="btn secondary" id="gate-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">A client tries to open a chat connection, gets through, then floods it with messages. Watch which gate catches what.</p>
+    <div class="gate-stage">
+      <div class="gate-box">Connection-open<br>rate gate</div>
+      <div class="gate-msg" id="gate-conn">client connects</div>
+    </div>
+    <div class="gate-stage" id="gate-msgs-stage" style="margin-top:0.5rem;">
+      <div class="gate-box" style="border-color:var(--ws-c); color:var(--ws-c);">Per-message<br>rate gate</div>
+    </div>
+    <button class="btn" id="gate-run">Connect, then send 5 messages fast ▸</button>
+    <div class="log" id="gate-log"><span class="line">Click to watch the two-tier gate: one check when the connection opens, then a separate check for every message sent over it.</span></div>
+  </div>
+
+  <p>Error-handling middleware has a related mismatch. In the request/response model, <code class="inline">BaseHTTPMiddleware</code> can catch an unhandled exception from the route handler, log it, and return a clean 500 response — there's exactly one response to shape. Inside a streaming handler, an unhandled exception happens <em>mid-connection</em>, potentially after hundreds of messages have already been sent successfully. There's no single "the response" left to intercept and reshape; the practical pattern is a <code class="inline">try/except</code> wrapped directly around the per-message or per-event loop body inside the handler itself, so one malformed message or one downstream failure closes cleanly (or sends an in-band <code class="inline">{"type": "error", ...}</code> event over the still-open connection) without necessarily tearing down the whole connection or crashing the server process.</p>
+
+  <div class="callout warn"><b>Why this matters in practice:</b> teams that bolt generic <code class="inline">BaseHTTPMiddleware</code>-style rate limiting onto a WebSocket route often find it either does nothing useful (it ran once, at connection-open, and then every subsequent message on that same connection sails through unlimited) or breaks the connection outright (some middleware implementations assume a request finishes quickly and time out or interfere with a connection that's deliberately meant to stay open for a long time). The fix is always to move the per-unit-of-work check INSIDE the handler's own message loop, not to keep stacking generic HTTP middleware around a route that isn't really "one request" anymore.</div>
+
+  <div class="callout ws"><b>Interview-ready definition:</b> standard ASGI middleware wraps a single request/response cycle via <code class="inline">call_next()</code>, which doesn't map cleanly onto a streaming connection that has one open event but many subsequent messages over an unbounded lifetime. Rate limiting a streaming connection therefore requires two separate checks: an open-time check (should this client be allowed to establish a new connection right now, analogous to a normal per-request check) and a per-message/per-event check running continuously inside the connection's own read loop (since a single already-open connection can otherwise emit unlimited traffic). Error handling follows the same pattern — a <code class="inline">try/except</code> around the per-message loop body inside the handler, rather than a wrapper around one response, since there is no single response object left to intercept once the connection has been open and streaming for a while.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing WebSocket vs SSE for a new feature</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A product team wants to add a "live collaborative cursor" feature (see other users' cursors move in real time on a shared document) to the same app that already has chat (WebSocket) and notifications (SSE). Which protocol fits the cursor feature, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">WebSocket, for the same reason chat uses it: live cursor positions are
+genuinely bidirectional -- every connected client needs to both SEND its
+own cursor position continuously AND RECEIVE every other client's cursor
+position continuously, in real time, with neither direction being clearly
+"primary." This is the same full-duplex shape as chat, just with cursor
+coordinates instead of text messages as the payload.
+
+SSE would not fit here: SSE is one-way (server to client only), so a
+client would need some SEPARATE channel just to send its own cursor
+updates up to the server, at which point you're already running two
+channels to do one job that a single WebSocket does cleanly in one. The
+deciding question is always the same: does this feature need the CLIENT
+to push data over this same channel, not just receive it? If yes,
+WebSocket; if the client-side is purely passive receiving, SSE is the
+simpler, lighter-weight fit.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Spotting a missing envelope field</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate's streaming event looks like this: <code class="inline">{"kind": "chat.message", "data": {...}}</code> — no timestamp anywhere. What breaks downstream because of this, concretely?</p>
+    <details><summary>Show solution</summary><div class="solution">Without a timestamp in the envelope, any consumer that needs to know
+WHEN an event happened has no reliable source for it. Concretely: a
+client rendering "sent 2 minutes ago" under a chat message either has to
+fall back to the time it happened to RECEIVE the event client-side
+(wrong if there was any network delay, reconnection, or buffering delay
+between the server producing the event and the client receiving it) or
+has to reach into the feature-specific payload and hope there's a
+timestamp buried in there under some inconsistent key name per event
+type. Server-side, anything doing ordering, deduplication, or "replay
+events since X" (e.g. reconnection logic asking "catch me up on
+everything since my last seen event") has no consistent field to sort or
+filter on across different event types -- it would need type-specific
+logic to find A timestamp inside each payload shape, which is exactly
+the special-casing a normalized envelope exists to avoid. The fix is
+simply adding "timestamp" as a top-level, always-present envelope field,
+set once, server-side, at the moment the event is actually produced.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing unlimited per-connection traffic</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A chat service has rate limiting correctly applied via <code class="inline">BaseHTTPMiddleware</code> to all normal REST endpoints, and it also checks the rate limiter once when a WebSocket connection is first opened. In production, a single misbehaving client opens one connection and then sends 50,000 messages per second over it, and nothing stops them. What's missing, precisely?</p>
+    <details><summary>Show solution</summary><div class="solution">The connection-open check ran exactly once and only gates whether a NEW
+connection is allowed to be established -- it says nothing about how much
+traffic is allowed to flow over a connection that's already open. Once
+past that one check, the client is inside an open WebSocket loop
+(`async for message in websocket.iter_text()`), and nothing in that loop
+is re-checking the rate limiter per message. The BaseHTTPMiddleware rate
+limiting on REST endpoints is irrelevant here too -- WebSocket traffic
+after the initial upgrade handshake never goes through the normal
+HTTP middleware stack again; it's a different framing protocol entirely
+on the same TCP connection.
+
+The fix is exactly the missing second gate from this lab: a per-message
+rate-limit check INSIDE the message-receiving loop itself, e.g. calling
+`message_rate_limiter.allow(user_id)` on every single message before
+processing it, and either dropping the message (with an in-band error
+event) or, for a sufficiently abusive client, closing the connection
+outright if it keeps exceeding the per-message limit repeatedly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Handling a mid-stream error without killing the connection</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Inside the notification SSE generator, one particular notification's payload fails to serialize to JSON (a bug in a new notification type someone just shipped). What should happen to the stream, and why is "let the exception propagate and close the connection" usually the wrong answer here?</p>
+    <details><summary>Show solution</summary><div class="solution">The exception should be caught locally, around JUST that one event's
+serialization/yield, not allowed to propagate up and tear down the whole
+generator/connection. If it's allowed to propagate, the entire SSE
+response terminates -- every OTHER, perfectly healthy notification this
+user would have received for the rest of that connection's lifetime is
+now lost too, and the client's EventSource will have to reconnect (with
+whatever delay/backoff that involves) to resume receiving anything at
+all, all because of one bad payload unrelated to the rest of the stream.
+
+The better pattern: wrap the per-event serialization/yield in a
+try/except inside the generator's loop, log the malformed event server-
+side for debugging, optionally skip it (or emit a minimal fallback
+"something went wrong with one notification" event), and continue the
+loop so every subsequent healthy notification still reaches the client
+uninterrupted. This mirrors the DLQ instinct from notification service
+design -- isolate and preserve the failure for later investigation rather
+than letting it take down healthy, unrelated work alongside it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the envelope for a third, future event type</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Six months from now, the team adds a third streaming feature: "typing indicators" (someone is typing in a chat room). Using the envelope pattern from this lab, sketch what that event would look like, and explain why adding it requires zero changes to any EXISTING client-side dispatch code.</p>
+    <details><summary>Show solution</summary><div class="solution">A typing indicator event, in the same envelope shape:
+
+  {
+    "type": "chat.typing",
+    "timestamp": "2026-08-19T14:05:10Z",
+    "payload": { "room_id": "room_42", "user_id": "alex", "is_typing": true }
+  }
+
+Existing client-side dispatch code needs zero changes because the
+dispatcher (from section 2) was written as a lookup against event["type"]
+-- HANDLERS.get(event["type"]) -- with a fallback branch for unrecognized
+types, rather than an if/elif chain hardcoded to the two types that
+existed when it was written. Adding "chat.typing" to the HANDLERS dict on
+the client side (whenever the client team gets around to actually
+building UI for it) is additive: old clients that haven't been updated
+yet simply hit the "unknown type" fallback branch and safely ignore or
+log it, rather than crashing or misparsing it as some other event type.
+This forward-compatibility is the entire practical payoff of paying for
+a normalized envelope up front -- new event types are additive, not
+breaking, for every consumer that was written against the envelope
+contract rather than against specific payload shapes.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) concretely why a "live collaborative cursor" feature needs WebSocket rather than SSE, (2) the two separate points at which rate limiting has to apply to a streaming connection and why one alone is insufficient, and (3) why a mid-stream error should usually be caught locally inside the per-message loop rather than allowed to propagate and close the whole connection? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — streaming architecture integration.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: COEXISTING CONNECTIONS DEMO */
+(function(){
+  var runBtn = document.getElementById('cx-run');
+  var resetBtn = document.getElementById('cx-reset');
+  var logEl = document.getElementById('cx-log');
+  var rowsEl = document.getElementById('cx-rows');
+  var timers = [];
+  var running = false;
+
+  var CONNS = [
+    {label: "Client A — /ws/chat/room_42", cls: "ws", tag: "WEBSOCKET"},
+    {label: "Client B — /ws/chat/room_42", cls: "ws", tag: "WEBSOCKET"},
+    {label: "Client C — /notifications/stream", cls: "sse", tag: "SSE"},
+    {label: "Client D — /notifications/stream", cls: "sse", tag: "SSE"}
+  ];
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function build(){
+    rowsEl.innerHTML = CONNS.map(function(c, i){
+      return '<div class="conn-row ' + c.cls + '" id="cx-row-' + i + '"><span class="ctag">' + c.tag + '</span><span>' + c.label + '</span></div>';
+    }).join('');
+  }
+  build();
+
+  runBtn.addEventListener('click', function(){
+    if(running) return;
+    running = true;
+    runBtn.disabled = true;
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    build();
+    logEl.innerHTML = '';
+    log('<b>One backend process.</b> Four clients connect for two unrelated features, over two different protocols, at the same time.');
+
+    CONNS.forEach(function(c, i){
+      var t = setTimeout(function(){
+        var row = document.getElementById('cx-row-' + i);
+        row.classList.add('visible');
+        log(c.label + ' — connection opened as ' + c.tag + '.');
+      }, 300 + i * 500);
+      timers.push(t);
+    });
+
+    var finalT = setTimeout(function(){
+      log('<b>All 4 held open simultaneously.</b> The two WebSocket connections are full-duplex (chat can flow either way); the two SSE connections only ever push server → client (notifications). Same process, same deploy, genuinely different wire behavior per feature.');
+      running = false;
+      runBtn.disabled = false;
+    }, 300 + CONNS.length * 500 + 400);
+    timers.push(finalT);
+  });
+
+  resetBtn.addEventListener('click', function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    running = false;
+    runBtn.disabled = false;
+    build();
+    logEl.innerHTML = '<span class="line">Click above to watch WebSocket and SSE connections open side by side against the same server process.</span></span>';
+  });
+})();
+
+/* SECTION 2: ENVELOPE DEMO */
+(function(){
+  var chips = document.querySelectorAll('[data-env]');
+  var runBtn = document.getElementById('env-run');
+  var resetBtn = document.getElementById('env-reset');
+  var logEl = document.getElementById('env-log');
+  var mode = 'without';
+  var timers = [];
+  var running = false;
+
+  var EVENTS_WITHOUT = [
+    {raw: '{ "kind": "chat_msg", "room": "room_42", "text": "hey" }', note: "chat used key \"kind\" and \"room\""},
+    {raw: '{ "notif_type": "export_ready", "uid": "u_991", "url": "..." }', note: "notifications used totally different keys: \"notif_type\", \"uid\""},
+    {raw: '{ "event": "typing", "who": "alex" }', note: "typing indicator used yet another shape: \"event\", \"who\""}
+  ];
+  var EVENTS_WITH = [
+    {raw: '{ "type": "chat.message", "timestamp": "...", "payload": {...} }', note: "recognized by the SAME dispatcher lookup"},
+    {raw: '{ "type": "notification.export_ready", "timestamp": "...", "payload": {...} }', note: "recognized by the SAME dispatcher lookup"},
+    {raw: '{ "type": "chat.typing", "timestamp": "...", "payload": {...} }', note: "recognized by the SAME dispatcher lookup, zero new code needed for parsing"}
+  ];
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener('click', function(){
+      if(running) return;
+      chips.forEach(function(x){ x.classList.remove('active'); });
+      c.classList.add('active');
+      mode = c.dataset.env;
+      logEl.innerHTML = '<span class="line">Mode: ' + (mode === 'without' ? 'WITHOUT a normalized envelope' : 'WITH a normalized envelope') + '. Click run.</span>';
+    });
+  });
+
+  runBtn.addEventListener('click', function(){
+    if(running) return;
+    running = true;
+    runBtn.disabled = true;
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    logEl.innerHTML = '';
+
+    var events = mode === 'without' ? EVENTS_WITHOUT : EVENTS_WITH;
+    log(mode === 'without'
+      ? '<b>Without an envelope:</b> each event type invented its own shape independently.'
+      : '<b>With an envelope:</b> every event shares {type, timestamp, payload}.');
+
+    events.forEach(function(ev, i){
+      var t = setTimeout(function(){
+        log('Received: <code style="color:var(--envelope-c);">' + ev.raw + '</code>');
+        if(mode === 'without'){
+          log('<span style="color:var(--bad-c);">→ Dispatcher needs bespoke parsing logic just for this shape: ' + ev.note + '.</span>');
+        } else {
+          log('<span style="color:var(--sse-c);">→ Dispatcher does HANDLERS.get(event["type"]) — ' + ev.note + '.</span>');
+        }
+      }, 300 + i * 700);
+      timers.push(t);
+    });
+
+    var finalT = setTimeout(function(){
+      if(mode === 'without'){
+        log('<b style="color:var(--bad-c);">Result: 3 event types, 3 separate ad-hoc parsers to write and maintain.</b>');
+      } else {
+        log('<b style="color:var(--sse-c);">Result: 3 event types, 1 dispatcher. A 4th type someday needs zero changes to this dispatch code.</b>');
+      }
+      running = false;
+      runBtn.disabled = false;
+    }, 300 + events.length * 700 + 400);
+    timers.push(finalT);
+  });
+
+  resetBtn.addEventListener('click', function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    running = false;
+    runBtn.disabled = false;
+    logEl.innerHTML = '<span class="line">Pick a mode, then click to stream 3 different event types through the client dispatcher.</span>';
+  });
+})();
+
+/* SECTION 3: RATE GATE DEMO */
+(function(){
+  var runBtn = document.getElementById('gate-run');
+  var resetBtn = document.getElementById('gate-reset');
+  var logEl = document.getElementById('gate-log');
+  var connEl = document.getElementById('gate-conn');
+  var msgsStage = document.getElementById('gate-msgs-stage');
+  var timers = [];
+  var running = false;
+
+  function log(msg){
+    var p = document.createElement('div'); p.className = 'line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    connEl.className = 'gate-msg';
+    connEl.textContent = 'client connects';
+    var existing = msgsStage.querySelectorAll('.gate-msg');
+    existing.forEach(function(e){ e.remove(); });
+    logEl.innerHTML = '<span class="line">Click to watch the two-tier gate: one check when the connection opens, then a separate check for every message sent over it.</span>';
+  }
+
+  runBtn.addEventListener('click', function(){
+    if(running) return;
+    running = true;
+    runBtn.disabled = true;
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    reset();
+    logEl.innerHTML = '';
+
+    log('<b>Step 1 — connection-open check.</b> Client attempts to open a WebSocket connection.');
+    timers.push(setTimeout(function(){
+      connEl.classList.add('show', 'pass');
+      log('connection_rate_limiter.allow(user_id) → <b style="color:var(--sse-c);">allowed</b>. Connection accepted, upgrade completes.');
+    }, 500));
+
+    timers.push(setTimeout(function(){
+      log('<b>Step 2 — connection is now OPEN.</b> Client immediately sends 5 messages in under a second.');
+    }, 1200));
+
+    var msgResults = [true, true, true, false, false]; // first 3 pass, then rate-limited
+    msgResults.forEach(function(pass, i){
+      var t = setTimeout(function(){
+        var el = document.createElement('div');
+        el.className = 'gate-msg';
+        el.textContent = 'msg #' + (i+1);
+        msgsStage.appendChild(el);
+        requestAnimationFrame(function(){
+          el.classList.add('show', pass ? 'pass' : 'block');
+        });
+        if(pass){
+          log('message_rate_limiter.allow(user_id) for msg #' + (i+1) + ' → <b style="color:var(--sse-c);">allowed</b>, broadcast to room.');
+        } else {
+          log('message_rate_limiter.allow(user_id) for msg #' + (i+1) + ' → <b style="color:var(--bad-c);">rejected</b>. Message dropped, error event sent in-band — <b>connection stays open.</b>');
+        }
+      }, 1700 + i * 500);
+      timers.push(t);
+    });
+
+    var finalT = setTimeout(function(){
+      log('<b>Two independent gates:</b> the connection-open check ran once, at the start. The per-message check ran 5 separate times, once per message, for the entire time the connection stayed open — that\'s the second gate a plain request/response rate limiter would never apply.');
+      running = false;
+      runBtn.disabled = false;
+    }, 1700 + msgResults.length * 500 + 500);
+    timers.push(finalT);
+  });
+
+  resetBtn.addEventListener('click', function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    running = false;
+    runBtn.disabled = false;
+    reset();
+  });
+})();
+</script>
+</body>
+</html>

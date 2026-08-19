@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — System Design Review, Cold</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --url-c:#4fc3f7; --rate-c:#f2c14e; --notif-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--url-c); color:var(--url-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--rate-c); color:var(--rate-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--notif-c); color:var(--notif-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* self-test recall card */
+  .recall{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0; background:var(--panel-2);}
+  .recall-num{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; display:block;}
+  .recall.url .recall-num{color:var(--url-c);}
+  .recall.rate .recall-num{color:var(--rate-c);}
+  .recall.notif .recall-num{color:var(--notif-c);}
+  .recall ul{margin:0.6rem 0 0; padding-left:1.3rem; color:#cdd0d8; font-size:0.9rem;}
+  .recall ul li{margin:0.4rem 0;}
+  .recall details{margin-top:1rem;}
+  .recall .solution{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.url{border-left-color:var(--url-c); background:rgba(79,195,247,0.06);} .callout.url b{color:var(--url-c);}
+  .callout.rate{border-left-color:var(--rate-c); background:rgba(242,193,78,0.06);} .callout.rate b{color:var(--rate-c);}
+  .callout.notif{border-left-color:var(--notif-c); background:rgba(127,216,160,0.06);} .callout.notif b{color:var(--notif-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · REVIEW COLD</div>
+  <h1>Notes closed. Re-derive all three designs from nothing but the questions.</h1>
+  <p class="lede">This is not new instructional content — it's a structured recall-practice tool. Three prompts, one per system you've already designed this month: the URL shortener, the rate limiter, and the notification service. For each, attempt the full sketch cold, out loud or on paper, before opening the hidden answer. Then a single comparison table forces you to reason about all three side by side: what actually breaks first when each one is hit with 10x its current traffic.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">URL shortener — re-derive cold</div>
+    <div class="pipe-label b">Rate limiter — re-derive cold</div>
+    <div class="pipe-label c">Notification service — re-derive cold</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="urlshortener">1 · URL Shortener, From Scratch</a>
+  <a data-target="ratelimiter">2 · Rate Limiter, From Scratch</a>
+  <a data-target="notification">3 · Notification Service, From Scratch</a>
+  <a data-target="compare">4 · What Breaks at 10x Scale</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: URL SHORTENER ============ -->
+<section id="urlshortener">
+  <div class="kicker">01 — Cold recall, no notes</div>
+  <h2>URL shortener design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Set a timer for 5-8 minutes. On paper or out loud, answer every bullet in the prompt below as if you were in an actual interview, with nobody to check your work until you're done. Resist the urge to peek at the answer partway through — a half-attempt you bail out of early trains recall much less effectively than a full attempt you complete imperfectly.</p>
+
+  <div class="recall url">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch the URL shortener:</p>
+    <ul>
+      <li>What's the short-code encoding scheme, and what alphabet/length does it use?</li>
+      <li>What's the storage schema — what columns, what's the primary lookup key?</li>
+      <li>How do you handle collisions between two different long URLs generating the same short code?</li>
+      <li>Is this workload read-heavy or write-heavy, and how does that shape the design?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">ENCODING SCHEME: base62 encoding (alphabet 0-9, a-z, A-Z — 62 characters)
+applied to an auto-incrementing integer ID. A new long URL gets the next
+ID from a counter (a DB auto-increment column, or a distributed ID
+generator like Snowflake if sharded across multiple DB nodes), and that
+ID is base62-encoded via repeated division/remainder into the short code
+string. A 6-character base62 string covers 62^6 ≈ 56.8 billion unique
+codes — comfortably enough for a service issuing tens of millions of new
+links per day for years.
+
+STORAGE SCHEMA: intentionally almost trivial, because the workload is a
+pure key-value lookup, not a relational one:
+  short_code (PK, indexed)  |  long_url  |  created_at  |  expires_at (nullable)
+The primary (and often ONLY) lookup pattern is "given short_code, return
+long_url" — a single indexed point lookup. This is exactly the shape a
+key-value store (Redis, DynamoDB) or a simple indexed relational table
+handles well; there's little need for joins or complex relational
+structure.
+
+COLLISION HANDLING: base62-encoding a UNIQUE integer is a deterministic
+bijection — every distinct integer maps to exactly one distinct base62
+string and vice versa, so encoding a genuinely unique ID can never
+collide with another genuinely unique ID's encoding. This is why
+counter+base62 is preferred over hashing the long URL directly: a
+truncated hash of the URL is a many-to-one mapping, so two different long
+URLs CAN hash to the same short code, requiring detect-and-retry
+collision-handling logic on every write. Counter-based IDs sidestep that
+problem entirely, structurally, not just probabilistically.
+
+READ VS WRITE: overwhelmingly read-heavy. Every short link, once created,
+gets looked up (redirected) far more times than it was ever written —
+often by orders of magnitude. This shapes the whole design toward
+optimizing reads: aggressive caching of hot short_code → long_url
+mappings (e.g. an in-memory cache or CDN edge cache in front of the DB),
+and accepting that writes (creating a new short link) can be comparatively
+slower and less optimized, since they're rare relative to reads.</div>
+    </details>
+  </div>
+
+  <div class="callout url"><b>What "re-derive cold" is testing:</b> not whether you memorized the base62 arithmetic verbatim, but whether you can reconstruct WHY counter+base62 was chosen over hashing, and connect the read-heavy workload shape to the caching decisions that follow from it — the reasoning chain, not the trivia.</div>
+</section>
+
+<!-- ============ SECTION 2: RATE LIMITER ============ -->
+<section id="ratelimiter">
+  <div class="kicker">02 — Cold recall, no notes</div>
+  <h2>Rate limiter design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall rate">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch the rate limiter:</p>
+    <ul>
+      <li>Name at least two algorithms and explain the concrete difference between them (not just names).</li>
+      <li>What specific flaw does fixed window have that sliding window fixes?</li>
+      <li>Why does running the rate limiter across multiple server instances break a naive, per-instance implementation?</li>
+      <li>What does an atomic, shared implementation actually look like?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">ALGORITHMS: token bucket and sliding window (fixed window is a third,
+usually presented as the naive baseline both others improve on).
+  - Token bucket: a bucket holds up to `capacity` tokens, refills at a
+    steady `rate` (e.g. 1 token/second), and every request consumes one
+    token. If the bucket is empty, the request is rejected. This
+    naturally allows short bursts (spend the whole bucket at once) while
+    still enforcing a long-run average rate (the refill rate).
+  - Sliding window: counts requests within a continuously moving lookback
+    window (e.g. "the last 60 seconds, right now," not "this fixed
+    60-second bucket"), so the count at any instant reflects a true
+    rolling window rather than a fixed, resettable one.
+
+FIXED WINDOW'S FLAW: a fixed window resets its count at a hard boundary
+(e.g. exactly on the minute). A client can send the full limit right
+before the boundary and the full limit again right after — e.g. 5
+requests at 9:00:59 and 5 more at 9:01:00, 10 requests in about 1 real
+second, while each individual 60-second bucket still shows exactly 5,
+technically satisfying the rule as literally written. Sliding window
+looks back continuously from the current moment, so it would see all 10
+requests within its 60-second lookback and correctly reject the excess —
+there's no clock-aligned boundary to exploit.
+
+WHY MULTIPLE INSTANCES BREAK A NAIVE IMPLEMENTATION: if each server
+instance keeps its own local, in-memory counter, a client hitting 3
+different instances behind a load balancer effectively gets 3x the
+intended limit — each instance only sees and limits its own slice of
+that client's traffic, with no shared knowledge of the other instances'
+counts. Even a shared external store (e.g. Redis) isn't automatically
+safe: a naive GET-check-SET sequence run from multiple instances at
+nearly the same moment is a race condition — two instances can both GET
+the same pre-increment count, both see it under the limit, and both
+allow a request that together should have been rejected.
+
+WHAT AN ATOMIC IMPLEMENTATION LOOKS LIKE: the check-and-increment has to
+happen as a single atomic operation against the shared store, not as
+separate read-then-write steps in application code. E.g. Redis's INCR
+(atomically increments and returns the new value in one operation) or a
+Lua script executed atomically inside Redis that checks the current count
+against the limit and increments it in one indivisible step — eliminating
+the window where two instances could both read a stale pre-increment
+value.</div>
+    </details>
+  </div>
+
+  <div class="callout rate"><b>What "re-derive cold" is testing:</b> whether you can name the actual race condition (not just say "it needs to be distributed"), and whether you know WHY atomicity — not just "using Redis" — is the thing that fixes it. "We put it in Redis" without INCR or a Lua script is still broken.</div>
+</section>
+
+<!-- ============ SECTION 3: NOTIFICATION SERVICE ============ -->
+<section id="notification">
+  <div class="kicker">03 — Cold recall, no notes</div>
+  <h2>Notification service design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall notif">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch the notification service:</p>
+    <ul>
+      <li>Synchronous vs queue-based fan-out — what's the actual difference, and which do you pick?</li>
+      <li>What happens when a single delivery attempt to one channel fails? Walk the full retry sequence.</li>
+      <li>Why does a dead-letter queue exist instead of just dropping a permanently-failing message?</li>
+      <li>Why can't email, push, and SMS just receive "the same string"?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">SYNCHRONOUS VS QUEUE-BASED FAN-OUT: synchronous fan-out has the producer
+(e.g. the order service) directly call each channel handler in sequence,
+waiting for each to finish before calling the next — a slow or down
+channel (e.g. a flaky SMS vendor) delays every channel after it and keeps
+the producer's own request open the whole time. Queue-based fan-out has
+the producer publish the event ONCE to a message broker (Kafka, SQS,
+RabbitMQ); each channel handler independently subscribes and pulls its
+own copy whenever it's ready. The producer's job ends the instant it
+publishes — it never waits on any handler. Queue-based is the correct
+default: it decouples the producer's latency/availability from every
+downstream channel's latency/availability.
+
+RETRY SEQUENCE ON FAILURE: exponential backoff, not instant or
+fixed-interval retry. Attempt 1 fails → wait ~1s → attempt 2 fails → wait
+~2s → attempt 3 fails → wait ~4s, doubling each time, up to a max attempt
+count (commonly 3-5). This spaces retries out enough to let a transient
+failure (a momentary provider blip) clear, instead of hammering an
+already-struggling provider in a tight loop. After the max attempt count
+is exhausted, the message moves to a dead-letter queue rather than being
+retried forever or discarded.
+
+WHY A DLQ EXISTS: it solves two problems simultaneously. First, it stops
+the message from consuming retry-worker capacity forever — some failures
+are PERMANENT (a malformed payload, a deleted account, an invalid phone
+number), not transient, and no amount of retrying fixes a data problem.
+Second, it avoids silently dropping the message — the full payload,
+recipient details, and failure history are preserved intact for human
+inspection, so if the root cause turns out to be fixable (e.g. a phone
+number formatting bug), the DLQ'd messages can be reprocessed and
+delivered late, rather than being unrecoverably lost.
+
+WHY CHANNELS CAN'T SHARE ONE STRING: each channel has its own format,
+transport, and hard constraints. Email needs a full HTML template with a
+subject line and often a legally-required unsubscribe footer, sent via
+SMTP or an email API. Push needs a short title+body plus a structured
+deep-link payload, capped at a few KB, sent via APNs/FCM. SMS is plain
+text only, capped at 160 characters per segment, sent via a telephony API
+like Twilio. Sending one raw HTML email body as an SMS blows the
+character limit instantly; sending the same body as a push payload blows
+the payload size cap. Each channel needs its own rendering of the same
+underlying logical notification, and each has genuinely different
+failure modes (bounces vs expired tokens vs invalid numbers) that must be
+tracked independently, not as one aggregate success/failure flag.</div>
+    </details>
+  </div>
+
+  <div class="callout notif"><b>What "re-derive cold" is testing:</b> whether you can actually name the exponential backoff formula (roughly doubling, capped attempts) rather than gesturing at "it retries a few times," and whether you can articulate the TWO distinct problems a DLQ solves — most people only remember one.</div>
+</section>
+
+<!-- ============ SECTION 4: COMPARISON AT 10X SCALE ============ -->
+<section id="compare">
+  <div class="kicker">04 — The question interviewers actually care about</div>
+  <h2>What breaks first at 10x scale, across all three</h2>
+
+  <p><strong>Start here, before the table.</strong> "Design X" is only half the interview. The other half is almost always "now imagine X is 10x more successful than you designed it for — what falls over first, and why?" This question tests whether you understand your OWN design's actual bottleneck, not just whether you can draw the boxes. A design that "works" at the scale you sketched it for but that you can't reason about under load is, in a real interview, treated as a design you don't actually understand.</p>
+
+  <table class="cmp">
+    <tr><th>System</th><th>Primary bottleneck at 10x</th><th>Why, specifically</th></tr>
+    <tr>
+      <td><strong>URL shortener</strong></td>
+      <td>KV store read throughput / hot-key contention</td>
+      <td>The workload is overwhelmingly read-heavy, and popular short links follow a power-law distribution — a small number of viral links receive a disproportionate share of all traffic. At 10x scale, those specific "hot" keys can exceed what even a well-provisioned single cache node or DB shard can serve, regardless of how well the overall system scales horizontally, because the load isn't evenly distributed across keys — it's concentrated on a handful of them.</td>
+    </tr>
+    <tr>
+      <td><strong>Rate limiter</strong></td>
+      <td>The shared counter store itself becomes the bottleneck</td>
+      <td>Correct distributed rate limiting requires every instance to check against ONE shared, atomically-updated counter (e.g. Redis INCR). At 10x request volume, that shared store now has to handle 10x the atomic increment operations, on the same central resource that every other request across every instance must also serialize through — the very mechanism that makes rate limiting correct under concurrency is also a single chokepoint that doesn't scale away just because you add more application servers.</td>
+    </tr>
+    <tr>
+      <td><strong>Notification service</strong></td>
+      <td>Fan-out amplification and retry-storm risk</td>
+      <td>Each single logical event fans out to multiple channel handlers, so 10x more events means 10x more fan-out work across every channel simultaneously — not a 10x increase in one place, but roughly 10x increase in N places (email queue, push queue, SMS queue) at once. Worse, if a downstream provider (e.g. an email vendor) can't absorb 10x traffic and starts failing, EVERY failing send schedules a retry with backoff — at 10x volume, that's 10x the messages re-queuing and re-attempting, which can produce a thundering-herd "retry storm" that hits the already-struggling provider even harder right as it's trying to recover, a self-reinforcing failure the original design didn't have to reckon with at 1x scale.</td>
+    </tr>
+  </table>
+
+  <div class="callout warn"><b>The pattern across all three:</b> in each case, the bottleneck at 10x is NOT "we need more servers" — it's a specific shared resource or distribution-shape problem that horizontal scaling of the application layer alone doesn't fix: a hot key inside a KV store, a single atomic counter every request must serialize through, and a retry mechanism that amplifies under exactly the conditions (a struggling downstream provider) it's supposed to handle gracefully. Recognizing "which shared resource does NOT scale linearly with request count" is the actual skill being tested by "what breaks at 10x."</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. These go one level past the cold-recall prompts above — they ask you to reason ACROSS the three designs, not just reproduce one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Applying the URL shortener's hot-key fix to a different system</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The standard fix for the URL shortener's hot-key problem is an in-memory or CDN-edge cache in front of the KV store for popular codes. Would the same fix help the rate limiter's shared-counter bottleneck at 10x scale? Why or why not?</p>
+    <details><summary>Show solution</summary><div class="solution">No, and the reason exposes a real conceptual difference between the two
+bottlenecks. The URL shortener's hot key is a READ-heavy problem: the
+same long_url is being read over and over, and caching a read is safe
+because the value doesn't need to change on every access — you can serve
+a slightly stale cached copy and it's still correct (a URL redirect
+target essentially never changes after creation).
+
+The rate limiter's shared counter is fundamentally a WRITE problem: every
+single request has to both READ the current count AND ATOMICALLY
+increment it, and the entire correctness of the rate limiter depends on
+that count being exactly right at every instant — that's the whole point
+of the atomicity requirement covered in section 2. Caching a rate-limit
+counter would mean serving a stale, already-outdated count, which
+directly reintroduces the race condition the atomic store was built to
+prevent (two instances both checking a stale cached count, both seeing
+"under limit," both allowing a request that together exceeds it). Caching
+helps read-heavy, rarely-changing data; it actively breaks a
+write-heavy, must-be-exactly-current counter.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Comparing failure isolation across all three designs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Rank the URL shortener, rate limiter, and notification service by how badly a SINGLE COMPONENT failure (e.g. one downstream dependency going down) cascades through the rest of the system, and justify the ranking.</p>
+    <details><summary>Show solution</summary><div class="solution">Best isolated → worst isolated: URL shortener, then notification
+service, then rate limiter (worst).
+
+URL shortener: a single failed lookup affects only that one request — one
+user gets a broken redirect. There's no fan-out and no shared mutable
+state that a failure corrupts for OTHER requests; each lookup is
+independent.
+
+Notification service: a failure in ONE channel (e.g. the email provider
+going down) is explicitly isolated by design — per-channel retry queues
+mean an email outage's growing backlog doesn't consume the SMS or push
+queues' capacity, and each channel's DLQ is separate. Failure is
+contained to that one channel, though within that channel, a bad enough
+outage can still cause a retry storm as covered in section 4.
+
+Rate limiter: worst isolation, because EVERY request across every
+instance and every client depends on the SAME shared counter store being
+available and fast. If that shared store goes down or becomes slow, it
+doesn't just degrade one feature — it potentially blocks or corrupts the
+gating logic for literally all traffic through the system, since the rate
+limiter sits in the critical path of every request it protects. A single
+shared dependency with system-wide reach is inherently the worst-isolated
+failure mode of the three.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing what to over-provision given a fixed budget</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're told to expect 10x growth over the next year but can only proactively harden ONE of the three systems' bottlenecks ahead of time due to limited engineering time. Which would you prioritize, and what's your reasoning?</p>
+    <details><summary>Show solution</summary><div class="solution">There's no single universally "correct" answer here — this is a
+judgment call an interviewer wants you to REASON about, not a fact to
+recall — but a defensible answer: prioritize the rate limiter's shared
+counter store, because of problem 2's finding: it's the worst-isolated
+of the three, sitting in the critical path of every request, so its
+failure mode has the largest blast radius. Hardening options include
+sharding the counter store by client ID (so no single node has to absorb
+100% of the atomic-increment traffic), or accepting a slightly relaxed
+correctness model (e.g. a short-lived local cache with periodic
+reconciliation) that trades perfect precision for surviving 10x load
+without becoming a single chokepoint for all traffic.
+
+An equally defensible alternative answer: prioritize the URL shortener's
+hot-key problem, on the reasoning that it's the cheapest and most
+mechanical fix (add a cache layer) with the most predictable payoff, so
+it's the best use of limited engineering time even if its failure mode
+is less severe — "harden the cheap, well-understood fix first" is a
+legitimate prioritization strategy too. What matters in an interview
+setting is naming a real trade-off (blast radius vs. cost/certainty of
+the fix) and reasoning about it explicitly, not landing on one "right"
+system.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Spotting a design that silently conflates two of the three bottleneck types</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A candidate says: "for the rate limiter at 10x scale, I'd just add a caching layer in front of Redis, same as I would for the URL shortener's hot keys." What's wrong with this answer, and what should the candidate have said instead?</p>
+    <details><summary>Show solution</summary><div class="solution">This is exactly the mistake identified in Problem 1: it applies a
+read-heavy caching fix to a bottleneck that is fundamentally a write/
+atomicity problem, not a read problem. A cache in front of the rate
+limiter's counter would mean requests reading a POSSIBLY STALE count —
+which reintroduces the exact race condition (two instances both seeing
+an outdated "under limit" count and both allowing traffic that together
+exceeds it) that using an atomic shared store was meant to eliminate in
+the first place. The fix isn't wrong because caching is bad in general —
+it's wrong because it was copy-pasted from a different bottleneck SHAPE
+without noticing the shapes don't match.
+
+What the candidate should have said instead: since the counter's
+correctness depends on atomicity, not just availability, the actual
+10x-scale fixes have to preserve atomicity while spreading load — e.g.
+sharding the counter keyspace across multiple Redis instances (by client
+ID or API key, so no single instance absorbs all traffic), using a
+purpose-built distributed rate-limiting service, or relaxing to an
+approximate/eventually-consistent counting scheme ONLY if the product
+can tolerate slightly imprecise limits in exchange for surviving load —
+a conscious trade-off, not an accidental one introduced by treating this
+like a caching problem.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Cold re-derivation of a fourth system, using the same recall method</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the exact same "prompt, attempt cold, then reveal" structure from sections 1-3 of this lab, write the prompt (not the answer) you'd use to cold-test yourself on a system you haven't designed yet this month: a URL shortener's close cousin, a "paste bin" / pastebin-style service. What 3-4 questions would you ask yourself?</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable cold-recall prompt for a pastebin service, following the
+same shape as this lab's three prompts (specific enough to force a real
+design decision, not so open-ended that a vague answer can dodge it):
+
+  "Without looking anything up, sketch a pastebin service:
+   - What's the ID/short-link scheme for a new paste, and does the same
+     counter+base62 reasoning from the URL shortener apply here, or does
+     something about pastebin change that calculus?
+   - Where does the actual PASTE CONTENT get stored -- in the same
+     relational row as the metadata, or somewhere else -- and why? (Hint:
+     think about typical paste size vs typical URL length.)
+   - Does this workload skew read-heavy like the URL shortener, or does
+     write volume matter more here? What's actually different about who
+     creates pastes vs who reads them?
+   - What expiration/deletion behavior does a pastebin need that a URL
+     shortener usually doesn't, and how does that change the schema?"
+
+The value of writing your OWN prompt like this (rather than just being
+handed one) is that it forces you to first identify which parts of a
+familiar design (URL shortener) genuinely transfer to a new but similar
+system, and which parts don't -- e.g. paste CONTENT is typically much
+larger than a URL, which pushes toward storing it in blob storage (S3)
+with only a reference in the relational/KV row, a divergence a lazy
+"it's basically the same as the URL shortener" answer would miss
+entirely.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, right now, with no notes, re-explain (1) why base62+counter structurally cannot collide, (2) the exact race condition that breaks a naive multi-instance rate limiter, (3) the two distinct problems a dead-letter queue solves, and (4) which specific shared resource is the true bottleneck at 10x scale for each of the three systems? If any of the four feels shaky, that's the one to re-attempt cold again tomorrow, not just re-read.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — system design review, cold.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(function(a){
+    a.addEventListener('click', function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+</script>
+</body>
+</html>
