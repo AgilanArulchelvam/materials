@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — HNSW Indexing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --l2-c:#4fc3f7; --l1-c:#7fd8a0; --l0-c:#f2c14e; --target-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--l2-c); color:var(--l2-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--l1-c); color:var(--l1-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--l0-c); color:var(--l0-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.d{border-color:var(--target-c); color:var(--target-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* HNSW layered graph */
+  .hnsw-stage{position:relative; min-height:520px; margin:1.4rem 0; background:#0b0d11; border:1px solid var(--rule); border-radius:12px; overflow:hidden;}
+  .hnsw-layer-label{position:absolute; left:0.8rem; font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; padding:0.2rem 0.5rem; border-radius:5px; z-index:3;}
+  .hnsw-layer-label.l2{color:var(--l2-c); background:rgba(79,195,247,0.1); top:12px;}
+  .hnsw-layer-label.l1{color:var(--l1-c); background:rgba(127,216,160,0.1); top:190px;}
+  .hnsw-layer-label.l0{color:var(--l0-c); background:rgba(242,193,78,0.1); top:368px;}
+  .hnsw-node{position:absolute; width:16px; height:16px; border-radius:50%; border:2px solid; transform:translate(-50%,-50%); transition:all .4s ease; z-index:2; cursor:default;}
+  .hnsw-node.l2{border-color:var(--l2-c); background:rgba(79,195,247,0.25);}
+  .hnsw-node.l1{border-color:var(--l1-c); background:rgba(127,216,160,0.25);}
+  .hnsw-node.l0{border-color:var(--l0-c); background:rgba(242,193,78,0.2);}
+  .hnsw-node.visited{box-shadow:0 0 14px currentColor; transform:translate(-50%,-50%) scale(1.5);}
+  .hnsw-node.current{box-shadow:0 0 18px #fff; transform:translate(-50%,-50%) scale(1.9); z-index:5;}
+  .hnsw-node.target{width:20px; height:20px; border-color:var(--target-c); background:rgba(255,107,107,0.35); box-shadow:0 0 16px var(--target-c);}
+  .hnsw-edge{position:absolute; height:1.5px; background:var(--rule); transform-origin:left center; z-index:1; opacity:0.4;}
+  .hnsw-edge.traversed{background:var(--accent); opacity:1; height:2px; box-shadow:0 0 6px var(--accent);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--l0-c);} .dc-col.a h4{color:var(--l0-c);}
+  .dc-col.b{border-color:var(--target-c);} .dc-col.b h4{color:var(--target-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--target-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--target-c);}
+  .callout.l0{border-left-color:var(--l0-c); background:rgba(242,193,78,0.06);} .callout.l0 b{color:var(--l0-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · STORAGE ENGINES</div>
+  <h1>HNSW searches a haystack by <em>parachuting in from above</em>, not walking every row.</h1>
+  <p class="lede">A Hierarchical Navigable Small World graph is a stack of graphs layered on top of the same set of vectors — sparse and long-range at the top, dense and fine-grained at the bottom. A search starts at the sparse top layer, takes big jumps toward the target, then drops down a layer and repeats with finer and finer steps. This lab animates that descent directly, and connects it to why HNSW trades a small chance of missing the true nearest neighbor for a massive speedup over brute-force exact search.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Layer 2 — sparse, long jumps</div>
+    <div class="pipe-label b">Layer 1 — denser</div>
+    <div class="pipe-label c">Layer 0 — every vector</div>
+    <div class="pipe-label d">Target vector</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="layers">1 · The Layered Graph Idea</a>
+  <a data-target="search">2 · Descending Through Layers, Live</a>
+  <a data-target="tradeoffs">3 · Approximate vs Exact, and the Build Trade-Off</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: LAYERED IDEA ============ -->
+<section id="layers">
+  <div class="kicker">01 — A stack of graphs, not one flat graph</div>
+  <h2>Hierarchical Navigable Small World graphs — the layered idea</h2>
+
+  <p><strong>Start here, before any graph theory.</strong> Imagine finding a specific street address in an unfamiliar country, using three different maps of increasing detail. The first map shows only major highways connecting a handful of big cities — from wherever you start, you can jump enormous distances fast, landing you in roughly the right city. The second map, once you're in the right city, shows the major roads within it — fewer huge jumps, more moderate ones, narrowing toward the right neighborhood. The third map shows literally every street in that neighborhood — small, precise steps until you're standing at the exact address. You never once needed a map showing every street in the entire country; you only needed that much detail in the tiny final neighborhood.</p>
+
+  <p>An <strong>HNSW graph</strong> is built the same way, as a stack of graph "layers" over the same underlying set of vectors. The <strong>top layer</strong> contains only a small, sparse subset of all the stored vectors, connected by relatively few edges spanning long distances in the vector space — this is the "highway map," built for covering huge ground in very few hops. Each layer below adds back more of the vectors and more, shorter edges, getting progressively denser, until the <strong>bottom layer (layer 0)</strong> contains every single vector in the entire index, densely connected to its true nearest neighbors — the "every street" map. A vector's presence in upper layers is decided randomly at insert time (with exponentially decreasing probability the higher the layer), which is exactly why upper layers end up naturally sparse without anyone explicitly curating which vectors belong there.</p>
+
+  <div class="code"><span class="c-cmt"># Roughly how layer membership is decided at insert time</span>
+<span class="c-kw">import</span> random, math
+
+<span class="c-kw">def</span> <span class="c-fn">assign_layer</span>(level_multiplier=1.0):
+    <span class="c-cmt"># exponential decay: each higher layer is exponentially less likely
+    # -- this is WHY the top layer ends up sparse "for free"</span>
+    <span class="c-kw">return</span> <span class="c-fn">int</span>(-math.log(random.random()) * level_multiplier)
+
+<span class="c-cmt"># most vectors: assign_layer() returns 0 -> layer 0 only (the base layer)
+# far fewer vectors: returns 1 -> also inserted into layer 1
+# vanishingly few: returns 2, 3, ... -> present in the sparse top layers too</span></div>
+
+  <div class="callout"><b>Interview-ready definition:</b> HNSW (Hierarchical Navigable Small World) is a multi-layer graph index for approximate nearest-neighbor search, where each layer is a proximity graph over a subset of the stored vectors — the top layer is sparse with long-range edges for fast coarse navigation, and each layer down is progressively denser, with layer 0 containing every vector and its true nearest-neighbor edges. Layer membership is assigned randomly per vector at insert time with exponentially decreasing probability per layer, so the pyramid shape (sparse top, dense bottom) emerges naturally rather than being explicitly constructed.</div>
+</section>
+
+<!-- ============ SECTION 2: SEARCH DESCENT ============ -->
+<section id="search">
+  <div class="kicker">02 — The crux of the whole topic</div>
+  <h2>Descending through layers: a search, animated</h2>
+
+  <p><strong>Start here, before running the demo.</strong> Back at the three maps: you don't start by scanning the street-level map for your destination — you start on the highway map, find the entry point closest to your goal, and only switch to a more detailed map once you've gotten as close as that current map lets you. HNSW search works identically: start at a single fixed <strong>entry point</strong> in the TOP layer, greedily move to whichever neighbor (of the current node, using only that layer's edges) is closer to the query vector than the current node is, and keep doing that until no neighbor at this layer is closer — that's "locally optimal" for this layer. At that point, drop down one layer, keep the same current-best node as the new starting point, and repeat the greedy walk using that layer's (denser) edges. Continue descending until you're greedily walking layer 0, the densest layer, which gives the final, most precise answer.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>HNSW SEARCH — WATCH THE DESCENT FROM LAYER 2 TO LAYER 0</span>
+      <div><button class="btn secondary" id="hnsw-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">The same set of vectors, shown across all 3 layers. Layer 2 (top) has 5 nodes and few long edges. Layer 1 has 11. Layer 0 (bottom) has every one of 24 nodes, densely connected. Watch the search enter at the top and greedily descend toward the red target.</p>
+    <div class="hnsw-stage" id="hnsw-stage"></div>
+    <button class="btn" id="hnsw-run">Run search: enter at layer 2, descend to layer 0 ▸</button>
+    <div class="log" id="hnsw-log"><span class="line">Click to run a query. Watch how few nodes get visited compared to the full 24-vector dataset.</span></div>
+  </div>
+
+  <p>Notice what just happened: the search never examined most of the 24 vectors. It took a few big jumps at the sparse top layer to get roughly in the right neighborhood of the vector space, then refined with smaller and smaller jumps as it dropped through progressively denser layers — exactly mirroring the highway-map-to-street-map narrowing. Each layer's greedy walk only compares the query against the CURRENT node's direct neighbors at that layer, never the whole dataset, which is the entire source of HNSW's speed.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> HNSW search begins at a fixed entry point in the top (sparsest) layer and performs a greedy walk — repeatedly moving to whichever neighbor at the current layer is closer to the query than the current node, until no neighbor improves the distance — then descends one layer, using the best node found as the new starting point, and repeats. This continues until the greedy walk completes at layer 0, the densest layer containing every vector, which produces the final approximate nearest-neighbor result. Each layer's walk only examines the current node's local neighbors, never the full dataset, which is the structural reason HNSW search is sublinear in the number of stored vectors rather than scanning all of them.</div>
+</section>
+
+<!-- ============ SECTION 3: APPROX VS EXACT + TRADE-OFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">03 — What's traded away, and what's paid for it</div>
+  <h2>Approximate vs exact nearest neighbor, and the build/query trade-off</h2>
+
+  <p><strong>Start here, before the numbers.</strong> Imagine being asked "who in this stadium of 50,000 people is closest in height to exactly 5'11"?" One way to answer with certainty: measure every single person and compare all 50,000 heights — guaranteed correct, but it takes forever. A faster way: walk through a few strategically chosen sections first, narrow down to the section that looks closest, then only carefully check people within that section — almost certainly gets you someone very close to correct, in a tiny fraction of the time, but there's a real (small) chance the true closest person was standing in a section you never checked closely.</p>
+
+  <p><strong>Exact nearest-neighbor search</strong> (brute force) compares the query vector against every single stored vector, computing a real distance to each one, and returns the true closest match — guaranteed correct, but the cost scales linearly with the number of stored vectors (O(n) per query). At millions or billions of vectors, this becomes far too slow for any interactive or high-throughput use case; a single query touching every vector doesn't scale the way an index that can skip most of the dataset does.</p>
+
+  <p><strong>Approximate nearest-neighbor (ANN) search</strong>, which is what HNSW provides, sacrifices the guarantee of finding the EXACT true nearest neighbor in exchange for dramatically fewer distance comparisons per query — because the greedy layered walk only ever examines a small, local neighborhood at each step, there's a real (usually small, tunable) chance it settles into a "locally good enough" answer that isn't the globally best one, the same way the stadium search could miss the true closest person if they happened to be in a section that got skipped. This trade — accepting a small, controllable chance of imperfect results for a massive speedup — is the entire premise of ANN indexing, and it's the right trade for almost every real embedding-search use case, where "one of the very closest matches" is functionally as useful as "the single mathematically closest match."</p>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Exact (brute-force) NN</th><th>HNSW (approximate NN)</th></tr>
+    <tr><td>Guarantee</td><td>Always returns the true nearest neighbor</td><td>Usually returns the true nearest neighbor, or one very close to it — no hard guarantee</td></tr>
+    <tr><td>Query cost</td><td>O(n) — scales linearly with total vectors</td><td>Roughly O(log n) — scales sublinearly via the layered greedy walk</td></tr>
+    <tr><td>At 10M+ vectors</td><td>Impractically slow for interactive queries</td><td>Millisecond-scale queries are routine</td></tr>
+  </table>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>More layers / connections per node</h4>
+      <p>Better recall (closer to the true nearest neighbor), faster queries once built. But: slower to build the index (more edges to compute and insert), and more memory to hold all those extra edges — every node stores references to more neighbors across more layers.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Fewer layers / connections per node</h4>
+      <p>Cheaper to build, less memory. But: worse recall (more likely to settle into a locally-good-but-not-globally-best answer), and each layer's greedy walk has fewer good paths to follow, which can also slow convergence per query in practice.</p>
+    </div>
+  </div>
+
+  <div class="callout l0"><b>The concrete trade-off knobs:</b> HNSW's two main build-time parameters are <code class="inline">M</code> (max connections per node per layer) and <code class="inline">ef_construction</code> (how thoroughly the graph is searched while inserting each new node, i.e. build-time recall effort). Both knobs trade the SAME resources against each other: higher <code class="inline">M</code> and <code class="inline">ef_construction</code> → better recall and often faster queries, at the cost of slower index builds and more memory to store the denser graph. A separate query-time parameter, <code class="inline">ef_search</code>, lets you trade query latency for recall AFTER the index is already built — searching more candidates per layer at query time costs more time but improves the odds of finding the true nearest neighbor, without requiring a full rebuild.</div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> HNSW trades the guarantee of exact nearest-neighbor search for approximate results found via a layered, greedy graph walk that only examines a small local neighborhood at each step — this is what makes HNSW query time roughly logarithmic rather than linear in dataset size, at the cost of a small, tunable probability of missing the true nearest neighbor. Build time, memory footprint, query speed, and recall are all coupled through the same parameters (M, ef_construction, ef_search): pushing any one of them toward "better" (more connections, more thorough construction/search) costs more of the others, so there is no free-lunch configuration — only a choice of where on that trade-off curve a given workload needs to sit.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining why the top layer is sparse without anyone designing it that way</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's insert-time code assigns each vector a maximum layer via an exponentially-decaying random draw. Explain concretely why this alone is enough to guarantee the pyramid shape (sparse top, dense bottom) without any explicit rule saying "put fewer vectors in layer 2."</p>
+    <details><summary>Show solution</summary><div class="solution">Because the layer-assignment draw is exponential, the probability of a
+given vector being assigned to layer L drops off exponentially as L
+increases -- most vectors draw layer 0 only, a much smaller fraction also
+qualify for layer 1, an even smaller fraction for layer 2, and so on.
+Since every vector that qualifies for layer L is ALSO inserted into every
+layer below L (a vector present at layer 2 is also present at layer 1 and
+layer 0, not layer 2 alone), each layer above the base is automatically a
+strict subset of the layer below it, and that subset shrinks
+exponentially with height purely as a side effect of the random draw's
+probability curve. No explicit curation step ("pick which 5 vectors go in
+the top layer") is needed -- the sparse-top, dense-bottom shape falls out
+mechanically from one simple per-vector random decision made
+independently at insert time, which is also why HNSW doesn't need to be
+rebuilt from scratch to maintain that shape as vectors are added
+incrementally over time.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing what happens if the entry point's layer-2 neighbors are all far from the query</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose the fixed entry point at layer 2 happens to be geometrically far from the query vector, and none of its direct layer-2 neighbors improve on that distance (the greedy walk terminates immediately, after zero hops, at the entry point itself). Does the search still work? What does this reveal about the entry point's role?</p>
+    <details><summary>Show solution</summary><div class="solution">The search still proceeds -- it just descends to layer 1 immediately,
+using the (possibly still-distant) entry point as the starting node for
+layer 1's greedy walk, and continues from there. It's not broken, but
+this scenario is exactly the mechanism behind HNSW's imperfect recall:
+if the layer-2 walk gets "stuck" early at a locally-optimal-but-globally-
+distant node, every layer below inherits that same starting
+disadvantage, and the final layer-0 result may end up settling near
+where the walk got stuck rather than near the true global nearest
+neighbor.
+
+This reveals that the entry point (and the quality of the walk at the
+TOP layer specifically) matters disproportionately -- a bad early
+decision compounds through every layer below it, since each layer's walk
+only starts searching from wherever the layer above left off, rather
+than re-examining the whole space fresh at each layer. This is part of
+why build-time parameters like ef_construction (how thoroughly each
+layer is searched while the graph is being built) directly affect
+recall: a more thoroughly-connected graph gives the greedy walk more
+escape routes at each layer, reducing the odds of getting stuck exactly
+like this.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing HNSW parameters for two different products</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Product A is a real-time typeahead search-as-you-type feature where sub-10ms query latency matters far more than perfect recall. Product B is an offline nightly batch job computing high-quality nearest-neighbor recommendations, where build time and query latency barely matter but recall quality directly affects revenue. How would you tune M / ef_construction / ef_search differently for each?</p>
+    <details><summary>Show solution</summary><div class="solution">Product A (typeahead, latency-critical, recall-tolerant): favor LOWER
+M and ef_construction (faster, cheaper index, less memory) and a LOWER
+ef_search at query time (fewer candidates examined per layer, faster
+queries) -- accepting a higher chance of a slightly-not-optimal
+suggestion is a completely acceptable trade for keeping every keystroke
+feeling instant, especially since typeahead results are inherently
+approximate/forgiving to the end user already (they're going to keep
+typing if the first suggestion isn't quite right).
+
+Product B (offline batch, recall-critical, latency-tolerant): favor
+HIGHER M and ef_construction (denser graph, better long-run recall, even
+though the index takes longer and more memory to build -- both
+acceptable since this runs offline overnight) and a HIGHER ef_search at
+query time (examine more candidates per layer, since query latency isn't
+the binding constraint here, and better recall directly improves
+recommendation quality and therefore revenue). This is a clean example
+of the SAME three knobs being tuned in opposite directions because the
+two products sit at different points on the recall/build-cost/query-
+latency trade-off curve described in section 3 -- there's no universally
+"correct" HNSW configuration, only the one that matches a given
+workload's actual constraints.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Why HNSW query cost is sublinear, stated precisely</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain, structurally (not just "it's a graph"), why HNSW's query cost scales roughly O(log n) with the number of stored vectors while brute-force exact search scales O(n).</p>
+    <details><summary>Show solution</summary><div class="solution">Brute-force exact search's O(n) cost comes directly from its mechanism:
+it computes one distance calculation per stored vector, so doubling the
+number of stored vectors exactly doubles the work, with no way to skip
+any of them without risking missing the true nearest neighbor.
+
+HNSW's roughly-O(log n) cost comes from the layered structure itself: at
+each layer, the greedy walk only examines a small, roughly constant
+number of candidates (the current node's direct neighbors at that
+layer) before either converging or moving to the next layer -- the work
+done AT EACH LAYER doesn't grow with total dataset size, only with each
+node's fixed connection count (M). What DOES grow (slowly) with dataset
+size is the NUMBER of layers needed for the pyramid to taper from "a
+handful of nodes at the top" down to "every node at the bottom" -- and
+because each layer holds an exponentially decreasing fraction of the
+vectors below it (section 1), the number of layers needed grows only
+logarithmically with total vector count. Roughly constant work per layer
+times logarithmically-many layers gives roughly O(log n) total query
+cost -- fundamentally different scaling behavior from brute force's
+linear per-vector cost, which is the entire reason HNSW remains fast at
+vector counts where brute force becomes impractical.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Diagnosing a recall complaint from production</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team reports their HNSW-backed semantic search "used to return great results in testing but recall has visibly degraded in production, even though they haven't changed M or ef_construction." What's a plausible explanation that doesn't involve those two build-time parameters, and how would you confirm it?</p>
+    <details><summary>Show solution</summary><div class="solution">A plausible explanation not involving M or ef_construction: the
+QUERY-time parameter ef_search was left low (or defaulted low) for
+production, likely to minimize latency under real production traffic
+volume, whereas testing may have used a higher ef_search (more thorough
+per-layer search) without the team realizing that knob differs from the
+build-time parameters and needed separate tuning for production
+load. Since ef_search controls how many candidates are examined per
+layer AT QUERY TIME (independent of how the index was built), a lower
+production ef_search directly and immediately explains a recall
+regression with no change to the underlying graph structure at all --
+the exact same index, queried less thoroughly, produces measurably worse
+results.
+
+To confirm: compare the ef_search value actually configured in the
+production query path against what was used during testing/evaluation;
+if production is meaningfully lower, temporarily raising it (accepting
+the added query latency) and re-measuring recall on the same queries
+should recover most or all of the lost recall, confirming ef_search as
+the cause rather than anything about the index's construction.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why the layered structure emerges automatically from a random per-vector layer draw, (2) walk through what "greedy walk, then descend" means precisely enough to trace it step by step on a small example, and (3) name the difference between a build-time trade-off knob and a query-time trade-off knob, with a concrete example of each? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — hnsw indexing.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* HNSW LAYERED GRAPH DEMO */
+(function(){
+  var stage = document.getElementById("hnsw-stage");
+  var runBtn = document.getElementById("hnsw-run");
+  var resetBtn = document.getElementById("hnsw-reset");
+  var logEl = document.getElementById("hnsw-log");
+  var busy = false;
+
+  // 24 base positions spread across the stage width, y varies per layer band
+  var basePositions = [
+    8,14,20,26,32,38,44,50,56,62,68,74,80,86,92,
+    11,23,35,47,59,71,83,17,65
+  ];
+
+  // Layer 0: all 24 nodes. Layer 1: subset of 11. Layer 2: subset of 5.
+  var L0_IDX = basePositions.map(function(_, i){ return i; });
+  var L1_IDX = [0,3,6,9,12,15,17,19,21,22,23];
+  var L2_IDX = [0,6,12,19,23];
+
+  var TARGET_X = 62; // percent position the query vector sits near (layer 0 band)
+  var ENTRY_IDX_L2 = 12; // entry point index within layer 2
+
+  function xOf(i){ return basePositions[i]; }
+
+  function buildLayerBand(layerKey, indices, yTop, label, cls, entryIdx, targetX){
+    var labelEl = document.createElement("div");
+    labelEl.className = "hnsw-layer-label " + cls;
+    labelEl.style.top = yTop + "px";
+    labelEl.textContent = label;
+    stage.appendChild(labelEl);
+
+    var nodeY = yTop + 60;
+    var nodeEls = {};
+    indices.forEach(function(idx){
+      var n = document.createElement("div");
+      n.className = "hnsw-node " + cls;
+      n.id = "hn-" + layerKey + "-" + idx;
+      n.style.left = xOf(idx) + "%";
+      n.style.top = nodeY + "px";
+      stage.appendChild(n);
+      nodeEls[idx] = n;
+    });
+
+    // target marker (only drawn once, on layer 0 band, but referenced visually across layers via a vertical guide)
+    if(targetX !== undefined){
+      var t = document.createElement("div");
+      t.className = "hnsw-node target";
+      t.style.left = targetX + "%";
+      t.style.top = nodeY + "px";
+      t.title = "query vector";
+      stage.appendChild(t);
+    }
+
+    return {y: nodeY, nodes: nodeEls};
+  }
+
+  function edgesForLayer(layerKey, indices, y, cls){
+    // connect each node to its 2 nearest (by index order) neighbors in the layer for a simple NSW-like look
+    var sorted = indices.slice().sort(function(a,b){ return xOf(a)-xOf(b); });
+    var pairs = [];
+    for(var i = 0; i < sorted.length - 1; i++){
+      pairs.push([sorted[i], sorted[i+1]]);
+    }
+    // add a couple long-range edges for the sparse top layers to look "small-world"
+    if(sorted.length <= 12 && sorted.length > 2){
+      pairs.push([sorted[0], sorted[sorted.length-1]]);
+    }
+    pairs.forEach(function(pair, i){
+      var x1 = xOf(pair[0]), x2 = xOf(pair[1]);
+      var edge = document.createElement("div");
+      edge.className = "hnsw-edge";
+      edge.id = "he-" + layerKey + "-" + pair[0] + "-" + pair[1];
+      edge.dataset.a = pair[0]; edge.dataset.b = pair[1];
+      var left = Math.min(x1,x2), width = Math.abs(x2-x1);
+      edge.style.left = left + "%";
+      edge.style.width = width + "%";
+      edge.style.top = y + "px";
+      stage.insertBefore(edge, stage.firstChild);
+    });
+    return pairs;
+  }
+
+  var layerInfo = {};
+  var layerEdges = {};
+
+  function build(){
+    stage.innerHTML = "";
+    layerInfo.l2 = buildLayerBand("l2", L2_IDX, 8, "LAYER 2 — sparse, 5 nodes", "l2", ENTRY_IDX_L2, TARGET_X);
+    layerInfo.l1 = buildLayerBand("l1", L1_IDX, 186, "LAYER 1 — 11 nodes", "l1", undefined, TARGET_X);
+    layerInfo.l0 = buildLayerBand("l0", L0_IDX, 364, "LAYER 0 — all 24 nodes", "l0", undefined, TARGET_X);
+    layerEdges.l2 = edgesForLayer("l2", L2_IDX, layerInfo.l2.y, "l2");
+    layerEdges.l1 = edgesForLayer("l1", L1_IDX, layerInfo.l1.y, "l1");
+    layerEdges.l0 = edgesForLayer("l0", L0_IDX, layerInfo.l0.y, "l0");
+    stage.style.minHeight = "520px";
+  }
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function dist(idx){ return Math.abs(xOf(idx) - TARGET_X); }
+
+  // greedy walk within one layer starting from startIdx, using that layer's edge pairs
+  function greedyPath(indices, pairs, startIdx){
+    var path = [startIdx];
+    var current = startIdx;
+    var neighborsOf = {};
+    pairs.forEach(function(p){
+      neighborsOf[p[0]] = neighborsOf[p[0]] || [];
+      neighborsOf[p[0]].push(p[1]);
+      neighborsOf[p[1]] = neighborsOf[p[1]] || [];
+      neighborsOf[p[1]].push(p[0]);
+    });
+    var guard = 0;
+    while(guard < 12){
+      guard++;
+      var neighbors = neighborsOf[current] || [];
+      var best = current, bestDist = dist(current);
+      neighbors.forEach(function(n){
+        if(dist(n) < bestDist){ best = n; bestDist = dist(n); }
+      });
+      if(best === current) break;
+      current = best;
+      path.push(current);
+    }
+    return path;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  async function animatePath(layerKey, path, cls){
+    for(var i = 0; i < path.length; i++){
+      var node = document.getElementById("hn-" + layerKey + "-" + path[i]);
+      if(node){
+        node.classList.remove("current");
+        if(i > 0){
+          var prevNode = document.getElementById("hn-" + layerKey + "-" + path[i-1]);
+          if(prevNode) prevNode.classList.remove("current");
+        }
+        node.classList.add("visited", "current");
+        // highlight traversed edge
+        var a = path[i-1], b = path[i];
+        if(a !== undefined){
+          var e1 = document.getElementById("he-" + layerKey + "-" + a + "-" + b);
+          var e2 = document.getElementById("he-" + layerKey + "-" + b + "-" + a);
+          if(e1) e1.classList.add("traversed");
+          if(e2) e2.classList.add("traversed");
+        }
+        log("Layer " + layerKey.slice(1) + ": visiting node " + path[i] + " (distance to query: " + dist(path[i]).toFixed(1) + ")");
+        await wait(650);
+      }
+    }
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    build();
+    logEl.innerHTML = "";
+    log("<b>Entering at the fixed entry point in Layer 2 (top, sparsest).</b>");
+    await wait(300);
+
+    var pathL2 = greedyPath(L2_IDX, layerEdges.l2, ENTRY_IDX_L2);
+    await animatePath("l2", pathL2, "l2");
+    var bestAfterL2 = pathL2[pathL2.length - 1];
+    log("<b>Layer 2 walk converged</b> at node " + bestAfterL2 + " — no layer-2 neighbor gets closer. Descending to Layer 1, starting from this same node.");
+    await wait(500);
+
+    var pathL1 = greedyPath(L1_IDX, layerEdges.l1, bestAfterL2);
+    await animatePath("l1", pathL1, "l1");
+    var bestAfterL1 = pathL1[pathL1.length - 1];
+    log("<b>Layer 1 walk converged</b> at node " + bestAfterL1 + ". Descending to Layer 0 (every vector, densest edges), starting from this node.");
+    await wait(500);
+
+    var pathL0 = greedyPath(L0_IDX, layerEdges.l0, bestAfterL1);
+    await animatePath("l0", pathL0, "l0");
+    var finalNode = pathL0[pathL0.length - 1];
+
+    var totalVisited = pathL2.length + pathL1.length + pathL0.length;
+    log('<b style="color:var(--l0-c);">Search complete.</b> Final answer: node ' + finalNode + ' at Layer 0, distance ' + dist(finalNode).toFixed(1) + ' from the query. Total nodes visited across all 3 layers: <b>' + totalVisited + '</b> out of 24 total vectors in the index — most of the dataset was never even examined.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    build();
+    logEl.innerHTML = '<span class="line">Click to run a query. Watch how few nodes get visited compared to the full 24-vector dataset.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>

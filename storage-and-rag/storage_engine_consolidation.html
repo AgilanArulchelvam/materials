@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Storage Engine Consolidation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --row-c:#4fc3f7; --col-c:#7fd8a0; --hnsw-c:#c792ea; --ivf-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--row-c); color:var(--row-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--col-c); color:var(--col-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--hnsw-c); color:var(--hnsw-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.d{border-color:var(--ivf-c); color:var(--ivf-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* self-test recall card (matches system_design_review_cold.html pattern) */
+  .recall{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0; background:var(--panel-2);}
+  .recall-num{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; display:block;}
+  .recall.a .recall-num{color:var(--row-c);}
+  .recall.b .recall-num{color:var(--col-c);}
+  .recall.c .recall-num{color:var(--hnsw-c);}
+  .recall ul{margin:0.6rem 0 0; padding-left:1.3rem; color:#cdd0d8; font-size:0.9rem;}
+  .recall ul li{margin:0.4rem 0;}
+  .recall details{margin-top:1rem;}
+  .recall .solution{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.85rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.8rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.82rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+  table.cmp th:first-child, table.cmp td:first-child{font-family:var(--mono); font-weight:600; color:var(--ink); white-space:nowrap;}
+
+  /* scenario picker */
+  .scenario{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.6rem 0;}
+  .scenario .snum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  .scenario p.desc{font-size:0.95rem; color:var(--ink); margin:0.4rem 0 1rem;}
+  .engine-picks{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:0.8rem;}
+  .engine-pick{font-family:var(--mono); font-size:0.78rem; padding:0.5rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .engine-pick:hover{border-color:var(--accent);}
+  .engine-pick.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.hnsw{border-left-color:var(--hnsw-c); background:rgba(199,146,234,0.06);} .callout.hnsw b{color:var(--hnsw-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · PRACTICE — CONSOLIDATE STORAGE-ENGINE TRADEOFFS</div>
+  <h1>Four engines, one decision each time: which one actually fits <em>this</em> workload.</h1>
+  <p class="lede">This is not new instructional content — it's a synthesis and self-test tool over the three storage-engine labs from this week: row-store vs columnar, HNSW, and IVF. First, a genuine side-by-side comparison table across all four engines. Then three realistic workload scenarios — pick which engine(s) fit each one BEFORE revealing the reasoning. Treat this the way you'd treat a real system-design prompt: commit to an answer, then check it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Row-store (B-tree)</div>
+    <div class="pipe-label b">Columnar</div>
+    <div class="pipe-label c">HNSW</div>
+    <div class="pipe-label d">IVF</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="comparison">1 · The Comparison Table</a>
+  <a data-target="scenarios">2 · Three Workloads — Pick the Engine</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: COMPARISON TABLE ============ -->
+<section id="comparison">
+  <div class="kicker">01 — Build this table from memory before scrolling</div>
+  <h2>Row-store, columnar, HNSW, and IVF, side by side</h2>
+
+  <p><strong>Do this before reading the table below.</strong> On paper, sketch a 4-row table (one row per engine) with columns for: what it's optimized for, typical read pattern, typical write pattern, memory profile, and when you'd actually pick it. Fill in what you remember from this week's three labs, cold. Then compare against the table below — the value here is in noticing what you got wrong or couldn't recall, not in reading the answer first.</p>
+
+  <table class="cmp">
+    <tr><th>Engine</th><th>Optimized for</th><th>Read pattern</th><th>Write pattern</th><th>Memory profile</th><th>Pick it when</th></tr>
+    <tr>
+      <td>Row-store (B-tree)</td>
+      <td>Whole-record OLTP access — fetch/update one full row fast</td>
+      <td>Point lookups by key; a whole row is one contiguous read</td>
+      <td>Frequent, small, single-row inserts/updates — natural fit</td>
+      <td>Moderate — B-tree index overhead on top of raw row data</td>
+      <td>Live application traffic reading/writing whole records: "fetch this exact order," transactional workloads</td>
+    </tr>
+    <tr>
+      <td>Columnar</td>
+      <td>Wide-scan, narrow-column OLAP aggregation over millions of rows</td>
+      <td>Scans a small subset of columns across huge row counts, skipping the rest</td>
+      <td>Bulk/batched appends preferred; single-row writes are comparatively awkward</td>
+      <td>Efficient per column stored — good compression from uniform column types</td>
+      <td>Analytics/BI: "average order value by month" — few columns, millions of rows</td>
+    </tr>
+    <tr>
+      <td>HNSW</td>
+      <td>High-recall approximate nearest-neighbor vector search</td>
+      <td>Layered greedy graph walk — sublinear (~log n) per query</td>
+      <td>Naturally incremental — no separate training step, insert directly into the graph</td>
+      <td>Higher — explicit multi-layer graph edges stored per vector</td>
+      <td>Recall matters most, memory is available, or vectors arrive incrementally over time</td>
+    </tr>
+    <tr>
+      <td>IVF</td>
+      <td>Memory-efficient approximate nearest-neighbor vector search</td>
+      <td>Compare against k centroids, then search only nprobe nearest clusters</td>
+      <td>Requires upfront k-means training; not naturally incremental (periodic re-cluster needed)</td>
+      <td>Lower — just vectors, cluster assignments, and k centroids, no graph edges</td>
+      <td>Memory-constrained deployments, or when a periodic batch-build step is acceptable</td>
+    </tr>
+  </table>
+
+  <div class="callout"><b>The one-sentence version of each, if you need to say it out loud fast:</b> row-store keeps a whole record together for fast whole-row access; columnar keeps a whole column together so a query can skip the columns it doesn't need; HNSW navigates a layered graph from sparse long jumps down to dense fine steps; IVF sorts vectors into clusters upfront so a query only has to check the few nearest ones.</div>
+</section>
+
+<!-- ============ SECTION 2: SCENARIOS ============ -->
+<section id="scenarios">
+  <div class="kicker">02 — Commit to an answer before revealing the reasoning</div>
+  <h2>Three sample workloads — pick which engine(s) fit</h2>
+
+  <p>For each scenario below, click the engine (or engines) you'd pick BEFORE opening the reasoning. There's no scoring here — the value is entirely in having actually committed to an answer first, the same discipline the <a href="../backend/system_design_review_cold.html" style="color:var(--hnsw-c);">system design review, cold</a> lab used for re-deriving designs from nothing.</p>
+
+  <div class="scenario">
+    <span class="snum">Scenario 1</span>
+    <p class="desc">A financial ledger system needs to record individual transactions (deposits, withdrawals, transfers) and, far more often, needs to fetch a SINGLE account's current balance and recent transaction history — fast, and with a strong guarantee that a read never sees a torn or inconsistent write. There is no analytics or vector-search requirement here at all.</p>
+    <div class="engine-picks" data-scenario="1">
+      <button class="engine-pick" data-engine="row">Row-store (B-tree)</button>
+      <button class="engine-pick" data-engine="col">Columnar</button>
+      <button class="engine-pick" data-engine="hnsw">HNSW</button>
+      <button class="engine-pick" data-engine="ivf">IVF</button>
+    </div>
+    <details>
+      <summary>Reveal the reasoning (only after you've picked)</summary>
+      <div class="solution">Row-store (B-tree) is the clear fit. Every access pattern described here
+is textbook OLTP: single-account, whole-record reads and writes ("this
+account's balance," "this transaction"), needing strong consistency
+guarantees on individual records, at high frequency. Row-store keeps a
+whole record's data contiguous, which is exactly what makes fetching one
+account's full state fast and what makes atomic single-row (or small,
+related-row) writes -- backed by real transactions -- straightforward.
+
+Columnar would actively hurt here: this workload needs whole records, not
+narrow scans across millions of rows for a handful of columns -- the
+opposite of columnar's strength, and reconstructing one account's full
+row from a columnar layout means stitching together data from many
+separate column regions, adding cost for no benefit given this access
+pattern.
+
+HNSW and IVF are irrelevant -- there's no vector similarity search
+requirement anywhere in this scenario at all, so neither approximate-
+nearest-neighbor technique applies.</div>
+    </details>
+  </div>
+
+  <div class="scenario">
+    <span class="snum">Scenario 2</span>
+    <p class="desc">A BI dashboard aggregates millions of historical sales rows to compute rolling metrics — total revenue by region by quarter, average basket size by product category — refreshed a few times per day, not in real time. The underlying table has 40+ columns (customer notes, shipping metadata, payment details) but each dashboard query only ever touches 2-4 of them.</p>
+    <div class="engine-picks" data-scenario="2">
+      <button class="engine-pick" data-engine="row">Row-store (B-tree)</button>
+      <button class="engine-pick" data-engine="col">Columnar</button>
+      <button class="engine-pick" data-engine="hnsw">HNSW</button>
+      <button class="engine-pick" data-engine="ivf">IVF</button>
+    </div>
+    <details>
+      <summary>Reveal the reasoning (only after you've picked)</summary>
+      <div class="solution">Columnar is the clear fit. This is the textbook OLAP shape from the
+btree_vs_columnar lab: millions of rows scanned, but only 2-4 of 40+
+columns needed per query. Columnar storage lets each aggregation query
+read only the bytes belonging to those 2-4 columns' contiguous regions,
+skipping the other 36+ columns entirely -- versus row-store, which would
+force reading every row's FULL width (all 40+ columns) for every row
+scanned, roughly a 10-20x I/O penalty for the identical logical query,
+purely from physical layout.
+
+Row-store would technically still "work" (it can answer the same SQL
+query) but would be dramatically slower and more I/O-expensive at this
+scale and column-width, which is exactly the OLAP-on-row-store
+performance trap the btree_vs_columnar lab's Problem 3 walks through.
+The "refreshed a few times per day, not real time" detail also reinforces
+columnar being a good fit -- this workload doesn't need the fast
+single-row write path row-store is built for, and periodic batch
+refreshes match columnar's natural bulk-write pattern well.
+
+HNSW and IVF don't apply -- there's no vector similarity search in this
+scenario, only structured aggregation over relational columns.</div>
+    </details>
+  </div>
+
+  <div class="scenario">
+    <span class="snum">Scenario 3</span>
+    <p class="desc">A semantic search feature lets users find product descriptions similar in meaning to a free-text query, across a catalog of 10 million products. The product catalog changes continuously throughout the day (new products added, old ones removed) as inventory turns over, and the team has generous memory budget on dedicated search infrastructure, prioritizing search quality (finding genuinely the most relevant products) over minimizing memory footprint.</p>
+    <div class="engine-picks" data-scenario="3">
+      <button class="engine-pick" data-engine="row">Row-store (B-tree)</button>
+      <button class="engine-pick" data-engine="col">Columnar</button>
+      <button class="engine-pick" data-engine="hnsw">HNSW</button>
+      <button class="engine-pick" data-engine="ivf">IVF</button>
+    </div>
+    <details>
+      <summary>Reveal the reasoning (only after you've picked)</summary>
+      <div class="solution">HNSW is the better fit here, and the scenario is specifically constructed
+to point that way on two separate stated constraints. First, "the
+catalog changes continuously throughout the day" favors HNSW's naturally
+incremental insertion (new vectors slot directly into the graph, no
+separate retraining step) over IVF's need for an upfront k-means
+clustering step that isn't naturally incremental -- IVF would require
+periodic re-clustering to avoid centroids drifting stale relative to a
+constantly-changing catalog, an operational cost this scenario's
+continuous-churn description makes more painful than it would be for a
+more static dataset.
+
+Second, "generous memory budget... prioritizing search quality... over
+minimizing memory footprint" directly matches HNSW's profile from
+section 1's table: generally better recall, at the cost of a higher
+memory footprint from storing explicit graph edges -- exactly the trade
+this scenario says the team is willing to make.
+
+IVF would be the better answer if the constraints were flipped (memory-
+constrained, batch-updatable catalog, recall requirements looser) --
+this is a genuinely close call in the abstract, which is why the
+scenario leans on BOTH stated constraints (continuous updates AND
+memory-not-a-priority) to point toward HNSW specifically, rather than
+leaving it ambiguous. Row-store and columnar don't apply at all here --
+neither is a vector-similarity technique, and "find descriptions similar
+in MEANING" is fundamentally a nearest-neighbor-over-embeddings problem,
+not a relational query.</div>
+    </details>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">One level past the scenarios above</div>
+  <h2>Practice problems</h2>
+  <p>These ask you to reason across engines, not just pick one per scenario.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · A workload that needs two engines at once, not one</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An e-commerce platform needs both (a) fast single-order lookups for its checkout/order-status pages, and (b) a nightly analytics job computing revenue trends across all historical orders. Using the reasoning from Scenario 1 and Scenario 2 above, what's the actual recommendation, and why is picking just ONE engine for both the wrong answer?</p>
+    <details><summary>Show solution</summary><div class="solution">The recommendation is to run BOTH a row-store (for the OLTP checkout/
+order-status path) and a separate columnar store (for the OLAP nightly
+analytics job), not to pick one engine and force both workloads onto it
+-- this is the exact same reasoning as the btree_vs_columnar lab's
+"why you can't just pick one and be done" callout, and it directly
+mirrors Scenario 1 (row-store fit) and Scenario 2 (columnar fit) being
+DIFFERENT scenarios in this very consolidation lab for a reason: they
+represent genuinely different access-pattern shapes that no single
+storage layout serves equally well.
+
+Picking only row-store for both: checkout/order-status stays fast, but
+the nightly analytics job pays the OLAP-on-row-store I/O penalty from
+Scenario 2's reasoning -- reading full row widths across millions of
+historical rows for aggregations that only need a few columns -- and
+worse, that heavy nightly scan can degrade the SAME database's live
+checkout traffic by competing for disk I/O and cache, exactly the
+"slowing down the live checkout service" symptom described in the
+btree_vs_columnar lab's own Problem 3.
+
+Picking only columnar for both: the nightly analytics job would be fast,
+but checkout/order-status lookups -- which need EVERY column of ONE
+specific order, fast -- would pay columnar's reconstruction cost
+(stitching one row together from many separately-stored column regions)
+on every single checkout page load, which is exactly the wrong shape for
+columnar's strengths.
+
+The standard real-world answer is what the btree_vs_columnar lab already
+named: row-store as the OLTP system of record, with a periodic ETL/
+export feeding a separate columnar store for analytics -- two engines,
+each doing the job it's actually built for.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Distinguishing IVF's and HNSW's failure modes when picking for a hybrid scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A vector search feature over 10 million vectors needs to run on a memory-constrained edge device (not a generous server), but ALSO needs reasonably good recall since it's the only search mechanism available (no fallback to a bigger server). Is this scenario closer to Scenario 3's answer, or does it push toward IVF instead? Explain the tension.</p>
+    <details><summary>Show solution</summary><div class="solution">This scenario deliberately conflicts with itself in the same way a real
+constrained environment often does, and the honest answer is that it
+pushes toward IVF specifically BECAUSE of the memory constraint, even
+though the recall requirement alone (considered in isolation) would lean
+toward HNSW the way Scenario 3 did.
+
+The reasoning: Scenario 3 explicitly stated "generous memory budget...
+prioritizing quality over memory footprint" -- the memory constraint was
+explicitly relaxed, which is what let HNSW's higher memory cost be a
+non-issue. Here, the memory constraint is explicitly NOT relaxed (edge
+device, memory-constrained) -- which is precisely the condition under
+which section 1's table names IVF as the better fit (lower memory
+footprint, no per-vector graph edges to store), even though this comes
+at some real recall cost relative to HNSW.
+
+The "reasonably good recall, no fallback" requirement doesn't override
+the hard memory constraint -- it instead becomes a tuning problem WITHIN
+IVF rather than a reason to switch to HNSW: raising nprobe (searching
+more clusters per query) directly improves IVF's recall at the cost of
+more query-time computation (not more baseline memory, which is the
+constraint that actually can't be violated here) -- a real, usable lever
+precisely because the memory ceiling, not the compute budget, is the
+binding constraint in this version of the scenario. This is the kind of
+distinction a system-design interview specifically probes for: not "which
+engine is better in general" but "which constraint in THIS version of
+the problem is actually binding, and which trade-off knob is still
+available to spend."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Justifying a hybrid IVF+HNSW choice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The IVF lab mentioned that some production systems combine IVF and HNSW — IVF for coarse partitioning, a small HNSW graph within each cluster for fine navigation. Explain, using both labs' trade-off reasoning, why this combination might beat using either technique alone at very large scale (e.g. 500 million vectors).</p>
+    <details><summary>Show solution</summary><div class="solution">At 500 million vectors, pure HNSW's memory cost becomes a real
+constraint even with a "generous" budget -- storing explicit multi-layer
+graph edges for every one of 500 million vectors is a large, direct
+multiplier on total memory versus IVF's leaner per-vector overhead (just
+a cluster assignment). Pure IVF alone, meanwhile, pays its structural
+recall cost (missing near-boundary neighbors, from the ivf_indexing
+lab's section 2) across a much larger dataset, where more total clusters
+and more total boundary regions mean more opportunities for that
+specific failure mode to matter.
+
+The hybrid approach uses each technique where it's cheapest to apply:
+IVF's coarse clustering does the EXPENSIVE part of narrowing 500 million
+vectors down to a manageable candidate set cheaply, in roughly O(k) time
+against k centroids, exactly as the ivf_indexing lab's Problem 4
+describes -- this step doesn't require per-vector graph memory at all,
+just k centroids. Then, WITHIN each of the (comparatively small) selected
+clusters, a small HNSW graph gives the fine-grained recall benefit HNSW
+is good at, but only needs to be built and stored per-cluster rather than
+across the full 500-million-vector dataset -- so the "expensive per-
+vector graph memory" cost of HNSW is paid at a much smaller scale (one
+cluster's worth of vectors) rather than the full dataset's scale.
+
+This is the same "use the cheap technique for the coarse pass, the more
+expensive/higher-quality technique for the fine pass" pattern that shows
+up throughout systems design (e.g. a first coarse filter followed by a
+more expensive re-ranking step) -- neither technique alone is forced to
+pay its worst-case cost across the ENTIRE dataset.</div></details>
+  </div>
+
+  <div class="callout hnsw">
+    <b>Self-check before moving on:</b> without looking back at the table, can you state, for each of the 4 engines, one sentence on what it's optimized for and one concrete example query it handles well? And for the three scenarios above, could you re-derive the correct pick from the stated constraints alone, not from memory of which button you clicked? If either feels shaky, that's the part to revisit — this lab intentionally didn't teach anything new, so a shaky spot here means revisiting the ORIGINAL lab (btree_vs_columnar, hnsw_indexing, or ivf_indexing), not this one.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — storage engine consolidation.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SCENARIO ENGINE PICKERS */
+(function(){
+  var groups = document.querySelectorAll(".engine-picks");
+  groups.forEach(function(group){
+    var buttons = group.querySelectorAll(".engine-pick");
+    buttons.forEach(function(btn){
+      btn.addEventListener("click", function(){
+        btn.classList.toggle("selected");
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

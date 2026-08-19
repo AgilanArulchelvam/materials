@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
-    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --backend-c:#ff6b9d; --accent:#ff8a65;
+    --wrap-c:#7fd8a0; --factory-c:#f2c14e; --core-c:#6ea8fe; --cache-c:#c792ea; --road-c:#e8a355; --dsa-c:#ff9d80; --backend-c:#ff6b9d; --storage-c:#4fc3f7; --accent:#ff8a65;
     --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
   }
   *{box-sizing:border-box;}
@@ -59,6 +59,9 @@
   .backend .tag{color:var(--backend-c);}
   .backend:hover{border-color:var(--backend-c);}
   .backend .arrow{color:var(--backend-c);}
+  .storage .tag{color:var(--storage-c);}
+  .storage:hover{border-color:var(--storage-c);}
+  .storage .arrow{color:var(--storage-c);}
 
   .card.roadmap{position:relative;}
   .card .status{font-family:var(--mono); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid var(--rule); color:var(--ink-dim); position:absolute; top:1.4rem; right:1.5rem;}
@@ -72,8 +75,8 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Fifty-three labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
-  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, and backend API design — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
+  <h1>Fifty-nine labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, and storage engines &amp; RAG — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
 <main>
@@ -225,7 +228,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">6 labs</span>
+      <span class="count">7 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -264,13 +267,19 @@
         <p>When async I/O wins on scale (the C10K problem), when multiprocessing wins by sidestepping the GIL, and when plain threading is still the simpler right call.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/caching_layer_design.html">
+        <span class="tag">System Design — Write Strategies &amp; Eviction</span>
+        <h3>Caching Layer Design</h3>
+        <p>Write-through vs write-back animated side by side, a live LRU eviction on a 5-slot cache, and why perfect cache consistency is in direct tension with the reason a cache exists.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">8 labs</span>
+      <span class="count">9 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -319,6 +328,12 @@
         <span class="tag">Alembic Migrations &amp; SQL vs NoSQL Revisited</span>
         <h3>Migrations &amp; SQL vs NoSQL Revisited</h3>
         <p>A real upgrade()/downgrade() pair, exactly where Alembic's autogenerate gets renames wrong, and a concrete Postgres-vs-document-store call for the notification service's delivery log.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/sharding_and_partitioning.html">
+        <span class="tag">DB Design — Horizontal, Vertical &amp; Shard Keys</span>
+        <h3>Sharding &amp; Partitioning</h3>
+        <p>The same table split by row and by column side by side, an even distribution vs a hot shard from a bad shard key, and why a cross-shard query has to fan out and merge.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -443,6 +458,39 @@
 
   <section class="group">
     <div class="group-head">
+      <h2>Storage &amp; RAG</h2>
+      <span class="count">4 labs</span>
+    </div>
+    <div class="cards">
+      <a class="card storage" href="storage-and-rag/btree_vs_columnar.html">
+        <span class="tag">Row-Oriented vs Columnar Layout</span>
+        <h3>B-Tree vs Columnar Storage</h3>
+        <p>The same table stored row-by-row vs column-by-column, a live byte count of exactly what a 2-of-8-column query touches under each, and why OLAP wants columns while OLTP wants rows.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/hnsw_indexing.html">
+        <span class="tag">Layered Graphs &amp; Approximate Search</span>
+        <h3>HNSW Indexing</h3>
+        <p>A real search animated descending from a sparse top layer down to the dense base layer, and the build-time-vs-query-speed-vs-recall trade-off behind M, ef_construction, and ef_search.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/ivf_indexing.html">
+        <span class="tag">Clustering &amp; Nearest-Cluster Search</span>
+        <h3>IVF Indexing</h3>
+        <p>k-means clustering into buckets ahead of time, an animated query that searches only its nprobe nearest clusters while skipping the rest, and IVF vs HNSW on memory, training, and recall.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/storage_engine_consolidation.html">
+        <span class="tag">Practice — Consolidate the Week</span>
+        <h3>Storage Engine Consolidation</h3>
+        <p>A genuine side-by-side comparison of row-store, columnar, HNSW, and IVF, then 3 realistic workloads to pick the right engine for — with the reasoning revealed only after you commit.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="group-head">
       <h2>Roadmap</h2>
       <span class="count">6 months</span>
     </div>
@@ -494,7 +542,7 @@
 
 </main>
 
-<footer>materials/ · fifty-three standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · fifty-nine standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

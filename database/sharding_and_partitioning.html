@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Sharding &amp; Partitioning</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --horiz-c:#4fc3f7; --vert-c:#7fd8a0; --hot-c:#ff6b6b; --cold-c:#f2c14e; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--horiz-c); color:var(--horiz-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--vert-c); color:var(--vert-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--hot-c); color:var(--hot-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* table split visualization */
+  .split-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.split-grid{grid-template-columns:1fr;}}
+  .split-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; background:var(--panel-2);}
+  .split-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .split-col table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.72rem;}
+  .split-col th, .split-col td{border:1px solid var(--rule); padding:0.35rem 0.5rem; text-align:left;}
+  .split-col th{background:#0b0d11; color:var(--ink-dim); font-weight:600;}
+  .split-col td{color:#cdd0d8;}
+  .split-col.h1 h4{color:var(--horiz-c);} .split-col.h1{border-color:var(--horiz-c);}
+  .split-col.h2 h4{color:var(--horiz-c);} .split-col.h2{border-color:var(--horiz-c);}
+  .split-col.v1 h4{color:var(--vert-c);} .split-col.v1{border-color:var(--vert-c);}
+  .split-col.v2 h4{color:var(--vert-c);} .split-col.v2{border-color:var(--vert-c);}
+  .hl-col{background:rgba(199,146,234,0.12) !important;}
+
+  /* shard distribution bars */
+  .shard-bars{display:flex; gap:0.8rem; align-items:flex-end; height:160px; margin:1.4rem 0; padding:0 0.5rem;}
+  .shard-bar-wrap{flex:1; display:flex; flex-direction:column; align-items:center; gap:0.4rem;}
+  .shard-bar{width:100%; background:var(--horiz-c); border-radius:6px 6px 0 0; transition:height .5s ease, background .3s ease; min-height:4px;}
+  .shard-bar.hot{background:var(--hot-c); box-shadow:0 0 12px rgba(255,107,107,0.4);}
+  .shard-bar-label{font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim); text-align:center;}
+  .shard-bar-count{font-family:var(--mono); font-size:0.75rem; color:var(--ink);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--horiz-c);} .dc-col.a h4{color:var(--horiz-c);}
+  .dc-col.b{border-color:var(--vert-c);} .dc-col.b h4{color:var(--vert-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.horiz{border-left-color:var(--horiz-c); background:rgba(79,195,247,0.06);} .callout.horiz b{color:var(--horiz-c);}
+  .callout.vert{border-left-color:var(--vert-c); background:rgba(127,216,160,0.06);} .callout.vert b{color:var(--vert-c);}
+  .callout.warn{border-left-color:var(--hot-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--hot-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · SHARDING &amp; PARTITIONING</div>
+  <h1>One table stops fitting on one machine — so you cut it, and the cut matters.</h1>
+  <p class="lede">A single database server eventually runs out of disk, memory, or write throughput for one giant table. Partitioning splits that table apart; sharding spreads the pieces across multiple servers. This lab animates both ways to cut the SAME table (by rows vs by columns), then shows a bad shard key producing a lopsided hot shard next to a good one producing an even spread, and closes with why a query spanning multiple shards has to fan out and merge — the same scatter-gather shape a distributed search faces.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Horizontal — split rows</div>
+    <div class="pipe-label b">Vertical — split columns</div>
+    <div class="pipe-label c">Hot shard from a bad key</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="split">1 · Horizontal vs Vertical Partitioning</a>
+  <a data-target="shardkey">2 · Shard Key Selection &amp; Distribution</a>
+  <a data-target="crossshard">3 · Cross-Shard Query Complexity</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: HORIZONTAL VS VERTICAL ============ -->
+<section id="split">
+  <div class="kicker">01 — Two different ways to cut the same table</div>
+  <h2>Horizontal vs vertical partitioning</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a single massive filing cabinet holding every customer's full paper folder. One way to split the load across two cabinets: keep every folder intact, but put customers A-M in cabinet 1 and N-Z in cabinet 2 — each cabinet holds fewer, but COMPLETE, folders. Another way entirely: keep all customers in both cabinets, but tear each folder in half — cabinet 1 gets the frequently-referenced summary page for every customer, cabinet 2 gets the rarely-touched, bulky attachments (old correspondence, scanned documents) for every customer. Both approaches genuinely split the data across two cabinets, but they cut along completely different axes.</p>
+
+  <p><strong>Horizontal partitioning</strong> splits a table by ROWS: some rows live in one partition (or shard, or server), other rows live in another, but every partition has the SAME columns — a partition holding "users A-M" has the exact same schema as the partition holding "users N-Z," just a different subset of the actual user records. This is the far more common meaning of "sharding" in a distributed-systems context: spreading rows of one logical table across multiple physical servers by some partitioning key.</p>
+
+  <p><strong>Vertical partitioning</strong> splits a table by COLUMNS instead: every row still exists in some form in every partition, but different COLUMNS live in different partitions. A common real pattern: frequently-accessed, small columns (id, name, status) live in one table/partition that's read constantly and cheaply, while rarely-accessed, large columns (a big text bio, a JSON blob, an old audit history) live in a separate table/partition that's only touched when specifically needed — keeping the "hot" table smaller and faster to scan without those large columns bloating every row read.</p>
+
+  <div class="split-grid">
+    <div class="split-col h1">
+      <h4>Horizontal split — by rows</h4>
+      <table id="horiz-table-1"></table>
+    </div>
+    <div class="split-col h2">
+      <h4>Horizontal split — by rows</h4>
+      <table id="horiz-table-2"></table>
+    </div>
+  </div>
+  <p style="font-size:0.85rem; margin:0.4rem 0 1.4rem;">Same <code class="inline">users</code> table split by ROW: users A-M go to shard 1, users N-Z go to shard 2. Both shards have the identical set of columns.</p>
+
+  <div class="split-grid">
+    <div class="split-col v1">
+      <h4>Vertical split — hot columns</h4>
+      <table id="vert-table-1"></table>
+    </div>
+    <div class="split-col v2">
+      <h4>Vertical split — cold columns</h4>
+      <table id="vert-table-2"></table>
+    </div>
+  </div>
+  <p style="font-size:0.85rem; margin:0.4rem 0;">Same <code class="inline">users</code> table split by COLUMN: id/name/status (small, constantly read) live in one table; bio/audit_log (large, rarely read) live in a separate table, joined back via <code class="inline">user_id</code> only when actually needed.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Horizontal partitioning</h4>
+      <p>Solves: one table has too many ROWS for one server (disk, memory, or write throughput limits). Every shard has the full schema, a subset of the records. This is what "sharding" usually means.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Vertical partitioning</h4>
+      <p>Solves: one table has some columns that are read constantly and others that are large but rarely touched, bloating every scan. Every partition has all rows, a subset of the columns.</p>
+    </div>
+  </div>
+
+  <div class="callout horiz"><b>Interview-ready definition:</b> horizontal partitioning (often called sharding) splits a table's ROWS across multiple partitions or servers based on some partitioning/shard key, with every partition sharing the identical schema — used to distribute total data volume and write/read throughput across machines when the row count itself is the scaling constraint. Vertical partitioning splits a table's COLUMNS across multiple tables or storage locations, with every partition covering all (or most) rows but only a subset of columns — used to separate frequently-accessed columns from large, rarely-accessed ones so that hot-path queries don't pay the I/O cost of columns they never needed, which directly echoes the row-vs-columnar storage trade-off from the storage engines labs, just applied at the schema-design level rather than the physical storage-engine level.</div>
+</section>
+
+<!-- ============ SECTION 2: SHARD KEY SELECTION ============ -->
+<section id="shardkey">
+  <div class="kicker">02 — The one decision that determines whether sharding actually helps</div>
+  <h2>Shard key selection and distribution</h2>
+
+  <p><strong>Start here, before the animation.</strong> Imagine splitting a huge crowd into 4 lines by the first letter of their last name, versus splitting them into 4 lines by which MONTH they were born. Both are valid ways to divide people into 4 groups, but if you know that a disproportionate number of last names in this crowd start with S, the last-name split leaves one line enormously longer than the others — while birth month tends to spread people roughly evenly across 12 buckets (and therefore roughly evenly across 4 lines grouped by quarter), because birth month has no similar skew. The SAME splitting mechanism (4 buckets) produces wildly different outcomes purely based on which attribute you chose to split by.</p>
+
+  <p>A <strong>shard key</strong> is the column (or combination of columns) used to decide which shard a given row belongs to. The entire value of sharding — spreading load evenly across multiple servers — depends on the shard key actually distributing data (and, more importantly, TRAFFIC) roughly evenly across shards. A <strong>hot shard</strong> is what happens when the chosen key doesn't distribute evenly: one shard ends up holding a disproportionate share of the data or, often worse, a disproportionate share of the READ/WRITE traffic, turning that one shard into a bottleneck that defeats the entire point of having spread the data across multiple servers in the first place.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SHARD KEY CHOICE — EVEN DISTRIBUTION VS A HOT SHARD</span>
+      <div><button class="btn secondary" id="shard-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">10,000 new user signups, sharded across 4 servers. Compare sharding by <code class="inline">user_id</code> (roughly random/uniform) against sharding by <code class="inline">signup_date</code> when most users signed up recently.</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-shardkey="userid">Shard key: user_id (hashed, uniform)</button>
+      <button class="chip" data-shardkey="signupdate">Shard key: signup_date (most signups recent)</button>
+    </div>
+    <div class="shard-bars" id="shard-bars"></div>
+    <div class="log" id="shard-log"><span class="line">Pick a shard key to see how 10,000 signups distribute across 4 shards.</span></div>
+  </div>
+
+  <p>Sharding by <code class="inline">signup_date</code> in a growing product is a classic bad-shard-key example: because most users signed up RECENTLY (a growing product has more signups this month than a year ago), a date-range-based shard scheme concentrates a disproportionate share of both the DATA and, critically, the ONGOING WRITE TRAFFIC (new signups, and typically higher activity from newer/more-engaged users) onto whichever shard covers the most recent date range — while shards covering older date ranges sit comparatively idle. Sharding by a hashed <code class="inline">user_id</code> instead spreads both data and traffic roughly uniformly, since a good hash function has no correlation with time or any other skewed real-world attribute.</p>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> a hot shard occurs when the chosen shard key does not distribute data and traffic evenly across shards, concentrating a disproportionate load onto one or a few shards while others remain comparatively idle — the shard key is the single decision that determines whether horizontal partitioning actually achieves its goal of spreading load, and a shard key correlated with a real-world skew (like signup recency, geographic concentration, or a small number of very popular keys) reliably produces a hot shard even though the sharding mechanism itself is working exactly as designed. The general fix is choosing a shard key with better distributional properties — often a hash of a naturally high-cardinality, low-skew field like user_id — rather than a raw field that happens to correlate with time or popularity.</div>
+</section>
+
+<!-- ============ SECTION 3: CROSS-SHARD QUERIES ============ -->
+<section id="crossshard">
+  <div class="kicker">03 — The cost sharding doesn't advertise up front</div>
+  <h2>Cross-shard query complexity</h2>
+
+  <p><strong>Start here, before the mechanics.</strong> Back at the split filing cabinets: if someone asks "how many total customers do we have whose last name starts with any letter," and customers are split across 2 cabinets by last name, you can't answer by looking in just one cabinet — you have to check BOTH cabinets, count each one's matches separately, and add the two counts together yourself. That extra step — going to multiple places, then combining what you found — didn't exist when everything lived in one cabinet.</p>
+
+  <p>A query that can be satisfied entirely within ONE shard (e.g. "fetch this exact user by their shard key") is cheap and fast — exactly as fast as an unsharded query, since the application (or a routing layer) can compute which single shard holds the answer and go straight there. But a query that needs data spanning MULTIPLE shards (e.g. "how many total users signed up this week, across the whole system" when users are sharded by <code class="inline">user_id</code>, not date) cannot be answered by any single shard alone. The application has to <strong>fan out</strong> — send the same query to every shard that might hold relevant data — wait for each shard's partial result, and then <strong>merge</strong> those partial results into one final answer (summing counts, re-sorting a combined result set, deduplicating, etc.).</p>
+
+  <div class="code"><span class="c-cmt"># Cross-shard query: fan out to every shard, then merge</span>
+<span class="c-kw">async def</span> <span class="c-fn">count_signups_this_week</span>(shards):
+    <span class="c-cmt"># fan out -- query EVERY shard concurrently, since the answer
+    # could involve rows on any of them</span>
+    partial_results = <span class="c-kw">await</span> asyncio.gather(*[
+        shard.query(<span class="c-str">"SELECT COUNT(*) FROM users WHERE signup_date >= ?"</span>, this_week)
+        <span class="c-kw">for</span> shard <span class="c-kw">in</span> shards
+    ])
+    <span class="c-cmt"># merge -- combine each shard's partial answer into one final answer</span>
+    <span class="c-kw">return</span> <span class="c-fn">sum</span>(partial_results)</div>
+
+  <div class="callout"><b>This is the same shape as scatter-gather:</b> fanning a query out to multiple independent shards and merging their partial results is structurally identical to the scatter-gather pattern used by distributed search systems — a query is scattered (sent) to every relevant partition/node in parallel, each returns its own partial results, and a coordinating layer gathers and merges them into one final response. Cross-shard database queries and distributed search across partitioned data are the same underlying coordination problem: no single node has the full answer, so the cost of correctness is real network fan-out plus a merge step that didn't exist when everything lived on one machine.</div>
+
+  <p>Cross-shard queries are strictly more expensive and more complex than single-shard queries along several dimensions: latency is bounded by the SLOWEST shard's response (not the average), partial failures become a real concern (what happens if one of N shards times out — return an incomplete answer, or fail the whole query?), and some operations that are trivial on one machine (a JOIN across two tables, a globally unique auto-increment ID, a multi-row transaction) become genuinely hard or require entirely different mechanisms once the relevant rows might live on different shards. This is exactly why shard key selection (section 2) matters so much beyond just avoiding hot shards: a shard key chosen so that MOST real queries stay within a single shard (e.g. sharding a multi-tenant SaaS product by <code class="inline">tenant_id</code>, when almost every query is already scoped to one tenant) avoids paying the cross-shard fan-out/merge cost on the common path entirely.</p>
+
+  <div class="callout horiz"><b>Interview-ready definition:</b> a cross-shard query is one that cannot be answered by a single shard alone and must fan out (send the query to every relevant shard concurrently) and then merge (combine each shard's partial results into one final answer) — the same scatter-gather coordination pattern used by distributed search. This is strictly more expensive than a single-shard query: latency is bounded by the slowest responding shard, partial shard failures must be handled explicitly, and operations trivial on one machine (joins, global uniqueness, multi-row transactions) become genuinely harder across shard boundaries. A well-chosen shard key minimizes how often real queries need to cross shard boundaries at all, which is often as important a selection criterion as avoiding a hot shard.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Classifying a split as horizontal or vertical</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team splits their <code class="inline">products</code> table into <code class="inline">products_core</code> (id, name, price, in_stock) and <code class="inline">products_media</code> (id, full_description, image_urls, video_url), joined by id, because product listing pages only need the core fields but product DETAIL pages need everything. Is this horizontal or vertical partitioning, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">This is vertical partitioning. Every product still has a row (or a
+matching pair of rows, joined by id) present in BOTH resulting tables --
+nothing about WHICH rows exist in which table has changed, only WHICH
+COLUMNS live in which table. products_core holds the small,
+frequently-accessed columns (used on every listing page load);
+products_media holds the larger, less-frequently-accessed columns
+(only needed when a user opens a specific product's detail page). This
+matches the exact pattern described in section 1's "hot columns / cold
+columns" vertical split -- separating columns by access frequency and
+size, not separating rows by any key.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Predicting the hot-shard outcome for a stated shard key</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A ride-sharing app shards its "active rides" table by <code class="inline">city_id</code>. One city (a huge, dense metro area) accounts for 40% of all rides company-wide; the other 200+ cities split the remaining 60%. Will this shard key produce a hot shard? Explain using section 2's reasoning.</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, this will produce a hot shard, for exactly the reason section 2
+describes: the shard key (city_id) correlates with a real-world skew --
+ride volume is heavily concentrated in one dense metro area rather than
+spread evenly across cities. Whichever shard holds that one city's rides
+will handle roughly 40% of all active-ride traffic company-wide, while
+the remaining shards split the other 60% across 200+ cities each,
+meaning most other shards handle a tiny fraction of the load that the
+one hot shard does.
+
+This is structurally the same failure mode as the signup_date example
+in section 2 (recent dates get disproportionate traffic) -- a shard key
+can be a perfectly reasonable, meaningful business dimension (city_id
+makes intuitive sense for a ride-sharing app, since most queries are
+probably city-scoped anyway) and STILL produce a hot shard if the
+underlying real-world distribution of that key's values is skewed rather
+than uniform. The fix isn't necessarily abandoning city_id entirely (it
+may still be the right choice for keeping most queries single-shard, per
+section 3) -- it might instead mean giving the dominant city its own
+DEDICATED shard (or multiple shards, further sub-partitioned) rather
+than co-locating it with much smaller cities on a shard sized for
+average, not peak, city volume.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing a shard key to minimize cross-shard queries</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A multi-tenant B2B SaaS product has almost every query scoped to one customer organization (tenant) at a time — "show tenant X's dashboard," "list tenant X's users." A small number of internal admin queries need data across ALL tenants. Which shard key minimizes cross-shard query cost for the COMMON case, and what does this mean for the rare admin queries?</p>
+    <details><summary>Show solution</summary><div class="solution">Shard by tenant_id. Since the overwhelming majority of real queries are
+already naturally scoped to exactly one tenant, sharding by tenant_id
+means the application can route each of those common queries directly
+to the ONE shard holding that tenant's data -- no fan-out, no merge, full
+single-shard-query speed, exactly matching section 3's point that a
+well-chosen shard key minimizes how often real queries cross shard
+boundaries. This is a case where the "natural" query pattern of the
+business domain directly suggests the right shard key, rather than
+needing to guess.
+
+The trade-off this creates: the rare cross-tenant ADMIN queries (e.g.
+"total active users across all tenants") now unavoidably become
+cross-shard queries requiring the fan-out-and-merge pattern from section
+3, since no single shard has the full picture across every tenant. This
+is an acceptable trade specifically because those queries are rare and
+typically not latency-sensitive (an internal admin dashboard can tolerate
+a slower, fan-out query far better than a customer-facing dashboard
+could) -- the shard key was chosen to optimize the COMMON, latency-
+sensitive path at the deliberate cost of the RARE, latency-tolerant
+path, which is usually the correct prioritization.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing which failure mode is occurring from symptoms</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A system sharded across 8 servers by user_id (hashed, uniform) is reported as "slow." On investigation: CPU and disk usage look roughly even across all 8 shards, but the dashboard's "total revenue this month across all users" query takes 12 seconds. Is this a hot-shard problem or a cross-shard-query problem? Justify from the given evidence.</p>
+    <details><summary>Show solution</summary><div class="solution">This is a cross-shard-query problem, not a hot-shard problem -- and the
+evidence given directly distinguishes the two. A hot shard would show up
+as UNEVEN load across shards (one or a few shards pegged at high CPU/
+disk usage while others sit comparatively idle), which is explicitly
+ruled out here ("CPU and disk usage look roughly even across all 8
+shards" -- this is exactly what a well-chosen, uniformly-hashed shard key
+like hashed user_id is supposed to produce, per section 2).
+
+The slow query itself -- "total revenue this month across ALL users" --
+is inherently a query that spans every shard, since revenue data for
+different users lives on different shards by design (that's the whole
+point of sharding by user_id). This forces the fan-out-and-merge pattern
+from section 3 on every single run: query all 8 shards, wait for the
+slowest one to respond, sum the partial results. The 12-second latency
+is consistent with cross-shard fan-out/merge overhead (bounded by the
+slowest shard, plus merge cost) rather than any one shard being
+overloaded. The fix here isn't re-sharding by a different key (that
+would likely just move the cross-shard cost to a DIFFERENT set of
+queries, per Problem 3's trade-off) -- it's more likely to pre-aggregate
+this specific cross-tenant metric on a schedule (a materialized rollup
+table) rather than computing it live via an 8-way fan-out on every
+dashboard load.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Combining horizontal and vertical partitioning in one system</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Design a partitioning scheme for a <code class="inline">users</code> table that needs to: (a) scale past what one server can hold as the user base grows into the tens of millions, and (b) keep hot-path login queries (id, email, password_hash, status) fast, separate from a large, rarely-touched <code class="inline">profile_json</code> blob column. Use both concepts from this lab.</p>
+    <details><summary>Show solution</summary><div class="solution">This calls for BOTH horizontal and vertical partitioning applied
+together, addressing two genuinely different problems:
+
+Horizontal (addresses requirement a — total row count/volume): shard
+the users table by a hash of user_id across N servers, so that as the
+user base grows into the tens of millions, no single server has to hold
+every user's data -- each shard holds a roughly even subset of the total
+users, per section 2's reasoning about uniform hash-based distribution
+avoiding hot shards.
+
+Vertical (addresses requirement b — hot vs cold columns): WITHIN each
+shard, split the users table itself into two tables -- a small
+users_auth table (id, email, password_hash, status) that login queries
+hit constantly and needs to stay fast and compact, and a separate
+users_profile table (id, profile_json) holding the large, rarely-
+accessed blob, joined back by id only when a full profile is actually
+needed (e.g. viewing a user's full profile page, not every login check).
+
+The result: horizontal partitioning solves the "too much total data for
+one server" problem, and vertical partitioning (applied independently,
+within each horizontal shard) solves the "one frequently-hit query path
+shouldn't have to read past a large rarely-needed column" problem. These
+two techniques address orthogonal problems and combine cleanly -- neither
+one substitutes for the other, which is exactly why real large-scale
+systems often use both simultaneously rather than treating "partitioning"
+as a single decision.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the precise structural difference between splitting a table by rows vs by columns, (2) walk through why a shard key correlated with a real-world skew produces a hot shard even when the sharding mechanism itself works correctly, and (3) explain why a cross-shard query is structurally the same coordination problem as scatter-gather in distributed search, not just "slower"? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — sharding &amp; partitioning.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: STATIC SPLIT TABLES */
+(function(){
+  var USERS = [
+    {id:1, name:"Ana", email:"ana@x.com", status:"active", bio:"Loves hiking and...", audit_log:"[47 entries]"},
+    {id:2, name:"Ben", email:"ben@x.com", status:"active", bio:"Software engineer...", audit_log:"[12 entries]"},
+    {id:3, name:"Nora", email:"nora@x.com", status:"pending", bio:"New to the platform...", audit_log:"[2 entries]"},
+    {id:4, name:"Zane", email:"zane@x.com", status:"active", bio:"Long-time user, has...", audit_log:"[203 entries]"}
+  ];
+
+  function renderTable(elId, rows, cols){
+    var el = document.getElementById(elId);
+    if(!el) return;
+    var html = "<tr>" + cols.map(function(c){ return "<th>" + c + "</th>"; }).join("") + "</tr>";
+    rows.forEach(function(r){
+      html += "<tr>" + cols.map(function(c){ return "<td>" + r[c] + "</td>"; }).join("") + "</tr>";
+    });
+    el.innerHTML = html;
+  }
+
+  renderTable("horiz-table-1", USERS.filter(function(u){ return u.name[0] <= "M"; }), ["id","name","email","status"]);
+  renderTable("horiz-table-2", USERS.filter(function(u){ return u.name[0] > "M"; }), ["id","name","email","status"]);
+  renderTable("vert-table-1", USERS, ["id","name","status"]);
+  renderTable("vert-table-2", USERS, ["id","bio","audit_log"]);
+})();
+
+/* SECTION 2: SHARD KEY DISTRIBUTION DEMO */
+(function(){
+  var barsEl = document.getElementById("shard-bars");
+  var logEl = document.getElementById("shard-log");
+  var chips = document.querySelectorAll("[data-shardkey]");
+  var resetBtn = document.getElementById("shard-reset");
+
+  var DISTRIBUTIONS = {
+    userid: [2510, 2480, 2520, 2490],
+    signupdate: [6200, 2100, 1000, 700]
+  };
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function render(key){
+    var counts = DISTRIBUTIONS[key];
+    var max = Math.max.apply(null, counts);
+    var avg = counts.reduce(function(a,b){ return a+b; }, 0) / counts.length;
+    barsEl.innerHTML = "";
+    counts.forEach(function(count, i){
+      var isHot = count > avg * 1.8;
+      var wrap = document.createElement("div");
+      wrap.className = "shard-bar-wrap";
+      var bar = document.createElement("div");
+      bar.className = "shard-bar" + (isHot ? " hot" : "");
+      var heightPx = Math.max(4, (count / max) * 140);
+      wrap.innerHTML = '<div class="shard-bar-count">' + count.toLocaleString() + '</div>';
+      bar.style.height = "0px";
+      wrap.appendChild(bar);
+      var label = document.createElement("div");
+      label.className = "shard-bar-label";
+      label.textContent = "shard " + (i+1) + (isHot ? " (hot)" : "");
+      wrap.appendChild(label);
+      barsEl.appendChild(wrap);
+      setTimeout(function(){ bar.style.height = heightPx + "px"; }, 30 + i * 80);
+    });
+
+    if(key === "userid"){
+      log('<b>Shard key: hashed user_id.</b> 10,000 signups spread roughly evenly — each shard handles ~2,500, close to the 2,500 average. No shard stands out.');
+    } else {
+      log('<b style="color:var(--hot-c);">Shard key: signup_date.</b> Because most users signed up recently, shard 1 (covering the most recent date range) absorbs 6,200 of 10,000 signups — a hot shard, while shard 4 sits nearly idle by comparison.');
+    }
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      logEl.innerHTML = "";
+      render(c.dataset.shardkey);
+    });
+  });
+
+  resetBtn.addEventListener("click", function(){
+    chips.forEach(function(x){ x.classList.remove("active"); });
+    chips[0].classList.add("active");
+    logEl.innerHTML = '<span class="line">Pick a shard key to see how 10,000 signups distribute across 4 shards.</span>';
+    barsEl.innerHTML = "";
+  });
+
+  render("userid");
+})();
+</script>
+</body>
+</html>

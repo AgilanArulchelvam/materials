@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — B-Tree vs Columnar Storage</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --row-c:#4fc3f7; --col-c:#7fd8a0; --oltp-c:#f2c14e; --olap-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--row-c); color:var(--row-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--col-c); color:var(--col-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--oltp-c); color:var(--oltp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.d{border-color:var(--olap-c); color:var(--olap-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* byte grid for row vs columnar layout */
+  .layout-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.layout-grid{grid-template-columns:1fr;}}
+  .layout-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2);}
+  .layout-col.row{border-color:var(--row-c);}
+  .layout-col.col{border-color:var(--col-c);}
+  .layout-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .layout-col.row h4{color:var(--row-c);} .layout-col.col h4{color:var(--col-c);}
+  .byte-strip{display:flex; flex-wrap:wrap; gap:2px; font-family:var(--mono); font-size:0.62rem;}
+  .byte{padding:0.3rem 0.4rem; border-radius:3px; background:#0b0d11; border:1px solid var(--rule); color:var(--ink-dim); transition:all .3s;}
+  .byte.touched{color:#14100c; font-weight:700; box-shadow:0 0 8px currentColor;}
+  .byte.touched.c-id{background:var(--row-c);} .byte.touched.c-name{background:var(--col-c);} .byte.touched.c-amt{background:var(--oltp-c);} .byte.touched.c-date{background:var(--olap-c);} .byte.touched.c-status{background:var(--accent);} .byte.touched.c-region{background:var(--bad-c);} .byte.touched.c-qty{background:#6ea8fe;} .byte.touched.c-cust{background:#ff9d80;}
+  .byte-stat{font-family:var(--mono); font-size:0.85rem; margin-top:0.9rem; padding-top:0.7rem; border-top:1px dashed var(--rule); color:var(--ink-dim);}
+  .byte-stat b{color:var(--ink); font-size:1.1rem;}
+
+  .col-picker{display:flex; gap:0.5rem; flex-wrap:wrap; margin:1rem 0;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--oltp-c);} .dc-col.a h4{color:var(--oltp-c);}
+  .dc-col.b{border-color:var(--olap-c);} .dc-col.b h4{color:var(--olap-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.row{border-left-color:var(--row-c); background:rgba(79,195,247,0.06);} .callout.row b{color:var(--row-c);}
+  .callout.col{border-left-color:var(--col-c); background:rgba(127,216,160,0.06);} .callout.col b{color:var(--col-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · STORAGE ENGINES</div>
+  <h1>Storing a table by row or by column is a bet about which queries matter <em>most</em>.</h1>
+  <p class="lede">Same table, same bytes on disk — but arranged two structurally different ways. Row-oriented storage keeps every column of one record contiguous; columnar storage keeps every row's value for one column contiguous instead. This lab animates both layouts side by side for the same small table, counts exactly which bytes a query touches under each layout, and connects that byte count directly to why OLAP and OLTP workloads want opposite answers.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Row-oriented (OLTP)</div>
+    <div class="pipe-label b">Columnar (OLAP)</div>
+    <div class="pipe-label c">Same table, same bytes</div>
+    <div class="pipe-label d">Wildly different I/O</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="layout">1 · Row-Oriented vs Column-Oriented Layout</a>
+  <a data-target="bytes">2 · Byte-Counting a Real Query</a>
+  <a data-target="workloads">3 · Why OLAP Wants Columns, OLTP Wants Rows</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: LAYOUT ============ -->
+<section id="layout">
+  <div class="kicker">01 — Two ways to lay the same table out on disk</div>
+  <h2>Row-oriented vs column-oriented layout</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a spreadsheet of orders, one row per order, columns for id/customer/amount/date/status. Now imagine two totally different ways to physically photocopy that spreadsheet onto a stack of paper. Method one: photocopy it exactly as it looks — row 1 in full, then row 2 in full, then row 3 in full, and so on. To read one entire order, you flip to one page and it's all right there. Method two: instead, make one long sheet per COLUMN — a sheet listing every order's id in sequence, a separate sheet listing every order's customer name in sequence, a separate sheet for every amount, and so on. To read one entire order now, you have to go find that order's line on EVERY sheet. But if you only wanted "every amount, to compute a total," method two hands you exactly one sheet with nothing else on it — no names, no dates, no statuses mixed in.</p>
+
+  <p>That's the literal difference between <strong>row-oriented storage</strong> and <strong>column-oriented (columnar) storage</strong>. A row-oriented engine (the on-disk format behind most traditional relational databases — Postgres, MySQL's default engine) physically stores each row's full set of column values contiguously on disk: row 1's id, name, amount, date, status all sit next to each other, then row 2's full set right after, and so on. A columnar engine (Parquet files, ClickHouse, most modern data-warehouse / analytics engines) stores each COLUMN's values contiguously instead: every row's <code class="inline">amount</code> sits together as one long run of bytes, separate from every row's <code class="inline">status</code>, separate from every row's <code class="inline">date</code>.</p>
+
+  <div class="layout-grid">
+    <div class="layout-col row">
+      <h4>Row-oriented layout on disk</h4>
+      <p style="font-size:0.82rem; margin:0 0 0.8rem;">Each row's columns are stored together, one row after another.</p>
+      <div class="byte-strip" id="row-layout"></div>
+    </div>
+    <div class="layout-col col">
+      <h4>Columnar layout on disk</h4>
+      <p style="font-size:0.82rem; margin:0 0 0.8rem;">Each column's values are stored together, one column after another.</p>
+      <div class="byte-strip" id="col-layout"></div>
+    </div>
+  </div>
+
+  <div class="callout row"><b>Interview-ready definition:</b> row-oriented (row-store) layout physically stores all column values belonging to one row contiguously on disk, so a single row is one contiguous chunk of bytes; column-oriented (columnar) layout physically stores all values belonging to one column contiguously instead, so a single column across every row is one contiguous chunk of bytes, and reconstructing one full row requires stitching together a value from each column's separate storage region. Same logical table, same total bytes — the physical arrangement is the only thing that differs, and that arrangement determines which access pattern is cheap and which is expensive.</div>
+</section>
+
+<!-- ============ SECTION 2: BYTE COUNTING ============ -->
+<section id="bytes">
+  <div class="kicker">02 — Counting exactly what a query has to touch</div>
+  <h2>Byte-counting a real query: 2 columns out of 8</h2>
+
+  <p><strong>Start here, before the numbers.</strong> Back at the photocopied spreadsheet: if you need "every order's amount and date, nothing else," method one (row-by-row photocopies) forces you to read every single page front to back, because amount and date are mixed in among six other columns you don't need on every page. Method two (one sheet per column) hands you exactly two sheets — the amount sheet and the date sheet — and you never even glance at the other six sheets' worth of paper.</p>
+
+  <p>This is the entire reason columnar storage exists. Disk (and network, for cloud storage) I/O is the dominant cost for large scans, and I/O cost is driven by <strong>how many bytes physically get read off disk</strong> — not by how many bytes the query logically cares about. In a row-store, reading a query that needs 2 of 8 columns still requires reading every row's FULL width (all 8 columns' worth of bytes) for every row scanned, because the storage engine can't skip the other 6 columns without skipping the whole row — they're physically interleaved together on the same disk pages. In a columnar store, that same query reads only the 2 columns' worth of bytes, full stop; the other 6 columns physically live somewhere else entirely and are never touched.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>QUERY: SELECT amount, status FROM orders — WATCH WHICH BYTES GET TOUCHED</span>
+      <div><button class="btn secondary" id="byte-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">This 8-column, 6-row <code class="inline">orders</code> table is laid out both ways below. The query only needs <code class="inline">amount</code> and <code class="inline">status</code>. Run it against each layout and watch exactly which bytes light up.</p>
+    <div class="col-picker">
+      <button class="chip active" data-runlayout="row">Run against ROW-oriented layout</button>
+      <button class="chip" data-runlayout="col">Run against COLUMNAR layout</button>
+    </div>
+    <div class="byte-strip" id="query-grid" style="min-height:140px;"></div>
+    <div class="byte-stat">Bytes touched: <b id="byte-touched">0</b> / <span id="byte-total">0</span> total bytes in the table (<b id="byte-pct">0%</b>)</div>
+    <div class="log" id="byte-log"><span class="line">Pick a layout above to run the query and see the byte count.</span></div>
+  </div>
+
+  <p>Scaled up, this is the difference the roadmap topic is pointing at: <strong>reading column X across 1,000,000 rows in columnar format touches only column X's data — roughly (1,000,000 × width of column X) bytes, full stop.</strong> In row format, the same read touches every row's FULL width even though only 1 of 8 columns was wanted — roughly (1,000,000 × width of ALL 8 columns) bytes, because the storage engine has no way to extract one column's value without first reading the row page it's embedded in. If each row is 80 bytes wide and the wanted column is 10 bytes wide, columnar reads 10MB; row-oriented reads 80MB for the exact same logical question — an 8x I/O difference driven purely by physical layout, not by anything about the query itself.</p>
+
+  <div class="callout col"><b>Interview-ready definition:</b> columnar storage wins on I/O for queries that touch few columns across many rows because physical bytes read scale with (columns actually needed) × (rows scanned), not with (all columns) × (rows scanned) — the storage engine can seek directly to and stream only the needed columns' contiguous regions. Row-oriented storage cannot do this: because columns are physically interleaved per row, reading even one column requires reading each row's full width off disk, since there is no way to separate one column's bytes from the rest of that row's bytes without reading the row itself.</div>
+</section>
+
+<!-- ============ SECTION 3: OLAP VS OLTP ============ -->
+<section id="workloads">
+  <div class="kicker">03 — The layout choice is a bet on the workload</div>
+  <h2>Why columnar wins for OLAP, row-oriented wins for OLTP</h2>
+
+  <p><strong>Start here, before the trade-off table.</strong> Think about two completely different jobs at a retail company. One person's whole job is: "pull up THIS ONE customer's THIS ONE order — every detail about it, right now, because they're on the phone asking about it." Another person's whole job is: "compute the average order value, by month, across every order placed in the last two years — I don't care about any single order's shipping address or customer notes, just the amounts and the dates, for millions of rows." These are structurally opposite access patterns, and each maps cleanly onto one of the two storage layouts.</p>
+
+  <p><strong>OLTP</strong> (Online Transaction Processing) is the first job: a live application reading and writing whole, individual records — "fetch this exact order," "update this user's address," "insert this new order." Each operation needs EVERY column of ONE row, and needs it fast, often as part of a transaction that also writes back. Row-oriented storage is built for exactly this: one row is one contiguous chunk on disk, so fetching or updating a whole record is a single localized read/write, not bytes scattered across many separate column regions that all have to be located and stitched together.</p>
+
+  <p><strong>OLAP</strong> (Online Analytical Processing) is the second job: analytical queries that scan millions of rows but only touch a handful of columns — aggregations, averages, group-bys, trends over time. "Average order value by month" needs only 2 columns (<code class="inline">amount</code>, <code class="inline">order_date</code>) out of a wide <code class="inline">orders</code> table that might have 20+ columns (shipping address, customer notes, payment metadata, and so on). Columnar storage is built for exactly this: scan only the 2 needed columns' contiguous regions across all rows, and never touch the other 18+ columns' bytes at all — which, at millions of rows, is the difference between a query that finishes in seconds and one that doesn't.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>OLTP → row-oriented</h4>
+      <p>Whole-row reads/writes, low latency per operation, frequent single-record transactions. Row-store keeps a whole record contiguous, so touching one record is cheap regardless of how many columns the table has.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>OLAP → columnar</h4>
+      <p>Wide-scan, narrow-column aggregations over millions of rows. Columnar keeps each column contiguous, so a query can skip every column it doesn't need, which is the entire I/O saving at scale.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>OLTP (row-oriented)</th><th>OLAP (columnar)</th></tr>
+    <tr><td>Typical query</td><td>"Fetch/update order #4471" — one full row</td><td>"Average order value by month" — 2 columns, millions of rows</td></tr>
+    <tr><td>Rows touched per query</td><td>Usually 1 (or a handful)</td><td>Millions</td></tr>
+    <tr><td>Columns touched per query</td><td>All of them (the whole row)</td><td>A small subset (often 1-5 of 20+)</td></tr>
+    <tr><td>What layout optimizes</td><td>Localized, contiguous access to one whole record</td><td>Skipping every column not needed, across a huge row count</td></tr>
+    <tr><td>Write pattern</td><td>Frequent, small, single-row writes/updates — natural fit for row-store</td><td>Usually bulk-loaded/appended in batches, not single-row updates — columnar writes are comparatively awkward per-row</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Why you can't just pick one and be done:</b> this is exactly why real systems often run BOTH — an OLTP row-store (Postgres, MySQL) as the system of record handling live application traffic, and a separate OLAP columnar store (or columnar export) for analytics/BI/reporting, often fed by periodic ETL from the OLTP database. Trying to run heavy analytical aggregation queries directly against a row-oriented production database is a common real-world performance trap: each aggregation query ends up reading every column of every row it scans, competing for the same disk I/O the live application needs for its own whole-row OLTP queries.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing the byte savings directly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A table has 10 columns, each averaging 12 bytes, for a 120-byte row width. A query needs exactly 1 column (12 bytes) across 5,000,000 rows. How many bytes does a row-oriented engine have to read versus a columnar engine, and what's the ratio?</p>
+    <details><summary>Show solution</summary><div class="solution">Row-oriented: has to read every row's FULL width even though only 1 of
+10 columns is needed, because columns are physically interleaved per
+row. That's 120 bytes/row × 5,000,000 rows = 600,000,000 bytes (≈572 MB).
+
+Columnar: reads only the wanted column's contiguous region across all
+rows. That's 12 bytes/row × 5,000,000 rows = 60,000,000 bytes (≈57 MB).
+
+Ratio: 600,000,000 / 60,000,000 = 10x — which is exactly the column
+count (10 columns total, 1 needed). This isn't a coincidence: the I/O
+ratio between row-oriented and columnar for an N-of-M-column query is
+roughly M/N, since row-oriented always pays for all M columns regardless
+of how many are actually needed, while columnar pays only for the N
+columns actually touched.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing a layout for a stated workload</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A checkout service needs to insert a new order row and immediately read back that exact order (all columns) to render a confirmation page, thousands of times per minute, each one a separate customer's separate order. Which layout fits, and why would the other layout actively hurt here?</p>
+    <details><summary>Show solution</summary><div class="solution">Row-oriented fits. This is a textbook OLTP access pattern: single-row
+writes immediately followed by single-row, whole-record reads, repeated
+at high frequency across many independent rows. Row-store keeps each
+order's full set of columns contiguous, so both the insert and the
+immediate full-row read are single, localized operations.
+
+Columnar would actively hurt here for two separate reasons. First, reads:
+reconstructing one full order (all columns) from a columnar layout means
+locating and stitching together that order's value from EVERY column's
+separately-stored region — the opposite of the "read just 2 columns"
+benefit columnar provides; here ALL columns are needed, which is
+columnar's worst case. Second, writes: columnar formats are typically
+optimized for bulk, batched writes (append a large chunk to each
+column's region at once), not fine-grained single-row inserts arriving
+continuously — inserting one row at a time into a columnar layout is
+comparatively awkward and often requires buffering/batching machinery
+that a row-store simply doesn't need for the same workload.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a slow analytics query on the wrong engine</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team runs "total revenue by region, last 12 months" directly against their production Postgres (row-oriented) orders table, which has 30 columns and 200 million rows. The query takes 40 seconds and is also slowing down the live checkout service. Explain both symptoms using what this lab covered.</p>
+    <details><summary>Show solution</summary><div class="solution">The 40-second query time: the aggregation only logically needs 2 of 30
+columns (amount, region) but Postgres's row-oriented storage forces it
+to read every row's FULL 30-column width for all 200 million rows it
+scans, since it can't extract just those 2 columns without reading each
+row they're embedded in. That's roughly 15x more bytes read off disk
+than a columnar engine would need for the identical logical query (2 of
+30 columns) — this is precisely the OLAP-on-row-store performance trap
+described in section 3.
+
+The slowdown to the live checkout service: that 40-second scan is
+consuming real disk I/O and buffer-cache pages on the SAME database
+instance that the OLTP checkout traffic (single-row inserts/reads) is
+also competing for. The two workloads are fundamentally different
+shapes — the analytics query wants to stream huge sequential column
+ranges, checkout wants fast localized single-row access — and running
+both against one row-oriented instance means the analytics scan's heavy
+I/O directly degrades the latency-sensitive OLTP traffic sharing the
+same disk and cache.
+
+The fix (as section 3 states) is to route this kind of analytical query
+to a separate columnar store or warehouse, fed by periodic export/ETL
+from the OLTP database, rather than running it directly against
+production.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about writes, not just reads</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">This lab mostly discusses read/scan cost. Explain, in your own words, why columnar storage is comparatively awkward for frequent single-row writes, using the physical layout described in section 1.</p>
+    <details><summary>Show solution</summary><div class="solution">In columnar layout, one logical row's values are physically scattered
+across N separate column regions (one per column) rather than living
+together in one place. Inserting a single new row means appending one
+new value to EACH of those N separate contiguous regions -- N separate
+small writes to N separate physical locations, rather than one single
+contiguous write the way a row-store handles it (append one new
+120-byte chunk in one place).
+
+At low write volume this overhead is tolerable, but at high-frequency
+single-row inserts, columnar engines typically buffer incoming rows in
+memory and periodically flush them as a single BATCHED write across all
+columns at once, rather than performing N tiny separate writes per
+incoming row -- which adds complexity (a write buffer, a flush/compaction
+process) that a row-store's naturally-contiguous single-row write simply
+doesn't need. This is the mechanical reason columnar formats are
+generally paired with bulk-load/batch-append write patterns (ETL jobs,
+periodic ingestion) rather than the continuous single-row write pattern
+of a live OLTP application.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · A mixed workload that doesn't cleanly fit either bucket</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A product needs BOTH fast single-order lookups (thousands/minute, OLTP-shaped) AND a live dashboard aggregating revenue trends across all orders (OLAP-shaped), and both need to reflect data that's at most a few minutes old. Propose an architecture, referencing the trade-off from section 3.</p>
+    <details><summary>Show solution</summary><div class="solution">Neither a single row-store nor a single columnar store alone cleanly
+serves both shapes well, which is exactly the trade-off section 3
+flags. A reasonable architecture: keep a row-oriented database (Postgres)
+as the system of record handling the OLTP single-order lookups/writes,
+and continuously (or on a short interval, e.g. every 1-5 minutes) stream
+or replicate changes into a separate columnar store (via change-data-
+capture / CDC, or a lightweight incremental ETL job) that the dashboard
+queries against instead of hitting the OLTP database directly.
+
+This satisfies the "few minutes old" freshness requirement (short
+replication lag) while keeping the two fundamentally different access
+patterns physically separated onto the storage layout each is suited
+for -- fast whole-row OLTP access stays on row-store, wide-scan narrow-
+column aggregation stays on columnar, and neither workload's I/O
+pattern competes with or degrades the other on shared disk/cache
+resources the way running both directly against one row-oriented
+instance would (as in Problem 3).</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the literal physical difference between how row-store and columnar arrange the same table's bytes on disk, (2) why bytes-read for an N-of-M-column query scales differently under each layout, and (3) map "fetch this exact order" and "average order value by month" to the correct layout, with the reasoning, not just the answer? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — b-tree vs columnar storage.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TABLE DATA: 8 columns x 6 rows */
+var COLUMNS = ["id","name","amount","date","status","region","qty","cust"];
+var COL_CLASS = {id:"c-id",name:"c-name",amount:"c-amt",date:"c-date",status:"c-status",region:"c-region",qty:"c-qty",cust:"c-cust"};
+var ROW_COUNT = 6;
+
+function buildCells(container, order){
+  container.innerHTML = "";
+  order.forEach(function(colName){
+    for(var r = 0; r < ROW_COUNT; r++){
+      var cell = document.createElement("div");
+      cell.className = "byte";
+      cell.dataset.col = colName;
+      cell.dataset.row = r;
+      cell.textContent = colName.slice(0,3) + r;
+      container.appendChild(cell);
+    }
+  });
+}
+
+/* SECTION 1: STATIC LAYOUT ILLUSTRATION */
+(function(){
+  var rowEl = document.getElementById("row-layout");
+  var colEl = document.getElementById("col-layout");
+
+  // row-oriented: iterate row-major (row0's all cols, then row1's all cols...)
+  rowEl.innerHTML = "";
+  for(var r = 0; r < ROW_COUNT; r++){
+    COLUMNS.forEach(function(colName){
+      var cell = document.createElement("div");
+      cell.className = "byte touched " + COL_CLASS[colName];
+      cell.textContent = colName.slice(0,3) + r;
+      rowEl.appendChild(cell);
+    });
+  }
+  // columnar: iterate column-major (col0's all rows, then col1's all rows...)
+  colEl.innerHTML = "";
+  COLUMNS.forEach(function(colName){
+    for(var r2 = 0; r2 < ROW_COUNT; r2++){
+      var cell2 = document.createElement("div");
+      cell2.className = "byte touched " + COL_CLASS[colName];
+      cell2.textContent = colName.slice(0,3) + r2;
+      colEl.appendChild(cell2);
+    }
+  });
+})();
+
+/* SECTION 2: QUERY BYTE-COUNTING DEMO */
+(function(){
+  var gridEl = document.getElementById("query-grid");
+  var touchedEl = document.getElementById("byte-touched");
+  var totalEl = document.getElementById("byte-total");
+  var pctEl = document.getElementById("byte-pct");
+  var logEl = document.getElementById("byte-log");
+  var resetBtn = document.getElementById("byte-reset");
+  var runBtns = document.querySelectorAll("[data-runlayout]");
+
+  var NEEDED = {amount:true, status:true};
+  var TOTAL_BYTES = COLUMNS.length * ROW_COUNT;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    gridEl.innerHTML = "";
+    touchedEl.textContent = "0";
+    totalEl.textContent = String(TOTAL_BYTES);
+    pctEl.textContent = "0%";
+    logEl.innerHTML = '<span class="line">Pick a layout above to run the query and see the byte count.</span>';
+  }
+
+  function runQuery(layout){
+    var order = layout === "row" ? null : COLUMNS; // row: built row-major below; col: column-major
+    gridEl.innerHTML = "";
+    logEl.innerHTML = "";
+    var cells = [];
+
+    if(layout === "row"){
+      log("<b>Layout: ROW-oriented.</b> SELECT amount, status FROM orders — but the engine must read each row's FULL width to get at those 2 columns.");
+      for(var r = 0; r < ROW_COUNT; r++){
+        COLUMNS.forEach(function(colName){
+          var cell = document.createElement("div");
+          cell.className = "byte";
+          cell.textContent = colName.slice(0,3) + r;
+          gridEl.appendChild(cell);
+          cells.push({el: cell, needed: !!NEEDED[colName]});
+        });
+      }
+    } else {
+      log("<b>Layout: COLUMNAR.</b> SELECT amount, status FROM orders — the engine can seek straight to just those 2 columns' regions.");
+      COLUMNS.forEach(function(colName){
+        for(var r2 = 0; r2 < ROW_COUNT; r2++){
+          var cell2 = document.createElement("div");
+          cell2.className = "byte";
+          cell2.textContent = colName.slice(0,3) + r2;
+          gridEl.appendChild(cell2);
+          cells.push({el: cell2, needed: !!NEEDED[colName]});
+        }
+      });
+    }
+
+    var touched = 0;
+    cells.forEach(function(c, i){
+      setTimeout(function(){
+        if(layout === "row" || c.needed){
+          c.el.classList.add("touched");
+          var cn = c.el.textContent.slice(0,3);
+          var colKey = Object.keys(COL_CLASS).find(function(k){ return k.slice(0,3) === cn; });
+          if(colKey) c.el.classList.add(COL_CLASS[colKey]);
+          touched++;
+          touchedEl.textContent = String(touched);
+          pctEl.textContent = Math.round((touched / TOTAL_BYTES) * 100) + "%";
+        }
+      }, i * 14);
+    });
+
+    var finalDelay = cells.length * 14 + 200;
+    setTimeout(function(){
+      if(layout === "row"){
+        log('<b style="color:var(--bad-c);">Result: ' + TOTAL_BYTES + ' / ' + TOTAL_BYTES + ' bytes touched (100%).</b> Every column of every row was read, even though only 2 of 8 columns were wanted — columns are physically interleaved per row, so there is no way to skip the other 6.');
+      } else {
+        var neededBytes = Object.keys(NEEDED).length * ROW_COUNT;
+        log('<b style="color:var(--col-c);">Result: ' + neededBytes + ' / ' + TOTAL_BYTES + ' bytes touched (' + Math.round((neededBytes/TOTAL_BYTES)*100) + '%).</b> Only the amount and status columns\' contiguous regions were read — the other 6 columns\' bytes were never touched at all.');
+      }
+    }, finalDelay);
+  }
+
+  runBtns.forEach(function(btn){
+    btn.addEventListener("click", function(){
+      runBtns.forEach(function(b){ b.classList.remove("active"); });
+      btn.classList.add("active");
+      runQuery(btn.dataset.runlayout);
+    });
+  });
+
+  resetBtn.addEventListener("click", reset);
+  reset();
+})();
+</script>
+</body>
+</html>
