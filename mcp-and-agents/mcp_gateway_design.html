@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — MCP Gateway Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --gw-c:#f2c14e; --route-c:#4fc3f7; --auth-c:#c792ea; --scale-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--route-c); color:var(--route-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--auth-c); color:var(--auth-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--scale-c); color:var(--scale-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:290px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* routing diagram */
+  .route-stage{display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .route-client{font-family:var(--mono); font-size:0.78rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--route-c); color:var(--route-c); background:rgba(79,195,247,0.08); text-align:center;}
+  .route-gw{font-family:var(--mono); font-size:0.8rem; padding:0.9rem 1.2rem; border-radius:10px; border:1.5px solid var(--gw-c); color:var(--gw-c); background:rgba(242,193,78,0.1); text-align:center; font-weight:600;}
+  .route-servers{display:flex; flex-direction:column; gap:0.5rem;}
+  .route-server{font-family:var(--mono); font-size:0.7rem; padding:0.5rem 0.8rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); transition:all .3s ease;}
+  .route-server.lit{border-color:var(--scale-c); color:var(--scale-c); background:rgba(127,216,160,0.12); box-shadow:0 0 10px rgba(127,216,160,0.4);}
+
+  /* gateway scaling diagram */
+  .scale-stage{display:flex; align-items:center; justify-content:center; gap:1.2rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .scale-lb{font-family:var(--mono); font-size:0.78rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--accent); color:var(--accent); background:rgba(255,138,101,0.08); text-align:center;}
+  .scale-gws{display:flex; gap:0.6rem; flex-wrap:wrap; justify-content:center;}
+  .scale-gw-inst{font-family:var(--mono); font-size:0.7rem; padding:0.5rem 0.8rem; border-radius:8px; border:1.5px solid var(--gw-c); color:var(--gw-c); background:rgba(242,193,78,0.08); text-align:center; opacity:0.35; transition:opacity .4s ease;}
+  .scale-gw-inst.active{opacity:1;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bad-c);} .dc-col.a h4{color:var(--bad-c);}
+  .dc-col.b{border-color:var(--auth-c);} .dc-col.b h4{color:var(--auth-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.route{border-left-color:var(--route-c); background:rgba(79,195,247,0.06);} .callout.route b{color:var(--route-c);}
+  .callout.auth{border-left-color:var(--auth-c); background:rgba(199,146,234,0.06);} .callout.auth b{color:var(--auth-c);}
+  .callout.scale{border-left-color:var(--scale-c); background:rgba(127,216,160,0.06);} .callout.scale b{color:var(--scale-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · MCP GATEWAY DESIGN</div>
+  <h1>One agent, dozens of tool servers. Something has to decide which one answers.</h1>
+  <p class="lede">A real agentic deployment doesn't talk to one MCP server — it talks to a database server, a search server, a calendar server, a dozen others, each possibly built and owned by a different team. An MCP gateway is the single front door that routes each request to the right backend server, centralizes auth and per-client permissions, and — like any front door under enough traffic — needs to scale horizontally itself. This lab builds all three, at the same bar as <code class="inline">backend/rate_limiter_design.html</code> and <code class="inline">systems/caching_layer_design.html</code>.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Routing — capability → backend server</div>
+    <div class="pipe-label b">Auth &amp; permissions, centralized</div>
+    <div class="pipe-label c">Scaling the gateway itself</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="routing">1 · Routing Requests to the Right Agent</a>
+  <a data-target="authz">2 · Auth &amp; Permissions at the Gateway Layer</a>
+  <a data-target="scaling">3 · Scaling the Gateway Horizontally</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ROUTING ============ -->
+<section id="routing">
+  <div class="kicker">01 — One address for the client, many addresses behind it</div>
+  <h2>Routing requests to multiple agents/MCP servers</h2>
+
+  <p><strong>Start here, before any diagram.</strong> Imagine calling a large company's single support phone number instead of needing to somehow know the direct line for billing, technical support, and shipping separately. You dial one number; a receptionist (or an automated menu) listens to what you actually need and transfers you to whichever department can handle it. You never had to learn three different phone numbers, and the company is free to reorganize which team handles what without your phone number ever changing.</p>
+
+  <p>An <strong>MCP gateway</strong> is exactly this receptionist, for agents. Instead of a client (an LLM-driven agent) needing to know the address of every individual MCP server it might need — a database-query server, a search server, a calendar server — it connects to ONE gateway address. The gateway inspects each incoming request (specifically, which <strong>tool</strong> is being called, per the <code class="inline">mcp_fundamentals_jsonrpc</code> lab's <code class="inline">tools/call</code> shape) and forwards it to whichever backend MCP server actually implements that tool, based on a routing table the gateway maintains.</p>
+
+  <div class="code"><span class="c-cmt"># a simplified gateway routing table -- maps tool name to backend server</span>
+ROUTING_TABLE = {
+    <span class="c-str">"query_database"</span>:   <span class="c-str">"http://db-mcp-server:8001"</span>,
+    <span class="c-str">"search_documents"</span>: <span class="c-str">"http://search-mcp-server:8002"</span>,
+    <span class="c-str">"create_event"</span>:     <span class="c-str">"http://calendar-mcp-server:8003"</span>,
+}
+
+<span class="c-kw">async def</span> <span class="c-fn">handle_gateway_request</span>(request: <span class="c-fn">dict</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-kw">if</span> request[<span class="c-str">"method"</span>] == <span class="c-str">"tools/call"</span>:
+        tool_name = request[<span class="c-str">"params"</span>][<span class="c-str">"name"</span>]
+        backend_url = ROUTING_TABLE.get(tool_name)
+        <span class="c-kw">if</span> backend_url <span class="c-kw">is</span> None:
+            <span class="c-kw">return</span> {<span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>, <span class="c-str">"id"</span>: request[<span class="c-str">"id"</span>],
+                    <span class="c-str">"error"</span>: {<span class="c-str">"code"</span>: -<span class="c-num">32601</span>, <span class="c-str">"message"</span>: <span class="c-str">f"No server handles tool '{tool_name}'"</span>}}
+        <span class="c-kw">return</span> <span class="c-kw">await</span> forward_to_backend(backend_url, request)
+    <span class="c-cmt"># tools/list is special: the gateway must MERGE every backend's tool
+    # list into one combined list, so the client sees ALL available tools
+    # as if they came from a single server</span>
+    <span class="c-kw">elif</span> request[<span class="c-str">"method"</span>] == <span class="c-str">"tools/list"</span>:
+        <span class="c-kw">return</span> <span class="c-kw">await</span> merge_all_backend_tool_lists(request)</div>
+
+  <p>Notice <code class="inline">tools/list</code> needs special handling: a client asking "what tools exist?" should see ONE combined list spanning every backend the gateway fronts, not just the tools of whichever single server happens to answer first. The gateway is genuinely aggregating multiple servers' catalogs into one presented surface, not merely forwarding one request to one destination.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ROUTE A REQUEST BY WHICH TOOL IT NEEDS</span>
+      <div><button class="btn secondary" id="route-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-tool="query_database">Call: query_database</button>
+      <button class="chip" data-tool="search_documents">Call: search_documents</button>
+      <button class="chip" data-tool="create_event">Call: create_event</button>
+      <button class="chip" data-tool="unknown_tool">Call: unknown_tool (not registered)</button>
+    </div>
+    <div class="route-stage">
+      <div class="route-client">CLIENT</div>
+      <div class="route-gw">GATEWAY<br><span style="font-size:0.65rem; color:var(--ink-dim);">1 address, many backends</span></div>
+      <div class="route-servers">
+        <div class="route-server" id="rs-db">db-mcp-server:8001</div>
+        <div class="route-server" id="rs-search">search-mcp-server:8002</div>
+        <div class="route-server" id="rs-cal">calendar-mcp-server:8003</div>
+      </div>
+    </div>
+    <button class="btn" id="route-send">Send request ▸</button>
+    <div class="log" id="route-log"><span class="line">Pick which tool the client is calling, then send — watch the gateway route it (or reject it, for a tool nobody registered).</span></div>
+  </div>
+
+  <div class="callout route"><b>Interview-ready definition:</b> an MCP gateway routes each incoming request to the correct backend MCP server based on which tool (or resource/prompt) the request targets, using a routing table mapping capability names to backend addresses — giving clients a single address to connect to regardless of how many actual servers exist behind it. Because a gateway fronts MULTIPLE servers, discovery operations like <code class="inline">tools/list</code> require the gateway to aggregate every backend's individual catalog into one merged response, rather than simply forwarding to a single destination the way a routing decision for <code class="inline">tools/call</code> does.</div>
+</section>
+
+<!-- ============ SECTION 2: AUTH & PERMISSIONS ============ -->
+<section id="authz">
+  <div class="kicker">02 — One place to get security right, instead of N places to get it wrong</div>
+  <h2>Auth and permission scoping at the gateway layer</h2>
+
+  <p><strong>Start here, before the argument.</strong> Imagine a large office building where EVERY individual room has its own separate lock, its own separate guest sign-in sheet, and its own separate rule about who's allowed in — set up independently by whoever happens to run that room, with zero coordination between rooms. Compare that to a building with ONE front desk: everyone checks in once, gets a badge that's scoped to exactly the rooms they're allowed into, and every room simply trusts a badge that reads "access: floor 3 only." The second design doesn't just look tidier — it's the only one where a security audit can actually answer "who can get into what" by looking in ONE place.</p>
+
+  <p>Centralizing auth at the gateway means: the CLIENT authenticates ONCE, to the gateway — not separately to every individual backend MCP server it might end up calling. The gateway then decides, per client, which TOOLS that client is permitted to invoke (a client's identity might be scoped to "can call search_documents and create_event, but NOT query_database" — a real per-client permission boundary), and either forwards or rejects each request based on that scope, before it ever reaches a backend server at all.</p>
+
+  <div class="code"><span class="c-cmt"># centralized auth + permission check, BEFORE routing (section 1)</span>
+CLIENT_PERMISSIONS = {
+    <span class="c-str">"client-mobile-app"</span>:  {<span class="c-str">"search_documents"</span>, <span class="c-str">"create_event"</span>},
+    <span class="c-str">"client-admin-tool"</span>:  {<span class="c-str">"search_documents"</span>, <span class="c-str">"create_event"</span>, <span class="c-str">"query_database"</span>},
+}
+
+<span class="c-kw">async def</span> <span class="c-fn">authorize_and_route</span>(request: <span class="c-fn">dict</span>, api_key: <span class="c-fn">str</span>) -> <span class="c-fn">dict</span>:
+    client_id = verify_api_key(api_key)   <span class="c-cmt"># ONE auth check, at the gateway, done once</span>
+    <span class="c-kw">if</span> client_id <span class="c-kw">is</span> None:
+        <span class="c-kw">return</span> {<span class="c-str">"error"</span>: {<span class="c-str">"code"</span>: -<span class="c-num">32001</span>, <span class="c-str">"message"</span>: <span class="c-str">"Unauthenticated"</span>}}
+
+    tool_name = request[<span class="c-str">"params"</span>][<span class="c-str">"name"</span>]
+    allowed = CLIENT_PERMISSIONS.get(client_id, <span class="c-fn">set</span>())
+    <span class="c-kw">if</span> tool_name <span class="c-kw">not in</span> allowed:
+        <span class="c-kw">return</span> {<span class="c-str">"error"</span>: {<span class="c-str">"code"</span>: -<span class="c-num">32002</span>, <span class="c-str">"message"</span>: <span class="c-str">f"'{client_id}' not permitted to call '{tool_name}'"</span>}}
+
+    <span class="c-kw">return</span> <span class="c-kw">await</span> handle_gateway_request(request)  <span class="c-cmt"># section 1's routing, only reached if authorized</span></div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Per-server auth (no gateway)</h4>
+      <p>Every individual MCP server implements its own auth check, its own permission model, possibly its own bugs — a client that shouldn't have access to <code class="inline">query_database</code> is only blocked if THAT specific server's team remembered to enforce it correctly. A security audit means reviewing N separate implementations, and a permission change means updating N separate places.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Centralized gateway auth</h4>
+      <p>One auth check, one permission model, enforced BEFORE a request ever reaches any backend server — a backend server can even trust "if this request reached me, the gateway already verified it's allowed," simplifying every individual server's own code. A security audit or a permission change happens in exactly one place.</p>
+    </div>
+  </div>
+
+  <div class="callout auth"><b>Interview-ready definition:</b> centralizing auth and per-client tool permissions at the gateway layer means clients authenticate once against the gateway, and the gateway enforces a per-client permission scope (which specific tools/resources/prompts a given client is allowed to invoke) before routing any request to a backend server — rather than requiring every individual backend server to independently implement its own auth and permission logic. This is architecturally cleaner because it produces exactly ONE place where security policy is defined, audited, and updated, and it lets backend servers be written more simply, trusting that any request reaching them has already been authenticated and authorized upstream.</div>
+</section>
+
+<!-- ============ SECTION 3: SCALING THE GATEWAY ============ -->
+<section id="scaling">
+  <div class="kicker">03 — The front door becomes the bottleneck once enough traffic arrives</div>
+  <h2>Scaling the gateway horizontally</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Section 1 and 2 gave the gateway a genuinely important job — EVERY request from EVERY client passes through it, for both routing and auth. That's exactly what makes it a single point of load, and eventually a single point of failure, if it's only ever one process: once traffic grows past what one gateway instance can handle, the fix is the same one covered all the way back in Month 1's <code class="inline">systems/vertical_vs_horizontal_scaling.html</code> and <code class="inline">systems/load_balancers.html</code> — run MANY gateway instances behind a load balancer, rather than trying to make one instance infinitely powerful.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SCALING THE GATEWAY — ONE INSTANCE TO THREE, BEHIND A LOAD BALANCER</span>
+      <div><button class="btn secondary" id="scale-reset">Reset</button></div>
+    </div>
+    <div class="scale-stage">
+      <div>CLIENTS ↴</div>
+    </div>
+    <div class="scale-stage">
+      <div class="scale-lb" id="scale-lb-el">LOAD BALANCER<br><span style="font-size:0.65rem;">round robin</span></div>
+    </div>
+    <div class="scale-stage">
+      <div class="scale-gws" id="scale-gws">
+        <div class="scale-gw-inst" id="gw-1">Gateway instance 1</div>
+        <div class="scale-gw-inst" id="gw-2">Gateway instance 2</div>
+        <div class="scale-gw-inst" id="gw-3">Gateway instance 3</div>
+      </div>
+    </div>
+    <button class="btn" id="scale-run">Route 6 requests across gateway instances ▸</button>
+    <div class="log" id="scale-log"><span class="line">Click to watch 6 requests get distributed across 3 gateway instances instead of overwhelming a single one.</span></div>
+  </div>
+
+  <p>This immediately raises the exact question the Month 1 stateless/stateful lab and Month 3's replication lab both dealt with: <strong>where does the routing table and the per-client permission data (sections 1 and 2) actually LIVE</strong>, if there are now multiple gateway instances? If each instance kept its own private in-memory copy, a permission change (revoking a compromised client's access, adding a new backend server) would need to somehow be pushed to EVERY instance — and any instance that missed the update would keep enforcing the old, stale policy. The fix mirrors the rate limiter lab's distributed-counter lesson exactly: routing tables and permissions belong in a <strong>shared external store</strong> (a config service, a database, a fast cache like Redis) that every gateway instance reads from, NOT duplicated separately in each instance's own memory — this is precisely what makes the gateway instances <strong>stateless</strong> (per <code class="inline">systems/stateless_vs_stateful.html</code>) and therefore safe to scale horizontally by simply adding more of them.</p>
+
+  <table class="cmp">
+    <tr><th>Concern</th><th>Single gateway instance</th><th>Multiple instances behind a load balancer</th></tr>
+    <tr><td>Throughput ceiling</td><td>Bounded by one machine's capacity</td><td>Scales by adding more instances (Month 1's horizontal scaling)</td></tr>
+    <tr><td>Single point of failure</td><td>Yes — that one process going down takes the whole gateway offline</td><td>No — a load balancer's health checks route around a dead instance</td></tr>
+    <tr><td>Routing table / permissions storage</td><td>Can live safely in-process memory</td><td>Must live in a SHARED external store every instance reads — otherwise instances can disagree on policy</td></tr>
+    <tr><td>What this connects back to</td><td>—</td><td><code>vertical_vs_horizontal_scaling</code>, <code>load_balancers</code>, <code>stateless_vs_stateful</code> (Month 1); the distributed-counter lesson from <code>rate_limiter_design</code> (Month 2)</td></tr>
+  </table>
+
+  <div class="callout scale"><b>Interview-ready definition:</b> scaling an MCP gateway horizontally means running multiple identical gateway instances behind a load balancer rather than growing one instance's capacity indefinitely, exactly mirroring the general horizontal-scaling pattern — this eliminates the gateway as a single point of failure and lets throughput scale by adding instances. The prerequisite this imposes is that the gateway instances must be STATELESS with respect to routing tables and per-client permissions: that data has to live in a shared external store every instance reads from (not duplicated in each instance's private memory), otherwise different instances can enforce different, inconsistently-updated policies for the same client — the same shared-state problem the rate limiter design lab's distributed counter solved, now applied to routing/auth data instead of a request count.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing a routing gap</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client calls a tool named <code class="inline">send_email</code>, but no backend server currently registers that tool with the gateway. Using section 1's code, what does <code class="inline">authorize_and_route</code> actually return, and why is this a BETTER failure mode than the gateway silently dropping the request?</p>
+    <details><summary>Show solution</summary><div class="solution">Using section 1's handle_gateway_request logic, ROUTING_TABLE.get("send_email")
+returns None (no entry registered for that tool name), so the gateway
+returns a proper JSON-RPC error response: {"error": {"code": -32601,
+"message": "No server handles tool 'send_email'"}} -- correlated back to
+the client's original request id, per the JSON-RPC fundamentals lab's
+error-response shape.
+
+This is a better failure mode than silently dropping the request because
+a dropped request gives the CLIENT no signal at all about what happened
+-- it would simply hang waiting for a response that's never coming (or
+eventually time out with no diagnostic information), leaving a developer
+to guess whether the problem was a network issue, a crashed server, or
+simply a typo'd/unregistered tool name. A proper JSON-RPC error response
+tells the client (and whoever's debugging it) EXACTLY what went wrong --
+"no server handles this specific tool" -- immediately and unambiguously,
+which is precisely the kind of graceful, structured failure the later
+mcp_client_basics lab covers handling on the client side.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reasoning about auth check ordering</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's <code class="inline">authorize_and_route</code> checks authentication AND permission BEFORE calling section 1's <code class="inline">handle_gateway_request</code> (routing). What would go wrong, specifically, if this order were reversed — route first, check permissions after the backend already responded?</p>
+    <details><summary>Show solution</summary><div class="solution">Reversing the order would mean the gateway forwards a request to a real
+backend MCP server -- causing that server to actually EXECUTE the tool
+call, with whatever real side effects that entails (a database query
+actually runs, a calendar event actually gets created, an email actually
+gets sent) -- BEFORE ever checking whether the calling client was even
+permitted to invoke that tool in the first place. Discovering "actually,
+this client wasn't allowed to do that" only after the action already
+happened is far too late to matter: you can reject the RESPONSE on its
+way back to the client, but you can't un-execute a side effect that
+already occurred on the backend.
+
+This is exactly why section 2's code structure checks authentication and
+permission strictly BEFORE section 1's routing/forwarding step, not
+after -- the whole architectural value of centralizing auth at the
+gateway (a request that reaches a backend server can be trusted to have
+already been authorized) depends entirely on that check happening first,
+on the gateway's side, before any backend ever sees the request at all.
+Checking permissions after the fact doesn't centralize anything
+meaningful -- it just adds a pointless extra step after the real damage
+(or at minimum, the real unauthorized action) is already done.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Comparing per-server auth duplication to a real bug scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In a per-server-auth world (no gateway), the <code class="inline">query_database</code> server's team ships a bug that accidentally allows an unauthenticated request through. Using section 2's comparison, what's the actual blast radius of this bug under each architecture (per-server auth vs. centralized gateway auth), and why do they differ?</p>
+    <details><summary>Show solution</summary><div class="solution">Under PER-SERVER AUTH (no gateway): the blast radius is scoped to
+exactly the query_database server's own auth bug -- other servers
+(search, calendar) have their OWN independent auth implementations that
+are unaffected by this specific bug, so this is a real but contained
+vulnerability limited to one backend. However, the actual risk here is
+systemic, not just this one instance: N independently-implemented auth
+systems means N independent chances for exactly this kind of bug to
+occur, and section 2 already noted a security audit has to separately
+review every one of them to find and fix each one -- this bug in
+query_database's team's code is a symptom of that broader N-implementations
+risk, not a one-off.
+
+Under CENTRALIZED GATEWAY AUTH: there is no per-server auth
+implementation at all for query_database's team to introduce a bug INTO
+-- auth is enforced once, upstream, at the gateway, before any request
+reaches query_database's server. This doesn't mean the gateway's OWN
+single auth implementation can never have a bug (it still could) -- but
+it means there is exactly ONE place such a bug could exist, rather than
+N independently-written, independently-buggy places, which directly
+matches section 2's "one place to audit/fix" argument. The comparison
+isn't "centralized auth is bug-proof" -- it's that centralizing reduces
+the SURFACE AREA where such a bug could be introduced from N independent
+implementations down to one shared, more heavily-scrutinized one.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing an inconsistent-policy bug under horizontal scaling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team scales their gateway to 3 instances behind a load balancer, but each instance loads its routing table and permissions from a local config file at startup, into its own private memory. An admin revokes a compromised client's access. Using section 3's reasoning, what can go wrong, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">What goes wrong: revoking the compromised client's access updates
+whatever the admin directly changed (say, one instance's local config
+file, or a central file that gets pushed out asynchronously) but does
+NOT automatically and atomically update all 3 instances' independent
+in-memory copies of the permission data -- exactly the failure mode
+section 3 warns about. Depending on round-robin routing (or whichever
+load-balancing algorithm is in use), the compromised client's next
+request might land on an instance that HASN'T yet picked up the
+revocation, and that instance -- still holding the old, stale permission
+data in its own private memory -- would incorrectly continue allowing
+the very access that was supposed to have just been revoked. This is a
+genuinely dangerous inconsistency for a SECURITY-relevant setting
+specifically, since the whole point of the revocation was to immediately
+cut off access, not "cut off access on however many of 3 instances
+happened to reload their config file since the change."
+
+The fix, per section 3: routing tables and permissions must live in a
+SHARED EXTERNAL STORE (a database, a config service, a fast cache like
+Redis) that every gateway instance reads from directly at request time
+(or via a short-TTL cache with a deliberately bounded staleness window),
+rather than each instance loading its own private, independently-stale
+copy at startup. This makes the gateway instances properly stateless
+with respect to this data -- a permission change becomes visible to
+every instance immediately (or within a small, known bound), regardless
+of which instance happens to be loaded from a file versus already
+running, which is exactly the property in-process-memory storage cannot
+provide across multiple instances.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Weighing gateway-level caching against auth freshness</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">To reduce load on the shared permissions store from Problem 4's fix, someone proposes each gateway instance cache permission lookups for 5 minutes instead of querying the shared store on every single request. Using this lab's reasoning (and the freshness-vs-speed framing from <code class="inline">backend/system_design_review_month3_cold.html</code>), is this a reasonable trade, and what would you want to know before deciding?</p>
+    <details><summary>Show solution</summary><div class="solution">This can be a reasonable trade, but it reintroduces a BOUNDED version of
+exactly the staleness risk Problem 4 flagged, and whether it's acceptable
+depends entirely on how tolerant this specific system is of that bounded
+delay -- precisely the "freshness vs speed" trade-off the Month 3 cold-
+review lab covered for caching layers, search autocomplete, and RAG,
+now showing up again in a security-relevant context here.
+
+What matters before deciding: (1) how sensitive is a permission REVOCATION
+specifically -- a 5-minute window where a just-revoked, potentially
+compromised client can still successfully call tools is a real, concrete
+security exposure, not a hypothetical one, and the "5 minutes" number
+needs to be chosen based on how much damage is tolerable in that window
+for the actual tools being gated, not picked arbitrarily for convenience;
+(2) whether the cache can be invalidated PROACTIVELY on a revocation
+event (e.g. the admin action that revokes access also actively pushes an
+invalidation to every gateway instance's cache, rather than passively
+waiting out the TTL) -- this hybrid approach gets most of the query-load
+reduction benefit while removing the worst of the staleness risk for the
+specific case (revocation) that actually matters most; (3) whether GRANTS
+(adding permissions) and REVOKES (removing permissions) should even use
+the same caching policy -- a stale GRANT that hasn't propagated yet just
+means a legitimate request gets incorrectly rejected for a few minutes
+(annoying, but safe), while a stale REVOKE means an request that SHOULD
+be rejected gets incorrectly allowed (a real security gap) -- these two
+directions of staleness have very different risk profiles even though
+naive TTL caching treats them identically.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch the gateway's routing table and explain why <code class="inline">tools/list</code> needs special merge handling that <code class="inline">tools/call</code> doesn't, (2) explain precisely why centralizing auth reduces security surface area rather than just "being tidier," and (3) explain why gateway instances must be stateless with respect to routing/permission data before they can be safely scaled horizontally, tying it back to Month 1's stateless/stateful lab and the rate limiter's distributed-counter lesson? This gateway sits directly in front of the SSE-transport servers from the previous lab — every request a gateway routes ultimately lands on one of exactly those kinds of persistent, multi-client-capable servers.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — mcp gateway design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: ROUTING DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-tool]");
+  var sendBtn = document.getElementById("route-send");
+  var resetBtn = document.getElementById("route-reset");
+  var logEl = document.getElementById("route-log");
+  var selected = "query_database";
+
+  var ROUTES = {
+    query_database: {server: "rs-db", label: "db-mcp-server:8001"},
+    search_documents: {server: "rs-search", label: "search-mcp-server:8002"},
+    create_event: {server: "rs-cal", label: "calendar-mcp-server:8003"},
+    unknown_tool: null
+  };
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.tool;
+    });
+  });
+
+  sendBtn.addEventListener("click", function(){
+    document.querySelectorAll(".route-server").forEach(function(el){ el.classList.remove("lit"); });
+    var route = ROUTES[selected];
+    if(route){
+      document.getElementById(route.server).classList.add("lit");
+      log('<b>tools/call name="' + selected + '"</b> → gateway looks up ROUTING_TABLE["' + selected + '"] → forwards to <b style="color:var(--scale-c);">' + route.label + '</b>.');
+    } else {
+      log('<b>tools/call name="' + selected + '"</b> → gateway looks up ROUTING_TABLE["' + selected + '"] → <b style="color:var(--bad-c);">no entry found</b>. Returns JSON-RPC error -32601 to the client, correlated by id — no backend is ever contacted.');
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    document.querySelectorAll(".route-server").forEach(function(el){ el.classList.remove("lit"); });
+    logEl.innerHTML = '<span class="line">Pick which tool the client is calling, then send — watch the gateway route it (or reject it, for a tool nobody registered).</span>';
+  });
+})();
+
+/* SECTION 3: GATEWAY SCALING DEMO */
+(function(){
+  var runBtn = document.getElementById("scale-run");
+  var resetBtn = document.getElementById("scale-reset");
+  var logEl = document.getElementById("scale-log");
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    ["gw-1","gw-2","gw-3"].forEach(function(id){ document.getElementById(id).classList.remove("active"); });
+
+    log("6 requests arrive at the load balancer. It round-robins across 3 gateway instances — none of them is a single point of failure or a single throughput ceiling anymore.");
+    await wait(400);
+
+    for(var i = 0; i < 6; i++){
+      var instIdx = (i % 3) + 1;
+      var el = document.getElementById("gw-" + instIdx);
+      el.classList.add("active");
+      log("Request " + (i+1) + " → Gateway instance " + instIdx + " → reads routing table + permissions from the SHARED store (not its own private memory) → routes to the correct backend (section 1).");
+      await wait(400);
+      el.classList.remove("active");
+    }
+
+    log('<b style="color:var(--scale-c);">Result:</b> throughput scaled by adding instances, not by growing one instance — and because routing/permission data lives in a shared store, every instance enforces the SAME up-to-date policy regardless of which one a request happens to land on.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    ["gw-1","gw-2","gw-3"].forEach(function(id){ document.getElementById(id).classList.remove("active"); });
+    logEl.innerHTML = '<span class="line">Click to watch 6 requests get distributed across 3 gateway instances instead of overwhelming a single one.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

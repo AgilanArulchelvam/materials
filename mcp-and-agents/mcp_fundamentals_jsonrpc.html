@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — MCP Fundamentals: JSON-RPC</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --req-c:#4fc3f7; --res-c:#7fd8a0; --notif-c:#f2c14e; --tool-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--req-c); color:var(--req-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--notif-c); color:var(--notif-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--tool-c); color:var(--tool-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* exchange diagram */
+  .exchange-stage{display:flex; align-items:center; justify-content:space-between; gap:1rem; margin:1.4rem 0; position:relative; min-height:120px;}
+  .exchange-side{font-family:var(--mono); font-size:0.8rem; padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:130px;}
+  .exchange-side.client{border-color:var(--req-c); color:var(--req-c);}
+  .exchange-side.server{border-color:var(--tool-c); color:var(--tool-c);}
+  .exchange-track{flex:1; position:relative; height:60px;}
+  .exchange-packet{position:absolute; top:50%; transform:translate(-50%,-50%); font-family:var(--mono); font-size:0.68rem; padding:0.35rem 0.6rem; border-radius:6px; border:1.5px solid; white-space:nowrap; opacity:0; transition:left 1s ease, opacity .3s ease;}
+  .exchange-packet.req{border-color:var(--req-c); color:var(--req-c); background:rgba(79,195,247,0.1);}
+  .exchange-packet.res{border-color:var(--res-c); color:var(--res-c); background:rgba(127,216,160,0.1);}
+  .exchange-packet.notif{border-color:var(--notif-c); color:var(--notif-c); background:rgba(242,193,78,0.1);}
+  .exchange-packet.show{opacity:1;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.tool{border-color:var(--req-c);} .dc-col.tool h4{color:var(--req-c);}
+  .dc-col.res{border-color:var(--res-c);} .dc-col.res h4{color:var(--res-c);}
+  .dc-col.prompt{border-color:var(--tool-c);} .dc-col.prompt h4{color:var(--tool-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.req{border-left-color:var(--req-c); background:rgba(79,195,247,0.06);} .callout.req b{color:var(--req-c);}
+  .callout.notif{border-left-color:var(--notif-c); background:rgba(242,193,78,0.08);} .callout.notif b{color:var(--notif-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · MCP FUNDAMENTALS — JSON-RPC</div>
+  <h1>Before any tool gets called, two processes need <em>one shared envelope format</em> to talk in.</h1>
+  <p class="lede">The Model Context Protocol (MCP) is a specification for how an AI application (a client) talks to an external server that exposes tools, data, and prompt templates. Underneath all of it is a much older, much simpler wire format: JSON-RPC 2.0. This lab covers the exact shape of a JSON-RPC request, response, and notification, then the three MCP primitives — tools, resources, prompts — that get exchanged using that shape.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Request → Response, correlated by id</div>
+    <div class="pipe-label b">Notification — no id, no reply expected</div>
+    <div class="pipe-label c">Tools · Resources · Prompts</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="jsonrpc">1 · JSON-RPC 2.0: Request, Response, Notification</a>
+  <a data-target="primitives">2 · Tools, Resources &amp; Prompts</a>
+  <a data-target="exchange">3 · Watch a Real Exchange, Correlated by id</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: JSON-RPC SHAPE ============ -->
+<section id="jsonrpc">
+  <div class="kicker">01 — One envelope format, three message shapes</div>
+  <h2>JSON-RPC 2.0: request, response, and notification</h2>
+
+  <p><strong>Start here, before any JSON.</strong> Imagine mailing letters back and forth with a pen pal, except every letter you send that expects a reply has a tracking number written on it, and your pen pal writes that exact same tracking number on their reply so you know which of your (possibly several outstanding) letters they're answering. Some letters, though, are just quick postcards — "FYI, I moved" — that don't need a tracking number at all, because you're not expecting or waiting for any reply to them. JSON-RPC 2.0 is exactly this pen-pal protocol, just for two processes instead of two people, and the "tracking number" is called <code class="inline">id</code>.</p>
+
+  <p><strong>JSON-RPC 2.0</strong> is a lightweight remote procedure call protocol encoded as JSON. Every message includes <code class="inline">"jsonrpc": "2.0"</code> to declare the protocol version. There are exactly three message shapes MCP uses constantly:</p>
+
+  <h3>A request — expects a matching response</h3>
+  <div class="code"><span class="c-key">{</span>
+  <span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>,
+  <span class="c-str">"id"</span>: <span class="c-num">7</span>,
+  <span class="c-str">"method"</span>: <span class="c-str">"tools/call"</span>,
+  <span class="c-str">"params"</span>: <span class="c-key">{</span>
+    <span class="c-str">"name"</span>: <span class="c-str">"get_weather"</span>,
+    <span class="c-str">"arguments"</span>: <span class="c-key">{</span> <span class="c-str">"city"</span>: <span class="c-str">"Lisbon"</span> <span class="c-key">}</span>
+  <span class="c-key">}</span>
+<span class="c-key">}</span></div>
+
+  <p>Every request has an <code class="inline">id</code> (chosen by the sender — often a simple incrementing counter), a <code class="inline">method</code> naming the operation being invoked, and optional <code class="inline">params</code> carrying arguments for that method. The <code class="inline">id</code> is the whole mechanism that makes a later reply identifiable as THIS request's reply, and not some other outstanding request's reply.</p>
+
+  <h3>A response — success, correlated by the same id</h3>
+  <div class="code"><span class="c-key">{</span>
+  <span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>,
+  <span class="c-str">"id"</span>: <span class="c-num">7</span>,
+  <span class="c-str">"result"</span>: <span class="c-key">{</span>
+    <span class="c-str">"content"</span>: <span class="c-key">[</span>
+      <span class="c-key">{</span> <span class="c-str">"type"</span>: <span class="c-str">"text"</span>, <span class="c-str">"text"</span>: <span class="c-str">"18°C, partly cloudy"</span> <span class="c-key">}</span>
+    <span class="c-key">]</span>
+  <span class="c-key">}</span>
+<span class="c-key">}</span></div>
+
+  <p>A response repeats the SAME <code class="inline">id</code> the request carried — 7, in this example — so the caller can match it back to the exact request it was waiting on. It carries EITHER a <code class="inline">result</code> field (success) OR an <code class="inline">error</code> field (failure) — never both, and never neither.</p>
+
+  <h3>A response — error, same shape, different field</h3>
+  <div class="code"><span class="c-key">{</span>
+  <span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>,
+  <span class="c-str">"id"</span>: <span class="c-num">7</span>,
+  <span class="c-str">"error"</span>: <span class="c-key">{</span>
+    <span class="c-str">"code"</span>: <span class="c-num">-32602</span>,
+    <span class="c-str">"message"</span>: <span class="c-str">"Invalid params: city is required"</span>
+  <span class="c-key">}</span>
+<span class="c-key">}</span></div>
+
+  <h3>A notification — no id, no reply expected</h3>
+  <div class="code"><span class="c-key">{</span>
+  <span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>,
+  <span class="c-str">"method"</span>: <span class="c-str">"notifications/progress"</span>,
+  <span class="c-str">"params"</span>: <span class="c-key">{</span> <span class="c-str">"progressToken"</span>: <span class="c-str">"upload-1"</span>, <span class="c-str">"progress"</span>: <span class="c-num">40</span> <span class="c-key">}</span>
+<span class="c-key">}</span>
+<span class="c-cmt">// No "id" field at all. The sender fires this and moves on -- it never
+// waits for, and the receiver never sends, any reply to it.</span></div>
+
+  <p>A notification has the exact same shape as a request — <code class="inline">method</code> and optional <code class="inline">params</code> — with ONE structural difference: <strong>it has no <code class="inline">id</code> field.</strong> That missing field isn't an oversight, it's the entire signal: the absence of an <code class="inline">id</code> tells the receiver "don't bother replying, and if you did reply, I wouldn't have anything to match it against anyway, since I never gave you a tracking number." This is why notifications are called <strong>fire-and-forget</strong> — the sender dispatches the message and continues immediately, with no correlation mechanism even available to wait on a response. MCP uses notifications for things like progress updates during a long-running tool call, or "the list of available tools just changed" — information worth pushing, but nothing the sender is blocked waiting to hear back about.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SEND EACH MESSAGE SHAPE — SEE WHAT id DOES</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-shape="request">Request (has id)</button>
+      <button class="chip" data-shape="response">Response (echoes id)</button>
+      <button class="chip" data-shape="notification">Notification (no id)</button>
+    </div>
+    <div class="log" id="shape-log"></div>
+  </div>
+
+  <div class="callout req"><b>Interview-ready definition:</b> JSON-RPC 2.0 defines three message shapes over a shared <code class="inline">{"jsonrpc": "2.0", ...}</code> envelope. A REQUEST carries an <code class="inline">id</code>, a <code class="inline">method</code>, and optional <code class="inline">params</code>, and expects exactly one matching RESPONSE — which repeats the same <code class="inline">id</code> and carries either a <code class="inline">result</code> (success) or an <code class="inline">error</code> (failure), never both. A NOTIFICATION has the identical <code class="inline">method</code>/<code class="inline">params</code> shape as a request but OMITS <code class="inline">id</code> entirely, which is precisely what marks it fire-and-forget: no reply is expected, and none could even be correlated back to it since it carries no tracking number in the first place.</div>
+</section>
+
+<!-- ============ SECTION 2: MCP PRIMITIVES ============ -->
+<section id="primitives">
+  <div class="kicker">02 — Three kinds of things a server can offer a client</div>
+  <h2>Tools, resources, and prompts — the three MCP primitives</h2>
+
+  <p><strong>Start here, before the JSON.</strong> Picture hiring a very capable assistant who arrives with three completely different kinds of things they can offer you: (1) actions they can actually perform on your behalf — booking a table, sending an email — where you tell them what to do and they do it; (2) documents and reference material they already have on hand that you can ask to see — a filing cabinet you can pull from; (3) pre-written templates for common requests you might want to make of THEM later — "use my 'weekly report' template" instead of explaining the same request from scratch every time. MCP formalizes exactly this three-way split as its core primitives: <strong>tools</strong>, <strong>resources</strong>, and <strong>prompts</strong>.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col tool">
+      <h4>Tools</h4>
+      <p>Functions the model can CALL to take an action or compute something — e.g. run a calculation, hit a real API, write a file. The model decides WHEN to call one and WHAT arguments to pass; the server executes it and returns a result.</p>
+    </div>
+    <div class="dc-col res">
+      <h4>Resources</h4>
+      <p>Data the model can READ or reference — e.g. a file's contents, a database row, a config value. Resources are more like a filing cabinet than an action: the client can request one, but nothing gets executed or changed by reading it.</p>
+    </div>
+    <div class="dc-col prompt">
+      <h4>Prompts</h4>
+      <p>Reusable prompt TEMPLATES the server exposes, which the client (or the client's user) can surface and fill in — e.g. a "summarize this document" template with a slot for which document. The server owns the template's wording; the client supplies the specific inputs.</p>
+    </div>
+  </div>
+
+  <p>Each primitive has its own <code class="inline">list</code> and <code class="inline">get</code>/<code class="inline">call</code> methods in the MCP spec, all sent as ordinary JSON-RPC requests. A client typically starts a session by calling <code class="inline">tools/list</code>, <code class="inline">resources/list</code>, and <code class="inline">prompts/list</code> to discover what a given server actually offers, before ever calling any of them.</p>
+
+  <h3>A tool, as JSON</h3>
+  <div class="code"><span class="c-cmt">// what tools/list returns, describing ONE available tool</span>
+<span class="c-key">{</span>
+  <span class="c-str">"name"</span>: <span class="c-str">"get_weather"</span>,
+  <span class="c-str">"description"</span>: <span class="c-str">"Get current weather for a city"</span>,
+  <span class="c-str">"inputSchema"</span>: <span class="c-key">{</span>
+    <span class="c-str">"type"</span>: <span class="c-str">"object"</span>,
+    <span class="c-str">"properties"</span>: <span class="c-key">{</span> <span class="c-str">"city"</span>: <span class="c-key">{</span> <span class="c-str">"type"</span>: <span class="c-str">"string"</span> <span class="c-key">}</span> <span class="c-key">}</span>,
+    <span class="c-str">"required"</span>: <span class="c-key">[</span><span class="c-str">"city"</span><span class="c-key">]</span>
+  <span class="c-key">}</span>
+<span class="c-key">}</span></div>
+
+  <h3>A resource, as JSON</h3>
+  <div class="code"><span class="c-cmt">// what resources/list returns, describing ONE available resource</span>
+<span class="c-key">{</span>
+  <span class="c-str">"uri"</span>: <span class="c-str">"file:///project/README.md"</span>,
+  <span class="c-str">"name"</span>: <span class="c-str">"Project README"</span>,
+  <span class="c-str">"mimeType"</span>: <span class="c-str">"text/markdown"</span>
+<span class="c-key">}</span>
+<span class="c-cmt">// the client later calls resources/read with this uri to fetch the
+// actual content -- listing and reading are two separate steps</span></div>
+
+  <h3>A prompt, as JSON</h3>
+  <div class="code"><span class="c-cmt">// what prompts/list returns, describing ONE available prompt template</span>
+<span class="c-key">{</span>
+  <span class="c-str">"name"</span>: <span class="c-str">"summarize_document"</span>,
+  <span class="c-str">"description"</span>: <span class="c-str">"Summarize a document at a given length"</span>,
+  <span class="c-str">"arguments"</span>: <span class="c-key">[</span>
+    <span class="c-key">{</span> <span class="c-str">"name"</span>: <span class="c-str">"document_uri"</span>, <span class="c-str">"required"</span>: <span class="c-fn">true</span> <span class="c-key">}</span>,
+    <span class="c-key">{</span> <span class="c-str">"name"</span>: <span class="c-str">"length"</span>, <span class="c-str">"required"</span>: <span class="c-fn">false</span> <span class="c-key">}</span>
+  <span class="c-key">]</span>
+<span class="c-key">}</span></div>
+
+  <div class="callout"><b>Interview-ready definition:</b> MCP defines three core primitives a server exposes to a client. TOOLS are callable functions the model invokes to take action or compute a result, described by a JSON Schema <code class="inline">inputSchema</code> the model uses to construct valid arguments. RESOURCES are addressable, read-only data the client can list and fetch by URI — reference material the model can pull into context, not something it executes. PROMPTS are server-defined, reusable prompt templates with named arguments that a client (or its user) can select and fill in, standardizing common requests so they don't need to be reconstructed from scratch each time. All three are discovered via their own <code class="inline">list</code> method and invoked via their own <code class="inline">call</code>/<code class="inline">get</code>/<code class="inline">read</code> method, all carried as ordinary JSON-RPC requests over whatever transport the connection uses.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE EXCHANGE ============ -->
+<section id="exchange">
+  <div class="kicker">03 — Watch the id do its correlating job, live</div>
+  <h2>A real request/response exchange, animated</h2>
+
+  <p><strong>Start here, before running it.</strong> Section 1 showed the request and response shapes side by side, statically. This section runs the actual exchange: a client sends a <code class="inline">tools/call</code> request with <code class="inline">id: 7</code>, and — only after the server does its work — a response comes back carrying that same <code class="inline">id: 7</code>, which is what lets the client know this particular reply belongs to that particular request, not to any other request that might be in flight at the same time. Then, separately, watch a notification make the same trip with no reply at all.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLIENT ↔ SERVER — JSON-RPC OVER THE WIRE</span>
+      <div><button class="btn secondary" id="ex-reset">Reset</button></div>
+    </div>
+    <div class="exchange-stage">
+      <div class="exchange-side client">MCP CLIENT</div>
+      <div class="exchange-track" id="ex-track"></div>
+      <div class="exchange-side server">MCP SERVER</div>
+    </div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+      <button class="btn" id="ex-req">Send request (id: 7) ▸</button>
+      <button class="btn secondary" id="ex-notif">Send notification (no id) ▸</button>
+    </div>
+    <div class="log" id="ex-log"><span class="line">Send a request to watch it travel to the server and a correlated response travel back. Send a notification to see the difference — it only ever travels one way.</span></div>
+  </div>
+
+  <div class="callout notif"><b>Why fire-and-forget matters:</b> if every single message required a full round trip before the sender could continue, a server streaming 50 progress updates during one long tool call would force the client to synchronously acknowledge each one before the server could send the next — adding real latency for no actual benefit, since the client doesn't need to acknowledge a progress percentage, it just needs to receive it. Making notifications a genuinely distinct, id-less message shape (not just "a request the receiver happens to ignore") means neither side has to allocate any correlation bookkeeping for them at all — there is structurally nothing to correlate.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spotting what's wrong with a malformed response</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A server sends back: <code class="inline">{"jsonrpc": "2.0", "id": 7, "result": {"ok": true}, "error": null}</code>. A teammate says this is fine because <code class="inline">error</code> is just <code class="inline">null</code>. Is this actually spec-compliant, and why does it matter?</p>
+    <details><summary>Show solution</summary><div class="solution">This is NOT correctly spec-compliant, even though error is null rather
+than a populated object. Per section 1, a JSON-RPC response must carry
+EITHER result OR error -- the field itself should be present only for
+whichever outcome actually happened, not both fields present with one
+set to null. Including "error": null alongside a populated "result"
+blurs a distinction receivers are entitled to rely on structurally (e.g.
+"if this response has an error key at all, treat it as a failure") --
+a naive receiver that checks `if ("error" in response)` rather than
+`if (response.error)` would incorrectly treat this successful response
+as a failure, purely because the key exists even though its value is
+null. The fix is simply to omit the error field entirely on a successful
+response, exactly as this lab's section 1 examples do -- result-only on
+success, error-only on failure, no coexistence of both keys regardless
+of value.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding request vs notification for a new message type</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're designing a new MCP message: the server wants to tell the client "a new tool just became available, please refresh your tool list." Should this be a request or a notification, and what would break if you picked the other one?</p>
+    <details><summary>Show solution</summary><div class="solution">This should be a NOTIFICATION. The server isn't asking the client a
+question it needs an answer to right now -- it's pushing information
+("something changed on my end") that the client can act on whenever it
+gets around to it, with no result the server is waiting to receive back.
+This matches section 1's notification definition precisely: fire-and-
+forget information, not a call awaiting a specific reply.
+
+If this were instead built as a REQUEST (carrying an id), the server
+would need to define what a "correct" response even looks like (what
+result value would the client send back?), and worse, the server would
+now be implicitly waiting on a reply it doesn't actually need before it
+could consider the message "done" -- adding pointless coordination
+overhead for a message that's fundamentally just an announcement. This
+mirrors exactly the real MCP notification notifications/tools/list_changed,
+which exists as a genuine notification for this exact reason.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Distinguishing a tool from a resource for a specific capability</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A server can (a) return the current contents of a specific log file, and (b) restart a specific service. Using section 2's definitions, which of these should be modeled as a tool and which as a resource, and what would go wrong modeling them the other way around?</p>
+    <details><summary>Show solution</summary><div class="solution">Reading the log file's current contents fits RESOURCE: it's read-only
+data the client can fetch by an identifier (a uri, per section 2's
+resources/read example) -- nothing about the world changes as a result
+of reading it, and the client might reasonably fetch it repeatedly
+without any side effects accumulating.
+
+Restarting a service fits TOOL: it's an action with a real side effect
+in the world (the service actually goes down and comes back up), which
+matches section 2's tool definition of something the model CALLS to take
+an action, with actual arguments describing what to do (e.g. which
+service) and a result describing what happened.
+
+Modeling restart-service AS a resource would be actively misleading: a
+resource read is conventionally assumed to be side-effect-free and safely
+repeatable (a client or an intermediate cache might re-fetch a resource
+without a second thought), but "reading" a restart-service resource would
+actually restart the service every time something merely tried to look
+at it -- a serious, easy-to-trigger-by-accident foot-gun. Modeling read-
+log-contents AS a tool would work mechanically (tools CAN be read-only),
+but it obscures the fact that it has no side effects and forces every
+client to treat it with the same caution a genuinely stateful tool call
+deserves, when resources exist specifically to signal "this one's just
+data."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Tracing id reuse across concurrent requests</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client sends two requests back to back: id=1 (a slow tool call) and id=2 (a fast one). The server finishes id=2 first and replies, then finishes id=1 later and replies. Explain, using only the id field, how the client knows which reply is which -- and what would go wrong if both requests had reused the same id.</p>
+    <details><summary>Show solution</summary><div class="solution">The client knows which reply is which purely by reading the id field on
+each incoming response and matching it against the id it originally sent
+on the outstanding request it corresponds to -- order of arrival is
+irrelevant. Even though id=2's response arrives FIRST (because the fast
+tool call finishes first) while id=1's request was sent FIRST, the
+client correctly resolves id=2's response to the id=2 request and keeps
+id=1 marked as still-pending, because id is the only correlation
+mechanism JSON-RPC provides -- arrival order carries no meaning at all.
+
+If both requests had reused the SAME id (e.g. both sent as id=1), the
+client would have no reliable way to tell which of the two outstanding
+calls a given id=1 response actually belongs to -- whichever response
+arrives first would get matched to id=1's pending request (likely
+incorrectly resolving the wrong call), and the second id=1 response
+arriving later would either be silently dropped (no pending request left
+to match it to) or incorrectly matched again, corrupting the client's
+bookkeeping. This is exactly why every request needs a genuinely UNIQUE
+id among all currently-outstanding requests -- id isn't just a label,
+it's the entire correlation mechanism the request/response model in
+section 1 depends on.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the id-lifecycle rule for a new client implementation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're implementing an MCP client from scratch and need a rule for generating request ids. Using this lab's mechanics, write the exact rule (not code) you'd use, and explain why a simple incrementing counter starting at 1 is sufficient, without needing anything fancier like a UUID.</p>
+    <details><summary>Show solution</summary><div class="solution">Rule: maintain a single counter, starting at 1, incremented by 1 every
+time the client sends a new request; use the current counter value as
+that request's id, and never reuse an id that's still outstanding
+(waiting on a response).
+
+A simple incrementing counter is sufficient because id's only job (per
+section 1 and Problem 4) is to be UNIQUE AMONG CURRENTLY OUTSTANDING
+requests from THIS client, on THIS connection -- it never needs to be
+globally unique across different clients, different connections, or
+different points in time, the way a UUID would guarantee. As long as a
+given client never has two requests with the same id simultaneously
+in flight on the same connection, sequential integers satisfy the
+correlation requirement completely, and they're far cheaper to generate
+and far easier to read in logs/debugging output than a UUID would be. A
+UUID would only become necessary if ids needed to be meaningful/unique
+OUTSIDE the scope of one client's own outstanding-request bookkeeping on
+one connection -- which JSON-RPC's actual correlation mechanism, as
+built, simply doesn't require.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write out a request, a success response, an error response, and a notification from memory, correctly, (2) explain precisely why a missing <code class="inline">id</code> is what makes a notification fire-and-forget rather than just a convention, and (3) distinguish tools from resources from prompts using a concrete new example you make up yourself? Carry the request/response/notification shape forward into the next lab, which builds a real server that speaks exactly this protocol over stdio.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — mcp fundamentals: json-rpc.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: MESSAGE SHAPE CHIPS */
+(function(){
+  var chips = document.querySelectorAll("[data-shape]");
+  var logEl = document.getElementById("shape-log");
+
+  var SHAPES = {
+    request: '<div class="line fadein"><b>Request</b> — has "id": 7. The sender expects exactly one matching response carrying id: 7 back.</div><div class="line fadein" style="white-space:pre; font-size:0.75rem; margin-top:0.4rem;">{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_weather","arguments":{"city":"Lisbon"}}}</div>',
+    response: '<div class="line fadein"><b>Response</b> — repeats "id": 7 from the request it answers. Carries result OR error, never both.</div><div class="line fadein" style="white-space:pre; font-size:0.75rem; margin-top:0.4rem;">{"jsonrpc":"2.0","id":7,"result":{"content":[{"type":"text","text":"18°C, partly cloudy"}]}}</div>',
+    notification: '<div class="line fadein"><b>Notification</b> — NO "id" field at all. Fire-and-forget: no reply expected, none could even be correlated.</div><div class="line fadein" style="white-space:pre; font-size:0.75rem; margin-top:0.4rem;">{"jsonrpc":"2.0","method":"notifications/progress","params":{"progressToken":"upload-1","progress":40}}</div>'
+  };
+
+  function render(key){
+    logEl.innerHTML = SHAPES[key];
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.shape);
+    });
+  });
+
+  render("request");
+})();
+
+/* SECTION 3: LIVE EXCHANGE ANIMATION */
+(function(){
+  var track = document.getElementById("ex-track");
+  var reqBtn = document.getElementById("ex-req");
+  var notifBtn = document.getElementById("ex-notif");
+  var resetBtn = document.getElementById("ex-reset");
+  var logEl = document.getElementById("ex-log");
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function makePacket(cls, text, atLeft){
+    var el = document.createElement("div");
+    el.className = "exchange-packet " + cls;
+    el.textContent = text;
+    el.style.left = atLeft ? "0%" : "100%";
+    track.appendChild(el);
+    return el;
+  }
+
+  reqBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    reqBtn.disabled = true; notifBtn.disabled = true;
+    logEl.innerHTML = "";
+    track.innerHTML = "";
+
+    log('<b>Client → Server:</b> {"id":7,"method":"tools/call",...} sent.');
+    var reqPacket = makePacket("req", 'id:7 tools/call', true);
+    await wait(50);
+    reqPacket.classList.add("show");
+    reqPacket.style.left = "50%";
+    await wait(1000);
+    reqPacket.style.left = "100%";
+    await wait(600);
+    reqPacket.style.opacity = "0";
+
+    log("Server executes the tool (this takes real time — the client is free to do other work while it waits, since it's tracking this call by id, not by blocking).");
+    await wait(500);
+
+    log('<b>Server → Client:</b> {"id":7,"result":{...}} sent back.');
+    var resPacket = makePacket("res", 'id:7 result', false);
+    await wait(50);
+    resPacket.classList.add("show");
+    resPacket.style.left = "50%";
+    await wait(1000);
+    resPacket.style.left = "0%";
+    await wait(600);
+
+    log('<b style="color:var(--res-c);">Correlated.</b> The client sees id:7 on the incoming response and matches it to the id:7 request it sent — this is the ENTIRE mechanism, no other bookkeeping required.');
+
+    busy = false;
+    reqBtn.disabled = false; notifBtn.disabled = false;
+  });
+
+  notifBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    reqBtn.disabled = true; notifBtn.disabled = true;
+    logEl.innerHTML = "";
+    track.innerHTML = "";
+
+    log('<b>Client → Server:</b> {"method":"notifications/progress",...} sent — no id field.');
+    var notifPacket = makePacket("notif", "no id · progress", true);
+    await wait(50);
+    notifPacket.classList.add("show");
+    notifPacket.style.left = "50%";
+    await wait(1000);
+    notifPacket.style.left = "100%";
+    await wait(600);
+    notifPacket.style.opacity = "0";
+
+    log('<b style="color:var(--notif-c);">Nothing comes back.</b> The client already moved on the instant it sent this — there was no id to correlate a reply against even if the server wanted to send one.');
+
+    busy = false;
+    reqBtn.disabled = false; notifBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    track.innerHTML = "";
+    logEl.innerHTML = '<span class="line">Send a request to watch it travel to the server and a correlated response travel back. Send a notification to see the difference — it only ever travels one way.</span>';
+    busy = false;
+    reqBtn.disabled = false; notifBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

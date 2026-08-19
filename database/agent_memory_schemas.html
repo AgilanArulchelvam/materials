@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Agent Memory Schemas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --turn-c:#4fc3f7; --short-c:#7fd8a0; --long-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--turn-c); color:var(--turn-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--short-c); color:var(--short-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--long-c); color:var(--long-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* conversation turn table visual */
+  .turn-table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.75rem; margin:1rem 0;}
+  .turn-table th, .turn-table td{border:1px solid var(--rule); padding:0.5rem 0.65rem; text-align:left;}
+  .turn-table th{background:var(--panel-2); color:var(--ink-dim); font-size:0.68rem; text-transform:uppercase;}
+  .turn-table td{color:#cdd0d8;}
+  .turn-table tr.role-user td:nth-child(3){color:var(--turn-c);}
+  .turn-table tr.role-assistant td:nth-child(3){color:var(--long-c);}
+  .turn-table tr.role-tool td:nth-child(3){color:var(--short-c);}
+  .turn-table tr.newrow{background:rgba(255,107,107,0.08);}
+
+  /* short vs long term diagram */
+  .mem-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.mem-compare{grid-template-columns:1fr;}}
+  .mem-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2);}
+  .mem-col.short{border-color:var(--short-c);} .mem-col.short h4{color:var(--short-c);}
+  .mem-col.long{border-color:var(--long-c);} .mem-col.long h4{color:var(--long-c);}
+  .mem-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .mem-col p{font-size:0.85rem; margin:0 0 0.6rem;}
+  .mem-col ul{margin:0; padding-left:1.2rem; font-size:0.83rem; color:#cdd0d8;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.turn{border-left-color:var(--turn-c); background:rgba(79,195,247,0.06);} .callout.turn b{color:var(--turn-c);}
+  .callout.long{border-left-color:var(--long-c); background:rgba(199,146,234,0.06);} .callout.long b{color:var(--long-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · AGENT MEMORY SCHEMAS</div>
+  <h1>An agent that forgets everything between requests isn't an agent — it's a stateless function with extra steps.</h1>
+  <p class="lede">Every agentic system needs somewhere to put what happened: the literal back-and-forth of a conversation, including tool calls and their results, and — separately — the facts and preferences worth remembering long after that specific conversation is over. This lab designs the schema for both: a conversation-turns table with roles and timestamps, and the short-term vs long-term memory split that decides what gets kept in full versus summarized into a vector-indexed store.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Conversation turns — roles, timestamps, tool calls</div>
+    <div class="pipe-label b">Short-term — recent turns, queried by recency</div>
+    <div class="pipe-label c">Long-term — summarized, vector-indexed, persistent</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="turns">1 · Conversation Turns Schema</a>
+  <a data-target="shortlong">2 · Short-Term vs Long-Term Memory</a>
+  <a data-target="together">3 · How the Two Schemas Actually Connect</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: CONVERSATION TURNS ============ -->
+<section id="turns">
+  <div class="kicker">01 — Every message, who said it, and when, including the tool in the middle</div>
+  <h2>Schema for conversation turns with roles and timestamps</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Imagine a call-center transcript: every line is timestamped, and every line is attributed to a specific speaker — the customer, the agent, or (in a modern setup) an automated lookup the agent triggered mid-call ("checking your account balance now... it's $412"). An agent conversation's log needs exactly this same shape: not just "what was said," but WHO said it (a role) and WHEN (a timestamp), with tool invocations treated as their own first-class kind of turn, not squeezed into the same bucket as plain conversational text.</p>
+
+  <div class="code"><span class="c-kw">CREATE TABLE</span> conversation_turns (
+    turn_id         <span class="c-kw">BIGSERIAL PRIMARY KEY</span>,
+    conversation_id <span class="c-kw">UUID NOT NULL REFERENCES</span> conversations(conversation_id),
+    role            <span class="c-kw">TEXT NOT NULL CHECK</span> (role <span class="c-kw">IN</span> (<span class="c-str">'user'</span>, <span class="c-str">'assistant'</span>, <span class="c-str">'tool'</span>)),
+    content         <span class="c-kw">TEXT</span>,                      <span class="c-cmt">-- the actual message text, NULL for pure tool-call turns</span>
+    tool_call_id    <span class="c-kw">TEXT</span>,                      <span class="c-cmt">-- links a 'tool' turn back to the assistant turn that requested it</span>
+    tool_name       <span class="c-kw">TEXT</span>,                      <span class="c-cmt">-- e.g. 'get_weather' -- NULL unless role='tool' or this turn triggered one</span>
+    tool_arguments  <span class="c-kw">JSONB</span>,                     <span class="c-cmt">-- the arguments the assistant passed, e.g. {"city": "Lisbon"}</span>
+    tool_result     <span class="c-kw">JSONB</span>,                     <span class="c-cmt">-- the tool's actual output, NULL until the tool call resolves</span>
+    created_at      <span class="c-kw">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="c-kw">CREATE INDEX</span> idx_turns_conv_time
+    <span class="c-kw">ON</span> conversation_turns (conversation_id, created_at);
+    <span class="c-cmt">-- composite index: the dominant query is "this conversation's turns,
+    -- in time order" -- exactly the leftmost-prefix pattern from the
+    -- indexing lab, letting a range scan serve both filter and order</span></div>
+
+  <p>A tool call becomes THREE things in this schema, not one: (1) an <code class="inline">assistant</code>-role turn where <code class="inline">tool_name</code> and <code class="inline">tool_arguments</code> are populated (the model deciding to call a tool, per the <code class="inline">mcp_fundamentals_jsonrpc</code> lab's <code class="inline">tools/call</code> shape), (2) a separate <code class="inline">tool</code>-role turn carrying <code class="inline">tool_result</code> and a <code class="inline">tool_call_id</code> linking it back to turn (1), and (3) typically a following <code class="inline">assistant</code> turn where the model incorporates that result into its actual reply to the user. This mirrors exactly how the underlying JSON-RPC exchange works — a request and a correlated response, here persisted as two separate rows joined by an id rather than two JSON-RPC messages joined by <code class="inline">id</code>.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE REAL CONVERSATION, ROW BY ROW</span></div>
+    <table class="turn-table" id="turn-table"></table>
+    <div class="log" id="turn-log"><span class="line">Every row is one turn — notice the tool call splits into an assistant turn (requesting it) and a separate tool turn (the result), joined by tool_call_id.</span></div>
+  </div>
+
+  <div class="callout turn"><b>Interview-ready definition:</b> a conversation-turns schema stores one row per message in an agent conversation, keyed by a <code class="inline">conversation_id</code> foreign key and ordered by a <code class="inline">created_at</code> timestamp, with a <code class="inline">role</code> column distinguishing user, assistant, and tool turns. Tool calls are represented as a pair of linked rows rather than one — an assistant turn carrying the requested tool name and arguments, and a separate tool turn carrying the result, joined by a shared <code class="inline">tool_call_id</code> — which preserves the request/response structure of the underlying tool-calling exchange directly in the schema, rather than collapsing it into a single ambiguous row.</div>
+</section>
+
+<!-- ============ SECTION 2: SHORT VS LONG TERM ============ -->
+<section id="shortlong">
+  <div class="kicker">02 — Not every fact deserves to live forever, and not every fact should be forgotten</div>
+  <h2>Short-term vs long-term memory schema</h2>
+
+  <p><strong>Start here, before the split.</strong> Think about how you personally handle a single meeting versus a running friendship. During the meeting, you remember the last few things said, verbatim, in order — that's short-term, full-detail, and it evaporates once the meeting's context stops mattering. But you don't remember every meeting you've ever had verbatim — instead, you retain a compressed sense of who this friend is, what they like, what's been true about them across MANY past conversations. That compressed, cross-conversation residue is long-term memory, and it's a genuinely different kind of storage than "the last few things said."</p>
+
+  <div class="mem-compare">
+    <div class="mem-col short">
+      <h4>Short-term memory</h4>
+      <p>The section 1 <code class="inline">conversation_turns</code> table itself, queried by <code class="inline">conversation_id</code> and recency — the current conversation's actual turns, kept in full detail, no compression.</p>
+      <ul>
+        <li>Query pattern: <code class="inline">WHERE conversation_id = ? ORDER BY created_at DESC LIMIT N</code></li>
+        <li>Scoped to ONE conversation — doesn't span across a user's other, separate conversations</li>
+        <li>No information loss — this IS the actual transcript</li>
+        <li>Naturally bounded by context-window limits (this connects to <code class="inline">storage-and-rag/token_budget_management.html</code> from Month 3 — eventually the full history has to be trimmed or summarized to fit)</li>
+      </ul>
+    </div>
+    <div class="mem-col long">
+      <h4>Long-term memory</h4>
+      <p>A SEPARATE table: summarized or extracted facts/preferences that persist ACROSS conversations, often embedded and vector-indexed for semantic retrieval, exactly like the <code class="inline">storage-and-rag/vector_db_schema_design.html</code> lab's embeddings-plus-metadata pattern.</p>
+      <ul>
+        <li>Query pattern: semantic similarity search — "what do we know that's relevant to THIS query," not a time-ordered scan</li>
+        <li>Scoped to a USER (or entity) — spans every conversation that user has ever had</li>
+        <li>Lossy by construction — a summarized fact loses the exact original wording, deliberately, in exchange for being retrievable without replaying an entire history</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="code"><span class="c-kw">CREATE TABLE</span> agent_long_term_memory (
+    memory_id       <span class="c-kw">BIGSERIAL PRIMARY KEY</span>,
+    user_id         <span class="c-kw">UUID NOT NULL REFERENCES</span> users(user_id),
+    source_conversation_id <span class="c-kw">UUID REFERENCES</span> conversations(conversation_id), <span class="c-cmt">-- where this fact was learned, if traceable</span>
+    memory_text     <span class="c-kw">TEXT NOT NULL</span>,             <span class="c-cmt">-- e.g. "User prefers window seats on flights"</span>
+    embedding       <span class="c-kw">VECTOR</span>(<span class="c-num">1536</span>) <span class="c-kw">NOT NULL</span>,   <span class="c-cmt">-- for semantic retrieval, per vector_db_schema_design</span>
+    memory_type     <span class="c-kw">TEXT NOT NULL CHECK</span> (memory_type <span class="c-kw">IN</span> (<span class="c-str">'preference'</span>, <span class="c-str">'fact'</span>, <span class="c-str">'summary'</span>)),
+    created_at      <span class="c-kw">TIMESTAMPTZ NOT NULL DEFAULT</span> now(),
+    last_confirmed_at <span class="c-kw">TIMESTAMPTZ</span>              <span class="c-cmt">-- updated if this fact gets re-observed/re-confirmed later</span>
+);
+
+<span class="c-kw">CREATE INDEX</span> idx_ltm_user <span class="c-kw">ON</span> agent_long_term_memory (user_id);
+<span class="c-cmt">-- the embedding column additionally gets an HNSW or IVF index (per the
+-- storage-and-rag indexing labs) for the actual similarity search --
+-- retrieval here is "semantically relevant to the current query," not
+-- "recent," which is the fundamental query-pattern difference from
+-- short-term memory's time-ordered scan</span></div>
+
+  <p>Notice long-term memory is scoped by <code class="inline">user_id</code>, not <code class="inline">conversation_id</code> — a preference learned in one conversation ("prefers window seats") needs to be retrievable in a COMPLETELY DIFFERENT, LATER conversation with the same user, which is exactly the cross-conversation persistence short-term memory structurally cannot provide (it's scoped to one conversation by design). <code class="inline">source_conversation_id</code> is kept as a traceability link back to where the fact was learned, but the retrieval query itself never filters by it.</p>
+
+  <div class="callout long"><b>Interview-ready definition:</b> short-term memory is the current conversation's own turns (section 1's schema), queried by <code class="inline">conversation_id</code> and recency, kept in full unsummarized detail but bounded by context-window limits. Long-term memory is a separate table scoped by user/entity rather than conversation, holding summarized or extracted facts and preferences with a vector embedding for semantic retrieval — deliberately lossy (an extracted fact discards the original conversation's exact wording) in exchange for being retrievable across every future conversation with that user, not just the one it was learned in, via similarity search rather than a time-ordered scan.</div>
+</section>
+
+<!-- ============ SECTION 3: HOW THEY CONNECT ============ -->
+<section id="together">
+  <div class="kicker">03 — Neither table works alone — an agent needs both, feeding each other</div>
+  <h2>How short-term and long-term memory actually connect</h2>
+
+  <p><strong>Start here, before the pipeline.</strong> These two schemas aren't independent choices — they're two stages of one pipeline. As a conversation happens, it's written into <code class="inline">conversation_turns</code> (short-term). At some point — end of conversation, or a periodic background job — an extraction step reads recent turns, identifies durable facts worth keeping, and writes THOSE into <code class="inline">agent_long_term_memory</code> (long-term). Later, at the START of a brand new conversation, the agent can query long-term memory by the user's id to pull in "what we already know about this person" before the first message is even sent.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WALK THE PIPELINE: CONVERSATION → EXTRACTION → LONG-TERM → NEXT CONVERSATION</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-step="write">1. Conversation happens</button>
+      <button class="chip" data-step="extract">2. Extraction job runs</button>
+      <button class="chip" data-step="store">3. Written to long-term memory</button>
+      <button class="chip" data-step="recall">4. Recalled in a LATER conversation</button>
+    </div>
+    <div class="log" id="pipeline-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Stage</th><th>What happens</th><th>Which table</th></tr>
+    <tr><td>1. Live conversation</td><td>Every message and tool call written as a row, in order</td><td><code>conversation_turns</code></td></tr>
+    <tr><td>2. Extraction</td><td>A summarization/extraction step (often an LLM call itself) scans recent turns for durable facts, filtering out anything conversation-specific/irrelevant later</td><td>Reads from <code>conversation_turns</code></td></tr>
+    <tr><td>3. Persistence</td><td>Extracted facts get embedded and written as new rows, scoped to the user, not the conversation</td><td>Writes to <code>agent_long_term_memory</code></td></tr>
+    <tr><td>4. Recall</td><td>A NEW, unrelated conversation starts; the agent runs a similarity search against long-term memory to retrieve relevant prior facts before responding</td><td>Reads from <code>agent_long_term_memory</code></td></tr>
+  </table>
+
+  <div class="callout warn"><b>The mistake this schema split prevents:</b> a naive design might try to make ONE table do both jobs — e.g. querying <code class="inline">conversation_turns</code> directly for "everything we know about this user" by scanning across every conversation they've ever had. This breaks down exactly the way the Month 3 RAG lab's context-window discussion predicted: a long-time user might have thousands of turns across dozens of conversations, and neither a time-ordered scan nor an unsummarized dump of all of it fits in a prompt's token budget, nor is most of it still relevant. The extraction step (stage 2) is what actually solves this — it's a deliberate compression step, not an optional nicety, and it's exactly why long-term memory needs its OWN schema rather than just being "a bigger query" against short-term memory's table.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing which table a new fact belongs in</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">During a conversation, a user says "actually, let's cancel that — I changed my mind about the flight." Should this sentence itself ever be written directly into <code class="inline">agent_long_term_memory</code>? Why or why not, using section 3's pipeline?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- this sentence, as literal conversational text, belongs in
+conversation_turns (short-term) as a normal 'user' role turn, not
+directly in agent_long_term_memory. Per section 3's pipeline, long-term
+memory is never written to directly from raw conversation text -- it's
+populated by the EXTRACTION step (stage 2), which reads recent turns and
+decides what, if anything, is durable enough to persist across future
+conversations.
+
+This specific sentence is a good example of something that should
+generally NOT survive extraction into long-term memory at all: "changed
+my mind about a flight, mid-conversation" is conversation-specific
+context (relevant to resolving THIS booking, right now) rather than a
+durable fact or preference about the user that would still be useful in
+some unrelated future conversation. Compare to "prefers window seats" --
+that DOES generalize usefully to future conversations and is exactly the
+kind of thing extraction should surface. The extraction step's whole job
+is distinguishing these two categories -- section 3's warning about
+naively treating short-term as "just a bigger long-term query" applies in
+reverse here too: not everything said deserves to be promoted to
+long-term storage, and an extraction step that promoted every sentence
+verbatim would just recreate the short-term table's bloat problem inside
+the long-term table instead.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a broken tool-call join</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's <code class="inline">conversation_turns</code> table has a <code class="inline">tool</code>-role row with a populated <code class="inline">tool_result</code>, but its <code class="inline">tool_call_id</code> doesn't match ANY assistant-role row's <code class="inline">tool_call_id</code> in the same conversation. What does this break, using section 1's schema design?</p>
+    <details><summary>Show solution</summary><div class="solution">This breaks the ability to reconstruct WHICH tool call this result
+actually belongs to, and WHY the tool was even invoked in the first
+place (what arguments were passed, per the assistant turn's
+tool_arguments column) -- per section 1, the whole point of tool_call_id
+is linking the pair of rows (the assistant's request, the tool's result)
+together as one logical exchange, mirroring the request/id/response
+correlation from the JSON-RPC fundamentals lab. An orphaned tool-role row
+with no matching assistant-role row is a result with no traceable
+request -- functionally, the schema can no longer answer "what did the
+agent ask for that produced THIS specific output," which matters
+concretely for debugging (why did the agent get this weather data?) and
+for replay/audit purposes (a later lab this month, audit trail schema,
+depends on exactly this kind of request/result traceability being
+intact).
+
+Likely causes: an application bug generating a tool_call_id inconsistently
+between the write that inserts the assistant turn and the write that
+inserts the tool-result turn (e.g. regenerating a new id instead of
+reusing the original one), or a partial write where the assistant turn's
+insert failed/rolled back after the tool_call_id was already used
+downstream. The fix is enforcing this relationship structurally rather
+than just by convention -- e.g. a foreign-key-style constraint or
+application-level invariant check that a tool-role row's tool_call_id
+must reference an existing assistant-role row's tool_call_id in the same
+conversation before the write is considered valid.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about index choice for the two different query patterns</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 indexes <code class="inline">conversation_turns</code> on <code class="inline">(conversation_id, created_at)</code>, a standard B-tree composite index. Section 2 indexes <code class="inline">agent_long_term_memory</code>'s embedding column with an HNSW/IVF-style index instead. Why can't the SAME kind of index serve both tables well?</p>
+    <details><summary>Show solution</summary><div class="solution">These two tables have fundamentally different QUERY PATTERNS, and each
+index type is built to exploit a different one -- this is exactly the
+same reasoning the storage_engine_consolidation lab from Month 3 applied
+across row-store, columnar, HNSW, and IVF.
+
+conversation_turns' dominant query is "give me this conversation's turns,
+in time order" -- an equality filter (conversation_id = ?) combined with
+a range/order operation (created_at). A B-tree composite index on
+(conversation_id, created_at) is built exactly for this: it can narrow
+directly to the matching conversation_id's contiguous range of index
+entries, already sorted by created_at, satisfying both the filter AND
+the ordering in one structure -- precisely the leftmost-prefix pattern
+from the indexing lab.
+
+agent_long_term_memory's dominant query is entirely different: "find
+memories whose MEANING is closest to this query's meaning" -- a nearest-
+neighbor search over high-dimensional embedding vectors, where there's no
+meaningful notion of one embedding being "less than" another the way a
+B-tree's ordering requires. A B-tree fundamentally cannot answer "what's
+approximately closest in 1536-dimensional space" -- that's exactly the
+problem HNSW/IVF-style indexes (Month 3's storage-and-rag labs) are built
+to solve instead, trading exact results for approximate nearest-neighbor
+search at usable speed. Using a B-tree on the embedding column would
+either not work at all for similarity queries, or force a full table
+scan computing similarity against every single row -- the same brute-
+force cost the HNSW lab's day-1 exercise measured directly and found
+prohibitive at scale.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Handling a conflicting long-term memory update</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user's long-term memory already has a row: "User prefers aisle seats" (from 6 months ago). In a new conversation, they say "actually I always take window seats now." Using section 2's schema, what should happen — insert a new row, update the existing one, or something else — and what column matters most here?</p>
+    <details><summary>Show solution</summary><div class="solution">The most defensible approach is inserting a NEW row for the updated
+preference rather than silently overwriting the old one in place, at
+least initially -- but the exact right answer depends on whether the
+schema is meant to track "current believed state" or "history of what
+was ever told to us," and section 2's last_confirmed_at column is
+specifically what supports the "current state, but with a memory of how
+we got here" middle ground.
+
+A reasonable concrete approach: insert the new "prefers window seats"
+row (new memory_id, new embedding, current timestamp), and separately
+either (a) mark the old "prefers aisle seats" row as superseded/inactive
+via a status column (not shown in this simplified schema, but a natural
+extension), or (b) simply leave both rows present and rely on RECENCY
+(comparing created_at / last_confirmed_at) at retrieval time to prefer
+the more recent, contradicting fact when both surface in a similarity
+search for "seat preference."
+
+What matters most: the timestamp columns (created_at, last_confirmed_at)
+are what let a later retrieval step detect and resolve this exact kind
+of conflict -- two memories that are both plausibly relevant to the same
+query but actually contradict each other. Blindly UPDATING the old row
+in place (overwriting "aisle" with "window") loses the fact that the
+preference ever changed at all, which can matter for understanding user
+behavior over time -- whereas keeping both rows with reliable timestamps
+preserves that history while still letting retrieval logic prefer the
+more recent, presumably more accurate fact. This is a genuine design
+choice with no universally correct answer, but the schema needs to
+support WHICHEVER choice is made, which is exactly what the timestamp
+columns are there for.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Estimating storage growth and connecting to retention</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A product has 100,000 active users, each averaging 20 conversations/month, each conversation averaging 15 turns. Using section 1's schema, roughly how many rows does <code class="inline">conversation_turns</code> accumulate per month, and — connecting to the Month 3 <code class="inline">time_series_schema</code> lab's retention/downsampling idea — what would you actually want to do about unbounded growth here?</p>
+    <details><summary>Show solution</summary><div class="solution">Rows per month: 100,000 users x 20 conversations/user x 15 turns/
+conversation = 30,000,000 rows/month -- 360 million rows/year, growing
+without bound exactly like the append-only, ever-growing time-series
+data the time_series_schema lab described, since conversation_turns rows
+are also essentially write-once and never updated after being written
+(section 1's schema has no meaningful "edit a past turn" operation any
+more than a sensor reading gets retroactively corrected).
+
+What to actually do: this is a direct application of the time-series
+lab's retention/downsampling reasoning, adapted to conversational data
+rather than sensor data. A reasonable policy: keep FULL, raw
+conversation_turns rows for some recent window (e.g. the last 30-90 days,
+covering "still-active or recently-referenced conversations" and
+supporting features like "resume an old conversation"), then for older
+conversations, either (a) archive the raw rows to cheaper, colder storage
+(mirroring the time-series lab's "cold archival storage" option for
+old raw data that's rarely queried but occasionally needed), or (b) rely
+on the fact that anything DURABLE from those older conversations should
+already have been captured by the extraction pipeline (section 3) into
+agent_long_term_memory, which is FAR smaller per user than the full raw
+transcript, meaning the raw turns for very old conversations can often be
+deleted or archived without losing anything the agent actually still
+needs day-to-day -- the extraction step isn't just a memory-retrieval
+mechanism, it doubles as the thing that makes it SAFE to eventually
+downsample/archive the much larger raw conversation_turns table, exactly
+as the time-series lab's downsampling accepted losing raw precision on
+old data because coarser aggregates already captured what mattered.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) sketch the conversation_turns schema and explain why a tool call needs two linked rows rather than one, (2) explain the short-term vs long-term split precisely enough to say which table a NEW example fact belongs in and why, and (3) walk through the four-stage pipeline connecting them, including why the extraction step is what makes archiving old raw turns safe? This schema is exactly what the next lab in this week (mcp_client_basics) would be writing to and reading from, if its example client were persisting conversation history rather than just printing results to a terminal.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — agent memory schemas.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: TURN TABLE RENDER */
+(function(){
+  var tableEl = document.getElementById("turn-table");
+
+  var ROWS = [
+    {id: 501, conv: "conv-88a1", role: "user", content: "What's the weather in Lisbon?", tc: "-", tool: "-", ts: "14:02:01"},
+    {id: 502, conv: "conv-88a1", role: "assistant", content: "(calling tool)", tc: "call-9f2", tool: "get_weather", ts: "14:02:02", newrow:true},
+    {id: 503, conv: "conv-88a1", role: "tool", content: "-", tc: "call-9f2", tool: "get_weather → 18°C", ts: "14:02:03", newrow:true},
+    {id: 504, conv: "conv-88a1", role: "assistant", content: "It's 18°C and partly cloudy in Lisbon.", tc: "-", tool: "-", ts: "14:02:03"}
+  ];
+
+  var html = "<tr><th>turn_id</th><th>conversation_id</th><th>role</th><th>content</th><th>tool_call_id</th><th>tool_name / result</th><th>created_at</th></tr>";
+  ROWS.forEach(function(r){
+    html += '<tr class="role-' + r.role + (r.newrow ? ' newrow' : '') + '"><td>' + r.id + '</td><td>' + r.conv + '</td><td>' + r.role + '</td><td>' + r.content + '</td><td>' + r.tc + '</td><td>' + r.tool + '</td><td>' + r.ts + '</td></tr>';
+  });
+  tableEl.innerHTML = html;
+})();
+
+/* SECTION 3: PIPELINE STEPS */
+(function(){
+  var chips = document.querySelectorAll("[data-step]");
+  var logEl = document.getElementById("pipeline-log");
+
+  var STEPS = {
+    write: '<div class="line fadein"><b>Stage 1 — live conversation:</b> every message and tool call is written as a row into conversation_turns, in order, as it happens. This is short-term memory — full detail, scoped to ONE conversation_id.</div>',
+    extract: '<div class="line fadein"><b>Stage 2 — extraction:</b> a background job (often an LLM call itself, summarizing/extracting) reads recent turns from conversation_turns and identifies which facts are durable enough to matter beyond this one conversation — e.g. "prefers window seats" survives; "changed my mind about this specific booking" does not.</div>',
+    store: '<div class="line fadein"><b>Stage 3 — persistence:</b> extracted facts get embedded and written as new rows into agent_long_term_memory, scoped by user_id (not conversation_id) — durable, cross-conversation, and vector-indexed for later semantic retrieval.</div>',
+    recall: '<div class="line fadein"><b>Stage 4 — recall, in a LATER, unrelated conversation:</b> the agent runs a similarity search against agent_long_term_memory for this user_id before responding — pulling in "prefers window seats" even though THIS conversation never mentioned seating at all. This is exactly what short-term memory, scoped to one conversation_id, could never do on its own.</div>'
+  };
+
+  function render(key){
+    logEl.innerHTML = STEPS[key];
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.step);
+    });
+  });
+
+  render("write");
+})();
+</script>
+</body>
+</html>

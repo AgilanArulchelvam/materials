@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — MCP Client Basics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --client-c:#4fc3f7; --ok-c:#7fd8a0; --err-c:#ff6b6b; --tool-c:#c792ea; --accent:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,107,107,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--client-c); color:var(--client-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--tool-c); color:var(--tool-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--err-c); color:var(--err-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--ok-c);} .dc-col.a h4{color:var(--ok-c);}
+  .dc-col.b{border-color:var(--err-c);} .dc-col.b h4{color:var(--err-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--err-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--err-c);}
+  .callout.client{border-left-color:var(--client-c); background:rgba(79,195,247,0.06);} .callout.client b{color:var(--client-c);}
+  .callout.ok{border-left-color:var(--ok-c); background:rgba(127,216,160,0.06);} .callout.ok b{color:var(--ok-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · CLIENT BASICS</div>
+  <h1>The server was never the whole story. Something has to <em>call</em> it — and survive when it says no.</h1>
+  <p class="lede">Every server this week — the stdio calculator, its SSE-hosted twin — exists to be called by a real client. This lab builds that client: connect, discover what tools are available, call one with real arguments, and get a result back. Then it does the less glamorous half — what a well-behaved client does when the server comes back with an error instead of a result, because a client that crashes on the first bad response isn't production-ready, no matter how correct its happy path is.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Connect → list tools → call → result</div>
+    <div class="pipe-label b">tools/call with real arguments</div>
+    <div class="pipe-label c">Graceful handling of a JSON-RPC error</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="client">1 · A Real Client, Calling a Real Tool</a>
+  <a data-target="errors">2 · Handling Server Errors Gracefully</a>
+  <a data-target="live">3 · Watch a Call Succeed, Then Fail, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: A REAL CLIENT ============ -->
+<section id="client">
+  <div class="kicker">01 — Connect, discover, call, receive — in that order</div>
+  <h2>A client that calls the server's tool</h2>
+
+  <p><strong>Start here, before the code.</strong> Think about calling a restaurant you've never ordered from before. You don't just blurt out "one large pizza" the moment someone picks up — you first find out what they actually offer (their menu), THEN place an order using the exact terms their menu uses (their sizes, their toppings), and THEN wait for confirmation of what you're actually getting. An MCP client follows the same three-step discipline: connect, discover (<code class="inline">tools/list</code>), then call (<code class="inline">tools/call</code>) — never assuming in advance what a server offers or how its tools are named.</p>
+
+  <p>Below is a real client using the MCP Python SDK, connecting to the exact stdio calculator server built two labs ago in <code class="inline">mcp_server_stdio.html</code>.</p>
+
+  <div class="code"><span class="c-kw">from</span> mcp <span class="c-kw">import</span> ClientSession, StdioServerParameters
+<span class="c-kw">from</span> mcp.client.stdio <span class="c-kw">import</span> stdio_client
+
+<span class="c-kw">async def</span> <span class="c-fn">main</span>():
+    server_params = StdioServerParameters(
+        command=<span class="c-str">"python"</span>,
+        args=[<span class="c-str">"calculator_server.py"</span>],   <span class="c-cmt"># the exact server from mcp_server_stdio.html</span>
+    )
+
+    <span class="c-cmt"># STEP 1: connect -- this spawns the server subprocess (previous lab, section 3)</span>
+    <span class="c-kw">async with</span> stdio_client(server_params) <span class="c-kw">as</span> (read, write):
+        <span class="c-kw">async with</span> ClientSession(read, write) <span class="c-kw">as</span> session:
+            <span class="c-kw">await</span> session.initialize()
+
+            <span class="c-cmt"># STEP 2: discover -- ask the server what it actually offers, never assume</span>
+            tools_response = <span class="c-kw">await</span> session.list_tools()
+            <span class="c-fn">print</span>(<span class="c-str">"Available tools:"</span>, [t.name <span class="c-kw">for</span> t <span class="c-kw">in</span> tools_response.tools])
+            <span class="c-cmt"># -> Available tools: ['add']</span>
+
+            <span class="c-cmt"># STEP 3: call -- with real arguments matching the tool's inputSchema</span>
+            result = <span class="c-kw">await</span> session.call_tool(<span class="c-str">"add"</span>, arguments={<span class="c-str">"a"</span>: <span class="c-num">7</span>, <span class="c-str">"b"</span>: <span class="c-num">35</span>})
+
+            <span class="c-cmt"># STEP 4: receive -- the actual result, ready to use</span>
+            <span class="c-kw">for</span> content <span class="c-kw">in</span> result.content:
+                <span class="c-fn">print</span>(<span class="c-str">"Result:"</span>, content.text)
+            <span class="c-cmt"># -> Result: 42</span>
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    <span class="c-kw">import</span> asyncio
+    asyncio.run(main())</div>
+
+  <p>Notice <code class="inline">session.call_tool("add", arguments={"a": 7, "b": 35})</code> is the client-SDK-level call that, underneath, sends exactly the <code class="inline">tools/call</code> JSON-RPC request from the <code class="inline">mcp_fundamentals_jsonrpc</code> lab — <code class="inline">{"method": "tools/call", "params": {"name": "add", "arguments": {"a": 7, "b": 35}}}</code> — and <code class="inline">result.content</code> unwraps the matching response's <code class="inline">result</code> field. The SDK's job, on both the client and server side, is exactly this translation between a typed function-call interface and raw JSON-RPC — the client code here never touches a JSON-RPC envelope directly, but that's precisely what's traveling underneath every one of these calls.</p>
+
+  <div class="callout client"><b>Interview-ready definition:</b> a minimal MCP client follows a strict connect → discover → call → receive sequence: it establishes a session with a server (spawning it as a subprocess for stdio, or opening an SSE connection for a networked server), calls <code class="inline">list_tools()</code> to discover what's actually available rather than assuming a fixed tool set, then calls <code class="inline">call_tool(name, arguments)</code> with arguments matching that tool's <code class="inline">inputSchema</code>, and finally reads the result content back out of the response. Discovery-before-call matters architecturally, not just stylistically — it's what lets a client work against ANY MCP server without being hard-coded to one specific server's tool set, the same discovery principle the gateway design lab's <code class="inline">tools/list</code> aggregation depends on.</div>
+</section>
+
+<!-- ============ SECTION 2: GRACEFUL ERROR HANDLING ============ -->
+<section id="errors">
+  <div class="kicker">02 — The happy path is the easy half of this lab</div>
+  <h2>Handling server errors gracefully</h2>
+
+  <p><strong>Start here, before the code.</strong> Go back to the restaurant analogy: if you order something not on the menu, a good restaurant tells you clearly ("we don't have that, but we do have X") rather than the kitchen just silently catching fire. A well-behaved MCP client needs the same posture toward a server's JSON-RPC error responses — from the <code class="inline">mcp_fundamentals_jsonrpc</code> lab, a response carries EITHER <code class="inline">result</code> OR <code class="inline">error</code>, and a client that only ever checks for <code class="inline">result</code> will crash, hang, or silently misbehave the instant a server legitimately returns an error instead.</p>
+
+  <div class="code"><span class="c-cmt"># calling the tool with a BAD argument -- "a" is missing entirely</span>
+<span class="c-kw">try</span>:
+    result = <span class="c-kw">await</span> session.call_tool(<span class="c-str">"add"</span>, arguments={<span class="c-str">"b"</span>: <span class="c-num">35</span>})
+    <span class="c-kw">for</span> content <span class="c-kw">in</span> result.content:
+        <span class="c-fn">print</span>(<span class="c-str">"Result:"</span>, content.text)
+<span class="c-kw">except</span> McpError <span class="c-kw">as</span> e:
+    <span class="c-cmt"># the SDK raises this from a JSON-RPC error response, e.g.:
+    # {"jsonrpc":"2.0","id":3,"error":{"code":-32602,
+    #  "message":"Invalid params: 'a' is a required property"}}</span>
+    <span class="c-fn">print</span>(<span class="c-str">f"Tool call failed ({e.error.code}): {e.error.message}"</span>)
+    <span class="c-cmt"># -> Tool call failed (-32602): Invalid params: 'a' is a required property</span>
+    <span class="c-cmt"># The client keeps running -- this is a HANDLED, expected outcome,</span>
+    <span class="c-cmt"># not an unhandled crash.</span>
+
+<span class="c-cmt"># a well-behaved client can go further: use the error to decide what to
+# do next, rather than just logging and stopping</span>
+<span class="c-kw">async def</span> <span class="c-fn">call_tool_safely</span>(session, name, arguments):
+    <span class="c-kw">try</span>:
+        <span class="c-kw">return</span> <span class="c-kw">await</span> session.call_tool(name, arguments=arguments)
+    <span class="c-kw">except</span> McpError <span class="c-kw">as</span> e:
+        <span class="c-kw">if</span> e.error.code == -<span class="c-num">32602</span>:   <span class="c-cmt"># invalid params</span>
+            <span class="c-kw">return</span> {<span class="c-str">"error"</span>: <span class="c-str">f"Bad arguments for {name}: {e.error.message}"</span>}
+        <span class="c-kw">elif</span> e.error.code == -<span class="c-num">32601</span>: <span class="c-cmt"># method/tool not found</span>
+            <span class="c-kw">return</span> {<span class="c-str">"error"</span>: <span class="c-str">f"Tool '{name}' does not exist on this server"</span>}
+        <span class="c-kw">else</span>:
+            <span class="c-kw">raise</span>  <span class="c-cmt"># genuinely unexpected -- let it propagate rather than swallow it silently</span></div>
+
+  <p>Two distinct failure modes are worth separating: <strong>arguments that don't match the schema</strong> (error code <code class="inline">-32602</code>, "Invalid params" — the client's fault, correctable by fixing the call) versus <strong>a tool that simply doesn't exist</strong> (error code <code class="inline">-32601</code>, "Method not found" — a discovery/naming mismatch, not a bad-arguments problem). Handling both the same generic way ("something went wrong, give up") throws away information the error response is specifically providing; a well-behaved client uses the error CODE to decide what recovery, if any, actually makes sense.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Graceful handling</h4>
+      <p>Catches the error, reads its code/message, decides on a specific next step (retry with corrected arguments, tell the user, fall back to a different tool) — the client keeps running and the failure is a handled, expected branch in its logic.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>No error handling</h4>
+      <p>An unhandled exception propagates up and crashes the client (or an agent loop built on top of it), often mid-conversation — one malformed tool call from the model becomes a full outage instead of a single recoverable step.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> a well-behaved MCP client wraps every <code class="inline">call_tool</code> invocation in explicit error handling that distinguishes error TYPES by their JSON-RPC error code (e.g. <code class="inline">-32602</code> invalid params vs <code class="inline">-32601</code> method not found) rather than treating every failure identically, and decides a specific recovery action per type — rather than letting a raised exception propagate unhandled and crash the calling code. This matters especially in an agentic context: a tool call's arguments are often generated by a model, which can produce malformed or invalid arguments; a client that crashes on the first such error turns one recoverable, expected failure mode into a full outage of whatever loop or application the client is embedded in.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — One call succeeds, the next one doesn't — watch both</div>
+  <h2>A tool call succeeding, then failing, live</h2>
+
+  <p><strong>Start here, before running it.</strong> This runs the exact sequence from sections 1 and 2 against the same simulated <code class="inline">add</code> tool: first a well-formed call that succeeds, then a call missing a required argument that fails — and shows exactly how the client's own log differs between the two, based on which branch of its error handling actually ran.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLIENT CALLS THE add TOOL — TWICE</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-call="good">Call add(a: 7, b: 35) — valid</button>
+      <button class="chip" data-call="bad">Call add(b: 35) — missing "a"</button>
+    </div>
+    <button class="btn" id="live-send">Send tools/call ▸</button>
+    <div class="log" id="live-log"><span class="line">Pick a call shape, then send — watch the client's handling differ depending on whether the server returns a result or an error.</span></div>
+  </div>
+
+  <div class="callout ok"><b>The point of running both:</b> notice the client code itself doesn't change between these two runs — the SAME <code class="inline">call_tool_safely</code> function handles both outcomes, because the branching (result vs error, and which error code) happens at the JSON-RPC message level, not by the client guessing in advance whether a call will succeed. This is exactly why designing for graceful error handling from the start matters more than it might seem: an agent loop calling tools repeatedly, with arguments a model generated, WILL eventually hit a malformed call — the only question is whether that's a handled branch or an unhandled crash when it happens.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining why discovery has to happen before calling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A developer writes a client that skips <code class="inline">list_tools()</code> entirely and just directly calls <code class="inline">session.call_tool("add", ...)</code>, assuming the server has an "add" tool because that's what their OWN server happens to expose. What breaks if this client is later pointed at a DIFFERENT MCP server?</p>
+    <details><summary>Show solution</summary><div class="solution">If pointed at a different server that doesn't happen to expose a tool
+named exactly "add" (a different naming convention, a genuinely
+different tool set, or "add" existing but with a differently-shaped
+inputSchema), the call fails with a -32601 "method/tool not found" error
+(section 2) or a -32602 "invalid params" error if the name matches but
+the schema doesn't -- either way, a call the developer assumed would
+"just work" fails, and because they skipped discovery entirely, there's
+no code path that even checked whether the assumption was valid before
+acting on it.
+
+This is exactly why section 1 frames discovery as a REQUIRED step, not
+an optional nicety -- list_tools() is what makes a client genuinely
+general-purpose, able to work against ANY MCP server's actual current
+tool set rather than a specific server's tool set hard-coded into the
+client's assumptions at write time. Skipping it doesn't save meaningful
+work (list_tools() is cheap), but it does silently couple the client to
+one specific server's implementation details, which is precisely the
+kind of coupling MCP's discovery mechanism exists to avoid -- the same
+principle the gateway design lab's tools/list aggregation depends on:
+clients are expected to ask what's available, not assume it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Distinguishing which error code applies to a scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client calls <code class="inline">session.call_tool("substract", arguments={"a": 5, "b": 2})</code> — note the typo, "substract" instead of "subtract." Using section 2's two error codes, which one does the server return, and why does distinguishing it from the OTHER error code matter for how the client should respond?</p>
+    <details><summary>Show solution</summary><div class="solution">The server returns -32601 (method/tool not found), NOT -32602 (invalid
+params) -- the arguments {"a": 5, "b": 2} are perfectly well-formed for
+whatever a "subtract" tool would expect; the actual problem is that no
+tool named "substract" (the typo) exists on this server at all. The
+server's list_tools() response simply never included that name, so
+routing/dispatch fails before argument validation would even be reached.
+
+Why the distinction matters for the client's response: -32601 signals a
+NAMING/DISCOVERY problem -- the fix is checking the actual tool name via
+list_tools() (Problem 1's point) or correcting a typo, not adjusting the
+arguments being passed. -32602 would instead signal an ARGUMENTS problem
+-- the tool name was found and matched, but the arguments didn't satisfy
+its inputSchema, meaning the fix is correcting the ARGUMENTS, not the
+name. A client (or an agent built on top of one) that treated both error
+codes identically -- e.g. always retrying with "fixed" arguments -- would
+retry forever on a -32601 typo error, since no amount of argument-fixing
+addresses a tool name that doesn't exist; only checking and correcting
+the NAME would actually resolve it. This is exactly section 2's point
+about using the error CODE to decide the specific recovery action, rather
+than treating every failure as the same generic "something went wrong."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Designing recovery for an agent loop, not just a single call</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An agent loop calls tools based on arguments an LLM generates. The LLM calls <code class="inline">add</code> with <code class="inline">{"a": "seven", "b": 35}</code> — a string where a number was required. Using section 2's <code class="inline">call_tool_safely</code> pattern, sketch what the loop should do with the resulting error, rather than just logging it and stopping.</p>
+    <details><summary>Show solution</summary><div class="solution">This produces a -32602 "invalid params" error (the tool exists, but "a"
+fails the inputSchema's {"type": "number"} constraint) -- section 2's
+call_tool_safely would catch this and return a structured
+{"error": "Bad arguments for add: ..."} rather than crash.
+
+What the LOOP should do with it, specifically: feed that structured error
+message BACK to the LLM as the "result" of its tool call (in whatever
+role the loop uses for tool results, per the conversation_turns schema
+from the agent_memory_schemas lab -- a tool-role turn, but with an error
+in tool_result instead of a success value), and let the model see
+exactly what went wrong ("Bad arguments for add: 'a' must be a number,
+got string 'seven'") so it can generate a CORRECTED tool call on its next
+turn -- e.g. retrying with {"a": 7, "b": 35}. This treats the error as
+useful information routed back into the loop's normal flow, not a reason
+to halt the loop entirely.
+
+This is exactly the kind of design this month's later system-design-
+review-cold lab and the loop-termination-logic topic (Week 3) will
+formalize further -- but the core idea already applies here: a single
+malformed tool call from a model is an extremely common, expected failure
+mode in agentic systems (models are not perfectly reliable at producing
+schema-valid arguments), and a client/loop that treats it as recoverable
+input rather than a fatal crash is what actually makes a multi-step agent
+loop robust enough to complete a task despite occasional bad calls along
+the way.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Deciding when NOT to catch an error</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's <code class="inline">call_tool_safely</code> re-raises the exception (<code class="inline">raise</code> with no arguments) for any error code other than -32601 or -32602. Why not catch and swallow EVERY possible error, returning a generic <code class="inline">{"error": "something went wrong"}</code> for anything unexpected too?</p>
+    <details><summary>Show solution</summary><div class="solution">Swallowing every possible error uniformly would hide genuinely
+different classes of problems behind one indistinguishable message,
+which defeats the entire point section 2 makes about using error codes
+to choose a SPECIFIC recovery action. -32601 and -32602 are deliberately
+singled out because they have KNOWN, sensible recovery paths (fix the
+tool name; fix the arguments) that make sense to handle automatically,
+often even by feeding the message back to a model to self-correct
+(Problem 3). An error code the code doesn't explicitly recognize might be
+something like a server-side internal error, an authentication failure
+from the gateway design lab's auth layer, or a genuinely new failure mode
+nobody anticipated when this handling code was written -- none of which
+have an obvious "just retry with corrected input" fix, and blindly
+returning a generic error message for all of them risks the calling code
+(or a model reading that message) attempting an inappropriate "fix" that
+doesn't actually address the real problem, or worse, silently continuing
+in a broken state.
+
+Re-raising unrecognized errors instead surfaces them loudly -- to logs,
+to monitoring, to a human -- rather than quietly downgrading every
+unknown failure into the same bland, uninformative message. This mirrors
+a broader principle worth stating explicitly: catching and handling
+SPECIFIC, anticipated failure modes is good defensive design; catching
+and silently normalizing EVERY possible failure mode, known or not, often
+trades a loud, fixable bug for a quiet, harder-to-diagnose one -- the
+kind of blanket except-and-continue pattern that tends to hide real
+problems rather than solve them.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting client error handling to the transport it's running over</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Everything in this lab assumes the server is reachable and responds — but the underlying transport can also fail entirely (e.g. the stdio server subprocess crashes outright, or an SSE connection drops mid-session). Is that the SAME kind of failure as a JSON-RPC error response, and should a client handle it the same way?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- these are genuinely different failure categories, and conflating
+them leads to worse error handling, not better. A JSON-RPC error response
+(section 2's -32601/-32602 examples) is the server successfully
+receiving, processing, and REPLYING to a request -- the reply just
+happens to be "here's why this failed" instead of "here's your result."
+The protocol worked correctly; the requested OPERATION failed in a
+well-defined, structured way the client can parse and reason about.
+
+A transport-level failure (the stdio subprocess crashing, an SSE
+connection dropping) is different in kind: there is no JSON-RPC response
+at all, because the underlying channel carrying JSON-RPC messages is
+itself gone -- the previous lab's stdio mechanics and this lab's SSE
+transport both depend on that channel staying alive, and if it doesn't,
+the client's readline() call (stdio) or SSE event stream (SSE) simply
+never receives anything, or raises a connection-level exception distinct
+from McpError entirely (e.g. a BrokenPipeError, a network timeout).
+
+A genuinely robust client handles BOTH, but with different recovery
+logic: JSON-RPC errors (section 2) get handled per error CODE, often
+feeding the message back into an agent loop for self-correction (Problem
+3). Transport failures need different recovery entirely -- e.g.
+detecting the subprocess died and deciding whether to respawn it (stdio),
+or detecting a dropped SSE connection and attempting to reconnect (SSE) —
+neither of which is meaningfully "fixable" by changing the tool call's
+arguments the way a -32602 error is. Treating a crashed subprocess the
+same way as a bad-arguments error (e.g. trying to "retry with corrected
+arguments" against a server that no longer exists) would be a category
+error -- the client needs to distinguish "the operation failed" from "the
+connection itself is gone" before it can pick an appropriate response to
+either.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the connect → discover → call → receive sequence from memory against the stdio server from two labs ago, (2) explain the difference between a -32601 and a -32602 error and why a client should respond to each differently, and (3) explain why transport-level failures need different handling than JSON-RPC error responses, even though both are "the call didn't succeed"? This closes out Week 1 of Month 4 — the JSON-RPC message shape, a stdio server, an SSE server, a gateway routing across many servers, a memory schema for what an agent remembers, and now a client that calls all of it and survives when something goes wrong.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — mcp client basics.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: LIVE CALL DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-call]");
+  var sendBtn = document.getElementById("live-send");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var selected = "good";
+  var busy = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selected = c.dataset.call;
+    });
+  });
+
+  sendBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    sendBtn.disabled = true;
+    logEl.innerHTML = "";
+
+    if(selected === "good"){
+      log('<b>Client:</b> await call_tool_safely(session, "add", {"a": 7, "b": 35})');
+      await wait(400);
+      log('<b>Wire:</b> {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"add","arguments":{"a":7,"b":35}}} → server');
+      await wait(500);
+      log('<b>Wire:</b> server ← {"jsonrpc":"2.0","id":9,"result":{"content":[{"type":"text","text":"42"}]}}');
+      await wait(400);
+      log('<b style="color:var(--ok-c);">Client:</b> result.content[0].text = "42" — happy path, no exception raised, execution continues normally.');
+    } else {
+      log('<b>Client:</b> await call_tool_safely(session, "add", {"b": 35})  — missing required "a"');
+      await wait(400);
+      log('<b>Wire:</b> {"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"add","arguments":{"b":35}}} → server');
+      await wait(500);
+      log('<b>Wire:</b> server ← {"jsonrpc":"2.0","id":10,"error":{"code":-32602,"message":"Invalid params: \'a\' is a required property"}}');
+      await wait(400);
+      log('<b style="color:var(--err-c);">Client:</b> McpError raised by the SDK, caught by call_tool_safely, code == -32602 matched → returns {"error": "Bad arguments for add: \'a\' is a required property"}.');
+      await wait(300);
+      log('<b style="color:var(--ok-c);">No crash.</b> The calling code (an agent loop, per Practice Problem 3) receives a structured error it can act on — e.g. feed back to the model so it can retry with corrected arguments.');
+    }
+
+    busy = false;
+    sendBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = '<span class="line">Pick a call shape, then send — watch the client\'s handling differ depending on whether the server returns a result or an error.</span>';
+    busy = false;
+    sendBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

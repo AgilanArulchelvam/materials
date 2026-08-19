@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — MCP Server: stdio Transport</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --client-c:#4fc3f7; --server-c:#c792ea; --stdin-c:#7fd8a0; --stdout-c:#f2c14e; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--server-c); color:var(--server-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.b{border-color:var(--stdin-c); color:var(--stdin-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--stdout-c); color:var(--stdout-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* process boundary diagram */
+  .proc-stage{display:flex; align-items:stretch; justify-content:space-between; gap:1rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .proc-box{flex:1; min-width:220px; border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2); text-align:center;}
+  .proc-box.client{border-color:var(--client-c);}
+  .proc-box.server{border-color:var(--server-c);}
+  .proc-box h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.4rem;}
+  .proc-box.client h4{color:var(--client-c);}
+  .proc-box.server h4{color:var(--server-c);}
+  .proc-box .pid{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim);}
+  .proc-pipes{flex:0 0 140px; display:flex; flex-direction:column; justify-content:center; gap:0.8rem; align-items:center;}
+  .proc-pipe-label{font-family:var(--mono); font-size:0.68rem; padding:0.3rem 0.6rem; border-radius:6px; border:1.5px solid; white-space:nowrap; opacity:0.35; transition:opacity .3s ease, box-shadow .3s ease;}
+  .proc-pipe-label.stdin{border-color:var(--stdin-c); color:var(--stdin-c);}
+  .proc-pipe-label.stdout{border-color:var(--stdout-c); color:var(--stdout-c);}
+  .proc-pipe-label.active{opacity:1; box-shadow:0 0 10px currentColor;}
+  .proc-arrow{font-family:var(--mono); font-size:0.9rem; color:var(--ink-dim);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.server{border-left-color:var(--server-c); background:rgba(199,146,234,0.06);} .callout.server b{color:var(--server-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · SERVER OVER STDIO</div>
+  <h1>The server isn't a service you connect to. It's a process your client <em>starts</em>.</h1>
+  <p class="lede">The simplest way to run an MCP server has no networking at all: the client launches the server as a subprocess and the two talk over that subprocess's own stdin and stdout, one JSON-RPC message per line. This lab builds a minimal server exposing one tool with a real JSON Schema, then breaks down exactly what "stdio transport" means at the process level — and animates the actual pipe traffic between a spawned client and server.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Client spawns server as a subprocess</div>
+    <div class="pipe-label b">Requests → server's stdin</div>
+    <div class="pipe-label c">Responses ← server's stdout</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="server">1 · A Minimal Server, One Tool</a>
+  <a data-target="stdio">2 · What "stdio Transport" Actually Means</a>
+  <a data-target="boundary">3 · Watch the Process Boundary, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: MINIMAL SERVER ============ -->
+<section id="server">
+  <div class="kicker">01 — One tool, registered, with a real schema</div>
+  <h2>A minimal MCP server exposing one tool</h2>
+
+  <p><strong>Start here, before the code.</strong> The previous lab (<code class="inline">mcp_fundamentals_jsonrpc.html</code>) established what a tool looks like as JSON — a name, a description, an <code class="inline">inputSchema</code>. Building a server means writing the actual code that (1) declares that JSON when asked, and (2) does real work when the tool actually gets called with real arguments. Below is a genuine, runnable-shaped example using the MCP Python SDK's decorator pattern, exposing exactly one tool: a calculator that adds two numbers.</p>
+
+  <div class="code"><span class="c-kw">from</span> mcp.server <span class="c-kw">import</span> Server
+<span class="c-kw">from</span> mcp.server.stdio <span class="c-kw">import</span> stdio_server
+<span class="c-kw">import</span> mcp.types <span class="c-kw">as</span> types
+
+server = Server(<span class="c-str">"calculator-server"</span>)
+
+<span class="c-cmt"># PART 1: declare what tools exist -- called when the client sends tools/list</span>
+<span class="c-fn">@server.list_tools</span>()
+<span class="c-kw">async def</span> <span class="c-fn">list_tools</span>() -> list[types.Tool]:
+    <span class="c-kw">return</span> [
+        types.Tool(
+            name=<span class="c-str">"add"</span>,
+            description=<span class="c-str">"Add two numbers together"</span>,
+            inputSchema={
+                <span class="c-str">"type"</span>: <span class="c-str">"object"</span>,
+                <span class="c-str">"properties"</span>: {
+                    <span class="c-str">"a"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"number"</span>, <span class="c-str">"description"</span>: <span class="c-str">"first addend"</span>},
+                    <span class="c-str">"b"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"number"</span>, <span class="c-str">"description"</span>: <span class="c-str">"second addend"</span>},
+                },
+                <span class="c-str">"required"</span>: [<span class="c-str">"a"</span>, <span class="c-str">"b"</span>],
+            },
+        )
+    ]
+
+<span class="c-cmt"># PART 2: actually execute a tool -- called when the client sends tools/call</span>
+<span class="c-fn">@server.call_tool</span>()
+<span class="c-kw">async def</span> <span class="c-fn">call_tool</span>(name: <span class="c-fn">str</span>, arguments: <span class="c-fn">dict</span>) -> list[types.TextContent]:
+    <span class="c-kw">if</span> name == <span class="c-str">"add"</span>:
+        result = arguments[<span class="c-str">"a"</span>] + arguments[<span class="c-str">"b"</span>]
+        <span class="c-kw">return</span> [types.TextContent(type=<span class="c-str">"text"</span>, text=<span class="c-fn">str</span>(result))]
+    <span class="c-kw">raise</span> <span class="c-fn">ValueError</span>(<span class="c-str">f"Unknown tool: {name}"</span>)
+
+<span class="c-cmt"># PART 3: run it over stdio -- this is the transport choice this lab covers</span>
+<span class="c-kw">async def</span> <span class="c-fn">main</span>():
+    <span class="c-kw">async with</span> stdio_server() <span class="c-kw">as</span> (read_stream, write_stream):
+        <span class="c-kw">await</span> server.run(read_stream, write_stream, server.create_initialization_options())
+
+<span class="c-kw">if</span> __name__ == <span class="c-str">"__main__"</span>:
+    <span class="c-kw">import</span> asyncio
+    asyncio.run(main())</div>
+
+  <p>Notice the shape mirrors exactly the JSON from the previous lab: <code class="inline">list_tools</code> returns objects that serialize into the <code class="inline">tools/list</code> response's tool descriptions (name, description, <code class="inline">inputSchema</code>), and <code class="inline">call_tool</code> is what actually runs when a <code class="inline">tools/call</code> request with <code class="inline">name: "add"</code> arrives — the SDK handles wrapping/unwrapping the JSON-RPC envelope so this code never touches raw JSON-RPC directly, but the same request/response shape from the previous lab is what's flowing underneath.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a minimal MCP server registers its available tools via a <code class="inline">list_tools</code> handler (returning each tool's name, description, and JSON Schema <code class="inline">inputSchema</code>) and executes them via a <code class="inline">call_tool</code> handler (receiving the tool name and arguments dict, returning content back to the client). The SDK translates between this handler-based interface and the underlying JSON-RPC <code class="inline">tools/list</code> and <code class="inline">tools/call</code> messages from the protocol, so server code is written against a typed function interface rather than raw JSON, even though JSON-RPC is what actually travels over the wire.</div>
+</section>
+
+<!-- ============ SECTION 2: STDIO MECHANICS ============ -->
+<section id="stdio">
+  <div class="kicker">02 — No sockets, no ports — just a subprocess's own pipes</div>
+  <h2>stdio transport, mechanically</h2>
+
+  <p><strong>Start here, before the mechanics.</strong> Think about running a command-line calculator program by piping input into it: <code class="inline">echo "2 + 2" | calc</code>. The shell isn't opening any network connection to <code class="inline">calc</code> — it's just wiring your typed text into <code class="inline">calc</code>'s own standard input, and whatever <code class="inline">calc</code> prints to its own standard output flows back out. stdio transport applies exactly this idea to MCP: no networking stack involved at all, just a program's ordinary input and output streams, repurposed to carry JSON-RPC messages instead of arbitrary text.</p>
+
+  <p>Concretely: the MCP client <strong>launches the server as a subprocess</strong> (e.g. via Python's <code class="inline">subprocess.Popen</code> or the equivalent in Node), keeping a handle to that subprocess's <code class="inline">stdin</code> and <code class="inline">stdout</code> file descriptors. The client writes JSON-RPC request messages to the subprocess's <code class="inline">stdin</code>, and reads JSON-RPC response and notification messages from the subprocess's <code class="inline">stdout</code> — <strong>one complete JSON-RPC message per line</strong>, newline-delimited, so each side knows exactly where one message ends and the next begins. This is precisely why it's called "stdio transport" — the transport IS the subprocess's standard input and standard output, nothing more exotic than that.</p>
+
+  <div class="code"><span class="c-cmt"># roughly what the CLIENT side does to launch and talk to the server above</span>
+<span class="c-kw">import</span> subprocess, json
+
+proc = subprocess.Popen(
+    [<span class="c-str">"python"</span>, <span class="c-str">"calculator_server.py"</span>],
+    stdin=subprocess.PIPE,
+    stdout=subprocess.PIPE,
+    text=<span class="c-fn">True</span>,
+)
+
+<span class="c-cmt"># write one JSON-RPC request, newline-terminated, to the subprocess's stdin</span>
+request = {<span class="c-str">"jsonrpc"</span>: <span class="c-str">"2.0"</span>, <span class="c-str">"id"</span>: <span class="c-num">1</span>, <span class="c-str">"method"</span>: <span class="c-str">"tools/list"</span>}
+proc.stdin.write(json.dumps(request) + <span class="c-str">"\n"</span>)
+proc.stdin.flush()
+
+<span class="c-cmt"># read one line back from the subprocess's stdout -- that line IS the response</span>
+response_line = proc.stdout.readline()
+response = json.loads(response_line)
+<span class="c-fn">print</span>(response[<span class="c-str">"result"</span>])</div>
+
+  <p>Two things make this reliable: <strong>one message per line</strong> (so <code class="inline">readline()</code> always yields exactly one complete JSON-RPC message, never half a message or two concatenated messages), and <strong>strict stdout hygiene</strong> — the server must never <code class="inline">print()</code> anything to stdout that ISN'T a JSON-RPC message, because the client is reading every line of stdout as protocol traffic. Any debug logging the server wants to do has to go to stderr instead, which the client simply doesn't read as protocol data.</p>
+
+  <div class="callout warn"><b>The classic stdio bug:</b> a developer adds a stray <code class="inline">print("debug: got here")</code> inside the server's tool-handling code, forgetting that stdout is the protocol channel, not a debug console. The client's next <code class="inline">readline()</code> gets that debug string instead of the JSON-RPC response it expected, fails to parse it as JSON, and the whole exchange breaks — not because the tool logic was wrong, but because something leaked onto the one channel that was supposed to carry ONLY protocol messages. This is exactly why MCP server implementations are strict about routing all logging to stderr, never stdout.</div>
+
+  <div class="callout server"><b>Interview-ready definition:</b> stdio transport runs the MCP server as a child process launched directly by the client, communicating over that subprocess's own stdin and stdout — the client writes JSON-RPC requests to the server's stdin and reads JSON-RPC responses/notifications from the server's stdout, one newline-delimited message per line, with no network socket involved. This requires strict discipline that stdout carries ONLY protocol messages (anything else, like stray debug prints, corrupts the stream since the client parses every line as JSON-RPC) — which is why server implementations route logging to stderr instead, leaving stdout exclusively for the protocol.</div>
+</section>
+
+<!-- ============ SECTION 3: PROCESS BOUNDARY ANIMATION ============ -->
+<section id="boundary">
+  <div class="kicker">03 — Two separate processes, one pair of pipes between them</div>
+  <h2>The process boundary, animated</h2>
+
+  <p><strong>Start here, before running it.</strong> Everything above described stdio transport in words and code. This animates the actual mechanics: a client process spawning a server subprocess, then a JSON-RPC request traveling down into the server's stdin and a response traveling back up out of the server's stdout — the exact two pipes section 2 described, made concrete as two boxes and two labeled channels between them.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CLIENT SPAWNS SERVER — WATCH THE PIPES</span>
+      <div><button class="btn secondary" id="proc-reset">Reset</button></div>
+    </div>
+    <div class="proc-stage">
+      <div class="proc-box client" id="proc-client">
+        <h4>CLIENT PROCESS</h4>
+        <div class="pid" id="proc-client-pid">pid 4821</div>
+      </div>
+      <div class="proc-pipes">
+        <div class="proc-pipe-label stdin" id="pipe-stdin">↓ server's stdin</div>
+        <div class="proc-pipe-label stdout" id="pipe-stdout">↑ server's stdout</div>
+      </div>
+      <div class="proc-box server" id="proc-server" style="opacity:0.35;">
+        <h4>SERVER PROCESS</h4>
+        <div class="pid" id="proc-server-pid">not spawned yet</div>
+      </div>
+    </div>
+    <button class="btn" id="proc-step">Spawn subprocess ▸</button>
+    <div class="log" id="proc-log"><span class="line">Click to spawn the server subprocess, then send a request and watch it travel over stdin/stdout.</span></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> the stdio process boundary is the client-launches-server relationship at the OS level: the client process calls something like <code class="inline">subprocess.Popen</code>, which forks and execs the server as a genuine child process, wiring that child's stdin and stdout to pipes the client holds handles to. The client and server are two entirely separate OS processes, with memory isolation between them exactly like any two unrelated processes — the ONLY communication channel between them is the pair of pipes the client set up at spawn time, which is also why stdio-transport MCP servers are inherently single-client: the pipes were created for exactly one parent process, and there is no mechanism for a second, unrelated client to also attach to that same server subprocess.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing a broken stdio server from a symptom</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A newly written MCP server works fine when run directly and manually fed input in a terminal, but the moment a real MCP client launches it as a subprocess, every response fails to parse as JSON. The developer swears the JSON-RPC response-building code is correct. What's the most likely cause, using section 2's warning?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause is that something OTHER than JSON-RPC messages is
+being written to stdout -- most commonly a stray print() statement (a
+startup banner, a debug log line, a library that prints its own status
+messages) that the developer didn't notice because, when run manually in
+a terminal, a human just visually skims past extra lines without it
+breaking anything. But the actual MCP client isn't a human skimming
+output -- per section 2, it calls something like readline() on stdout and
+attempts to json.loads() EVERY line it receives as a complete JSON-RPC
+message. Any extra non-JSON line corrupts that parsing, exactly matching
+the "every response fails to parse" symptom, even though the JSON-RPC-
+building code itself may be entirely correct -- the bug isn't in what
+gets built, it's in what ELSE gets written to the same channel.
+
+Fix: audit every place the server (and any library it imports) might
+write to stdout, and redirect all logging/debug output to stderr instead,
+leaving stdout reserved exclusively for JSON-RPC protocol messages, per
+section 2's stdout-hygiene rule.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why stdio is single-client by construction</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team wants two different client applications to both talk to the same running stdio-transport MCP server instance at the same time. Using section 3's process-boundary explanation, why doesn't this work, and what would they need to change?</p>
+    <details><summary>Show solution</summary><div class="solution">This doesn't work because a stdio server's stdin/stdout pipes are set up
+at SPAWN time by the ONE process that launched it (section 3) -- the
+pipes are a direct, exclusive connection between that specific parent
+process and that specific child process, not a shared, discoverable
+channel other unrelated processes can also attach to. A second client
+application has no way to "also connect" to an already-running server
+subprocess's stdin/stdout, because those file descriptors were never
+exposed to anything except the original parent -- there's no listening
+socket, no address, nothing a second process could discover or dial into
+even in principle.
+
+What they'd need to change: move off stdio transport entirely, to a
+transport that's actually built around a persistent, addressable service
+multiple independent clients CAN connect to -- which is precisely what
+the next lab (mcp_server_sse.html) covers. Under stdio, "supporting two
+clients" isn't a configuration tweak, it's a different transport model:
+either each client spawns and owns its OWN separate server subprocess
+(two independent server instances, not one shared instance), or the
+server needs to run as a standalone network-addressable service instead
+of a spawned child process.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Tracing what breaks if requests aren't newline-delimited</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A client sends two JSON-RPC requests to a server's stdin back to back, forgetting to add a newline after the first one, so the server's stdin actually receives one unbroken string containing both request JSONs concatenated. What happens on the server side, and why does this trace back to the "one message per line" rule?</p>
+    <details><summary>Show solution</summary><div class="solution">On the server side, whatever is reading stdin line-by-line (readline(),
+per section 2's mechanics) will read past the end of the first JSON
+object and into the start of the second one before it ever hits a
+newline character -- because without the newline, there IS no line
+boundary between the two messages from the reader's point of view.
+Attempting to json.loads() that concatenated string fails (it's not
+valid JSON -- two JSON objects back to back with no separator isn't a
+single parseable value), so the server can't even recover the first
+request's contents, despite it having been perfectly well-formed JSON on
+its own.
+
+This traces directly back to the "one message per line" rule in section
+2: newline-delimiting isn't a stylistic choice, it's the ENTIRE mechanism
+that lets a reader on either side know where one message ends and the
+next begins, given that stdin/stdout are just raw byte/character streams
+with no built-in message-framing of their own (unlike, say, HTTP, which
+has explicit framing like Content-Length headers). Skip the newline and
+there's no way to tell "one full request has arrived" from "half a
+request has arrived so far" without imposing some OTHER framing scheme —
+which is exactly why every stdio-transport implementation treats the
+newline as a hard requirement, not an optional nicety.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about lifecycle coupling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If the client process crashes or is force-killed, what happens to the stdio-transport server subprocess it spawned, and why does this differ from what you'd expect from a standalone networked service?</p>
+    <details><summary>Show solution</summary><div class="solution">In the typical case, the server subprocess dies too (or becomes an
+orphaned process the OS will eventually reap), because it was launched
+AS A CHILD of the client process specifically to serve that one client --
+its stdin/stdout pipes become invalid the moment the parent that created
+them is gone, and most process managers/OSes will also send a
+termination signal to child processes when a parent dies (depending on
+how the subprocess was spawned and configured). This is a direct
+consequence of section 3's process-boundary description: the server's
+entire reason for existing, in the stdio model, is serving the ONE
+client that spawned it -- there's no independent reason for it to keep
+running once that relationship is severed.
+
+This differs sharply from a standalone networked service (the kind the
+next lab's SSE transport uses): a persistent HTTP server keeps running
+regardless of whether any particular client that connected to it is
+still alive, because its lifecycle was never tied to a specific client
+process in the first place -- it's an independently running service that
+clients connect TO, rather than a process a client directly OWNS and
+spawned. This tight lifecycle coupling (server dies with its one client)
+is exactly the trade-off section 3's transport-choice framing points
+toward: stdio is simple and has zero infrastructure to run, but it
+inherently ties the server's lifetime to one specific client process,
+which a standalone networked server deliberately avoids.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Choosing stdio vs a different transport for a described scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team is building a coding assistant that runs entirely on a developer's own laptop and needs to call out to a small set of local file-system tools (read file, list directory, run a lint check) — nothing needs to be reachable from any other machine. Is stdio transport a good fit here, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, stdio transport is a strong fit here, precisely because every
+constraint stdio's design accepts (section 2 and section 3) matches this
+scenario's actual requirements rather than fighting against them.
+Stdio's core trade-offs: local-only (no network reachability at all),
+single-client (tightly coupled to the one process that spawned it,
+Problem 2), and simple (zero infrastructure -- no port to bind, no HTTP
+server framework, no auth/network-security surface to reason about).
+
+This scenario needs exactly that: the tools ("read file," "list
+directory," "run a lint check") only ever need to be called by the one
+coding-assistant process running locally on the SAME laptop as the files
+being read -- there's no requirement for any OTHER machine or process to
+reach these tools, and there's exactly one client (the assistant itself)
+that will ever use them. Reaching for a networked transport (the next
+lab's SSE, requiring an HTTP server, a port, and real thought about who
+else might be able to connect to it) here would add real infrastructure
+and security-surface cost to solve a "multiple remote clients" problem
+this scenario doesn't actually have -- stdio's constraints aren't a
+limitation in this case, they're a precise match to what's actually
+needed, launched fresh each time the assistant starts and torn down
+cleanly when it exits.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the two-handler shape (list_tools, call_tool) of a minimal MCP server from memory, (2) explain precisely why a stray print() statement breaks a stdio server and where logging should go instead, and (3) explain why stdio transport is inherently single-client using the process-spawn mechanics, not just as a memorized fact? The next lab in this week takes this exact server and adds a second transport option — SSE — so the same tool-serving logic can run as a persistent network service instead of a spawned subprocess.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — mcp server: stdio transport.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: PROCESS BOUNDARY STEPS */
+(function(){
+  var stepBtn = document.getElementById("proc-step");
+  var resetBtn = document.getElementById("proc-reset");
+  var logEl = document.getElementById("proc-log");
+  var serverBox = document.getElementById("proc-server");
+  var serverPid = document.getElementById("proc-server-pid");
+  var pipeStdin = document.getElementById("pipe-stdin");
+  var pipeStdout = document.getElementById("pipe-stdout");
+  var step = 0;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  var STEPS = [
+    function(){
+      serverBox.style.opacity = "1";
+      serverPid.textContent = "pid 4822 (child of 4821)";
+      log('<b>subprocess.Popen(["python","calculator_server.py"], stdin=PIPE, stdout=PIPE)</b> — client spawns the server as a genuine OS child process.');
+      log("Two pipes now exist, owned by the client: one feeding the server's stdin, one draining the server's stdout. No network socket, no port.");
+      stepBtn.textContent = "Send tools/list request ▸";
+    },
+    function(){
+      pipeStdin.classList.add("active");
+      log('<b>Client writes to server stdin:</b> {"jsonrpc":"2.0","id":1,"method":"tools/list"}\\n — one line, newline-terminated.');
+      stepBtn.textContent = "Server processes + responds ▸";
+    },
+    function(){
+      pipeStdin.classList.remove("active");
+      pipeStdout.classList.add("active");
+      log("Server reads that line, parses it as JSON-RPC, runs its list_tools() handler, and writes the response to its OWN stdout.");
+      log('<b>Server writes to its stdout:</b> {"jsonrpc":"2.0","id":1,"result":{"tools":[{"name":"add",...}]}}\\n');
+      stepBtn.textContent = "Client reads response ▸";
+    },
+    function(){
+      pipeStdout.classList.remove("active");
+      log('<b>Client calls proc.stdout.readline()</b> — gets exactly that one line back, parses it, matches id:1 to its pending request. Exchange complete.');
+      log('<b style="color:var(--server-c);">Notice:</b> this is the exact request/response shape from the JSON-RPC fundamentals lab — stdio transport didn\'t change the MESSAGE FORMAT at all, only HOW the bytes physically travel between the two processes.');
+      stepBtn.disabled = true;
+      stepBtn.textContent = "Sequence complete";
+    }
+  ];
+
+  stepBtn.addEventListener("click", function(){
+    if(step < STEPS.length){
+      STEPS[step]();
+      step++;
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    step = 0;
+    serverBox.style.opacity = "0.35";
+    serverPid.textContent = "not spawned yet";
+    pipeStdin.classList.remove("active");
+    pipeStdout.classList.remove("active");
+    stepBtn.disabled = false;
+    stepBtn.textContent = "Spawn subprocess ▸";
+    logEl.innerHTML = '<span class="line">Click to spawn the server subprocess, then send a request and watch it travel over stdin/stdout.</span>';
+  });
+})();
+</script>
+</body>
+</html>
