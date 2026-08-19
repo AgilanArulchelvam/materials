@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Benchmark &amp; Finish</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --true-c:#7fd8a0; --approx-c:#4fc3f7; --miss-c:#ff6b6b; --tune-c:#f2c14e; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--true-c); color:var(--true-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--approx-c); color:var(--approx-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--tune-c); color:var(--tune-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* neighbor set visual */
+  .neighbor-row{display:flex; align-items:center; gap:0.8rem; margin:0.8rem 0; flex-wrap:wrap;}
+  .neighbor-label{font-family:var(--mono); font-size:0.75rem; min-width:120px; color:var(--ink-dim);}
+  .neighbor-chip{font-family:var(--mono); font-size:0.8rem; padding:0.35rem 0.7rem; border-radius:6px; border:1.5px solid var(--rule); background:#0b0d11; transition:all .3s ease;}
+  .neighbor-chip.hit{border-color:var(--true-c); color:var(--true-c); background:rgba(127,216,160,0.08);}
+  .neighbor-chip.miss{border-color:var(--miss-c); color:var(--miss-c); background:rgba(255,107,107,0.08); text-decoration:line-through;}
+  .neighbor-chip.extra{border-color:var(--approx-c); color:var(--approx-c); background:rgba(79,195,247,0.08);}
+
+  /* recall meter */
+  .recall-meter{height:52px; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; overflow:hidden; position:relative; margin:1.2rem 0;}
+  .recall-fill{height:100%; background:linear-gradient(90deg, var(--miss-c), var(--tune-c), var(--true-c)); width:0%; transition:width 1s ease; display:flex; align-items:center; justify-content:flex-end; padding-right:0.8rem;}
+  .recall-fill span{font-family:var(--mono); font-size:0.85rem; font-weight:700; color:#0e0f13;}
+  .recall-target{position:absolute; top:0; bottom:0; width:2px; background:var(--ink); z-index:3;}
+  .recall-target-label{position:absolute; top:-1.4rem; font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--miss-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--miss-c);}
+  .callout.gen{border-left-color:var(--true-c); background:rgba(127,216,160,0.06);} .callout.gen b{color:var(--true-c);}
+  .callout.survival{border-left-color:var(--approx-c); background:rgba(79,195,247,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--approx-c);}
+  .callout.checkpoint{border-left-color:var(--tune-c); background:rgba(242,193,78,0.1); font-size:0.98rem; border-width:4px;}
+  .callout.checkpoint b{color:var(--tune-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · SURVIVAL EXERCISE — VECTOR RETRIEVAL ENGINE, FINAL DAY</div>
+  <h1>Does the engine you built this week actually work? Measure it, don't assume it.</h1>
+  <p class="lede">Every lab this week built a piece of a real vector retrieval engine: brute-force cosine search, an HNSW-style index, hybrid scoring and re-ranking, a real schema. This lab closes the loop — benchmark the approximate index's recall against brute force's ground truth on a 10k-vector set, confirm it clears a 90% recall target, and if it doesn't, work out exactly which knob to turn. This is the Month 3 capstone.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Brute force = ground truth</div>
+    <div class="pipe-label b">HNSW-style = approximate, measured against it</div>
+    <div class="pipe-label c">Below target? Tune M / ef_search / layers</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="recall">1 · What "Recall" Means Here, Precisely</a>
+  <a data-target="benchmark">2 · Run the Benchmark on 10,000 Vectors</a>
+  <a data-target="tuning">3 · Below Target? Here's What You'd Tune</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 4 survival exercise, Saturday — benchmark &amp; finish:</b> the whole point of a survival exercise is that it culminates in something you can actually verify, not just something you can explain. This lab is that verification step for the entire Month 3 engine build — days 1 through 5 built the pieces; today measures whether the approximate index (day 2) is actually a good enough substitute for brute force (day 1) for real use.</div>
+</div>
+
+<!-- ============ SECTION 1: WHAT RECALL MEANS ============ -->
+<section id="recall">
+  <div class="kicker">01 — Not accuracy, not precision — specifically, overlap with the true top-k</div>
+  <h2>What "recall" means precisely, here</h2>
+
+  <p><strong>Start here, before any numbers.</strong> Imagine asking two research assistants to find your 5 closest friends by how often you've talked in the last year. One assistant checks EVERY single contact you have — slow, but guaranteed correct. The other assistant uses a fast shortcut — skims a much smaller set of likely candidates — and comes back quickly with their own list of 5. Recall, in this context, asks one specific question: of the 5 people the slow-but-guaranteed-correct assistant would have found, how many did the fast assistant's list ALSO include?</p>
+
+  <p>Concretely: brute-force search over a query returns the TRUE top-k nearest neighbors — by definition, since it exhaustively checks every vector (this week's day-1 lab). An approximate index (HNSW-style, day-2 lab) returns its OWN top-k, found via the greedy layered walk, which may or may not exactly match brute force's list. <strong>Recall@k</strong> is the fraction of brute force's true top-k that ALSO appears in the approximate index's returned top-k.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WORKED EXAMPLE — TRUE TOP-5 VS APPROXIMATE TOP-5</span></div>
+    <div class="neighbor-row"><span class="neighbor-label">Brute force (true):</span>
+      <span class="neighbor-chip">3</span><span class="neighbor-chip">17</span><span class="neighbor-chip">42</span><span class="neighbor-chip">8</span><span class="neighbor-chip">91</span>
+    </div>
+    <div class="neighbor-row"><span class="neighbor-label">HNSW (approx):</span>
+      <span class="neighbor-chip hit">3</span><span class="neighbor-chip hit">17</span><span class="neighbor-chip miss">42</span><span class="neighbor-chip hit">8</span><span class="neighbor-chip hit">91</span><span class="neighbor-chip extra">55</span>
+    </div>
+    <p style="font-size:0.85rem; margin-top:0.6rem;">Brute force's true top-5 is [3, 17, 42, 8, 91]. HNSW's approximate top-5 is [3, 17, 8, 55, 91] — 4 of the 5 true neighbors (3, 17, 8, 91) appear in HNSW's list; only 42 is missing, replaced by 55 (a node HNSW's greedy walk found instead, close but not actually in the true top-5). <strong>Recall@5 = 4/5 = 80%.</strong></p>
+  </div>
+
+  <div class="code"><span class="c-cmt"># recall@k for a single query</span>
+<span class="c-kw">def</span> <span class="c-fn">recall_at_k</span>(true_neighbors, approx_neighbors):
+    true_set = <span class="c-fn">set</span>(true_neighbors)
+    approx_set = <span class="c-fn">set</span>(approx_neighbors)
+    <span class="c-kw">return</span> <span class="c-fn">len</span>(true_set & approx_set) / <span class="c-fn">len</span>(true_set)
+
+<span class="c-fn">print</span>(recall_at_k([<span class="c-num">3</span>,<span class="c-num">17</span>,<span class="c-num">42</span>,<span class="c-num">8</span>,<span class="c-num">91</span>], [<span class="c-num">3</span>,<span class="c-num">17</span>,<span class="c-num">8</span>,<span class="c-num">55</span>,<span class="c-num">91</span>]))
+<span class="c-out">0.8   # 80% recall@5, matching the worked example above</span>
+
+<span class="c-cmt"># recall over a full benchmark: run many queries, average per-query recall</span>
+<span class="c-kw">def</span> <span class="c-fn">benchmark_recall</span>(queries, brute_force_index, approx_index, k=<span class="c-num">10</span>):
+    scores = []
+    <span class="c-kw">for</span> q <span class="c-kw">in</span> queries:
+        true_top_k = brute_force_index.search(q, k)
+        approx_top_k = approx_index.search(q, k)
+        scores.append(recall_at_k(true_top_k, approx_top_k))
+    <span class="c-kw">return</span> <span class="fn">sum</span>(scores) / <span class="c-fn">len</span>(scores)   <span class="c-cmt"># average recall@k across all queries</span></div>
+
+  <div class="callout"><b>Interview-ready definition:</b> recall@k measures what fraction of the TRUE top-k nearest neighbors (as determined by exhaustive brute-force search) an approximate index's own returned top-k actually contains, averaged across many benchmark queries. It is not the same as precision or accuracy in the classification sense — it specifically measures OVERLAP between two ranked result sets of the same size k, and it exists as a metric specifically because approximate indexes (this week's HNSW-style build) trade a small, measurable chance of missing true neighbors for dramatically faster query time — recall quantifies exactly how much of that trade is actually being paid.</div>
+</section>
+
+<!-- ============ SECTION 2: RUN THE BENCHMARK ============ -->
+<section id="benchmark">
+  <div class="kicker">02 — Not a single query — many, averaged, on a real-sized set</div>
+  <h2>Run the benchmark: recall vs brute force on a 10,000-vector set</h2>
+
+  <p><strong>Start here, before running it.</strong> A single query's recall (section 1's worked example) is a data point, not a benchmark. A real benchmark runs MANY queries against the SAME dataset and index, computes recall@k for each one independently, then averages — because any one query could get lucky or unlucky, but the average across dozens or hundreds of queries is a genuinely representative measure of how well-tuned the approximate index actually is.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SIMULATED BENCHMARK — 10,000-VECTOR SET, 30 QUERIES, k=10</span>
+      <div><button class="btn secondary" id="bench-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Each run simulates 30 queries against a 10,000-vector dataset, comparing brute-force ground truth to an HNSW-style index's approximate top-10 for each query, exactly as <code class="inline">benchmark_recall</code> above does. Results vary slightly run to run — like a real benchmark would.</p>
+    <button class="btn" id="bench-run">Run benchmark: 30 queries ▸</button>
+    <div class="recall-meter" id="bench-meter">
+      <div class="recall-target" style="left:90%;"></div>
+      <div class="recall-target-label" style="left:84%;">90% target</div>
+      <div class="recall-fill" id="bench-fill"><span id="bench-fill-label"></span></div>
+    </div>
+    <div class="log" id="bench-log"></div>
+  </div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> a recall benchmark runs a representative sample of real queries against both the ground-truth brute-force index and the approximate index being evaluated, computes recall@k for each query independently, and reports the AVERAGE — a single query's recall is noisy and not representative on its own, so credible recall numbers always come from averaging over a meaningful query sample (dozens to hundreds of queries, ideally reflecting the actual query distribution the production system will see), not a single spot-check.</div>
+</section>
+
+<!-- ============ SECTION 3: TUNING ============ -->
+<section id="tuning">
+  <div class="kicker">03 — Below 90%? Here's exactly what moves the number</div>
+  <h2>Confirming the ~90% recall target — and what to tune if you're below it</h2>
+
+  <p><strong>Start here, before the table.</strong> A recall benchmark that comes back below target isn't a dead end — it's a diagnostic pointing at specific, known knobs. Every one of these knobs trades query speed (or build time/memory) for recall, echoing the exact trade-off curve from the Week 1 <code class="inline">hnsw_indexing</code> lab and this week's <code class="inline">hnsw_from_scratch</code> lab — there's no free-lunch setting, only a choice of where on that curve to sit.</p>
+
+  <table class="cmp">
+    <tr><th>Knob</th><th>Direction to raise recall</th><th>What it costs</th></tr>
+    <tr><td><code>ef_search</code></td><td>Increase — examine more candidates per layer at query time</td><td>Query latency, immediately, per query — no rebuild needed, this is a query-time-only knob</td></tr>
+    <tr><td><code>M</code> (max connections per node)</td><td>Increase — denser graph, more paths for greedy search to find true neighbors</td><td>Build time and memory (more edges to store per node, across every layer that node participates in) — requires a rebuild</td></tr>
+    <tr><td>Number of layers / <code>level_multiplier</code></td><td>Increase — taller pyramid, more graduated descent, less chance of getting stuck early</td><td>Build time and memory, similar to M, plus insertion cost — requires a rebuild (this week's <code>hnsw_from_scratch</code> lab, section 1)</td></tr>
+    <tr><td><code>ef_construction</code></td><td>Increase — more thorough search while building each node's connections</td><td>Build time specifically (slower index construction) — requires a rebuild, but doesn't add query-time cost</td></tr>
+  </table>
+
+  <p>The fastest, cheapest fix to try FIRST is almost always <code class="inline">ef_search</code>, precisely because it's the only knob in this table that doesn't require rebuilding the index — it's read at query time, so raising it and re-running the benchmark is a matter of minutes, not a full re-index. If recall is still short of target even after raising <code class="inline">ef_search</code> substantially, that's the signal to consider the build-time knobs (M, layers, ef_construction), which cost more to iterate on but can fix recall problems that ef_search alone can't — for instance, if the graph structure itself is too sparse to ever reach certain true neighbors regardless of how thoroughly it's searched at query time.</p>
+
+  <div class="lookup-controls">
+    <button class="chip active" data-tune="low">Current: ef_search=10, recall≈72%</button>
+    <button class="chip" data-tune="mid">Raise ef_search to 50</button>
+    <button class="chip" data-tune="high">Raise ef_search to 150</button>
+  </div>
+  <div class="log" id="tune-log"></div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> when a benchmarked HNSW-style index falls short of a recall target, the fix is tuning one or more of its trade-off knobs (ef_search, M, layer count, ef_construction) toward "more thorough" — each knob trades away either query latency (ef_search, the query-time-only, no-rebuild-required knob) or build time/memory (M, layers, ef_construction, all requiring a rebuild) in exchange for higher recall. There is no single "correct" configuration — only a configuration that hits the specific recall/latency/memory point a given workload actually needs, discovered by iterating the cheapest-to-adjust knob (ef_search) first before reaching for the more expensive, rebuild-requiring ones.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing recall@k by hand for a new example</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Brute force's true top-6 for a query is [5, 12, 19, 23, 31, 44]. An HNSW-style index returns [5, 12, 99, 23, 31, 7]. Compute recall@6 by hand, showing the set intersection.</p>
+    <details><summary>Show solution</summary><div class="solution">True set: {5, 12, 19, 23, 31, 44}. Approx set: {5, 12, 99, 23, 31, 7}.
+Intersection: {5, 12, 23, 31} -- 4 elements shared. 19 and 44 are missing
+from the approximate result (replaced by 99 and 7, neither of which is
+in the true top-6).
+
+Recall@6 = |intersection| / |true set| = 4 / 6 ≈ 0.667, or about 66.7%.
+This is below the 90% target from section 3 -- section 3's tuning table
+is exactly what you'd reach for next to try to close this specific gap.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why recall is computed per query and averaged, not computed once globally</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes simplifying the benchmark: instead of running 30 separate queries and averaging their individual recall@k scores, just run ONE large query with k=300 and compute recall@300 once. Why doesn't this give an equivalent, valid recall measurement?</p>
+    <details><summary>Show solution</summary><div class="solution">This conflates two genuinely different things: recall@k for ONE query
+with a large k, versus the AVERAGE of recall@k across MANY different
+queries each with a realistic k. A production system's actual query
+pattern is many different queries, each asking for a modest k (e.g. top
+10) -- section 2's benchmark_recall function is built to mirror exactly
+that real usage pattern, averaging per-query recall over queries that
+resemble what the system will actually see.
+
+A single query with k=300 measures something different: how well the
+approximate index finds a much LARGER neighborhood around one specific
+point in the vector space, which doesn't necessarily generalize to how
+well it performs across queries scattered throughout different regions
+of that space. The approximate index's recall can genuinely vary by
+region -- a densely-populated area of the embedding space might have
+excellent local graph connectivity and high recall, while a sparser
+region might have gaps that hurt recall specifically there. Averaging
+many DIFFERENT queries' recall@k (section 2's actual approach) captures
+that regional variation; one giant query at one point in the space
+doesn't -- it's measuring a different, less representative thing, even
+though both produce "a recall number."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing which knob to raise given a described failure pattern</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A benchmark shows recall@10 stuck at 65% even after raising ef_search from 10 all the way to 500 (a huge increase, with query latency now noticeably worse) — recall barely moved. Using section 3's table, what does this suggest about where the actual problem lies, and what would you try next?</p>
+    <details><summary>Show solution</summary><div class="solution">This suggests the bottleneck isn't how THOROUGHLY each layer is being
+searched at query time (which is exactly what ef_search controls) -- it
+suggests the underlying GRAPH STRUCTURE itself may be too sparse or
+poorly connected to reach certain true neighbors AT ALL, regardless of
+how much query-time search effort is thrown at it. Raising ef_search
+lets the greedy walk examine more candidates per layer, but if the true
+nearest neighbors are structurally unreachable from the walk's actual
+path (too few edges, or a poorly-connected region of the graph, per this
+week's hnsw_from_scratch lab's insertion-order and M discussion), no
+amount of additional query-time search effort recovers what the graph
+structure itself never wired in as a reachable path.
+
+What to try next: the BUILD-time knobs from section 3's table --
+specifically raising M (more connections per node, giving the greedy
+walk more paths per layer, per hnsw_from_scratch section 2) and/or
+raising ef_construction (a more thorough search during insertion means
+each node's neighbors are chosen more accurately in the first place,
+per the Week 1 hnsw_indexing lab's build-time trade-off discussion).
+Both require a full rebuild of the index, unlike ef_search -- but this
+symptom (recall plateauing despite a large ef_search increase) is
+precisely the signal that distinguishes a query-time-search problem from
+a graph-structure problem, and only the build-time knobs fix the
+latter.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Weighing the ef_search-vs-M trade-off for a specific deployment</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team is below the 90% recall target. Raising ef_search alone would get them to 90% but at 3x current query latency. Raising M alone (via a rebuild) would also get them to 90%, but at a 40% increase in index memory and a one-time multi-hour rebuild. The system is latency-critical (sub-50ms) but has ample memory headroom and can tolerate an offline rebuild window. Which would you choose, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Raise M via a rebuild, not ef_search, given these specific constraints.
+The deciding factor is which resource the system actually has slack in:
+this system is explicitly latency-critical (sub-50ms), so a 3x query
+latency increase from raising ef_search is a direct hit to the
+constraint that matters most here -- even if 3x still technically stays
+under 50ms in absolute terms, it's eating directly into the system's
+most protected resource for no reason when an alternative exists.
+Meanwhile, the system explicitly has "ample memory headroom" and can
+tolerate an offline rebuild window -- both of M's costs (memory, one-time
+rebuild time) land squarely on resources this system has been described
+as having slack in.
+
+This is exactly the point of section 3's table laying out knobs with
+DIFFERENT cost shapes rather than presenting "raise some HNSW parameter"
+as one undifferentiated fix -- ef_search and M solve the same recall
+problem but spend genuinely different resources to do it, and the
+"right" choice depends entirely on which resource a given deployment can
+actually afford to spend. A team without memory headroom or without an
+acceptable rebuild window, facing the identical recall shortfall, would
+reasonably make the opposite choice -- there's no universal answer, only
+a match between the available knobs' cost shapes and this specific
+system's actual constraints.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining a sharding trade-off out loud (the Month 3 checkpoint's second half)</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The Month 3 checkpoint (below) asks you to explain a sharding trade-off out loud, in addition to the recall benchmark. Using this week's engine (a vector index over a growing dataset), sketch: what would sharding the vector index across multiple machines actually require, and what's the concrete trade-off versus keeping it on one machine?</p>
+    <details><summary>Show solution</summary><div class="solution">Sharding a vector index means splitting the dataset (and its index
+structure) across multiple machines instead of keeping the whole thing
+on one -- necessary once the dataset genuinely exceeds what one
+machine's memory can hold, or once query throughput exceeds what one
+machine can serve, echoing the exact scaling motivation from the Month 1
+sharding_and_partitioning lab, now applied to a vector index rather than
+a relational table.
+
+What it requires: (1) a shard key / partitioning strategy -- e.g. hash-
+based (spread vectors roughly evenly by some hash of their ID) or
+semantic (cluster similar vectors onto the same shard, which can improve
+per-shard search quality but risks uneven shard sizes if some semantic
+regions are much denser than others); (2) each shard runs its OWN
+HNSW-style index over only its slice of the data; (3) at query time, the
+query has to FAN OUT to every shard (or a relevant subset, if the
+partitioning is semantic and the query can be routed to only the shards
+likely to contain good matches), each shard returns its own local top-k,
+and a final merge step combines all shards' results into one global
+top-k -- this fan-out-then-merge pattern mirrors exactly the cross-shard
+query pattern from the Month 1 sharding lab.
+
+The concrete trade-off: sharding buys the ability to scale past a single
+machine's memory/throughput ceiling, at the cost of query complexity
+(every query now touches multiple machines instead of one, adding
+network round-trips and merge overhead) and, for the fan-out approach,
+POTENTIALLY WORSE recall per query if any individual shard's local index
+is itself approximate -- errors can compound slightly across shards,
+though the fan-out-and-merge step recovers much of this since each
+shard's local top-k still gets globally re-ranked at merge time. This is
+the same fundamental "solves the true bottleneck at the cost of new
+complexity" pattern that showed up in Month 2's rate-limiter cold-review
+lab discussing the shared-counter bottleneck -- horizontal scaling never
+comes free, it trades one problem (a single machine's ceiling) for a
+different, more distributed set of problems (coordination, network cost,
+merge logic).</div></details>
+  </div>
+
+  <div class="callout checkpoint">
+    <b>Month 3 Checkpoint:</b> "HNSW-style index returns top-10 neighbors within ~90% recall of brute-force search on a 10k-vector set. Explain a sharding trade-off out loud." This is the exact roadmap checkpoint text for Month 3. Section 2's live benchmark above is a simulation of the recall-measurement half of this checkpoint — a real pass requires actually running this measurement against a real brute-force index and a real HNSW-style implementation, not just this page's simulated numbers. Problem 5 above is the "explain a sharding trade-off out loud" half — if you worked through it without checking the solution first, attempt saying it out loud, unscripted, before reading the hidden answer, exactly as this week's <code class="inline">system_design_review_month3_cold</code> lab's cold-recall prompts ask you to do.
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on — Month 3, complete:</b> can you (1) define recall@k precisely enough to compute it by hand on a novel example, (2) explain why a benchmark averages many queries rather than trusting one, (3) name which specific knob to reach for first when recall falls short and why, and (4) actually explain a sharding trade-off out loud, unscripted, the way the Month 3 checkpoint requires? If all four feel solid, Month 3 — storage engines and RAG, from row-store internals through this week's from-scratch vector retrieval engine — is genuinely done.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — benchmark and finish.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: BENCHMARK SIMULATION */
+(function(){
+  var runBtn = document.getElementById("bench-run");
+  var resetBtn = document.getElementById("bench-reset");
+  var fill = document.getElementById("bench-fill");
+  var fillLabel = document.getElementById("bench-fill-label");
+  var logEl = document.getElementById("bench-log");
+
+  function runBenchmark(){
+    var N_QUERIES = 30;
+    var K = 10;
+    var scores = [];
+    for(var i = 0; i < N_QUERIES; i++){
+      // simulate recall@10 per query: mostly high (8-10 hits), occasionally lower
+      var hits;
+      var r = Math.random();
+      if(r < 0.65){ hits = 9 + Math.round(Math.random()); }       // 9 or 10
+      else if(r < 0.9){ hits = 7 + Math.round(Math.random()); }   // 7 or 8
+      else { hits = 5 + Math.round(Math.random()); }              // 5 or 6
+      scores.push(hits / K);
+    }
+    var avg = scores.reduce(function(a,b){return a+b;}, 0) / scores.length;
+    return {avg: avg, scores: scores};
+  }
+
+  function render(){
+    var result = runBenchmark();
+    var pct = (result.avg * 100);
+    fill.style.width = "0%";
+    setTimeout(function(){
+      fill.style.width = pct + "%";
+      fillLabel.textContent = pct.toFixed(1) + "%";
+    }, 60);
+
+    var passed = pct >= 90;
+    var lines = [
+      '<div class="line fadein"><b>30 queries, k=10, 10,000-vector dataset.</b></div>',
+      '<div class="line fadein">Average recall@10: <b style="color:' + (passed ? "var(--true-c)" : "var(--miss-c)") + ';">' + pct.toFixed(1) + '%</b></div>',
+      '<div class="line fadein">' + (passed
+        ? 'Above the 90% target — this configuration clears the Month 3 checkpoint bar.'
+        : 'Below the 90% target — see section 3 for which knob to tune first (start with ef_search, the no-rebuild-required one).') + '</div>'
+    ];
+    logEl.innerHTML = lines.join("");
+  }
+
+  runBtn.addEventListener("click", render);
+  resetBtn.addEventListener("click", function(){
+    fill.style.width = "0%";
+    fillLabel.textContent = "";
+    logEl.innerHTML = "";
+  });
+})();
+
+/* SECTION 3: TUNING CHIPS */
+(function(){
+  var chips = document.querySelectorAll("[data-tune]");
+  var logEl = document.getElementById("tune-log");
+
+  var STATES = {
+    low: {ef: 10, recall: 72, latency: "~4ms/query", note: "Baseline — clearly below the 90% target."},
+    mid: {ef: 50, recall: 88, latency: "~11ms/query", note: "Closer, still just short of 90% — could raise further, or consider a build-time knob if this plateaus."},
+    high: {ef: 150, recall: 96, latency: "~28ms/query", note: "Comfortably above 90% — but check whether ~28ms/query still fits your latency budget before shipping this configuration."}
+  };
+
+  function render(key){
+    var s = STATES[key];
+    logEl.innerHTML =
+      '<div class="line fadein"><b>ef_search = ' + s.ef + '</b> → recall@10 ≈ <b>' + s.recall + '%</b>, query latency ≈ ' + s.latency + '</div>' +
+      '<div class="line fadein">' + s.note + '</div>';
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.tune);
+    });
+  });
+
+  render("low");
+})();
+</script>
+</body>
+</html>

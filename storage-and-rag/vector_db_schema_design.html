@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Vector DB Schema Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --vec-c:#4fc3f7; --meta-c:#f2c14e; --pre-c:#7fd8a0; --post-c:#ff8a65; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--vec-c); color:var(--vec-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--pre-c); color:var(--pre-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--post-c); color:var(--post-c); background:rgba(255,138,101,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* schema table */
+  .schema-table{width:100%; border-collapse:collapse; margin:1.2rem 0; font-family:var(--mono); font-size:0.8rem;}
+  .schema-table th, .schema-table td{border:1px solid var(--rule); padding:0.55rem 0.8rem; text-align:left;}
+  .schema-table th{background:var(--panel-2); color:var(--ink-dim); font-size:0.7rem; text-transform:uppercase;}
+  .schema-table td.vec{color:var(--vec-c);}
+  .schema-table td.meta{color:var(--meta-c);}
+
+  /* pre/post filter visual */
+  .filter-stage{display:grid; grid-template-columns:1fr 1fr; gap:1.4rem; margin:1.4rem 0;}
+  @media(max-width:760px){.filter-stage{grid-template-columns:1fr;}}
+  .filter-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; background:var(--panel-2);}
+  .filter-col.pre{border-color:var(--pre-c);}
+  .filter-col.post{border-color:var(--post-c);}
+  .filter-col h4{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.8rem;}
+  .filter-col.pre h4{color:var(--pre-c);}
+  .filter-col.post h4{color:var(--post-c);}
+  .filter-item{font-family:var(--mono); font-size:0.76rem; padding:0.4rem 0.6rem; border-radius:6px; margin:0.3rem 0; background:#0b0d11; border:1px solid var(--rule); transition:all .4s ease; opacity:0.35;}
+  .filter-item.considered{opacity:1;}
+  .filter-item.excluded{border-color:var(--bad-c); text-decoration:line-through; color:var(--ink-dim);}
+  .filter-item.result{border-color:var(--pre-c); box-shadow:0 0 8px rgba(127,216,160,0.2);}
+  .filter-item.result.post-result{border-color:var(--post-c); box-shadow:0 0 8px rgba(255,138,101,0.2);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--pre-c);} .dc-col.a h4{color:var(--pre-c);}
+  .dc-col.b{border-color:var(--post-c);} .dc-col.b h4{color:var(--post-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.gen{border-left-color:var(--pre-c); background:rgba(127,216,160,0.06);} .callout.gen b{color:var(--pre-c);}
+  .callout.survival{border-left-color:var(--meta-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--meta-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · SURVIVAL EXERCISE — VECTOR RETRIEVAL ENGINE, DAY 5</div>
+  <h1>A vector is not a database. A row with a vector column is.</h1>
+  <p class="lede">Every vector this week's engine has stored so far has been a bare array of numbers. A real system needs to know WHOSE vector it is, WHEN it was created, and WHAT category it belongs to — and needs to be able to filter on those before or after the similarity search runs. This lab designs the actual schema, then animates pre-filtering vs post-filtering on the same query so the difference isn't just a definition, it's something you watch happen.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Vector column + structured metadata columns</div>
+    <div class="pipe-label b">Pre-filter — narrow before search</div>
+    <div class="pipe-label c">Post-filter — narrow after search</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="schema">1 · Vectors Alongside Metadata, a Real Schema</a>
+  <a data-target="filtering">2 · Pre-Filter vs Post-Filter, Animated</a>
+  <a data-target="indexstrategy">3 · Indexing Strategy for the Vector Column</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 4 survival exercise, day 5 (DB design):</b> the engine built across days 1-3 (brute-force/HNSW retrieval, hybrid search, re-ranking) has been operating on bare vectors. A real deployment needs a schema. This continues the DB Design thread from earlier months but stays specifically about VECTOR databases — storing embeddings alongside metadata, and the indexing decisions that connect straight back to the HNSW-vs-IVF trade-off from Week 1.</div>
+</div>
+
+<!-- ============ SECTION 1: SCHEMA ============ -->
+<section id="schema">
+  <div class="kicker">01 — A vector alone can't answer "which documents, and from when?"</div>
+  <h2>Storing embeddings alongside metadata: a real schema</h2>
+
+  <p><strong>Start here, before any schema.</strong> Imagine a library that only shelved books by their exact physical dimensions — height, width, thickness — with no title, no author, no subject label anywhere on the spine. You could technically find "books shaped like this one," but you could never ask "give me books shaped like this one, published after 2020, in the science section." The vector alone (the "shape") answers the SIMILARITY question. Everything else — category, timestamp, source, permissions — has to live somewhere too, or the system can only ever answer "what's similar," never "what's similar AND relevant to this specific context."</p>
+
+  <p>A real vector DB row (or document, depending on the store) needs both: the raw embedding, AND structured metadata columns that describe what the embedding represents.</p>
+
+  <table class="schema-table">
+    <tr><th>Column</th><th>Type</th><th>Purpose</th></tr>
+    <tr><td>id</td><td>uuid / bigint (PK)</td><td>Primary key for the row itself</td></tr>
+    <tr><td class="vec">embedding</td><td class="vec">vector(768)</td><td class="vec">The actual embedding — a fixed-length array of floats, dimension matching the embedding model used</td></tr>
+    <tr><td>chunk_text</td><td>text</td><td>The source text this embedding represents (needed to actually show/use the retrieved content, not just its vector)</td></tr>
+    <tr><td class="meta">category</td><td class="meta">text / enum</td><td class="meta">e.g. "electronics", "support-docs", "legal" — used for metadata filtering</td></tr>
+    <tr><td class="meta">source_doc_id</td><td class="meta">uuid (FK)</td><td class="meta">Which parent document this chunk came from — for citation and dedup</td></tr>
+    <tr><td class="meta">created_at</td><td class="meta">timestamp</td><td class="meta">When this chunk was indexed — for recency filtering/sorting and staleness checks</td></tr>
+    <tr><td class="meta">access_scope</td><td class="meta">text / json</td><td class="meta">Which users/roles/tenants can see this chunk — a real, common production requirement</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt">-- Postgres + pgvector, as a concrete example</span>
+<span class="c-kw">CREATE TABLE</span> document_chunks (
+    id            uuid <span class="c-kw">PRIMARY KEY</span> <span class="c-kw">DEFAULT</span> gen_random_uuid(),
+    embedding     vector(<span class="c-num">768</span>)      <span class="c-kw">NOT NULL</span>,
+    chunk_text    text             <span class="c-kw">NOT NULL</span>,
+    category      text             <span class="c-kw">NOT NULL</span>,
+    source_doc_id uuid             <span class="c-kw">REFERENCES</span> documents(id),
+    created_at    timestamptz      <span class="c-kw">NOT NULL DEFAULT</span> now(),
+    access_scope  jsonb            <span class="c-kw">NOT NULL DEFAULT</span> <span class="c-str">'{}'</span>
+);</div>
+
+  <p>Why not JUST the vector: without <code class="inline">category</code>, there's no way to answer "search only within electronics" without either searching everything and hoping the results happen to be electronics (unreliable), or maintaining a completely separate index per category (operationally heavier, and doesn't compose when a query needs to filter on MULTIPLE metadata fields at once). Without <code class="inline">access_scope</code>, a multi-tenant RAG system has no way to prevent one tenant's search from surfacing another tenant's private documents — a real security requirement, not a nice-to-have. The vector answers "how similar," the metadata columns answer everything else a real query needs to also be true.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a vector database schema pairs a fixed-dimension vector column (the embedding, used for similarity search) with structured metadata columns (category, timestamp, source, access control, and any other queryable attribute) describing what that embedding represents. The vector column alone can only ever answer "what's most similar to this query" — metadata columns are what let a real system answer the compound question "what's most similar to this query, AND satisfies these other constraints," which is what nearly every production retrieval query actually needs.</div>
+</section>
+
+<!-- ============ SECTION 2: PRE VS POST FILTER ============ -->
+<section id="filtering">
+  <div class="kicker">02 — Same query, same metadata constraint, two different orders of operations</div>
+  <h2>Metadata filtering: pre-filter vs post-filter, animated</h2>
+
+  <p><strong>Start here, before running the demo.</strong> Imagine searching a huge warehouse for "the red item closest in size to this sample" but you ALSO only care about items in aisle 3. One approach: walk directly to aisle 3 first, then compare sizes only among what's there. The other approach: find the closest-sized items across the ENTIRE warehouse first, then check afterward which of those top matches happen to be in aisle 3 — and if none of them are, you get nothing useful, even though aisle 3 definitely has red items, just not ones that happened to make the initial top-K cut.</p>
+
+  <p><strong>Pre-filtering</strong> narrows the candidate set by metadata BEFORE running vector search — e.g. "only search within <code class="inline">category = 'electronics'</code>," then run the similarity search purely over that narrowed subset. <strong>Post-filtering</strong> does the reverse: run vector search first over the FULL dataset, get the top-K most similar results, THEN filter those results by the metadata constraint afterward.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME QUERY, category = "electronics", k = 3 — WATCH BOTH STRATEGIES</span>
+      <div><button class="btn secondary" id="filter-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="filter-run">Run pre-filter, then post-filter ▸</button>
+    <div class="filter-stage">
+      <div class="filter-col pre"><h4>Pre-filter</h4><div id="pre-items"></div></div>
+      <div class="filter-col post"><h4>Post-filter</h4><div id="post-items"></div></div>
+    </div>
+    <div class="log" id="filter-log"></div>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Pre-filter</h4>
+      <p>More efficient when the constraint is selective (electronics is a small slice of the dataset) — vector search only ever runs over the already-narrowed candidate set. Requires the index itself to support filtered search (not every ANN index does this cheaply — filtering has to be pushed INTO the search, not bolted on after).</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Post-filter</h4>
+      <p>Simpler to implement — any vector index works, since filtering is just a plain post-processing step on the returned results. But if too many of the top-K matches get filtered out (e.g. the true top 3 similar items are ALL non-electronics), the caller can end up with fewer than k results, or even zero, despite genuinely relevant electronics items existing further down the unfiltered ranking.</p>
+    </div>
+  </div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> pre-filtering applies metadata constraints before vector similarity search runs, restricting the search to only the qualifying subset — more efficient when the constraint is selective, but requires the underlying index structure to support filtered search natively. Post-filtering runs similarity search first over the full unfiltered dataset, then discards non-matching results afterward — simpler to implement against any index, but risks returning fewer than k results (or missing genuinely relevant matches entirely) when the metadata constraint excludes a large fraction of the true top-ranked candidates.</div>
+</section>
+
+<!-- ============ SECTION 3: INDEXING STRATEGY ============ -->
+<section id="indexstrategy">
+  <div class="kicker">03 — Connecting back to Week 1: which index for which configuration</div>
+  <h2>Indexing strategy for the vector column</h2>
+
+  <p><strong>Start here, before the table.</strong> Week 1 covered HNSW (graph-based, sub-linear query, higher memory) and IVF (cluster-based, requires a training step, different recall/speed profile) as two ANN index families. Choosing between them for a real vector column isn't abstract — it depends directly on this week's schema decisions: how often the data changes, how large the dataset is, and whether filtering needs to be pushed into the index itself.</p>
+
+  <table class="cmp">
+    <tr><th>Configuration</th><th>Better fit</th><th>Why, connecting to Week 1</th></tr>
+    <tr><td>Frequent inserts, streaming new documents (e.g. a live RAG corpus)</td><td>HNSW</td><td>HNSW supports incremental insertion without a full rebuild (this week's <code>hnsw_from_scratch</code> lab, section 3) — new chunks can be added to the graph as they arrive. IVF's cluster assignments are trained on a snapshot of the data; a large enough distribution shift after training degrades recall until retrained.</td></tr>
+    <tr><td>Very large dataset, memory-constrained</td><td>IVF</td><td>IVF stores vectors grouped into clusters with much lighter per-vector overhead than HNSW's multi-layer graph edges — the Week 1 <code>ivf_indexing</code> lab's memory/training trade-off. HNSW's graph structure (every point's edges across however many layers it participates in) costs meaningfully more memory per stored vector.</td></tr>
+    <tr><td>Metadata pre-filtering required, filter is highly selective</td><td>Depends on DB support — often IVF-family with partitioning, or HNSW variants with filtered search support</td><td>Not every ANN index supports pushing a metadata filter INTO the search efficiently. Some vector DBs partition IVF clusters by a metadata field directly (e.g. one IVF index per category), making pre-filtered search a matter of only searching the relevant partition's index — a design choice this week's schema section 1 supports directly via the <code>category</code> column.</td></tr>
+    <tr><td>Read-heavy, dataset relatively stable, latency-critical</td><td>HNSW</td><td>HNSW's query-time cost (Week 1 lab: roughly O(log n)) tends to be faster and more consistently low-latency than IVF once both are well-tuned, at the cost of the memory and build-time trade-offs above (this week's <code>hnsw_from_scratch</code> section 3's insertion-order and build-cost discussion).</td></tr>
+  </table>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> choosing an ANN index type for a vector column is a workload-shape decision, not a universal "which is better" choice — HNSW favors workloads with frequent incremental inserts and latency-critical reads (at higher memory cost per vector), while IVF favors very large, memory-constrained, or filter-partitionable datasets (at the cost of a training step and periodic retraining as data distribution shifts). This decision connects directly back to Week 1's HNSW and IVF labs — the same M/ef_construction/ef_search and nlist/nprobe trade-off knobs from those labs are exactly what gets tuned once an index type is chosen for a real schema like this one.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Designing a schema for a concrete multi-tenant use case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A RAG system serves multiple companies (tenants) from one shared vector database, and one tenant's documents must NEVER be searchable by another tenant. Using section 1's schema, what column(s) are load-bearing for this requirement, and where does the enforcement actually have to happen — at query time in application code, at the database/index level, or both?</p>
+    <details><summary>Show solution</summary><div class="solution">The load-bearing column is section 1's access_scope (or a simpler
+dedicated tenant_id column, which is really a more specific version of
+the same idea) -- every stored chunk needs an explicit, queryable record
+of which tenant it belongs to.
+
+Enforcement has to happen at BOTH levels, not just one, and this is the
+actual point being tested. If enforcement only happens in application
+code (e.g. the app filters returned results by tenant_id AFTER getting
+them back from the vector search), that's exactly section 2's post-
+filter pattern applied to a security boundary instead of a convenience
+filter -- and it inherits post-filter's exact weakness: if vector search
+returns its top-K results and NONE of them happen to belong to the
+requesting tenant, the app-layer filter correctly returns nothing, but
+the vector search itself still SCANNED and ranked another tenant's data
+internally, and a bug in the app-layer filtering step (missed once,
+anywhere in the codebase) means a full cross-tenant data leak with
+no safety net. Enforcement should be pushed into the query itself
+(pre-filtering by tenant_id, section 2's pre-filter pattern) so that
+vector search never even considers another tenant's rows as candidates
+-- the database/index layer, not just application code, should be the
+actual boundary. This is a case where pre-filtering isn't just a
+performance choice, it's the difference between a real security boundary
+and an easily-bypassable convenience filter.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Predicting when post-filter returns fewer than k results</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A dataset of 10,000 chunks is 2% "legal" category (200 chunks) and 98% everything else. A query asks for the top 10 most similar chunks WITHIN category="legal", using post-filtering with an initial unfiltered top-50 candidate pull. Under what condition does this return fewer than 10 results, and how would you fix it without switching to pre-filtering?</p>
+    <details><summary>Show solution</summary><div class="solution">This returns fewer than 10 results if fewer than 10 of the initial
+unfiltered top-50 candidates happen to be in the "legal" category. Given
+legal is only 2% of the dataset, the EXPECTED number of legal chunks in
+a random top-50 slice would be roughly 1 (50 * 0.02), though similarity
+search isn't random sampling -- if legal chunks happen to also be
+semantically close to this specific query, more than the base rate could
+appear. But in the likely case where the query isn't specifically
+legal-flavored, pulling only 50 unfiltered candidates and hoping 10 of
+them are legal is a real, probable failure -- there just may not BE 10
+genuinely top-similar legal chunks within the first 50 overall matches.
+
+Fix without switching to pre-filtering: pull a much larger unfiltered
+candidate set before filtering -- e.g. request the top 500 or 1000
+unfiltered candidates instead of 50, then filter down to legal-only and
+take the top 10 of THOSE. This raises the odds that enough legal-category
+chunks appear somewhere in the larger initial pull, at the direct cost of
+more compute spent on vector search (a bigger initial top-K pull is more
+expensive) and more post-processing -- which is exactly section 2's
+efficiency trade-off made concrete: post-filtering's fix for low-hit-rate
+categories is "search more broadly first," which is precisely the extra
+cost pre-filtering avoids by never considering the other 98% of the
+dataset as candidates in the first place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing HNSW vs IVF for a described workload</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A support-ticket search system ingests roughly 5,000 new tickets per day (continuous, not batched), holds about 2 million vectors total, and needs sub-50ms search latency. Using section 3's table, which index type fits better, and what would concern you about the other choice?</p>
+    <details><summary>Show solution</summary><div class="solution">HNSW fits better here. Two of section 3's criteria point the same
+direction: continuous, frequent inserts (5,000/day, not a periodic
+batch) favor HNSW's support for incremental insertion without a full
+rebuild, and the sub-50ms latency requirement favors HNSW's typically
+faster, more consistent query-time cost once tuned.
+
+What would concern you about IVF here: IVF's clusters are trained on a
+snapshot of the data at some point in time. With 5,000 new vectors
+arriving daily, the data distribution IVF's clusters were trained on
+starts drifting from the CURRENT actual data distribution immediately,
+and this drift compounds every day post-training -- eventually new
+tickets may not map well to any existing cluster centroid, degrading
+recall for exactly the newest, potentially most relevant tickets. Fixing
+this would require periodic retraining (recomputing cluster centroids
+against the current full dataset), which is itself a real operational
+cost and a source of temporary index unavailability or a live-vs-stale-
+index cutover complexity that HNSW's incremental-insert model avoids
+needing at all for this specific workload shape.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a pre-filter that made things slower, not faster</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team switches from post-filtering to pre-filtering expecting a speedup, but query latency gets WORSE. The metadata filter they're applying matches 95% of the dataset (nearly everything qualifies). Using section 2's reasoning, explain why pre-filtering didn't help here, and what property of the filter actually determines whether pre-filtering helps at all.</p>
+    <details><summary>Show solution</summary><div class="solution">Pre-filtering's efficiency benefit (section 2's dc-compare) comes from
+narrowing the candidate set BEFORE the expensive similarity search runs
+-- but that benefit is proportional to how SELECTIVE the filter actually
+is. A filter matching 95% of the dataset barely narrows anything at all
+-- vector search still has to effectively operate over almost the entire
+dataset either way, so pre-filtering provides almost none of its
+intended benefit.
+
+Worse, pre-filtering can add its OWN overhead on top of that: depending
+on how the index implements filtered search, evaluating the metadata
+predicate against (or integrating it into) the ANN index's search
+process can itself carry real cost -- for example, if the index has to
+check the metadata condition at every node/cluster it visits during the
+graph walk or cluster scan, rather than being able to use a pre-built,
+efficient structure specifically optimized for that filter. When the
+filter barely narrows anything, that added filtering overhead can
+exceed whatever savings come from touching slightly fewer candidates,
+producing a net slowdown -- exactly the symptom described.
+
+The property that determines whether pre-filtering helps: SELECTIVITY --
+how small a fraction of the dataset the filter actually admits. Highly
+selective filters (a rare category, a narrow time window) are where
+pre-filtering earns its efficiency advantage (section 2's dc-compare:
+"more efficient when the constraint is selective"); filters that admit
+nearly everything gain little or nothing from pre-filtering and can, as
+here, actually lose to simple post-filtering, which has no extra
+per-candidate filtering overhead built into the search itself.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing for a filter whose selectivity varies by query</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A system's queries sometimes filter by a rare category (0.5% of data) and sometimes by a common one (60% of data), depending on the user. Using Problems 2 and 4's findings together, would you hardcode either pre-filter or post-filter for this system, or design something else? Sketch the approach.</p>
+    <details><summary>Show solution</summary><div class="solution">Hardcoding either strategy is the wrong call here, precisely because
+Problems 2 and 4 show the two strategies' relative merits flip depending
+on filter selectivity -- pre-filtering wins decisively for the rare
+0.5% category (Problem 4's logic in reverse: a highly selective filter
+is exactly where pre-filtering's narrowing benefit is largest), while
+for the 60%-of-data category, pre-filtering barely narrows anything and
+risks the exact overhead-without-benefit problem Problem 4 diagnosed --
+post-filtering, or a large-enough unfiltered top-K pull (Problem 2's
+fix), is likely simpler and just as fast for that case.
+
+A better design: compute or estimate the filter's SELECTIVITY at query
+time (e.g. maintain a rough per-category row count, cheap to keep
+updated) and branch the query strategy based on it -- below some
+selectivity threshold (say, filter matches under ~10% of the dataset),
+use pre-filtering; above that threshold, use post-filtering (or an
+unfiltered top-K pull sized generously enough per Problem 2's fix). This
+is a genuinely common real-world pattern in production vector databases
+and query planners more broadly (the same idea underlies a relational
+query planner choosing between an index scan and a full table scan based
+on estimated selectivity) -- the "right" filtering strategy isn't fixed
+per system, it's a per-query decision informed by how selective THIS
+query's filter actually is, and treating it as a single global choice is
+the mistake this problem is pointing at.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you (1) name at least 3 metadata columns a real vector DB schema needs beyond the raw embedding and explain why each matters, (2) describe the exact mechanical difference between pre-filter and post-filter and state precisely when post-filter can return fewer than k results, and (3) connect this week's index-type choice back to the specific HNSW/IVF trade-offs from Week 1's labs? Tomorrow's benchmark lab measures this engine's actual recall against brute force — the Month 3 capstone.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — vector db schema design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: PRE/POST FILTER DEMO */
+(function(){
+  var runBtn = document.getElementById("filter-run");
+  var resetBtn = document.getElementById("filter-reset");
+  var preEl = document.getElementById("pre-items");
+  var postEl = document.getElementById("post-items");
+  var logEl = document.getElementById("filter-log");
+
+  // 10 dataset items, ranked by similarity to the query (index 0 = most similar).
+  // Only 3 of them are "electronics".
+  var DATASET = [
+    {label: "d1 gaming-mouse-review",  category: "electronics"},
+    {label: "d2 kitchen-blender-spec", category: "home-goods"},
+    {label: "d3 laptop-battery-guide", category: "electronics"},
+    {label: "d4 hiking-boots-review",  category: "outdoors"},
+    {label: "d5 desk-lamp-manual",     category: "home-goods"},
+    {label: "d6 wireless-earbuds-faq", category: "electronics"},
+    {label: "d7 camping-tent-specs",   category: "outdoors"},
+    {label: "d8 office-chair-review",  category: "home-goods"},
+    {label: "d9 running-shoes-guide",  category: "outdoors"},
+    {label: "d10 coffee-maker-manual", category: "home-goods"}
+  ]; // already in similarity-ranked order, most similar first
+
+  function buildList(containerId, items, cls){
+    var el = document.getElementById(containerId);
+    el.innerHTML = "";
+    items.forEach(function(it){
+      var div = document.createElement("div");
+      div.className = "filter-item";
+      div.id = cls + "-" + it.label.split(" ")[0];
+      div.textContent = it.label + " [" + it.category + "]";
+      el.appendChild(div);
+    });
+  }
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p);
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  async function runPreFilter(){
+    buildList("pre-items", DATASET, "pre");
+    log('<b>Pre-filter:</b> narrow to category="electronics" FIRST (3 of 10 qualify)...');
+    await wait(200);
+    var electronics = DATASET.filter(function(d){ return d.category === "electronics"; });
+    DATASET.forEach(function(it){
+      var el = document.getElementById("pre-" + it.label.split(" ")[0]);
+      if(it.category === "electronics"){ el.classList.add("considered"); }
+    });
+    await wait(500);
+    log('Vector search runs ONLY over those 3 electronics chunks — ranks all 3, returns all 3 (k=3 satisfied, only 3 existed).');
+    electronics.forEach(function(it, i){
+      setTimeout(function(){
+        document.getElementById("pre-" + it.label.split(" ")[0]).classList.add("result");
+      }, 200 + i * 150);
+    });
+  }
+
+  async function runPostFilter(){
+    buildList("post-items", DATASET, "post");
+    log('<b>Post-filter:</b> run vector search over ALL 10 first, take top 3 by similarity (dataset is pre-ranked, most similar first)...');
+    await wait(200);
+    var top3 = DATASET.slice(0, 3);
+    top3.forEach(function(it, i){
+      setTimeout(function(){
+        document.getElementById("post-" + it.label.split(" ")[0]).classList.add("considered");
+      }, i * 150);
+    });
+    await wait(600);
+    var qualifying = top3.filter(function(d){ return d.category === "electronics"; });
+    top3.forEach(function(it){
+      var el = document.getElementById("post-" + it.label.split(" ")[0]);
+      if(it.category === "electronics"){ el.classList.add("result", "post-result"); }
+      else{ el.classList.add("excluded"); }
+    });
+    log('Of the top 3 most similar overall, only <b>' + qualifying.length + '</b> is electronics — the other ' + (3 - qualifying.length) + ' get filtered out AFTER search, leaving fewer than k=3 electronics results, even though 3 electronics items existed in the full dataset.');
+  }
+
+  runBtn.addEventListener("click", async function(){
+    logEl.innerHTML = "";
+    await runPreFilter();
+    await wait(300);
+    await runPostFilter();
+  });
+
+  resetBtn.addEventListener("click", function(){
+    buildList("pre-items", DATASET, "pre");
+    buildList("post-items", DATASET, "post");
+    logEl.innerHTML = "";
+  });
+
+  buildList("pre-items", DATASET, "pre");
+  buildList("post-items", DATASET, "post");
+})();
+</script>
+</body>
+</html>

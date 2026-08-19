@@ -75,7 +75,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Seventy-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Seventy-seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, and storage engines &amp; RAG — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -354,7 +354,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">19 labs</span>
+      <span class="count">20 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -471,13 +471,19 @@
         <p>Build a trie and descend it character by character to collect completions, why sub-100ms latency forces precomputed rankings, and edit distance as the mechanism behind typo tolerance.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/system_design_review_month3_cold.html">
+        <span class="tag">Cold Recall — Caching, Autocomplete &amp; RAG</span>
+        <h3>System Design Review, Month 3 Cold</h3>
+        <p>Re-derive the caching layer, search autocomplete, and RAG Q&amp;A designs with no notes, then compare trade-offs across all three.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Storage &amp; RAG</h2>
-      <span class="count">13 labs</span>
+      <span class="count">18 labs</span>
     </div>
     <div class="cards">
       <a class="card storage" href="storage-and-rag/btree_vs_columnar.html">
@@ -558,6 +564,36 @@
         <p>A guided 4-stage walkthrough — retrieve, budget-check, assemble, inspect — run on a sample corpus, history, and question, tying together the whole week in one pipeline.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card storage" href="storage-and-rag/cosine_similarity_fundamentals.html">
+        <span class="tag">Survival Exercise — Brute-Force NumPy Search</span>
+        <h3>Cosine Similarity Fundamentals</h3>
+        <p>A live, actually-computed cosine similarity ranking in JS, plus why brute-force search's O(n·d) cost becomes billions of operations per query at real scale.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/hnsw_from_scratch.html">
+        <span class="tag">Survival Exercise — Layer Assignment &amp; Edges</span>
+        <h3>HNSW From Scratch</h3>
+        <p>The actual construction algorithm: random layer assignment, greedy search from the top layer down, and new edges forming live as points are added one at a time.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/hybrid_search_and_reranking_applied.html">
+        <span class="tag">Survival Exercise — v1 → v2 → v3 Applied</span>
+        <h3>Hybrid Search &amp; Re-ranking, Applied</h3>
+        <p>Watch the same engine's results change as it evolves from brute-force cosine only, to hybrid BM25 scoring, to a final re-ranking pass — for one live query.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/vector_db_schema_design.html">
+        <span class="tag">Embeddings + Metadata, Pre- vs Post-Filter</span>
+        <h3>Vector DB Schema Design</h3>
+        <p>A real embedding-plus-metadata schema, pre-filter vs post-filter animated on the same query, and which index type fits which configuration.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/benchmark_and_finish.html">
+        <span class="tag">Survival Exercise — Recall vs Brute-Force</span>
+        <h3>Benchmark &amp; Finish</h3>
+        <p>What recall means precisely, a worked 5-neighbor example scoring 80%, and which parameters to tune to close the gap to a 90% recall target.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -614,7 +650,7 @@
 
 </main>
 
-<footer>materials/ · seventy-one standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · seventy-seven standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

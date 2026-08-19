@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — System Design Review, Month 3 Cold</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --cache-c:#f2c14e; --auto-c:#4fc3f7; --rag-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--cache-c); color:var(--cache-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--auto-c); color:var(--auto-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--rag-c); color:var(--rag-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* self-test recall card */
+  .recall{border:1.5px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0; background:var(--panel-2);}
+  .recall-num{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.6rem; display:block;}
+  .recall.cache .recall-num{color:var(--cache-c);}
+  .recall.auto .recall-num{color:var(--auto-c);}
+  .recall.rag .recall-num{color:var(--rag-c);}
+  .recall ul{margin:0.6rem 0 0; padding-left:1.3rem; color:#cdd0d8; font-size:0.9rem;}
+  .recall ul li{margin:0.4rem 0;}
+  .recall details{margin-top:1rem;}
+  .recall .solution{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.cache{border-left-color:var(--cache-c); background:rgba(242,193,78,0.06);} .callout.cache b{color:var(--cache-c);}
+  .callout.auto{border-left-color:var(--auto-c); background:rgba(79,195,247,0.06);} .callout.auto b{color:var(--auto-c);}
+  .callout.rag{border-left-color:var(--rag-c); background:rgba(199,146,234,0.06);} .callout.rag b{color:var(--rag-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.survival{border-left-color:var(--cache-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--cache-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · MONTH 3 REVIEW COLD</div>
+  <h1>Notes closed again. Re-derive three storage &amp; RAG designs from nothing but the questions.</h1>
+  <p class="lede">Same recall-practice structure as Month 2's cold review, applied to this month's three system designs: the caching layer, search autocomplete, and the RAG Q&amp;A pipeline. Attempt each cold, out loud or on paper, before opening the hidden answer — then a comparison table forces you to reason about all three at once, this time on their DATA FRESHNESS trade-offs rather than raw traffic scale.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Caching layer — re-derive cold</div>
+    <div class="pipe-label b">Search autocomplete — re-derive cold</div>
+    <div class="pipe-label c">RAG Q&amp;A system — re-derive cold</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="caching">1 · Caching Layer, From Scratch</a>
+  <a data-target="autocomplete">2 · Search Autocomplete, From Scratch</a>
+  <a data-target="rag">3 · RAG Q&amp;A System, From Scratch</a>
+  <a data-target="compare">4 · Freshness vs Speed, Across All Three</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 4 survival exercise — Thursday's topic:</b> the roadmap calls for re-deriving all three of Month 3's case studies cold and comparing trade-offs across them. This is not new instructional content, mirroring exactly the structure of <code class="inline">backend/system_design_review_cold.html</code> from Month 2 — attempt each prompt yourself first, notes closed, before revealing the hidden answer.</div>
+</div>
+
+<!-- ============ SECTION 1: CACHING LAYER ============ -->
+<section id="caching">
+  <div class="kicker">01 — Cold recall, no notes</div>
+  <h2>Caching layer design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Set a timer for 5-8 minutes. On paper or out loud, answer every bullet below as if you were in an actual interview, with nobody to check your work until you're done.</p>
+
+  <div class="recall cache">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch a caching layer design:</p>
+    <ul>
+      <li>Write-through vs write-back — what's the actual mechanical difference, and what does each trade away?</li>
+      <li>Walk through LRU eviction on a full cache when a new key needs a slot.</li>
+      <li>Why is perfect cache consistency fundamentally in tension with the reason a cache exists?</li>
+      <li>What's the actual write path for write-through, step by step?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">WRITE-THROUGH VS WRITE-BACK: write-through writes to the cache AND the
+underlying database SYNCHRONOUSLY, as one logical operation, before the
+write is considered complete — the cache and the source of truth are
+never out of sync, but every write pays the database's full write
+latency, so caching doesn't speed up writes, only reads. Write-back
+writes to the cache immediately and returns, then asynchronously flushes
+to the database later (e.g. on a timer or when a slot needs evicting) —
+writes are fast, but there's a window where the cache holds data the
+database doesn't have yet, and a cache node failure during that window
+means real, unrecoverable data loss unless there's a separate durability
+mechanism (e.g. a write-ahead log) backing it.
+
+LRU EVICTION: Least Recently Used tracks, for every cached key, when it
+was last accessed (read or write) — typically via a doubly-linked list
+where the most-recently-used key sits at the head and the least-recently-
+used sits at the tail, with a hash map for O(1) key lookup into that
+list. When a new key needs a slot in a full cache: the tail (least
+recently used) entry is evicted, the new key is inserted at the head, and
+every access (hit) also moves that key to the head — this is why LRU
+needs O(1) operations for both "move to head" and "evict from tail," which
+is exactly what the linked-list-plus-hashmap combination provides.
+
+WHY CONSISTENCY IS IN TENSION WITH THE POINT OF CACHING: a cache exists
+specifically to serve reads FASTER than the source of truth can, by
+keeping a copy that doesn't require hitting the database every time.
+Perfect consistency would require every cache read to first verify
+against the database that its copy is still current — but that
+verification IS a database round trip, which defeats the entire purpose
+of having a cache in the first place. This is why real caching systems
+accept some amount of staleness (via a TTL, invalidation-on-write, or
+similar) rather than pursuing perfect consistency — the trade-off is
+structural, not a limitation of any particular implementation.
+
+WRITE-THROUGH'S WRITE PATH: (1) client issues a write, (2) the
+application writes to the cache, (3) the application ALSO writes to the
+database, waiting for that write to be acknowledged, (4) only after BOTH
+succeed does the write return success to the client. If the database
+write fails, the write-through cache entry must be rolled back or
+invalidated too — otherwise the cache would hold a value the database
+never actually persisted, silently reintroducing the inconsistency the
+synchronous approach was meant to avoid.</div>
+    </details>
+  </div>
+
+  <div class="callout cache"><b>What "re-derive cold" is testing:</b> whether you can name the actual FAILURE MODE each strategy accepts (write-back's data-loss window, write-through's write-latency cost) rather than just labeling them "fast" and "safe" — and whether you can articulate why consistency and cache speed are structurally opposed, not just "sometimes in tension."</div>
+</section>
+
+<!-- ============ SECTION 2: SEARCH AUTOCOMPLETE ============ -->
+<section id="autocomplete">
+  <div class="kicker">02 — Cold recall, no notes</div>
+  <h2>Search autocomplete design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall auto">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch a search autocomplete design:</p>
+    <ul>
+      <li>Why a trie, specifically, over other data structures? What does descending it character by character actually retrieve?</li>
+      <li>Why does sub-100ms latency force precomputed rankings instead of scoring at query time?</li>
+      <li>What mechanism handles typo tolerance, and how does it actually work?</li>
+      <li>What happens at each trie node beyond just "is this a valid word ending"?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">WHY A TRIE: a trie (prefix tree) stores strings character by character
+along paths from the root, so that ALL strings sharing a common prefix
+share the same path down to where they diverge — meaning "find every
+completion of the prefix the user has typed so far" is just "descend the
+trie one node per typed character, then collect everything in the
+subtree below wherever you land." This is structurally the exact
+operation autocomplete needs: the user's partial input IS a prefix, and
+the trie's entire organization is built around prefix-sharing. A hash
+map or sorted list would require scanning or re-filtering the ENTIRE
+dataset for every keystroke to find prefix matches; a trie's descent
+means each keystroke only costs the traversal of one more node, and the
+candidate set naturally narrows as more characters are typed.
+
+WHY SUB-100MS FORCES PRECOMPUTED RANKING: scoring every completion by
+some live signal (e.g. current popularity, personalization) at the exact
+moment a query hits the server, especially across potentially thousands
+of matching completions for a short prefix, is real compute work that
+competes directly against the latency budget on every single keystroke.
+Precomputing and caching a ranked completion list per prefix (or per
+trie subtree) ahead of time means the query-time path is just "read the
+already-sorted top-K list" — O(1)-ish lookup instead of live scoring —
+which is what actually makes sub-100ms achievable at real query volume,
+since every keystroke a user types fires a new request.
+
+TYPO TOLERANCE MECHANISM: edit distance (Levenshtein distance) — the
+minimum number of single-character insertions, deletions, or
+substitutions needed to turn one string into another. Rather than
+requiring an EXACT prefix match in the trie, the system tolerates
+completions within a small edit-distance threshold (e.g. 1-2 edits) of
+the typed prefix, catching common typos (transposed letters, one wrong
+character, a missing character) without requiring the user to correct
+themselves before seeing any suggestions.
+
+WHAT'S AT EACH TRIE NODE: beyond a boolean "is this a complete word
+here," each node typically also stores (or has fast access to) the
+precomputed top-K ranked completions for everything in its subtree —
+this is exactly what makes the precomputed-ranking point above concrete:
+the ranking isn't computed separately from the trie, it's attached
+directly to the trie structure itself, at the node representing each
+possible prefix.</div>
+    </details>
+  </div>
+
+  <div class="callout auto"><b>What "re-derive cold" is testing:</b> whether you can explain WHY a trie fits this problem (prefix-sharing structure matching prefix-based queries) rather than just naming it as the "correct" data structure, and whether you connect the sub-100ms constraint causally to precomputation rather than treating them as two unrelated facts.</div>
+</section>
+
+<!-- ============ SECTION 3: RAG Q&amp;A SYSTEM ============ -->
+<section id="rag">
+  <div class="kicker">03 — Cold recall, no notes</div>
+  <h2>RAG Q&amp;A system design, re-derived</h2>
+
+  <p><strong>Do this before opening anything below.</strong> Same rules: timer, full attempt, no peeking until you're done.</p>
+
+  <div class="recall rag">
+    <span class="recall-num">Prompt — attempt cold first</span>
+    <p style="margin:0; font-weight:600; color:var(--ink);">Without looking anything up, sketch a RAG-backed Q&amp;A system:</p>
+    <ul>
+      <li>Name all four pipeline stages, in order, and explain why they must run strictly sequentially.</li>
+      <li>What's the similarity-score threshold check for, and what problem does it solve that retrieval alone can't?</li>
+      <li>Which stage dominates total latency, and by roughly how much? What does that imply for where to optimize?</li>
+      <li>What's the actual lever for handling 10x query volume, versus making one request faster?</li>
+    </ul>
+    <details>
+      <summary>Reveal the answer (only after you've actually attempted it)</summary>
+      <div class="solution">FOUR STAGES, IN ORDER: (1) embed the question — pass the user's
+question through the same embedding model used on the document corpus,
+producing a query vector in the same vector space; (2) vector search —
+compare that query vector against the indexed chunk vectors (via
+dense/HNSW/hybrid retrieval) to get the top-K most similar chunks with
+similarity scores; (3) assemble context — concatenate the retrieved
+chunks, system instructions, and the question into one delimited prompt
+string, ordered with recency-effect reasoning (retrieved context and the
+question placed near the end); (4) generate — send the assembled prompt
+to the LLM, which produces an answer grounded in the retrieved context.
+They're strictly sequential because each stage's output is a REQUIRED
+input to the next — assembly literally has nothing to assemble until
+search returns results, and generation has no prompt to run on until
+assembly finishes. This is a hard data dependency, not a convention.
+
+SIMILARITY-SCORE THRESHOLD CHECK: vector search ALWAYS returns its
+top-K results, even when nothing in the corpus is actually relevant to
+the query — a low top score is real, available evidence that nothing
+genuinely relevant was found, but retrieval alone has no built-in way to
+say "I found nothing good," it always reports "here's what scored
+highest," even if everything scored low. The threshold check compares
+the top result's score against a minimum bar; if even the best match
+falls short, the system explicitly returns "I don't have good
+information about this" rather than assembling a prompt from weakly-
+related chunks and risking a fluent, confident-sounding but ungrounded
+(hallucinated) answer. This is a retrieval-layer fix, not a generation-
+layer one — it has to happen before assembly, not by hoping the LLM
+"notices" weak context on its own.
+
+DOMINANT STAGE: generation, typically by 10-50x any other single stage
+(roughly 800-3000ms+ versus ~20-50ms each for embed/search/assemble).
+Because the four stages are strictly sequential, total latency is the
+SUM of all four — and because generation is such a large fraction of
+that sum, optimization effort belongs there (streaming tokens to reduce
+PERCEIVED latency, or a faster/smaller generation model), not on the
+three comparatively cheap earlier stages, where even a large percentage
+improvement barely moves total latency (an Amdahl's-law-style effect).
+
+10X VOLUME LEVER: NOT "make each stage faster" — that's a per-request
+LATENCY fix, a different problem from handling more TOTAL volume. Since
+each query's full pipeline is independent of every OTHER query's
+pipeline, the actual lever for volume is horizontal scaling and
+concurrency: more embedding-model replicas, more generation-model
+replicas/instances, and a vector index that serves concurrent reads —
+running many independent pipelines in parallel across replicas, not
+speeding up any single pipeline's four sequential stages. Generation,
+being both the slowest and most GPU-compute-intensive stage, is usually
+the first capacity bottleneck under increased volume.</div>
+    </details>
+  </div>
+
+  <div class="callout rag"><b>What "re-derive cold" is testing:</b> whether you can name the exact FAILURE the threshold check prevents (confident hallucination from weak context, not just "bad results"), and whether you keep the "faster per request" question and the "more total volume" question genuinely separate — they're commonly conflated, and interviewers notice when they aren't.</div>
+</section>
+
+<!-- ============ SECTION 4: COMPARISON — FRESHNESS VS SPEED ============ -->
+<section id="compare">
+  <div class="kicker">04 — The question that connects all three of this month's designs</div>
+  <h2>Data freshness vs response speed, across all three</h2>
+
+  <p><strong>Start here, before the table.</strong> Month 2's cold review compared "what breaks at 10x traffic" across three backend systems. This month's three designs share a different, equally real tension: each one trades DATA FRESHNESS (how current the information it returns is) against RESPONSE SPEED (how fast it can return anything at all) — and each one resolves that trade-off differently, in a way that reveals what each system actually optimizes for.</p>
+
+  <table class="cmp">
+    <tr><th>System</th><th>Freshness vs speed trade-off</th><th>Why, specifically</th></tr>
+    <tr>
+      <td><strong>Caching layer</strong></td>
+      <td>Explicitly accepts staleness (via TTL or write-back's async flush) in exchange for read/write speed</td>
+      <td>Section 1's core finding: perfect consistency requires a database round trip on every read, which defeats the purpose of caching entirely. The cache's whole existence is a deliberate bet that slightly-stale-but-fast beats always-current-but-slow for the specific read pattern it serves — freshness is the resource being spent to buy speed.</td>
+    </tr>
+    <tr>
+      <td><strong>Search autocomplete</strong></td>
+      <td>Precomputed rankings are stale by construction, refreshed periodically, not per-request</td>
+      <td>Section 2's core finding: sub-100ms latency is only achievable because rankings are computed AHEAD OF TIME and cached at the trie-node level, not scored live per keystroke. This means autocomplete rankings reflect popularity/relevance data from whenever they were last recomputed, not the literal current instant — a deliberate, structural staleness accepted specifically because live per-keystroke scoring cannot hit the latency target at all, not just "hits it slower."</td>
+    </tr>
+    <tr>
+      <td><strong>RAG Q&amp;A system</strong></td>
+      <td>The opposite trade: freshness of the RETRIEVED CONTEXT matters more than speed, and the system pays generation's large latency cost specifically to stay grounded in current source documents</td>
+      <td>Unlike the other two, RAG's four-stage pipeline doesn't sacrifice freshness for speed — retrieval happens fresh, per query, against the current index (Section 3), and the dominant latency cost (generation) exists precisely because the system insists on reasoning over freshly-retrieved, current context rather than relying on a model's stale training-time knowledge. If RAG cached whole ANSWERS the way the caching layer caches data, it would reintroduce exactly the staleness problem RAG's retrieval step exists to avoid.</td>
+    </tr>
+  </table>
+
+  <div class="callout warn"><b>The pattern across all three:</b> the caching layer and search autocomplete both deliberately trade freshness AWAY to buy speed — staleness is the accepted cost of a fast response. The RAG system does the opposite: it pays a large latency cost (generation) specifically to stay grounded in fresh, per-query-retrieved information rather than accepting the "staleness" of relying purely on the LLM's frozen training-time knowledge. Recognizing which direction a given system trades freshness for speed — and why — is exactly the kind of cross-system reasoning "compare trade-offs across all three" is testing for.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. These reason ACROSS the three designs, not just reproduce one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Applying the caching layer's TTL idea to RAG</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes caching full generated ANSWERS in the RAG system (keyed by question text) with a TTL, the same way the caching layer caches database rows, to cut generation latency for repeated questions. What breaks, and what's actually safe to cache instead?</p>
+    <details><summary>Show solution</summary><div class="solution">What breaks: caching the full generated answer reintroduces exactly the
+staleness problem the RAG system's fresh-per-query retrieval exists to
+avoid (section 4's finding). If the underlying document corpus changes
+-- a policy gets updated, a document gets corrected -- a cached answer
+keyed only on question TEXT has no way to know its retrieved context is
+now stale, and will keep confidently serving an outdated answer until
+the TTL expires, exactly the kind of confident-wrong-answer risk the
+similarity-threshold check in section 3 is specifically designed to
+prevent at the RETRIEVAL layer -- caching the final answer bypasses that
+protection entirely, since the threshold check never re-runs on a cache
+hit.
+
+What's safer to cache: the QUERY EMBEDDING itself (computing an
+embedding for the same repeated question text is a pure function of the
+text and the embedding model, so it's safe to cache/reuse as long as the
+embedding model hasn't changed), or perhaps the retrieved CHUNK IDs for
+an identical query with a short TTL that's explicitly tied to how often
+the corpus actually changes -- but even then, re-running the generation
+step fresh each time (rather than caching its output) keeps the answer
+responsive to any recent corpus changes that retrieval just picked up.
+This mirrors the caching layer's own lesson (section 1): caching
+something is only safe when you've deliberately decided how much
+staleness is acceptable for THAT specific piece of data -- caching a
+final generated answer wholesale skips that deliberate choice for the
+one place (grounding in current documents) this system was built
+specifically not to compromise on.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Comparing autocomplete's precompute strategy to RAG's real-time retrieval</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Autocomplete precomputes rankings ahead of time to hit its latency target; RAG computes retrieval fresh per query. Both have real latency constraints. Why can't RAG adopt autocomplete's precompute strategy for its retrieval stage?</p>
+    <details><summary>Show solution</summary><div class="solution">The key structural difference: autocomplete's precomputed rankings are
+keyed on a bounded, enumerable set of PREFIXES (finite strings up to
+some reasonable length) that can be computed once and reused across
+every user who types that same prefix -- the query space is small and
+repetitive enough that precomputing "the answer for every possible
+prefix" is tractable.
+
+RAG's retrieval stage is keyed on the QUERY VECTOR of an essentially
+unbounded space of possible natural-language questions -- there's no
+finite, enumerable set of "every question a user might ask" to
+precompute retrieval results for. Precomputing would require guessing in
+advance which questions will be asked, which is fundamentally different
+from precomputing every possible PREFIX (a small, literally enumerable
+alphabet-based space) of a search box. This is exactly why RAG's stage 2
+(vector search, section 3) has to run a REAL search per query against
+the index rather than a lookup into a precomputed table the way
+autocomplete's trie nodes work -- the two systems' query spaces have
+fundamentally different cardinality, so a strategy that works
+beautifully for one (precompute everything) is simply inapplicable to
+the other.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing where to over-invest given a fixed staleness budget</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're told the business can tolerate slightly stale data almost everywhere EXCEPT one place: users must never see a search suggestion or a RAG answer that references a product that's been discontinued in the last hour. Which of the three systems needs the SHORTEST staleness window as a result, and what would you change about it?</p>
+    <details><summary>Show solution</summary><div class="solution">Both search autocomplete AND the RAG system are directly implicated by
+this constraint (the caching layer is a supporting layer underneath
+both, not a user-facing surface on its own, so it inherits whichever
+constraint the system built on top of it imposes) -- but autocomplete's
+PRECOMPUTED rankings (section 2) are the harder one to fix quickly,
+because by design its whole latency strategy depends on NOT recomputing
+per request. Shortening its staleness window to "under an hour" means
+the precomputation/refresh job itself has to run far more frequently
+than a typical autocomplete deployment would default to, which is a
+real infrastructure cost (recomputing rankings across the whole trie
+structure on a much tighter cycle) that section 2's original design
+didn't have to account for.
+
+RAG's retrieval (section 3) is comparatively easier to fix for this
+specific constraint: since it already searches the index FRESH per
+query, the fix is really just "make sure the vector index itself
+reflects discontinued-product removals within the hour" (a corpus-
+update-pipeline problem, not a per-query retrieval-latency problem) --
+retrieval was never precomputed staleness the way autocomplete's
+rankings are, so the discontinued-product freshness requirement mostly
+falls on how fast the underlying document corpus and its index get
+updated, not on changing retrieval's own query-time behavior.
+
+What to change: for autocomplete specifically, either move discontinued-
+product filtering OUT of the precomputed ranking step and into a fast,
+small, always-fresh filter applied at query time on top of the (still
+stale-by-design) precomputed candidates -- keeping the speed benefit of
+precomputation for the bulk of ranking while patching in freshness only
+where it's actually required -- or accept a shorter, more expensive
+refresh cycle if the discontinued-product list changes rarely enough
+that a targeted post-filter isn't worth building separately.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Spotting a design that silently reintroduces a solved staleness problem</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A candidate says: "for the RAG system's latency, I'd just add a write-through cache in front of the vector search stage, same idea as the caching layer lab." What's wrong with copy-pasting write-through specifically here?</p>
+    <details><summary>Show solution</summary><div class="solution">Write-through (section 1) is a strategy for keeping a CACHE and a
+DATABASE synchronized on WRITES -- it solves "how do I keep a read cache
+current when the underlying data changes," at the cost of paying full
+database write latency on every write. But RAG's vector search stage
+(section 3) isn't primarily a write-heavy path being read repeatedly the
+way a caching-layer use case is -- it's a READ path (search) over an
+index that changes relatively rarely (when documents are added or
+updated) compared to how often it's QUERIED. Applying "write-through" to
+it doesn't map cleanly: there's no natural "write path" at query time to
+keep synchronous with anything, since a search query doesn't write
+anything to the index at all.
+
+What the candidate likely means, stated correctly, is something more
+like caching REPEATED IDENTICAL QUERY VECTORS' retrieval results (a
+read-cache-with-TTL pattern, not write-through) -- but even that,
+per Problem 1's finding, has to be scoped carefully (cache retrieved
+chunk IDs with a TTL tied to corpus update frequency, not the full
+generated answer) to avoid quietly serving stale, ungrounded results
+past the point where the source documents changed. The deeper mistake
+being tested here: reaching for a memorized caching STRATEGY NAME without
+checking whether its actual mechanics (synchronizing a cache against
+WRITES) match the shape of the problem at hand (a read-heavy stage with
+infrequent underlying updates) -- exactly the kind of copy-paste-without-
+checking-the-shape mistake Month 2's cold review flagged for the rate
+limiter/URL-shortener caching mismatch, showing up again here in a new
+context.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Writing your own cold-recall prompt for a fourth, related system</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the same "prompt, attempt cold, then reveal" structure from sections 1-3, write the prompt (not the answer) you'd use to cold-test yourself on a system this month's engine-build week (this week) is actually constructing: a vector database search API sitting in front of an HNSW index. What 3-4 questions would you ask yourself?</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable cold-recall prompt for a vector search API, following this
+lab's shape (specific enough to force a real design decision, not so
+open-ended that a vague answer can dodge it):
+
+  "Without looking anything up, sketch a vector search API sitting in
+   front of an HNSW index:
+   - What does the request/response shape look like -- what does a
+     caller send, and what comes back? Does it accept metadata filters
+     alongside the query vector, and if so, pre-filter or post-filter
+     (per this week's vector_db_schema_design lab)?
+   - What HNSW query-time parameter would you expose to callers, if any,
+     and what does adjusting it trade away? (Hint: this week's HNSW
+     lab's ef_search knob.)
+   - How does this API handle a query against an index that's mid-
+     insert (new vectors being added concurrently) -- does the caller
+     ever see a partially-built neighborhood, and does that matter?
+   - What's the failure mode if the index is temporarily unavailable --
+     does the API fall back to brute-force search (this week's day-1
+     lab), return an error, or something else, and what does that
+     choice trade off?"
+
+The value of writing your own prompt like this, using material from THIS
+week's engine build specifically, is that it forces connecting the
+system-design reasoning skill (re-derive the shape of a design cold)
+back to the concrete mechanics this week actually built by hand (brute-
+force cosine search, HNSW construction, hybrid/re-ranking, schema
+design) -- rather than treating "system design" and "the engine I just
+built" as two separate tracks that happen to share a topic.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, right now, with no notes, re-explain (1) why write-back's async flush is a real data-loss risk and what write-through trades away instead, (2) why a trie's structure specifically matches prefix-based autocomplete queries, (3) the exact failure the similarity-threshold check prevents in the RAG pipeline, and (4) which direction each of the three systems trades freshness against speed, and why? If any of the four feels shaky, that's the one to re-attempt cold again tomorrow, not just re-read.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — system design review, month 3 cold.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Cosine Similarity Fundamentals</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --vec-c:#4fc3f7; --dot-c:#f2c14e; --mag-c:#c792ea; --rank-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--vec-c); color:var(--vec-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--dot-c); color:var(--dot-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--rank-c); color:var(--rank-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* rank bars */
+  .score-bars{display:flex; flex-direction:column; gap:0.6rem; margin:1.2rem 0;}
+  .score-row{display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.78rem;}
+  .score-label{min-width:130px; color:var(--ink-dim);}
+  .score-track{flex:1; height:20px; background:#0b0d11; border:1px solid var(--rule); border-radius:5px; overflow:hidden;}
+  .score-fill{height:100%; transition:width .6s ease; background:var(--rank-c);}
+  .score-fill.top{background:var(--accent);}
+  .score-val{font-family:var(--mono); font-size:0.75rem; min-width:56px; text-align:right;}
+
+  /* scale visual */
+  .scale-track{height:44px; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; position:relative; margin:1.4rem 0; overflow:hidden;}
+  .scale-fill{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg, var(--vec-c), var(--bad-c)); width:0%; transition:width 1s ease;}
+  .scale-label{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.78rem; color:#0e0f13; font-weight:700; z-index:2; mix-blend-mode:normal;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--vec-c);} .dc-col.a h4{color:var(--vec-c);}
+  .dc-col.b{border-color:var(--bad-c);} .dc-col.b h4{color:var(--bad-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.gen{border-left-color:var(--rank-c); background:rgba(127,216,160,0.06);} .callout.gen b{color:var(--rank-c);}
+  .callout.survival{border-left-color:var(--dot-c); background:rgba(242,193,78,0.08); font-size:0.95rem;}
+  .callout.survival b{color:var(--dot-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · SURVIVAL EXERCISE — VECTOR RETRIEVAL ENGINE, DAY 1</div>
+  <h1>Before any index gets built, you have to know exactly what it's approximating.</h1>
+  <p class="lede">Cosine similarity is the actual arithmetic underneath "semantic search" — a dot product and two magnitudes, nothing more exotic than that. This lab computes it by hand on a real small dataset, then works out precisely why doing that same arithmetic against every vector in a 10-million-row dataset, for every query, becomes the bottleneck that HNSW (tomorrow's lab) exists to solve.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Dot product ÷ (magnitude × magnitude)</div>
+    <div class="pipe-label b">Brute force: O(n·d) per query</div>
+    <div class="pipe-label c">This is the baseline the rest of the week beats</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="math">1 · The Actual Arithmetic</a>
+  <a data-target="livedemo">2 · Live Brute-Force Search on a Tiny Dataset</a>
+  <a data-target="scale">3 · Why Brute Force Breaks at Scale</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<div style="max-width:1000px; margin:2.5rem auto 0; padding:0 6vw;">
+  <div class="callout survival"><b>Week 4 survival exercise, day 1:</b> this week's roadmap topics build one real vector retrieval engine end to end — brute-force cosine similarity today, an HNSW-style index from scratch tomorrow, hybrid search and re-ranking layered on top mid-week, a vector DB schema on Friday, and a recall benchmark against brute force as Saturday's capstone. Everything below is the ENGINE'S v0: the brute-force cosine search that every later optimization in this week gets measured against.</div>
+</div>
+
+<!-- ============ SECTION 1: THE MATH ============ -->
+<section id="math">
+  <div class="kicker">01 — Two vectors, one number describing how alike they point</div>
+  <h2>Cosine similarity, the actual arithmetic</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine two people pointing flashlights into a dark room. If both flashlights point in almost exactly the same direction, the beams overlap almost entirely — very similar. If one points north and the other points due south, the beams share nothing — completely dissimilar. It doesn't matter whether one flashlight is a small keychain light and the other is a massive spotlight (different "strengths," i.e. different magnitudes) — what cosine similarity measures is purely the ANGLE between the two beams, not how bright either one is. That's the entire idea: cosine similarity ignores vector length and measures only direction.</p>
+
+  <p>Concretely, for two vectors <code class="inline">a</code> and <code class="inline">b</code>: compute their <strong>dot product</strong> (multiply each corresponding pair of components and sum the results), then divide by the product of their <strong>magnitudes</strong> (each vector's own length, computed via the Pythagorean-style square-root-of-sum-of-squares). Dividing by the magnitudes is exactly what removes "how long is this vector" from the answer, leaving only "which way does it point."</p>
+
+  <div class="code"><span class="c-kw">import</span> numpy <span class="c-kw">as</span> np
+
+<span class="c-kw">def</span> <span class="c-fn">cosine_similarity</span>(a, b):
+    dot = np.dot(a, b)                              <span class="c-cmt"># sum of elementwise products</span>
+    mag_a = np.linalg.norm(a)                        <span class="c-cmt"># sqrt(sum(a_i^2))</span>
+    mag_b = np.linalg.norm(b)                        <span class="c-cmt"># sqrt(sum(b_i^2))</span>
+    <span class="c-kw">return</span> dot / (mag_a * mag_b)
+
+a = np.array([<span class="c-num">1.0</span>, <span class="c-num">2.0</span>, <span class="c-num">0.0</span>])
+b = np.array([<span class="c-num">2.0</span>, <span class="c-num">4.0</span>, <span class="c-num">0.0</span>])   <span class="c-cmt"># same direction as a, just longer</span>
+<span class="c-fn">print</span>(cosine_similarity(a, b))
+<span class="c-out">1.0   # identical direction -> perfect similarity, despite different magnitude</span></div>
+
+  <p>The result ranges from <strong>-1</strong> (pointing in exactly opposite directions) through <strong>0</strong> (perpendicular — no directional relationship at all) to <strong>1</strong> (pointing in exactly the same direction). For text/document embeddings specifically, values cluster mostly in the 0-to-1 range in practice, since embedding models rarely produce genuinely opposite-pointing vectors for real text — but the formula itself supports the full -1-to-1 range.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> cosine similarity between two vectors is their dot product divided by the product of their magnitudes — equivalently, the cosine of the angle between them. It measures directional similarity only, deliberately ignoring each vector's length/magnitude, which makes it the standard similarity metric for embeddings, where a document's embedding "direction" carries the semantic meaning and its magnitude is often just an artifact of the encoding process rather than a meaningful signal.</div>
+</section>
+
+<!-- ============ SECTION 2: LIVE DEMO ============ -->
+<section id="livedemo">
+  <div class="kicker">02 — Not a diagram — the real numbers, computed live in this page</div>
+  <h2>Live brute-force cosine similarity search</h2>
+
+  <p><strong>Start here, before running it.</strong> Below is a tiny dataset of 6 vectors, each labeled like a document might be. Pick a query vector, and this page will run the EXACT arithmetic above — real dot products, real magnitudes, computed live in JavaScript, not hardcoded results — against all 6 dataset vectors, then sort by score to find the top-k most similar. This is literally what "brute-force search" means: no shortcuts, no index, just compare the query against every single stored vector.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>BRUTE-FORCE COSINE SEARCH — 3D VECTORS, 6-ITEM DATASET</span>
+      <div><button class="btn secondary" id="cos-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-q="tech">Query: "tech" ≈ [0.9, 0.2, 0.1]</button>
+      <button class="chip" data-q="food">Query: "food" ≈ [0.1, 0.9, 0.2]</button>
+      <button class="chip" data-q="sport">Query: "sport" ≈ [0.2, 0.1, 0.9]</button>
+    </div>
+    <div class="log" id="cos-work"></div>
+    <div class="score-bars" id="cos-bars"></div>
+  </div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> brute-force nearest-neighbor search computes the exact similarity score (here, cosine similarity) between the query vector and EVERY vector in the dataset, with no shortcuts or precomputed structure — then sorts all scores and takes the top-k. It's the ground-truth baseline every approximate method (HNSW, IVF) is measured against for recall, precisely because it can never miss the true top-k results — it examines everything.</div>
+</section>
+
+<!-- ============ SECTION 3: SCALE ============ -->
+<section id="scale">
+  <div class="kicker">03 — The exact arithmetic that makes this a real bottleneck</div>
+  <h2>Why brute force breaks at real scale — worked out in full</h2>
+
+  <p><strong>Start here, before the numbers.</strong> The 6-vector demo above ran instantly — of course it did, cosine similarity against 6 vectors is nothing. The entire point of this section is to take the SAME arithmetic and actually multiply it out at a scale a real production vector database would face, so the bottleneck isn't just asserted, it's derived.</p>
+
+  <p>Each cosine similarity computation between a query and one stored vector of dimension <code class="inline">d</code> costs roughly <code class="inline">O(d)</code> work: <code class="inline">d</code> multiplications for the dot product, plus <code class="inline">d</code> more for each magnitude (magnitudes can be precomputed once at insert time and cached, but the dot product itself is unavoidable per query). Comparing a query against <code class="inline">n</code> stored vectors costs <code class="inline">O(n·d)</code> total — and that's for ONE query.</p>
+
+  <div class="code"><span class="c-cmt"># A real, common embedding size: 768 dimensions (e.g. many sentence-transformer models)</span>
+n = <span class="c-num">10_000_000</span>      <span class="c-cmt"># 10 million stored vectors</span>
+d = <span class="c-num">768</span>            <span class="c-cmt"># embedding dimensionality</span>
+
+multiply_adds_per_query = n * d
+<span class="c-fn">print</span>(f<span class="c-str">"{multiply_adds_per_query:,} multiply-adds, per single query"</span>)
+<span class="c-out">7,680,000,000 multiply-adds, per single query
+# ~7.68 BILLION multiply-add operations -- for ONE query against this dataset.
+# And this entire computation repeats again, from scratch, for every new query.</span></div>
+
+  <p>7.68 billion multiply-adds per query is not a rounding error — even on modern hardware capable of billions of floating-point operations per second, doing this for every single query, especially under real production query volume (hundreds or thousands of queries per second), means the CPU/GPU work scales linearly with BOTH the size of the dataset and the number of queries. Double the dataset, double the cost per query. Double the query volume, double the total cost again. Brute force has no mechanism to avoid comparing against vectors that are obviously going to be irrelevant — it treats every stored vector as equally worth checking, every time.</p>
+
+  <div class="scale-track"><div class="scale-fill" id="scale-fill"></div><div class="scale-label" id="scale-label">n = 10, d = 768 → 7,680 multiply-adds</div></div>
+  <div class="lookup-controls">
+    <button class="chip active" data-n="10">n = 10</button>
+    <button class="chip" data-n="10000">n = 10,000</button>
+    <button class="chip" data-n="1000000">n = 1,000,000</button>
+    <button class="chip" data-n="10000000">n = 10,000,000</button>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Small dataset (this lab's demo, n=6)</h4>
+      <p>Brute force is not just acceptable, it's the RIGHT choice — building any index at all would be pure overhead for a dataset this small. The 6-vector demo above never needs anything smarter.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>10M+ vectors, production query volume</h4>
+      <p>7.68 billion multiply-adds per query, repeated per query, at real QPS, is the exact wall that motivates tomorrow's lab: an index structure (HNSW) that examines a small, sublinear fraction of the dataset instead of literally all of it.</p>
+    </div>
+  </div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> brute-force nearest-neighbor search has query-time complexity O(n·d), where n is the number of stored vectors and d is the embedding dimensionality — every query re-examines the entire dataset, with cost growing linearly in both dataset size and query volume. At realistic production scale (millions to billions of vectors, hundreds/thousands of embedding dimensions, sustained query traffic), this becomes computationally impractical for interactive latency, which is precisely the motivation for approximate nearest-neighbor index structures like HNSW and IVF — this week's actual engine build.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing cosine similarity by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Compute the cosine similarity between a = [3, 0] and b = [0, 4] by hand, showing the dot product and both magnitudes. What does the result tell you geometrically?</p>
+    <details><summary>Show solution</summary><div class="solution">Dot product: (3*0) + (0*4) = 0.
+Magnitude of a: sqrt(3^2 + 0^2) = sqrt(9) = 3.
+Magnitude of b: sqrt(0^2 + 4^2) = sqrt(16) = 4.
+Cosine similarity: 0 / (3*4) = 0.
+
+Geometrically, a points straight along the x-axis and b points straight
+along the y-axis -- they are perpendicular (90 degrees apart). A cosine
+similarity of exactly 0 corresponds to a 90-degree angle, confirming
+this directly: perpendicular vectors share no directional overlap at
+all, regardless of their individual lengths (3 and 4 here).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Why magnitude gets divided out, concretely</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Vector a = [1, 1] and vector c = [10, 10]. Compute cosine similarity(a, c). Then explain in one sentence why a much "louder"/larger-magnitude embedding doesn't automatically win in cosine similarity ranking the way it might in a raw dot-product ranking.</p>
+    <details><summary>Show solution</summary><div class="solution">Dot product: (1*10)+(1*10) = 20. Magnitude of a: sqrt(2) ≈ 1.414.
+Magnitude of c: sqrt(200) ≈ 14.14. Cosine similarity: 20 / (1.414 *
+14.14) ≈ 20/20 = 1.0 -- identical direction, perfect similarity, despite
+c being 10x "longer" than a in every component.
+
+The reason: dividing by the product of both magnitudes exactly cancels
+out any pure scaling of either vector. If you used raw dot product
+instead (no division), a vector with a much larger magnitude would tend
+to produce a larger dot product against almost anything, purely because
+its components are bigger numbers -- which would bias "similarity"
+toward large-magnitude vectors regardless of whether they actually point
+in a semantically similar direction. Cosine similarity's normalization
+step is specifically what prevents magnitude from masquerading as
+relevance.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Working out the O(n·d) cost for a different dataset size</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A dataset has 500,000 vectors at 1536 dimensions (OpenAI's text-embedding-3-large size). How many multiply-adds does one brute-force query cost? If the service handles 200 queries per second, how many total multiply-adds per second is that?</p>
+    <details><summary>Show solution</summary><div class="solution">Per query: n * d = 500,000 * 1,536 = 768,000,000 (768 million)
+multiply-adds.
+
+At 200 queries/second: 768,000,000 * 200 = 153,600,000,000 (about 153.6
+billion) multiply-adds per second, sustained. This is a genuinely large,
+continuous compute load -- and it scales linearly with BOTH numbers
+independently: doubling either the dataset size or the query rate
+doubles this total, with no way to "cache" your way out of it the way
+you might cache a repeated identical query, because in practice most
+queries are at least somewhat different from each other.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing when brute force is actually still the right call</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team has 50,000 vectors, gets about 2 queries per second, and query latency isn't especially latency-sensitive (a 200ms response is fine). Should they build an HNSW index, or is brute force still the right choice? Justify using this lab's O(n·d) reasoning.</p>
+    <details><summary>Show solution</summary><div class="solution">At n=50,000 and, say, d=768: 50,000 * 768 ≈ 38.4 million multiply-adds
+per query -- trivial for modern hardware, almost certainly well under a
+few milliseconds even unoptimized, comfortably inside a 200ms budget. At
+only 2 QPS, the sustained load is tiny (under 100 million multiply-adds
+per second total).
+
+Brute force is very plausibly still the right call here. Building an
+approximate index like HNSW isn't free -- it costs engineering
+complexity, build time, memory for the graph structure, and introduces
+the recall trade-off from this week's later labs (section 3 of the HNSW
+lab: approximate results, not guaranteed-exact ones). When brute force
+already comfortably meets the latency and throughput requirements, as it
+does here, adding an ANN index trades away guaranteed-correct results
+and adds real system complexity for a performance benefit the workload
+doesn't actually need. This is a genuine engineering judgment call: "can
+brute force handle this" should be checked BEFORE reaching for an index,
+not skipped in favor of always building the more sophisticated option.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Precomputing magnitudes as a partial optimization</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3 notes stored-vector magnitudes can be precomputed once at insert time and cached. Does this change the O(n·d) complexity of brute-force search? What part of the per-query cost does it actually remove, and what part remains untouched?</p>
+    <details><summary>Show solution</summary><div class="solution">No, it does not change the asymptotic O(n·d) complexity -- it's a real,
+worthwhile constant-factor optimization, not a change in scaling
+behavior. What it removes: recomputing each STORED vector's magnitude
+(a sqrt-of-sum-of-squares over d dimensions) on every single query --
+without caching, that's redundant O(d) work per stored vector per query,
+even though a stored vector's magnitude never changes after it's
+embedded. Precomputing it once at insert time and storing it alongside
+the vector means each query only needs to compute the QUERY vector's
+own magnitude once (O(d), a single one-time cost per query, not per
+stored vector) plus its magnitude for the query itself.
+
+What remains completely untouched: the dot product between the query
+and EVERY stored vector, which is still O(d) work per stored vector,
+and there are still n stored vectors to compare against. That dot
+product cannot be precomputed ahead of time because it depends on BOTH
+the query and the stored vector together -- it doesn't exist until a
+specific query arrives. So the per-query cost drops from roughly 3
+passes of O(d) work per stored vector (dot product + two magnitudes) to
+roughly 1 pass of O(d) work per stored vector (dot product only, plus
+one query-magnitude computation done once) -- a real, meaningful
+constant-factor speedup, typically close to 2-3x, but the total cost is
+still O(n·d), still linear in dataset size, and still the bottleneck
+this week's index structures exist to actually break out of.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you (1) compute cosine similarity between two small vectors by hand without a calculator, (2) explain in one sentence why dividing by both magnitudes is what makes it direction-only, and (3) state the O(n·d) brute-force query cost and multiply it out for a concrete n and d without looking it up? This is the baseline the rest of the week's engine build (starting with HNSW tomorrow) is measured against — carry the 7.68-billion-multiply-adds number forward into that lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — cosine similarity fundamentals.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: LIVE COSINE SEARCH */
+(function(){
+  var chips = document.querySelectorAll("[data-q]");
+  var workEl = document.getElementById("cos-work");
+  var barsEl = document.getElementById("cos-bars");
+
+  var DATASET = [
+    {label: "laptop-review.md",     v: [0.85, 0.25, 0.05]},
+    {label: "pasta-recipe.md",      v: [0.05, 0.95, 0.15]},
+    {label: "marathon-training.md", v: [0.15, 0.05, 0.90]},
+    {label: "cpu-benchmark.md",     v: [0.95, 0.10, 0.10]},
+    {label: "restaurant-guide.md",  v: [0.10, 0.80, 0.30]},
+    {label: "yoga-basics.md",       v: [0.05, 0.20, 0.85]}
+  ];
+
+  var QUERIES = {
+    tech:  {label: "tech",  v: [0.9, 0.2, 0.1]},
+    food:  {label: "food",  v: [0.1, 0.9, 0.2]},
+    sport: {label: "sport", v: [0.2, 0.1, 0.9]}
+  };
+
+  function dot(a, b){ var s = 0; for(var i = 0; i < a.length; i++){ s += a[i]*b[i]; } return s; }
+  function mag(a){ var s = 0; for(var i = 0; i < a.length; i++){ s += a[i]*a[i]; } return Math.sqrt(s); }
+  function cosine(a, b){ return dot(a, b) / (mag(a) * mag(b)); }
+
+  function render(key){
+    var q = QUERIES[key];
+    var qMag = mag(q.v);
+
+    var workLines = ['<div class="line fadein"><b>Query "' + q.label + '"</b> = [' + q.v.join(", ") + ']  |mag| = sqrt(' +
+      q.v.map(function(x){return (x*x).toFixed(2);}).join("+") + ') = ' + qMag.toFixed(3) + '</div>'];
+
+    var results = DATASET.map(function(d){
+      var dp = dot(q.v, d.v);
+      var dMag = mag(d.v);
+      var score = dp / (qMag * dMag);
+      workLines.push('<div class="line fadein">' + d.label + ': dot=' + dp.toFixed(3) + ', |mag|=' + dMag.toFixed(3) +
+        ' → cos = ' + dp.toFixed(3) + ' / (' + qMag.toFixed(3) + ' × ' + dMag.toFixed(3) + ') = <b>' + score.toFixed(3) + '</b></div>');
+      return {label: d.label, score: score};
+    });
+    workEl.innerHTML = workLines.join("");
+
+    results.sort(function(a, b){ return b.score - a.score; });
+
+    barsEl.innerHTML = "";
+    results.forEach(function(r, i){
+      var row = document.createElement("div");
+      row.className = "score-row";
+      var pct = Math.max(0, r.score) * 100;
+      row.innerHTML =
+        '<span class="score-label">#' + (i+1) + ' ' + r.label + '</span>' +
+        '<div class="score-track"><div class="score-fill' + (i === 0 ? " top" : "") + '" style="width:0%"></div></div>' +
+        '<span class="score-val">' + r.score.toFixed(3) + '</span>';
+      barsEl.appendChild(row);
+      setTimeout(function(){ row.querySelector(".score-fill").style.width = pct + "%"; }, 60 + i * 90);
+    });
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.q);
+    });
+  });
+
+  document.getElementById("cos-reset").addEventListener("click", function(){
+    chips.forEach(function(x){ x.classList.remove("active"); });
+    chips[0].classList.add("active");
+    render("tech");
+  });
+
+  render("tech");
+})();
+
+/* SECTION 3: SCALE SLIDER */
+(function(){
+  var chips = document.querySelectorAll("[data-n]");
+  var fill = document.getElementById("scale-fill");
+  var label = document.getElementById("scale-label");
+  var d = 768;
+
+  function fmt(x){ return x.toLocaleString("en-US"); }
+
+  function render(n){
+    var total = n * d;
+    var pct = Math.min(100, Math.log10(total + 1) / Math.log10(7680000001) * 100);
+    fill.style.width = pct + "%";
+    label.textContent = "n = " + fmt(n) + ", d = " + d + " → " + fmt(total) + " multiply-adds per query";
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(parseInt(c.dataset.n, 10));
+    });
+  });
+
+  render(10);
+})();
+</script>
+</body>
+</html>
