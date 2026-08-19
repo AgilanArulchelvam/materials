@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Connection Pooling</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --slot-c:#4fc3f7; --queue-c:#f2c14e; --leak-c:#c792ea; --accent:#66d9c2; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(102,217,194,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--slot-c); color:var(--slot-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--queue-c); color:var(--queue-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--leak-c); color:var(--leak-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(102,217,194,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#0d1a17; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* connection cost timeline */
+  .cost-stage{display:flex; gap:1.4rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .cost-col{flex:1; min-width:260px; border:1.5px solid var(--rule); border-radius:12px; padding:1rem;}
+  .cost-col.fresh{border-color:var(--bad-c);}
+  .cost-col.pooled{border-color:var(--accent);}
+  .cost-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .cost-col.fresh h4{color:var(--bad-c);} .cost-col.pooled h4{color:var(--accent);}
+  .cost-step{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.6rem; border-radius:6px; background:var(--panel-2); margin-bottom:0.4rem; opacity:0; transform:translateX(-6px); transition:all .3s ease; display:flex; justify-content:space-between; gap:0.6rem;}
+  .cost-step.show{opacity:1; transform:translateX(0);}
+  .cost-step .ms{color:var(--queue-c); white-space:nowrap;}
+  .cost-total{font-family:var(--mono); font-size:1.1rem; text-align:center; margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--rule); color:var(--ink);}
+  .cost-total b{font-size:1.4rem;}
+  .cost-col.fresh .cost-total b{color:var(--bad-c);}
+  .cost-col.pooled .cost-total b{color:var(--accent);}
+
+  /* pool visualizer */
+  .pool-stage{display:flex; flex-wrap:wrap; gap:1rem; margin:1.4rem 0; justify-content:center;}
+  .slot{width:100px; height:100px; border-radius:12px; border:2px solid var(--rule); background:var(--panel-2); display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.7rem; text-align:center; gap:0.3rem; transition:all .3s ease; position:relative;}
+  .slot .slot-label{color:var(--ink-dim); font-size:0.62rem; text-transform:uppercase; letter-spacing:0.06em;}
+  .slot .slot-state{font-weight:700; font-size:0.85rem;}
+  .slot .slot-req{font-size:0.62rem; color:var(--ink-dim);}
+  .slot.idle{border-color:var(--rule);}
+  .slot.idle .slot-state{color:var(--ink-dim);}
+  .slot.busy{border-color:var(--slot-c); background:rgba(79,195,247,0.1); box-shadow:0 0 14px rgba(79,195,247,0.25);}
+  .slot.busy .slot-state{color:var(--slot-c);}
+  .slot .slot-bar{width:80%; height:4px; border-radius:2px; background:var(--rule); overflow:hidden; margin-top:0.2rem;}
+  .slot .slot-bar-fill{height:100%; background:var(--slot-c); width:0%; transition:width linear;}
+
+  .queue-row{display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin:1rem 0; min-height:2.2rem; padding:0.6rem; border:1px dashed var(--rule); border-radius:8px; background:var(--panel-2);}
+  .queue-row .queue-label{font-family:var(--mono); font-size:0.68rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em; margin-right:0.4rem;}
+  .queue-chip{font-family:var(--mono); font-size:0.68rem; padding:0.3rem 0.6rem; border-radius:14px; border:1.5px solid var(--queue-c); color:var(--queue-c); background:rgba(242,193,78,0.1); animation:fadein .3s ease;}
+  .queue-chip.timedout{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.1); text-decoration:line-through;}
+
+  .pool-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;}
+  .pool-summary{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .pool-summary b{color:var(--ink);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem; margin:1.4rem 0;}
+  @media(max-width:820px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.small{border-color:var(--bad-c);}
+  .dc-col.tuned{border-color:var(--accent);}
+  .dc-col.large{border-color:var(--leak-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0.2rem 0 0.6rem;}
+  .dc-col.small h4{color:var(--bad-c);} .dc-col.tuned h4{color:var(--accent);} .dc-col.large h4{color:var(--leak-c);}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#0d1a17; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(102,217,194,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.slot{border-left-color:var(--slot-c); background:rgba(79,195,247,0.06);} .callout.slot b{color:var(--slot-c);}
+  .callout.queue{border-left-color:var(--queue-c); background:rgba(242,193,78,0.06);} .callout.queue b{color:var(--queue-c);}
+  .callout.leak{border-left-color:var(--leak-c); background:rgba(199,146,234,0.06);} .callout.leak b{color:var(--leak-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND & APIS LAB · CONNECTION POOLING</div>
+  <h1>Opening a fresh database connection is expensive. A pool exists to stop paying that cost on every request.</h1>
+  <p class="lede">A brand-new database connection has to survive a TCP handshake, a TLS handshake, credential negotiation, and server-side session setup — tens of milliseconds of pure overhead before your query even runs. Connection pooling keeps a small set of connections already open and hands them out on loan. This lab measures the real cost of "fresh vs pooled," walks through why pool size is a two-sided tuning problem, and builds a real animated pool visualizer where you can watch requests check out slots, queue, and time out under load.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Connection cost</div>
+    <div class="pipe-label b">Pool size tuning</div>
+    <div class="pipe-label c">Pool exhaustion</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="cost">1 · The Real Cost of a Fresh Connection</a>
+  <a data-target="sizing">2 · Pool Size Tuning</a>
+  <a data-target="visualizer">3 · The Pool, Live</a>
+  <a data-target="exhaustion">4 · Pool Exhaustion in Production</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: COST OF A FRESH CONNECTION ============ -->
+<section id="cost">
+  <div class="kicker">01 — Why "just open a new connection" isn't free</div>
+  <h2>The real cost of establishing a new database connection</h2>
+
+  <p><strong>Start here, before any timing numbers.</strong> Imagine calling a company's support line and, every single time, having to go through the entire "verify your identity, explain your account, wait to be routed to the right department" ritual from scratch — even if you just hung up 200 milliseconds ago. Now imagine instead you're kept on hold on an already-verified, already-routed line between calls, so the next time you need something, you just... talk. That difference — full re-verification every time vs. reusing a line that's already set up — is exactly the difference between opening a fresh database connection per request and reusing one from a pool.</p>
+
+  <p>Opening a fresh connection to a database is not one step, it's several, each with real network and computational cost:</p>
+
+  <table class="cmp">
+    <tr><th>Step</th><th>What happens</th><th>Approximate cost</th></tr>
+    <tr><td>TCP handshake</td><td>SYN → SYN-ACK → ACK, a few round trips to establish the underlying transport connection</td><td>~1-5ms same-region / same-datacenter, ~20-100ms cross-region</td></tr>
+    <tr><td>TLS handshake</td><td>Cipher negotiation, certificate exchange, key agreement, if the connection is encrypted (as most production DB connections are)</td><td>Another ~1-5ms local, ~20-100ms cross-region (roughly one more full round trip, sometimes two)</td></tr>
+    <tr><td>Database auth negotiation</td><td>Client sends credentials, server verifies them (password check, or a more expensive scheme like SCRAM), and confirms the client may proceed</td><td>~1-10ms, more if the auth method does deliberately-slow password hashing</td></tr>
+    <tr><td>Session / connection setup</td><td>Server allocates a backend process or thread for this connection, sets up its memory, session state, default settings</td><td>~1-5ms, more under server load or memory pressure</td></tr>
+  </table>
+
+  <p>Add those up and a single fresh connection — even in the friendly case of same-region, low-load conditions — can easily cost <strong>10-30ms of pure setup overhead before a single query runs</strong>, and considerably more (100ms+) across regions or under load. A pooled, already-open connection skips every one of these steps: acquiring one from the pool is just handing a reference to an object that's already past all four stages, which costs close to nothing — typically sub-millisecond, just the bookkeeping of marking a slot "in use."</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>MEASURE IT: FRESH CONNECTION VS POOLED CONNECTION</span>
+      <div><button class="btn secondary" id="cost-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Timings below are simulated at accelerated speed but keep the real proportional relationship between steps. Click both to compare directly.</p>
+    <div class="cost-stage">
+      <div class="cost-col fresh">
+        <h4>Open a fresh connection</h4>
+        <div id="cost-fresh-steps"></div>
+        <div class="cost-total" id="cost-fresh-total">total: —</div>
+      </div>
+      <div class="cost-col pooled">
+        <h4>Acquire a pooled connection</h4>
+        <div id="cost-pooled-steps"></div>
+        <div class="cost-total" id="cost-pooled-total">total: —</div>
+      </div>
+    </div>
+    <div class="pool-controls">
+      <button class="btn" id="cost-run-fresh">Open a fresh connection ▸</button>
+      <button class="btn secondary" id="cost-run-pooled">Acquire from pool ▸</button>
+    </div>
+    <div class="log" id="cost-log"><span class="line">Run both and compare the totals — the ratio you see mirrors real production numbers.</span></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> establishing a new database connection requires a TCP handshake, (usually) a TLS handshake, database-level authentication negotiation, and server-side session/resource setup — four sequential round-trip-bearing steps that together typically cost tens of milliseconds, dominated by network round trips rather than CPU work. A connection pool amortizes this cost by keeping a set of already-established connections open and reusing them across many requests, so acquiring a connection becomes a near-zero-cost in-process handoff instead of a multi-step network negotiation repeated on every single request.</div>
+</section>
+
+<!-- ============ SECTION 2: POOL SIZE TUNING ============ -->
+<section id="sizing">
+  <div class="kicker">02 — Both "too few" and "too many" connections are failure modes</div>
+  <h2>Pool size tuning: the two-sided problem</h2>
+
+  <p><strong>Start here, before the table.</strong> Think of a restaurant with a fixed number of tables. Too few tables and a packed dining room means people wait outside even on a slow-cooking night — the kitchen isn't the bottleneck, the SEATING is. Too many tables crammed in and you can technically seat more people at once, but now the kitchen (and the fire marshal's occupancy limit) can't actually support that many tables running at full tilt simultaneously — you've promised more capacity than the building can safely hold.</p>
+
+  <p>A connection pool has exactly this two-sided tuning problem. Make it <strong>too small</strong> and concurrent requests start queuing up waiting for a free connection — even when the database itself has plenty of spare capacity and is nowhere near overloaded, throughput is artificially capped by the pool's fixed size, not by anything the database is actually struggling with. Make it <strong>too large</strong> and each connection consumes real memory and resources on the database server (each open connection typically costs the database several MB of backend memory, regardless of whether it's actively running a query) — and worse, if you're running <strong>multiple application server instances</strong>, each with its own pool, the totals stack up fast: 10 instances × a pool of 20 each = 200 possible simultaneous connections, which can blow straight past a database's hard connection ceiling (Postgres, for example, defaults to <code class="inline">max_connections=100</code>) even though each individual pool, looked at in isolation, seems perfectly reasonably sized.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col small">
+      <h4>Too small</h4>
+      <p>Requests queue waiting for a free connection even though the DB has spare capacity. Symptom: rising request latency and timeouts under load, while DB CPU/IO metrics stay low. The bottleneck is the pool, not the database.</p>
+    </div>
+    <div class="dc-col tuned">
+      <h4>Well-tuned</h4>
+      <p>Pool size roughly matches sustained concurrent query demand, with headroom for bursts. Requests rarely wait; the database's own connection ceiling is respected across ALL app instances combined, not just one.</p>
+    </div>
+    <div class="dc-col large">
+      <h4>Too large</h4>
+      <p>Wastes DB server memory per idle connection; multiple instances' pools can collectively exceed the database's max_connections limit, causing the DB itself to start REJECTING new connections outright — a much harder failure than a slow queue.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Scenario</th><th>Total possible connections</th><th>Outcome</th></tr>
+    <tr><td>10 instances × pool of 20, DB max_connections = 100</td><td>200</td><td>Can exceed the DB's hard limit — new connections get refused once the DB is saturated, even though no single pool "looks" oversized</td></tr>
+    <tr><td>10 instances × pool of 8, DB max_connections = 100</td><td>80</td><td>Comfortably under the limit, with headroom for the DB's own internal/admin connections</td></tr>
+    <tr><td>2 instances × pool of 5, expected 40 concurrent queries</td><td>10</td><td>Pool undersized for actual concurrency — requests will queue heavily regardless of DB health</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The trap this creates:</b> pool sizing decisions are usually made per-instance ("a pool of 20 seems reasonable"), but the database only cares about the SUM across every instance hitting it. Scaling out your application (adding more instances to handle more traffic) can silently push your total connection count over the database's limit, even if you never touched the per-instance pool size — the failure appears to come "from nowhere" right after a routine horizontal scale-up.</div>
+
+  <div class="callout queue"><b>Interview-ready definition:</b> pool size tuning balances two opposite failure modes — too small a pool artificially throttles throughput by forcing concurrent requests to queue for a scarce resource the database itself could easily handle, while too large a pool wastes per-connection server-side memory and risks exceeding the database's own hard connection ceiling, especially in multi-instance deployments where the effective total is (number of instances) × (pool size per instance), not the size of any single pool.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE POOL VISUALIZER ============ -->
+<section id="visualizer">
+  <div class="kicker">03 — Watch checkout, queueing, and exhaustion happen</div>
+  <h2>The connection pool, live</h2>
+
+  <p><strong>Start here, before touching the buttons.</strong> Picture a small car rental lot with exactly 5 cars. If 5 or fewer customers show up, everyone drives off immediately. If an 6th customer shows up while all 5 cars are out, they wait in line for the next car to come back — that's normal and fine, AS LONG AS cars come back reasonably soon. But if a customer holding a car takes forever to return it (or never does), everyone behind them in line waits longer and longer, and eventually some of them give up and leave empty-handed. That's a connection pool exactly: 5 slots, requests checking connections out and back in, and a queue that can back up if checkouts run long.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ANIMATED CONNECTION POOL — 5 SLOTS</span>
+      <div><button class="btn secondary" id="pool-reset">Reset</button></div>
+    </div>
+    <div class="pool-summary" id="pool-summary"><b>0</b> in use / <b>5</b> total &nbsp;·&nbsp; <b>0</b> waiting in queue &nbsp;·&nbsp; queue timeout: 3.0s (simulated)</div>
+    <div class="pool-stage" id="pool-slots"></div>
+    <div class="queue-row" id="pool-queue"><span class="queue-label">Queue:</span><span style="font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim);">(empty)</span></div>
+    <div class="pool-controls">
+      <button class="btn" id="pool-single">Send 1 request ▸</button>
+      <button class="btn secondary" id="pool-burst">Send a burst of 8 requests ▸</button>
+    </div>
+    <div class="log" id="pool-log"><span class="line">5 slots available. Send a single request to see a normal checkout/check-in cycle, or send a burst of 8 to see queueing and, if checkouts run long enough, a timeout.</span></div>
+  </div>
+
+  <div class="callout slot"><b>What you just watched:</b> the first 5 requests in a burst immediately claim the 5 available slots. Requests 6, 7, and 8 have nowhere to go, so they wait in the queue — this is completely normal pool behavior, not a bug. As soon as any slot finishes its work and checks back in, the next queued request is picked up automatically, first-in-first-out. If a queued request waits longer than the pool's configured checkout timeout before a slot frees up, the pool gives up on it and returns a timeout error instead of waiting forever — that's pool exhaustion, and you can trigger it above if enough requests queue behind long-running checkouts.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a connection pool maintains a fixed number of pre-established connections ("slots"); a checkout claims an idle slot for the duration of a unit of work and returns it to idle when done. When concurrent demand exceeds the pool size, additional requests queue rather than failing immediately, and are served in order as slots free up. Pool exhaustion is the specific failure mode where a queued request waits longer than the pool's configured timeout without ever obtaining a connection, at which point the pool raises a timeout error to the caller rather than blocking indefinitely.</div>
+</section>
+
+<!-- ============ SECTION 4: EXHAUSTION IN PRODUCTION ============ -->
+<section id="exhaustion">
+  <div class="kicker">04 — Why healthy databases still produce connection errors</div>
+  <h2>Pool exhaustion as a genuine production failure mode</h2>
+
+  <p><strong>Start here, before the causes.</strong> Imagine a well-run restaurant kitchen that is completely capable of cooking every order quickly — but there are only 5 tables, and a party at table 3 has been lingering for two hours over dessert. New customers keep getting turned away at the door not because the kitchen is slow, but because there's simply nowhere to seat them. A manager watching only the kitchen's ticket times would see nothing wrong and be baffled by the line out front.</p>
+
+  <p>This is exactly what surprises engineers about pool exhaustion in production: <strong>the database itself can be completely healthy and fast</strong> — low CPU, low query latency, no replication lag — while the application is still throwing connection errors. That's because the bottleneck isn't the database's actual capacity to do work, it's the pool's fixed capacity to HAND OUT connections. When the pool is exhausted, callers either queue and wait up to a configured timeout (then receive a connection-timeout error if no slot freed up in time), or, depending on pool configuration, fail immediately with no queueing at all. Either way, the caller sees an error that looks database-related but has nothing to do with the database's actual health.</p>
+
+  <p>Three real causes repeatedly show up behind pool exhaustion incidents:</p>
+
+  <table class="cmp">
+    <tr><th>Cause</th><th>What happens</th></tr>
+    <tr><td>A slow query holding a connection too long</td><td>One connection is checked out for the full duration of an expensive query (a missing index, a lock wait, a huge scan) — that slot is unavailable to everyone else for the entire time, shrinking the effective pool</td></tr>
+    <tr><td>A connection leak</td><td>Application code checks out a connection and, due to a bug (commonly: an exception path that skips the "return the connection" cleanup step), never returns it — that slot is gone permanently for the life of the process, silently shrinking the usable pool over time until nothing is left</td></tr>
+    <tr><td>A traffic burst exceeding pool size</td><td>A legitimate spike in concurrent requests (a marketing push, a retry storm, a cron job firing) needs more simultaneous connections than the pool holds, even though the database could handle the underlying query load just fine</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The diagnostic tell:</b> if application logs show connection-pool-timeout errors while database-side metrics (CPU, active query count, replication lag) look completely normal, that's strong evidence the pool itself is the bottleneck, not the database. If instead the database's own metrics show it struggling (high CPU, long query times, lock contention), the pool is just faithfully reflecting a real, underlying database capacity problem — tuning the pool size won't fix that; the queries or database capacity need attention instead.</div>
+
+  <div class="callout leak"><b>Interview-ready definition:</b> pool exhaustion occurs when every connection in a pool is checked out and a new request cannot obtain one within its configured timeout, resulting in a connection-timeout error surfaced to the caller — even when the underlying database has ample spare capacity. It commonly stems from a slow query holding a connection too long, a connection leak (code that checks out a connection but fails to return it, often due to missing cleanup on an error path), or a traffic burst exceeding the pool's fixed size; distinguishing it from genuine database overload requires checking whether the database's own health metrics are actually degraded or merely the pool's checkout queue.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing total possible connections across instances</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A service runs 8 application server instances, each configured with a connection pool size of 15. The database has <code class="inline">max_connections = 100</code>. What is the maximum total number of connections these instances could collectively attempt to open, and does it exceed the database's limit?</p>
+    <details><summary>Show solution</summary><div class="solution">Total possible connections = instances × pool size per instance = 8 × 15 =
+120. This exceeds the database's max_connections limit of 100 by 20
+connections. If all 8 instances simultaneously ran their pools at full
+capacity (entirely possible under heavy concurrent load across the
+fleet), up to 20 connection attempts would be refused by the database
+outright once it hit its hard ceiling -- and that's before accounting for
+connections the database reserves for its own admin/replication use,
+which typically shrinks the truly available count below the nominal 100
+even further. The fix is either lowering the per-instance pool size (e.g.
+to 10-12, giving 80-96 total with headroom) or using a connection pooler
+in front of the database (like PgBouncer) that multiplexes many
+application-level connections onto a smaller number of real database
+connections.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a pool-exhaustion symptom from a scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An API starts returning intermittent 500 errors with the message "timed out waiting for a connection from the pool." The database's dashboard shows CPU at 12%, average query time under 5ms, and no replication lag. What's actually going on, and where should the team look first?</p>
+    <details><summary>Show solution</summary><div class="solution">This is a textbook pool exhaustion symptom, not a database performance
+problem. The database metrics (low CPU, fast queries, no lag) show the
+database itself is healthy and has spare capacity to do more work -- the
+errors are coming entirely from the pool's fixed capacity to hand out
+connections, not from the database's capacity to execute queries. The
+team should NOT start by tuning database queries or scaling the database
+-- that would fix nothing here. Instead they should look at: (1) the
+pool's configured size relative to actual concurrent demand, (2) whether
+any code path holds a connection checked out unusually long (a slow
+downstream call made while still holding the connection, for instance),
+and (3) whether there's a connection leak where checked-out connections
+are never returned, which would explain why the problem might be getting
+WORSE over time even at steady traffic.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · "Pool exhausted" vs "database actually overloaded"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Describe two pieces of evidence that would let you tell apart "the connection pool is exhausted but the database is fine" from "the database itself is genuinely overloaded and that's why connections are timing out."</p>
+    <details><summary>Show solution</summary><div class="solution">First, database-side health metrics: if CPU usage, active query count,
+lock wait time, and replication lag are all normal/low while application
+logs show pool-timeout errors, the database has spare capacity and the
+pool itself is the bottleneck. If those same metrics are elevated (high
+CPU, queries taking far longer than usual, heavy lock contention), the
+database is genuinely struggling and connections are backing up as a
+downstream SYMPTOM of that, not as an independent pool-sizing problem.
+
+Second, the specific error message and where it originates: a pool-level
+timeout ("waited too long for an available connection from the pool")
+happens entirely client-side, before any query is even sent to the
+database -- it says nothing about database health by itself. A
+database-level timeout or a query that returns successfully but slowly
+indicates the database received the query and is struggling to execute
+it. If you see requests succeeding once they finally get a connection
+(just later than ideal), that further points to a pool capacity issue
+rather than a database performance issue -- the database handled the
+query fine once it got the chance to.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about a connection leak bug</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The following pseudocode is suspected of causing a slow, creeping rise in pool-timeout errors over the course of each day, resolved only by restarting the app: <code class="inline">conn = pool.acquire(); result = conn.query(sql); pool.release(conn); return result;</code> What's the bug, and why does restarting temporarily fix it?</p>
+    <details><summary>Show solution</summary><div class="solution">The bug is a connection leak on the error path. If conn.query(sql)
+throws an exception (a bad query, a transient network blip, a
+constraint violation), execution jumps past the pool.release(conn) line
+entirely -- there's no try/finally (or equivalent) ensuring the
+connection gets returned to the pool regardless of whether the query
+succeeded or failed. Every time this happens, one connection is
+permanently removed from the usable pool for the remaining lifetime of
+the process, because nothing ever calls release() on it again.
+
+This explains the "slow creeping rise" pattern exactly: each individual
+leaked connection is a small, easy-to-miss loss, but they accumulate
+one-by-one every time an error occurs, gradually shrinking the
+effectively available pool size over hours until there are few or no
+slots left and most requests start timing out waiting for a connection.
+Restarting the app resets the pool entirely (all connections are freshly
+re-established), which is why it "fixes" the symptom -- temporarily,
+until leaks accumulate again. The real fix is wrapping the checkout in a
+try/finally (or a context manager / RAII-style pattern) so
+pool.release(conn) always runs, whether the query succeeded, failed, or
+threw partway through.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Choosing an appropriately sized pool</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">You're deploying a service across 6 application instances. The database has <code class="inline">max_connections = 150</code>, and you want to reserve at least 20 connections of headroom for admin/maintenance tools and other services sharing the database. Expected peak concurrent queries across the whole fleet is about 90. What per-instance pool size would you choose, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Available budget for this service's pools = max_connections - headroom
+= 150 - 20 = 130 total connections across all 6 instances. Dividing
+evenly: 130 / 6 ≈ 21.6, so a per-instance pool size of about 20-21 stays
+within budget (6 × 21 = 126, leaving a small additional safety margin
+under 130).
+
+Checking against expected demand: peak concurrent queries across the
+fleet is about 90, and 90 / 6 instances ≈ 15 concurrent queries per
+instance on average during peak. A per-instance pool size of 20-21
+comfortably covers that average-per-instance peak with some slack for
+uneven load distribution across instances (one instance temporarily
+handling more concurrent load than others), without being so large that
+the fleet-wide total risks exceeding the database's connection ceiling.
+A pool size much smaller than ~15 per instance would risk queuing even
+under normal expected peak load; a pool size pushing toward 25-30+ per
+instance would eat into the reserved headroom and risk exceeding 150
+total once you account for connection count varying instance-to-instance
+under real, uneven traffic.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the four steps a fresh database connection has to go through and roughly why each one costs what it does, (2) why "instances × pool size" rather than any single pool's size is the number that actually matters against a database's max_connections limit, and (3) how to tell, from metrics alone, whether a wave of connection-timeout errors means the pool is too small or the database itself is struggling? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — connection pooling.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 1: CONNECTION COST TIMELINE */
+(function(){
+  const freshSteps = [
+    {label:"TCP handshake (SYN / SYN-ACK / ACK)", ms:4},
+    {label:"TLS handshake (cipher + cert exchange)", ms:5},
+    {label:"DB auth negotiation (credentials verified)", ms:4},
+    {label:"Session/resource setup on the DB server", ms:3}
+  ];
+  const pooledSteps = [
+    {label:"Ask pool for an idle connection", ms:0.2},
+    {label:"Mark slot as checked-out (in-process bookkeeping)", ms:0.2}
+  ];
+
+  const freshStepsEl = document.getElementById('cost-fresh-steps');
+  const pooledStepsEl = document.getElementById('cost-pooled-steps');
+  const freshTotalEl = document.getElementById('cost-fresh-total');
+  const pooledTotalEl = document.getElementById('cost-pooled-total');
+  const runFreshBtn = document.getElementById('cost-run-fresh');
+  const runPooledBtn = document.getElementById('cost-run-pooled');
+  const resetBtn = document.getElementById('cost-reset');
+  const logEl = document.getElementById('cost-log');
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderSteps(container, steps){
+    container.innerHTML = '';
+    steps.forEach((s,i)=>{
+      const d = document.createElement('div');
+      d.className = 'cost-step';
+      d.id = container.id + '-step-' + i;
+      d.innerHTML = '<span>' + s.label + '</span><span class="ms">~' + s.ms + 'ms</span>';
+      container.appendChild(d);
+    });
+  }
+  renderSteps(freshStepsEl, freshSteps);
+  renderSteps(pooledStepsEl, pooledSteps);
+
+  function runSequence(container, steps, totalEl, label, scale, doneMsg){
+    let total = 0;
+    steps.forEach((s,i)=>{
+      setTimeout(()=>{
+        const el = document.getElementById(container.id + '-step-' + i);
+        el.classList.add('show');
+        total += s.ms;
+        log(label + ' — ' + s.label + ' <b>(+' + s.ms + 'ms)</b>');
+      }, i * scale);
+    });
+    setTimeout(()=>{
+      const sum = steps.reduce((a,s)=>a+s.ms, 0);
+      totalEl.innerHTML = 'total: <b>~' + sum.toFixed(1) + 'ms</b>';
+      log(doneMsg + ' <b>~' + sum.toFixed(1) + 'ms total.</b>');
+    }, steps.length * scale + 150);
+  }
+
+  runFreshBtn.addEventListener('click', ()=>{
+    renderSteps(freshStepsEl, freshSteps);
+    freshTotalEl.textContent = 'total: —';
+    runSequence(freshStepsEl, freshSteps, freshTotalEl, 'Fresh connection', 450, 'Fresh connection fully established:');
+  });
+
+  runPooledBtn.addEventListener('click', ()=>{
+    renderSteps(pooledStepsEl, pooledSteps);
+    pooledTotalEl.textContent = 'total: —';
+    runSequence(pooledStepsEl, pooledSteps, pooledTotalEl, 'Pooled acquire', 300, 'Pooled connection acquired in:');
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    renderSteps(freshStepsEl, freshSteps);
+    renderSteps(pooledStepsEl, pooledSteps);
+    freshTotalEl.textContent = 'total: —';
+    pooledTotalEl.textContent = 'total: —';
+    logEl.innerHTML = '<span class="line">Run both and compare the totals — the ratio you see mirrors real production numbers.</span>';
+  });
+})();
+
+/* SECTION 3: POOL VISUALIZER */
+(function(){
+  const POOL_SIZE = 5;
+  const QUEUE_TIMEOUT_MS = 3000; // simulated
+  const HOLD_MS_NORMAL = 1800;
+  const HOLD_MS_BURST_MIN = 1600;
+  const HOLD_MS_BURST_MAX = 3800;
+
+  const slotsEl = document.getElementById('pool-slots');
+  const queueEl = document.getElementById('pool-queue');
+  const summaryEl = document.getElementById('pool-summary');
+  const singleBtn = document.getElementById('pool-single');
+  const burstBtn = document.getElementById('pool-burst');
+  const resetBtn = document.getElementById('pool-reset');
+  const logEl = document.getElementById('pool-log');
+
+  let slots = []; // {state: 'idle'|'busy', reqId: null|number}
+  let queue = []; // {id, enqueuedAt, timeoutHandle}
+  let reqCounter = 0;
+  let allTimers = [];
+
+  function initSlots(){
+    slots = [];
+    for(let i=0;i<POOL_SIZE;i++) slots.push({state:'idle', reqId:null});
+  }
+  initSlots();
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderSlots(){
+    slotsEl.innerHTML = '';
+    slots.forEach((s,i)=>{
+      const d = document.createElement('div');
+      d.className = 'slot ' + (s.state === 'busy' ? 'busy' : 'idle');
+      d.innerHTML = '<span class="slot-label">slot ' + (i+1) + '</span>' +
+        '<span class="slot-state">' + (s.state === 'busy' ? 'IN USE' : 'IDLE') + '</span>' +
+        (s.state === 'busy' ? '<span class="slot-req">req #' + s.reqId + '</span><div class="slot-bar"><div class="slot-bar-fill" id="slot-bar-' + i + '"></div></div>' : '<span class="slot-req">available</span>');
+      slotsEl.appendChild(d);
+    });
+  }
+
+  function renderQueue(){
+    if(queue.length === 0){
+      queueEl.innerHTML = '<span class="queue-label">Queue:</span><span style="font-family:var(--mono); font-size:0.7rem; color:var(--ink-dim);">(empty)</span>';
+      return;
+    }
+    queueEl.innerHTML = '<span class="queue-label">Queue:</span>';
+    queue.forEach(q=>{
+      const c = document.createElement('span');
+      c.className = 'queue-chip';
+      c.id = 'queue-chip-' + q.id;
+      c.textContent = 'req #' + q.id + ' waiting';
+      queueEl.appendChild(c);
+    });
+  }
+
+  function renderSummary(){
+    const inUse = slots.filter(s=>s.state==='busy').length;
+    summaryEl.innerHTML = '<b>' + inUse + '</b> in use / <b>' + POOL_SIZE + '</b> total &nbsp;·&nbsp; <b>' + queue.length + '</b> waiting in queue &nbsp;·&nbsp; queue timeout: ' + (QUEUE_TIMEOUT_MS/1000).toFixed(1) + 's (simulated)';
+  }
+
+  function render(){ renderSlots(); renderQueue(); renderSummary(); }
+  render();
+
+  function findIdleSlot(){
+    for(let i=0;i<slots.length;i++){ if(slots[i].state === 'idle') return i; }
+    return -1;
+  }
+
+  function animateBar(slotIdx, holdMs){
+    const bar = document.getElementById('slot-bar-' + slotIdx);
+    if(!bar) return;
+    bar.style.transition = 'none';
+    bar.style.width = '0%';
+    requestAnimationFrame(()=>{
+      bar.style.transition = 'width ' + holdMs + 'ms linear';
+      bar.style.width = '100%';
+    });
+  }
+
+  function checkoutInto(slotIdx, reqId, holdMs){
+    slots[slotIdx] = {state:'busy', reqId:reqId};
+    render();
+    animateBar(slotIdx, holdMs);
+    log('Request <b>#' + reqId + '</b> checked out slot ' + (slotIdx+1) + '. Holding for ~' + holdMs + 'ms.');
+    const t = setTimeout(()=>{
+      slots[slotIdx] = {state:'idle', reqId:null};
+      log('Request <b>#' + reqId + '</b> finished — slot ' + (slotIdx+1) + ' checked back in.');
+      render();
+      pumpQueue();
+    }, holdMs);
+    allTimers.push(t);
+  }
+
+  function pumpQueue(){
+    while(queue.length > 0){
+      const idle = findIdleSlot();
+      if(idle === -1) break;
+      const q = queue.shift();
+      clearTimeout(q.timeoutHandle);
+      renderQueue();
+      log('Request <b>#' + q.id + '</b> picked up from the queue after waiting.');
+      checkoutInto(idle, q.id, HOLD_MS_NORMAL);
+    }
+    render();
+  }
+
+  function enqueue(reqId, holdMsForWhenPickedUp){
+    const entry = {id: reqId, enqueuedAt: Date.now()};
+    entry.timeoutHandle = setTimeout(()=>{
+      const idx = queue.findIndex(q=>q.id === reqId);
+      if(idx !== -1){
+        queue.splice(idx,1);
+        const chip = document.getElementById('queue-chip-' + reqId);
+        if(chip){ chip.classList.add('timedout'); chip.textContent = 'req #' + reqId + ' TIMED OUT'; }
+        log('<b style="color:var(--bad-c);">Request #' + reqId + ' timed out after ' + QUEUE_TIMEOUT_MS + 'ms waiting for an available connection — pool exhausted.</b>');
+        renderSummary();
+      }
+    }, QUEUE_TIMEOUT_MS);
+    queue.push(entry);
+    render();
+    log('Request <b>#' + reqId + '</b> arrived — no idle slots. Added to queue (position ' + queue.length + ').');
+  }
+
+  function sendRequest(holdMs){
+    reqCounter++;
+    const reqId = reqCounter;
+    const idle = findIdleSlot();
+    if(idle !== -1){
+      checkoutInto(idle, reqId, holdMs);
+    } else {
+      enqueue(reqId, holdMs);
+    }
+    return reqId;
+  }
+
+  singleBtn.addEventListener('click', ()=>{
+    sendRequest(HOLD_MS_NORMAL);
+  });
+
+  burstBtn.addEventListener('click', ()=>{
+    log('<b>Sending a burst of 8 requests against 5 slots...</b>');
+    for(let i=0;i<8;i++){
+      const t = setTimeout(()=>{
+        const holdMs = Math.round(HOLD_MS_BURST_MIN + Math.random()*(HOLD_MS_BURST_MAX - HOLD_MS_BURST_MIN));
+        sendRequest(holdMs);
+      }, i*80);
+      allTimers.push(t);
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    allTimers.forEach(t=>clearTimeout(t));
+    allTimers = [];
+    queue.forEach(q=>clearTimeout(q.timeoutHandle));
+    queue = [];
+    initSlots();
+    reqCounter = 0;
+    render();
+    logEl.innerHTML = '<span class="line">Pool reset — 5 idle slots, empty queue.</span>';
+  });
+})();
+</script>
+</body>
+</html>

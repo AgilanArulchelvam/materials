@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — SQLAlchemy Async</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --engine-c:#4fc3f7; --session-c:#7fd8a0; --core-c:#f2c14e; --accent:#ba9cf3; --bad-c:#ff6b6b; --taskb-c:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(186,156,243,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .sa-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.8rem; flex-wrap:wrap;}
+  .sh-box{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid var(--engine-c); color:var(--engine-c); background:rgba(79,195,247,0.08);}
+  .sh-arrow{color:var(--ink-dim);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(186,156,243,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--bad-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* engine / pool visualization */
+  .pool-stage{display:flex; align-items:center; gap:1.4rem; flex-wrap:wrap; margin:1.2rem 0; justify-content:center;}
+  .pool-box{border:1.5px solid var(--engine-c); border-radius:12px; padding:1rem 1.2rem; background:rgba(79,195,247,0.06); font-family:var(--mono); font-size:0.78rem; text-align:center; min-width:170px;}
+  .pool-box h4{margin:0 0 0.6rem; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--engine-c);}
+  .conn-grid{display:flex; gap:0.4rem; justify-content:center; flex-wrap:wrap;}
+  .conn-dot{width:22px; height:22px; border-radius:6px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .3s; display:flex; align-items:center; justify-content:center; font-size:0.65rem;}
+  .conn-dot.busy{border-color:var(--core-c); background:rgba(242,193,78,0.25); color:var(--core-c);}
+  .pool-arrow{color:var(--ink-dim); font-size:1.3rem;}
+  .session-box{border:1.5px solid var(--session-c); border-radius:12px; padding:1rem 1.2rem; background:rgba(127,216,160,0.06); font-family:var(--mono); font-size:0.78rem; text-align:center; min-width:170px;}
+  .session-box h4{margin:0 0 0.6rem; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--session-c);}
+
+  /* declarative vs core compare */
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--session-c);} .dc-col.a h4{color:var(--session-c);}
+  .dc-col.b{border-color:var(--core-c);} .dc-col.b h4{color:var(--core-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+  .dc-col .code{margin:0.6rem 0 0;}
+
+  /* query lifecycle animation */
+  .lifecycle-stage{display:flex; flex-direction:column; gap:0.7rem; margin:1.4rem 0;}
+  .lc-step{display:flex; align-items:center; gap:1rem; padding:0.85rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.8rem; transition:all .35s ease; opacity:0.45;}
+  .lc-step.active{border-color:var(--accent); background:rgba(186,156,243,0.1); opacity:1; transform:translateX(4px); box-shadow:0 0 16px rgba(186,156,243,0.25);}
+  .lc-step.done{opacity:0.7;}
+  .lc-num{font-weight:700; color:var(--accent); min-width:1.6rem;}
+  .lc-text{flex:1;}
+  .lc-text b{color:var(--ink);}
+
+  .taskb-lane{margin-top:0.6rem; padding:0.85rem 1.1rem; border-radius:10px; border:1.5px dashed var(--taskb-c); background:rgba(255,138,101,0.05); font-family:var(--mono); font-size:0.78rem; opacity:0.3; transition:all .35s ease;}
+  .taskb-lane.active{opacity:1; box-shadow:0 0 14px rgba(255,138,101,0.25);}
+  .taskb-lane b{color:var(--taskb-c);}
+  .taskb-progress{height:6px; background:var(--rule); border-radius:3px; overflow:hidden; margin-top:0.5rem;}
+  .taskb-fill{height:100%; width:0%; background:var(--taskb-c); transition:width .3s linear;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(186,156,243,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.def{border-left-color:var(--engine-c); background:rgba(79,195,247,0.06);} .callout.def b{color:var(--engine-c);}
+  .callout.info{border-left-color:var(--session-c); background:rgba(127,216,160,0.06);} .callout.info b{color:var(--session-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · SQLALCHEMY ASYNC</div>
+  <h1>The engine owns the connections. The session owns your transaction. Neither one is the other.</h1>
+  <p class="lede">SQLAlchemy's async layer looks like the sync API with <code class="inline">await</code> sprinkled on top, but underneath it, the engine's connection pool and asyncio's event loop have to cooperate at every single database round trip. This lab builds up async engine and session setup, contrasts Declarative ORM models against raw Core tables for the same schema, and animates exactly what happens to your coroutine — and to every OTHER coroutine — the instant <code class="inline">await session.execute(...)</code> hits the network.</p>
+
+  <div class="sa-hero">
+    <div class="sh-box">create_async_engine()</div>
+    <div class="sh-arrow">pools connections →</div>
+    <div class="sh-box">AsyncSession(engine)</div>
+    <div class="sh-arrow">one transaction →</div>
+    <div class="sh-box">await session.execute(...)</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="setup">1 · AsyncSession &amp; Engine Setup</a>
+  <a data-target="declarative-core">2 · Declarative vs Core</a>
+  <a data-target="query-patterns">3 · Async Query Execution</a>
+  <a data-target="lifecycle">4 · Lifecycle of an Async Query</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ENGINE + SESSION SETUP ============ -->
+<section id="setup">
+  <div class="kicker">01 — Two different objects, two different jobs</div>
+  <h2>AsyncSession and async engine setup</h2>
+
+  <p><strong>Start here, before any code.</strong> Think of a restaurant. The <strong>engine</strong> is the restaurant's fixed set of parking spaces out back and the valet staff who manage them — a shared, reusable resource pool that exists for the whole night, handed out to whichever car (connection) needs one at the moment, then taken back when that car's business is done. A <strong>session</strong> is a single table's dining experience for one party — it starts when they sit down, tracks everything they order and eat during that one visit, and ends (the check is settled, the transaction is committed or rolled back) when they leave. The valet lot is shared infrastructure across the whole restaurant; a table's dining session belongs to exactly one party, for exactly one visit.</p>
+
+  <p>The <strong>async engine</strong>, created with <code class="inline">create_async_engine(...)</code>, manages a pool of database connections opened over an async-capable driver. It does NOT represent a transaction or hold application state — it's purely connection plumbing: opening connections, keeping a pool of them warm and ready, handing one out when work needs to happen, and returning it to the pool afterward.</p>
+
+  <div class="code">
+<span class="c-kw">from</span> sqlalchemy.ext.asyncio <span class="c-kw">import</span> create_async_engine, async_sessionmaker, AsyncSession
+
+<span class="c-cmt"># the engine manages a POOL OF CONNECTIONS -- it is not a transaction,
+# it is not a session, it has no idea what your application logic is doing</span>
+engine = <span class="c-fn">create_async_engine</span>(
+    <span class="c-str">"postgresql+asyncpg://user:pass@localhost/mydb"</span>,
+    pool_size=<span class="c-num">10</span>,          <span class="c-cmt"># keep up to 10 connections warm in the pool</span>
+    max_overflow=<span class="c-num">5</span>,        <span class="c-cmt"># allow 5 more temporarily under heavy load</span>
+    echo=<span class="c-kw">False</span>,
+)
+
+<span class="c-cmt"># a sessionmaker is a FACTORY for sessions -- create it once, reuse it
+# everywhere, rather than constructing AsyncSession(engine) by hand each time</span>
+async_session_factory = <span class="c-fn">async_sessionmaker</span>(engine, expire_on_commit=<span class="c-kw">False</span>)
+
+<span class="c-kw">async def</span> <span class="c-fn">do_work</span>():
+    <span class="c-cmt"># AsyncSession as an async context manager: borrows a connection from
+    # the engine's pool, opens a transaction, and guarantees cleanup
+    # (commit/rollback + returning the connection to the pool) on exit</span>
+    <span class="c-kw">async with</span> AsyncSession(engine) <span class="c-kw">as</span> session:
+        <span class="c-cmt"># ... do queries here, all within ONE logical transaction ...</span>
+        <span class="c-kw">await</span> session.commit()
+
+    <span class="c-cmt"># equivalently, and more commonly, via the factory:</span>
+    <span class="c-kw">async with</span> async_session_factory() <span class="c-kw">as</span> session:
+        <span class="c-cmt"># ... same thing, but the factory carries shared config ...</span>
+        <span class="c-kw">await</span> session.commit()
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>ENGINE POOL vs SESSION — WHAT EACH ONE ACTUALLY HOLDS</span>
+      <div><button class="btn secondary" id="pool-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Click through what happens when two different request handlers each open a session against the SAME engine.</p>
+    <div class="pool-stage">
+      <div class="pool-box" id="pool-box">
+        <h4>ENGINE — connection pool</h4>
+        <div class="conn-grid" id="pool-conns"></div>
+      </div>
+      <span class="pool-arrow">⇄</span>
+      <div class="session-box" id="session-box-a">
+        <h4>SESSION A (request 1)</h4>
+        <div id="session-a-state">no connection checked out</div>
+      </div>
+      <div class="session-box" id="session-box-b">
+        <h4>SESSION B (request 2)</h4>
+        <div id="session-b-state">no connection checked out</div>
+      </div>
+    </div>
+    <button class="btn" id="pool-run">Open two sessions concurrently ▸</button>
+    <div class="log" id="pool-log"><span class="line">The engine's pool has 6 connections. Watch each session borrow one, use it, and give it back — independently of the other.</span></div>
+  </div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the async engine manages a pool of reusable, async-capable database connections and knows nothing about application-level units of work — it exists for the lifetime of the process. An <code class="inline">AsyncSession</code> represents a single unit-of-work / identity map scoped to one logical transaction: it checks out a connection from the engine's pool on first use, tracks every object it has loaded or modified during that transaction (so the same row loaded twice returns the same Python object), and releases the connection back to the pool when the transaction ends via commit, rollback, or the <code class="inline">async with</code> block exiting. Many sessions are created and discarded, cheaply, over the engine's much longer lifetime — you create the engine once per application, and a new session per unit of work (often per request).</div>
+</section>
+
+<!-- ============ SECTION 2: DECLARATIVE VS CORE ============ -->
+<section id="declarative-core">
+  <div class="kicker">02 — Same table, two completely different ways to describe it</div>
+  <h2>Declarative models vs Core, side by side</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine describing a filing cabinet two ways. One way: "here's a Folder class — every folder object has a name and a list of documents inside it, and you interact with folders as things, calling methods on them, comparing whether two folder objects are 'the same folder.'" The other way: "here's the literal blueprint of the cabinet — drawer dimensions, label positions, exactly what goes in column 3 row 2 — with no notion of a 'Folder object' at all, just the raw physical layout you can read and write directly." Both describe the identical filing cabinet. One gives you objects with identity and behavior; the other gives you precise, direct control over the physical structure with nothing in between.</p>
+
+  <p>SQLAlchemy lets you define the exact same database table either way. <strong>Declarative</strong> (the ORM style, SQLAlchemy 2.0 syntax) defines a Python class whose attributes map to columns, using <code class="inline">Mapped[...]</code> type annotations and <code class="inline">mapped_column(...)</code>. <strong>Core</strong> defines the same table directly against a <code class="inline">MetaData</code> object using <code class="inline">Table(...)</code> and <code class="inline">Column(...)</code>, with no Python class and no object identity at all — just table and column definitions you build SQL expressions against.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Declarative ORM (2.0 style)</h4>
+      <div class="code">
+<span class="c-kw">from</span> sqlalchemy <span class="c-kw">import</span> String
+<span class="c-kw">from</span> sqlalchemy.orm <span class="c-kw">import</span> DeclarativeBase, Mapped, mapped_column
+
+<span class="c-kw">class</span> Base(DeclarativeBase): <span class="c-kw">pass</span>
+
+<span class="c-kw">class</span> User(Base):
+    __tablename__ = <span class="c-str">"users"</span>
+    id: Mapped[<span class="c-fn">int</span>] = <span class="c-fn">mapped_column</span>(primary_key=<span class="c-kw">True</span>)
+    email: Mapped[<span class="c-fn">str</span>] = <span class="c-fn">mapped_column</span>(String(<span class="c-num">255</span>), unique=<span class="c-kw">True</span>)
+    is_active: Mapped[<span class="c-fn">bool</span>] = <span class="c-fn">mapped_column</span>(default=<span class="c-kw">True</span>)
+
+<span class="c-cmt"># User is a real Python class. Rows come back as User instances
+# with attribute access, identity, and (optionally) relationships.</span>
+      </div>
+      <p>You get objects: <code class="inline">user.email</code>, object identity within a session (load the same row twice, get the same Python object back), and relationships to other mapped classes. This is what most application code — the code that reads like a domain model — reaches for.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Core (Table + MetaData)</h4>
+      <div class="code">
+<span class="c-kw">from</span> sqlalchemy <span class="c-kw">import</span> MetaData, Table, Column, Integer, String, Boolean
+
+metadata = <span class="c-fn">MetaData</span>()
+
+users_table = <span class="c-fn">Table</span>(
+    <span class="c-str">"users"</span>,
+    metadata,
+    <span class="c-fn">Column</span>(<span class="c-str">"id"</span>, Integer, primary_key=<span class="c-kw">True</span>),
+    <span class="c-fn">Column</span>(<span class="c-str">"email"</span>, String(<span class="c-num">255</span>), unique=<span class="c-kw">True</span>),
+    <span class="c-fn">Column</span>(<span class="c-str">"is_active"</span>, Boolean, default=<span class="c-kw">True</span>),
+)
+
+<span class="c-cmt"># No class. No objects with identity. Rows come back as plain Row
+# tuples/mappings -- you work directly with columns and SQL expressions.</span>
+      </div>
+      <p>You get raw rows, not objects — no identity map, no Python-side object graph, no relationship loading. In exchange, you get precise control over exactly what SQL gets generated, with none of the ORM's bookkeeping overhead.</p>
+    </div>
+  </div>
+
+  <p>Both definitions above describe the literal same <code class="inline">users</code> table in the database — same columns, same types, same constraints. Reach for <strong>Core</strong> when you're doing bulk operations (inserting or updating thousands of rows where per-object overhead matters), need precise control over exactly what SQL gets generated, or simply don't need Python object identity at all (a reporting query that just needs rows, not domain objects). Reach for <strong>Declarative</strong> for the majority of application code — anywhere you're working with entities as objects, navigating relationships, or want the identity map's guarantee that the same row loaded twice in one session is the same Python object.</p>
+
+  <div class="callout info"><b>Interview-ready definition:</b> Declarative and Core are two APIs over the same underlying SQL expression language, not two different databases or two different sets of capabilities — a Declarative model's table is, underneath, a Core <code class="inline">Table</code> object that SQLAlchemy generates for you from the class definition. Declarative adds a mapped Python class, object identity within a session (the identity map), and relationship navigation on top of that Core table; Core alone gives you the table and column definitions with no object layer, returning plain rows. Choosing between them is a choice about how much object-oriented bookkeeping you want, not a choice about what SQL can be expressed.</div>
+</section>
+
+<!-- ============ SECTION 3: ASYNC QUERY EXECUTION PATTERNS ============ -->
+<section id="query-patterns">
+  <div class="kicker">03 — Same intent, different verbs</div>
+  <h2>Async query execution patterns</h2>
+
+  <p><strong>Start here, before any code.</strong> Ordering food at a counter (sync) means you stand there and wait — nothing else happens for you until your order is ready, you're physically occupying that spot the whole time. Ordering food via an app that texts you when it's ready (async) means you place the order, walk away and do something else, and come back only once notified — the KITCHEN takes the same amount of time either way, but what YOU are able to do while waiting is completely different. <code class="inline">await session.execute(...)</code> is the "walk away and get notified" version of exactly the same database round trip.</p>
+
+  <table class="cmp">
+    <tr><th>Sync API</th><th>Async equivalent</th></tr>
+    <tr><td><code class="inline">session.query(User).filter(User.id == 1).all()</code> (legacy 1.x style)</td><td>Not available — async sessions don't support the legacy <code class="inline">.query()</code> API at all</td></tr>
+    <tr><td><code class="inline">session.execute(select(User).where(User.id == 1)).scalars().all()</code></td><td><code class="inline">await session.execute(select(User).where(User.id == 1))</code>, then <code class="inline">.scalars().all()</code> on the result — <code class="inline">.scalars()</code> itself is NOT awaited, only <code class="inline">execute()</code> is</td></tr>
+    <tr><td>Blocks the calling thread until the DB responds</td><td>Suspends the coroutine at the <code class="inline">await</code>; the thread is free to run other coroutines during the wait</td></tr>
+  </table>
+
+  <div class="code">
+<span class="c-kw">from</span> sqlalchemy <span class="c-kw">import</span> select
+
+<span class="c-cmt"># SYNC version -- blocks the thread for the full round trip</span>
+<span class="c-kw">def</span> <span class="c-fn">get_user_sync</span>(session, user_id: <span class="c-fn">int</span>) -&gt; User | <span class="c-kw">None</span>:
+    result = session.execute(select(User).where(User.id == user_id))
+    <span class="c-kw">return</span> result.scalar_one_or_none()
+
+<span class="c-cmt"># ASYNC version -- same query, same result shape, but the execute()
+# call is awaited, so this coroutine yields control during the round trip</span>
+<span class="c-kw">async def</span> <span class="c-fn">get_user</span>(session: AsyncSession, user_id: <span class="c-fn">int</span>) -&gt; User | <span class="c-kw">None</span>:
+    result = <span class="c-kw">await</span> session.execute(select(User).where(User.id == user_id))
+    <span class="c-kw">return</span> result.scalar_one_or_none()
+
+<span class="c-cmt"># fetching MULTIPLE rows: .scalars() unpacks Row objects into
+# plain model instances; .all() materializes the full list</span>
+<span class="c-kw">async def</span> <span class="c-fn">get_active_users</span>(session: AsyncSession) -&gt; list[User]:
+    result = <span class="c-kw">await</span> session.execute(select(User).where(User.is_active == <span class="c-kw">True</span>))
+    <span class="c-kw">return</span> result.scalars().all()
+  </div>
+
+  <div class="callout warn"><b>The mistake this trips people into:</b> mixing sync and async is not a style choice, it's a hard runtime failure. A synchronous <code class="inline">create_engine("postgresql://...")</code> (no <code class="inline">+asyncpg</code>) paired with <code class="inline">AsyncSession</code> raises immediately, because <code class="inline">AsyncSession</code> requires an async-capable driver underneath to actually hand back awaitables. Conversely, calling the legacy <code class="inline">session.query(...)</code> API on an <code class="inline">AsyncSession</code> doesn't work at all — it isn't wired up for that surface; you must use <code class="inline">await session.execute(select(...))</code> instead. And forgetting the <code class="inline">await</code> in front of <code class="inline">session.execute(...)</code> doesn't crash loudly — it hands you a coroutine object instead of a result, and calling <code class="inline">.scalars()</code> on a coroutine fails with an <code class="inline">AttributeError</code> that looks nothing like "you forgot to await."</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> async query execution in SQLAlchemy 2.0 uses the same <code class="inline">select()</code>-construct API as sync code — build a <code class="inline">Select</code> statement, pass it to <code class="inline">session.execute(...)</code>, and unwrap the returned <code class="inline">Result</code> with <code class="inline">.scalar_one_or_none()</code>, <code class="inline">.scalars().all()</code>, or similar. The only structural difference is that <code class="inline">execute()</code> itself must be awaited on an <code class="inline">AsyncSession</code>, because it performs actual network I/O against the database driver; the result-unwrapping methods that follow (<code class="inline">.scalars()</code>, <code class="inline">.all()</code>, <code class="inline">.scalar_one_or_none()</code>) operate on the already-fetched <code class="inline">Result</code> object in memory and are NOT themselves awaited.</div>
+</section>
+
+<!-- ============ SECTION 4: LIFECYCLE OF AN ASYNC QUERY ============ -->
+<section id="lifecycle">
+  <div class="kicker">04 — The centerpiece: where does control actually go during a DB wait?</div>
+  <h2>The lifecycle of an async query, animated</h2>
+
+  <p><strong>Start here, before the animation.</strong> When you place that food-app order and walk away, you don't just stand frozen next to the counter waiting for your phone to buzz — you go do something else entirely, like answering a different phone call, and you only come back to the food counter once notified. The kitchen (the database) doesn't know or care what you're doing during that wait; it just does its work and produces a result when it's ready. The interesting part isn't the kitchen — it's what YOU, specifically, get to do with your own attention during the gap.</p>
+
+  <p>This is precisely what happens to a coroutine at <code class="inline">await session.execute(select(...))</code>. It is the SAME cooperative scheduling mechanism from the event loop lab (<code class="inline">python/asyncio_fundamentals.html</code>) — a single-threaded event loop, coroutines voluntarily yielding at <code class="inline">await</code>, another ready task getting a turn during the wait — just applied specifically to database network I/O instead of generic I/O like <code class="inline">asyncio.sleep()</code> or an HTTP call.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE EVENT LOOP DURING A DATABASE ROUND TRIP</span>
+      <div><button class="btn secondary" id="lc-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Task A runs <code class="inline">await session.execute(select(User)...)</code>. Task B is a completely unrelated coroutine — handling a different incoming request — that becomes ready to run during Task A's wait.</p>
+    <div class="lifecycle-stage" id="lc-stage">
+      <div class="lc-step" id="lc-step-0" data-step="0"><span class="lc-num">1</span><span class="lc-text"><b>Task A (application code)</b> calls <code class="inline">await session.execute(select(User).where(...))</code>.</span></div>
+      <div class="lc-step" id="lc-step-1" data-step="1"><span class="lc-num">2</span><span class="lc-text">The coroutine hands the query to the async DB driver, which sends it over the socket. The instant that send happens, Task A hits its <code class="inline">await</code> and <b>suspends</b> — control returns to the event loop scheduler, NOT to the database.</span></div>
+      <div class="lc-step" id="lc-step-2" data-step="2"><span class="lc-num">3</span><span class="lc-text">The event loop sees Task A is now waiting on I/O (not ready to resume yet) and looks for other ready work. <b>Task B is ready</b> — the loop switches to it.</span></div>
+      <div class="lc-step" id="lc-step-3" data-step="3"><span class="lc-num">4</span><span class="lc-text">Meanwhile, on the database side (a separate machine, working independently the whole time): the query is parsed, the rows are fetched, and the result is serialized back onto the socket.</span></div>
+      <div class="lc-step" id="lc-step-4" data-step="4"><span class="lc-num">5</span><span class="lc-text">The socket becomes readable. The event loop notices this I/O-ready event and <b>resumes Task A exactly where it left off</b> — right after the <code class="inline">await</code> — with the <code class="inline">result</code> object now available.</span></div>
+      <div class="lc-step" id="lc-step-5" data-step="5"><span class="lc-num">6</span><span class="lc-text">Application code continues: <code class="inline">result.scalars().all()</code> runs in memory, no further I/O needed. Task A finishes.</span></div>
+    </div>
+    <div class="taskb-lane" id="taskb-lane">
+      <span><b>Task B: handling a different incoming request</b> — parses a JSON body, validates a couple of fields, and prepares a response, entirely on CPU. It makes real progress ONLY during the window while Task A is suspended waiting on the DB socket.</span>
+      <div class="taskb-progress"><div class="taskb-fill" id="taskb-fill"></div></div>
+    </div>
+    <button class="btn" id="lc-run" style="margin-top:1rem;">Run the query ▸</button>
+    <div class="log" id="lc-log"><span class="line">Click to step through exactly what the event loop does at each stage of the await.</span></div>
+  </div>
+
+  <div class="callout warn"><b>The detail worth memorizing:</b> at the moment of <code class="inline">await</code>, control returns to the <em>event loop scheduler</em> — not to the database, not nowhere. The database is a completely separate process on a separate machine, making progress on its own regardless of what Python is doing. The <code class="inline">await</code> boundary is purely about what the SINGLE THREAD running your Python process is allowed to do next: sit idle and do nothing (wasteful), or go run some other ready coroutine (what actually happens). This is why a single Python process using an async DB driver can serve hundreds of concurrent in-flight queries with a single thread — nobody is blocked waiting; everybody is just taking turns during each other's I/O gaps.</div>
+
+  <div class="callout def"><b>Interview-ready definition:</b> the async query lifecycle is the same cooperative-scheduling model taught in the event loop lab, applied to database I/O specifically: application code calls <code class="inline">await session.execute(...)</code>, the coroutine sends the query to the driver and immediately suspends at the await, the event loop notices Task A is now blocked on I/O and schedules a different ready task in its place, the database independently finishes processing and makes the result available on the socket, and the event loop — polling for I/O readiness — resumes the ORIGINAL coroutine exactly where it suspended once that socket is readable. No new thread is spawned and no busy-waiting occurs; the single thread is simply never idle while other ready work exists.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · session.query vs session.execute across sync/async</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Trace what happens when a developer writes <code class="inline">await session.query(User).filter(User.id == 1).all()</code> against an <code class="inline">AsyncSession</code>. What actually goes wrong, and what should they have written instead?</p>
+    <details><summary>Show solution</summary><div class="solution">This fails, and not in an obvious way at first glance. AsyncSession does
+not implement the legacy session.query(...) API at all -- that surface is
+part of the older 1.x ORM query interface, and the async session was
+built against the 2.0-style select() + execute() API from the start.
+Depending on the exact SQLAlchemy version, this either raises an
+AttributeError (no .query method) or, in some transitional setups, returns
+something that isn't awaitable in the way the developer expects -- either
+way, "await" in front of it is a symptom of trying to force the old
+pattern onto an object that was never designed to support it.
+
+The correct version:
+    result = await session.execute(select(User).where(User.id == 1))
+    users = result.scalars().all()
+
+Note precisely which call gets awaited: execute() performs the actual
+network round trip and must be awaited. scalars() and all() run against
+the already-fetched Result object in memory and are never awaited
+themselves.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Mixing sync and async engines/sessions</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">What breaks, concretely, if you construct an <code class="inline">AsyncSession</code> using an engine created with plain <code class="inline">create_engine("postgresql://...")</code> instead of <code class="inline">create_async_engine("postgresql+asyncpg://...")</code>? What about the reverse — using a sync <code class="inline">Session</code> with an async engine?</p>
+    <details><summary>Show solution</summary><div class="solution">AsyncSession + sync engine: this fails, typically at construction or at
+first use, because AsyncSession expects the engine's underlying DBAPI
+driver to support async operations (returning awaitables from execute
+calls, using an async network driver like asyncpg under the hood). A
+plain create_engine(...) wires up a SYNCHRONOUS driver (like psycopg2)
+that blocks the calling thread and has no notion of "await" at all --
+there's no coroutine for AsyncSession to await, so the abstraction simply
+doesn't line up. SQLAlchemy raises an error rather than silently degrading
+to blocking behavior.
+
+Sync Session + async engine: also breaks, for the mirror-image reason --
+a sync Session expects to call driver methods that return results
+directly, not coroutines that need to be awaited. Handed an async
+engine's async-driver connections, it would receive coroutine objects
+where it expects real values, and has no await point in its own
+synchronous call stack to actually drive them to completion.
+
+The rule: the engine's driver (asyncpg vs psycopg2, indicated by the
++asyncpg / +psycopg2 in the connection string) and the session type
+(AsyncSession vs Session) have to match -- they are two halves of the same
+async-or-sync commitment, not independently swappable pieces.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Why the event loop can serve another request during a DB wait but not during CPU-bound work</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain precisely why <code class="inline">await session.execute(select(User))</code> lets another coroutine make progress during the wait, while a slow, purely CPU-bound computation (e.g. hashing a large file in a loop) inside a coroutine does NOT let anything else run during it.</p>
+    <details><summary>Show solution</summary><div class="solution">The distinguishing factor is whether there is an actual await point where
+control can be voluntarily handed back to the event loop. await
+session.execute(...) sends the query over the network socket and then
+suspends -- the Python interpreter is not doing anything during the wait
+for the database to respond, so it is free to go run other ready
+coroutines on that same single thread. The database itself makes progress
+independently, on a separate machine/process, using its own resources --
+Python's single thread isn't "waiting" in the sense of being occupied, it
+is genuinely idle with respect to that task and available for other work.
+
+A CPU-bound loop (hashing a large file) has no await point anywhere in
+it -- it is a straight-line synchronous computation that occupies the
+ONE thread the event loop runs on for its entire duration. There is
+nothing for the event loop to "notice is ready" during that loop, because
+the loop never voluntarily yields control back -- cooperative scheduling
+only works at explicit await boundaries, and a tight CPU-bound loop simply
+never reaches one. This is the same blocking-call trap from the event
+loop lab (time.sleep() freezing everything) applied to computation instead
+of an obvious blocking call -- the fix there is the same too:
+asyncio.to_thread() or a process pool to move the CPU-bound work off the
+event loop's single thread entirely.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Declarative vs Core for a given scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A nightly batch job needs to update a <code class="inline">last_synced_at</code> timestamp on 2 million rows in a <code class="inline">users</code> table, based on a join against an external sync log, with no need to ever construct a Python <code class="inline">User</code> object for any of those rows. Should this use Declarative ORM objects or Core? Why?</p>
+    <details><summary>Show solution</summary><div class="solution">Core is the better fit here. Loading 2 million rows as full Declarative
+User objects (each with its own identity-map entry, attribute tracking,
+and potential relationship loading machinery) is pure overhead when the
+job never actually needs a Python object for any of those rows -- it only
+needs to run a bulk UPDATE. Core lets you build a precise
+users_table.update().values(last_synced_at=...).where(...) statement (or
+an update-from-join construct) that generates exactly the SQL needed and
+executes it as a single bulk operation, with no per-row Python object
+materialization at all.
+
+This matches the general rule: Core fits bulk operations, precise control
+over generated SQL, and scenarios with no need for object identity;
+Declarative fits code working with individual entities as objects,
+navigating relationships, and needing the identity map's guarantees --
+none of which this batch job needs.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Tracing the async query lifecycle animation</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In the lifecycle animation above, at the exact moment Task A's coroutine suspends after sending its query to the driver, where does control go? Name the one thing that must be true for Task B to actually make progress during that window.</p>
+    <details><summary>Show solution</summary><div class="solution">Control goes to the event loop scheduler -- not to the database, and not
+nowhere. The event loop is the single-threaded dispatcher that owns the
+one thread Python is running on; when Task A suspends at its await, the
+event loop is free to look at its set of ready tasks and pick a different
+one to run.
+
+The one thing that must be true for Task B to make progress: Task B must
+already be registered with the event loop as a task (e.g. via
+asyncio.create_task(), or as a separate request handler the async web
+framework is already running) AND it must not itself be blocked waiting on
+something that isn't ready yet. If Task B were, say, also waiting on its
+own database query that hasn't resolved, the loop would move on to look
+for yet another ready task instead -- the loop always picks from whatever
+IS ready, never blocks trying to force a specific task to run. This is
+exactly the same "loop picks whichever task is ready, never sits idle"
+model from the event loop lab's cooperative scheduling animation --
+nothing here is unique to databases specifically, it is generic async I/O
+scheduling pointed at a database socket instead of, say, an HTTP client or
+asyncio.sleep().</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely what the engine manages versus what a session represents, using the words "connection pool" and "unit of work / identity map," (2) why Declarative and Core describe the same underlying SQL rather than two different capabilities, and (3) exactly where control goes — and where it does NOT go — the instant <code class="inline">await session.execute(...)</code> suspends? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — sqlalchemy async.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: ENGINE POOL vs SESSION */
+(function(){
+  var POOL_SIZE = 6;
+  var connsEl = document.getElementById("pool-conns");
+  var runBtn = document.getElementById("pool-run");
+  var resetBtn = document.getElementById("pool-reset");
+  var logEl = document.getElementById("pool-log");
+  var sessionAState = document.getElementById("session-a-state");
+  var sessionBState = document.getElementById("session-b-state");
+  var timers = [];
+  var busy = [false,false,false,false,false,false];
+
+  function buildConns(){
+    connsEl.innerHTML = "";
+    for(var i=0;i<POOL_SIZE;i++){
+      var d = document.createElement("div");
+      d.className = "conn-dot";
+      d.id = "conn-"+i;
+      d.textContent = i+1;
+      connsEl.appendChild(d);
+    }
+  }
+  buildConns();
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function firstFree(){
+    for(var i=0;i<POOL_SIZE;i++){ if(!busy[i]) return i; }
+    return -1;
+  }
+
+  function checkout(sessionLabel, stateEl){
+    var idx = firstFree();
+    if(idx === -1){ log("<b>" + sessionLabel + ":</b> pool exhausted — would wait for a connection to free up."); return -1; }
+    busy[idx] = true;
+    document.getElementById("conn-"+idx).classList.add("busy");
+    stateEl.textContent = "holding connection #" + (idx+1);
+    log("<b>" + sessionLabel + ":</b> checked out connection #" + (idx+1) + " from the pool.");
+    return idx;
+  }
+
+  function checkin(sessionLabel, idx, stateEl){
+    if(idx === -1) return;
+    busy[idx] = false;
+    document.getElementById("conn-"+idx).classList.remove("busy");
+    stateEl.textContent = "connection #" + (idx+1) + " returned to pool";
+    log("<b>" + sessionLabel + ":</b> transaction ended (commit) — connection #" + (idx+1) + " returned to the pool for reuse.");
+  }
+
+  runBtn.addEventListener("click", function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    buildConns();
+    busy = [false,false,false,false,false,false];
+    logEl.innerHTML = "";
+    sessionAState.textContent = "no connection checked out";
+    sessionBState.textContent = "no connection checked out";
+
+    timers.push(setTimeout(function(){
+      var idxA = checkout("Session A", sessionAState);
+      timers.push(setTimeout(function(){
+        var idxB = checkout("Session B", sessionBState);
+        timers.push(setTimeout(function(){
+          log("Session A and Session B each hold their OWN connection and track their OWN transaction — neither has any idea the other exists.");
+          timers.push(setTimeout(function(){
+            checkin("Session A", idxA, sessionAState);
+            timers.push(setTimeout(function(){
+              checkin("Session B", idxB, sessionBState);
+              timers.push(setTimeout(function(){
+                log("<b>Result:</b> the engine's pool never cared how many sessions existed — it just handed out and reclaimed connections as they were checked out and returned. The pool is shared infrastructure; each session's unit of work was private.");
+              }, 400));
+            }, 500));
+          }, 500));
+        }, 700));
+      }, 600));
+    }, 200));
+  });
+
+  resetBtn.addEventListener("click", function(){
+    timers.forEach(function(t){ clearTimeout(t); });
+    timers = [];
+    buildConns();
+    busy = [false,false,false,false,false,false];
+    sessionAState.textContent = "no connection checked out";
+    sessionBState.textContent = "no connection checked out";
+    logEl.innerHTML = '<span class="line">The engine\'s pool has 6 connections. Watch each session borrow one, use it, and give it back — independently of the other.</span>';
+  });
+})();
+
+/* SECTION 4: ASYNC QUERY LIFECYCLE ANIMATION */
+(function(){
+  var runBtn = document.getElementById("lc-run");
+  var resetBtn = document.getElementById("lc-reset");
+  var logEl = document.getElementById("lc-log");
+  var taskbLane = document.getElementById("taskb-lane");
+  var taskbFill = document.getElementById("taskb-fill");
+  var steps = document.querySelectorAll(".lc-step");
+  var timers = [];
+
+  var narration = [
+    "Task A: application code reaches <code class=\"inline\">await session.execute(select(User).where(...))</code>.",
+    "The query is handed to the asyncpg driver and sent over the socket. The instant the send call would otherwise block, Task A hits its await and <b>suspends</b> — control returns to the event loop scheduler.",
+    "The event loop scans its ready set. Task A is not ready (still waiting on I/O). <b>Task B (a different incoming request) IS ready</b> — the loop switches to it and Task B starts making real progress.",
+    "In parallel, on the database server (a separate process, unaffected by what Python is doing): the query executes, rows are gathered, and the result is serialized back onto the socket.",
+    "The socket becomes readable — the awaited I/O is ready. The event loop <b>resumes Task A exactly where it suspended</b>, right after the await, now with a real <code class=\"inline\">result</code> object.",
+    "Task A continues: <code class=\"inline\">result.scalars().all()</code> runs entirely in memory (no more I/O), and the coroutine returns its list of User objects."
+  ];
+
+  function clearActive(){
+    steps.forEach(function(s){ s.classList.remove("active"); });
+  }
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    timers.forEach(function(t){ clearTimeout(t); clearInterval(t); });
+    timers = [];
+    clearActive();
+    steps.forEach(function(s){ s.classList.remove("done"); });
+    taskbLane.classList.remove("active");
+    taskbFill.style.width = "0%";
+    logEl.innerHTML = '<span class="line">Click to step through exactly what the event loop does at each stage of the await.</span>';
+  }
+
+  runBtn.addEventListener("click", function(){
+    reset();
+    logEl.innerHTML = "";
+    var stepDelay = 1100;
+
+    for(var i=0;i<steps.length;i++){
+      (function(i){
+        timers.push(setTimeout(function(){
+          clearActive();
+          steps[i].classList.add("active");
+          for(var j=0;j<i;j++){ steps[j].classList.add("done"); }
+          log("<b>Stage " + (i+1) + ":</b> " + narration[i]);
+
+          // Task B becomes active specifically during stage index 2 (the "loop runs Task B" stage)
+          if(i === 2){
+            taskbLane.classList.add("active");
+            var progress = 0;
+            var iv = setInterval(function(){
+              progress += 10;
+              taskbFill.style.width = Math.min(100, progress) + "%";
+              if(progress >= 100){ clearInterval(iv); }
+            }, stepDelay/12);
+            timers.push(iv);
+          }
+          if(i === 3){
+            // Task B keeps finishing up while DB is still processing
+          }
+          if(i === 4){
+            taskbLane.classList.remove("active");
+          }
+        }, i*stepDelay));
+      })(i);
+    }
+
+    timers.push(setTimeout(function(){
+      log("<b>Total elapsed:</b> from the coroutine's point of view, this looked like one straight-line function call with a pause in the middle. From the event loop's point of view, it was never idle — it ran Task B during exactly the window Task A had nothing for it to do.");
+    }, steps.length*stepDelay + 300));
+  });
+
+  resetBtn.addEventListener("click", reset);
+})();
+</script>
+</body>
+</html>

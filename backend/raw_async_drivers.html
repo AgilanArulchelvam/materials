@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Raw Async Drivers</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --raw-c:#4fd1c5; --orm-c:#e0a05a; --prep-c:#8ab4f8; --danger-c:#ff6b6b; --accent:#c792ea; --ok-c:#7fd8a0;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,209,197,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--raw-c); color:var(--raw-c); background:rgba(79,209,197,0.08);}
+  .pipe-label.b{border-color:var(--prep-c); color:var(--prep-c); background:rgba(138,180,248,0.08);}
+  .pipe-label.c{border-color:var(--orm-c); color:var(--orm-c); background:rgba(224,160,90,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn.danger{background:var(--danger-c); color:#1a0e0e;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* prepared statement pipeline */
+  .pstage{display:flex; align-items:center; justify-content:center; gap:0.6rem; margin:1.4rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .pnode{padding:0.7rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); transition:all .3s; text-align:center;}
+  .pnode.active{border-color:var(--prep-c); color:var(--prep-c); box-shadow:0 0 16px rgba(138,180,248,0.4);}
+  .pnode.skip{border-color:var(--ok-c); color:var(--ok-c);}
+  .parrow{color:var(--ink-dim); font-size:1rem;}
+
+  /* SQL injection before/after */
+  .sql-box{font-family:var(--mono); font-size:0.8rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:0.8rem 0; white-space:pre-wrap; word-break:break-word; line-height:1.7;}
+  .sql-box.danger{border-color:var(--danger-c);}
+  .sql-box.safe{border-color:var(--ok-c);}
+  .sql-box .hi-bad{color:var(--danger-c); font-weight:700; background:rgba(255,107,107,0.12); border-radius:3px; padding:0 2px;}
+  .sql-box .hi-good{color:var(--ok-c); font-weight:700; background:rgba(127,216,160,0.12); border-radius:3px; padding:0 2px;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-compare.three{grid-template-columns:1fr 1fr 1fr;}
+  @media(max-width:900px){.dc-compare.three{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.orm{border-color:var(--orm-c);} .dc-col.orm h4{color:var(--orm-c);}
+  .dc-col.raw{border-color:var(--raw-c);} .dc-col.raw h4{color:var(--raw-c);}
+  .dc-col.prep{border-color:var(--prep-c);} .dc-col.prep h4{color:var(--prep-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  /* N+1 demo */
+  .nplus-visual{display:flex; flex-direction:column; gap:0.4rem; margin:1rem 0; min-height:40px;}
+  .nplus-row{font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.8rem; border-radius:8px; border:1px solid var(--rule); background:var(--panel-2); opacity:0; transform:translateX(-8px); transition:all .3s ease;}
+  .nplus-row.show{opacity:1; transform:translateX(0);}
+  .nplus-row.posts{border-color:var(--prep-c); color:var(--prep-c);}
+  .nplus-row.author{border-color:var(--orm-c); color:var(--orm-c);}
+  .nplus-row.join{border-color:var(--raw-c); color:var(--raw-c);}
+  .nplus-tally{font-family:var(--mono); font-size:0.85rem; color:var(--ink-dim); margin-top:0.6rem; padding-top:0.6rem; border-top:1px dashed var(--rule);}
+  .nplus-tally b{color:var(--ink);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.9rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.65rem 0.9rem; text-align:left;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.raw{border-left-color:var(--raw-c); background:rgba(79,209,197,0.06);} .callout.raw b{color:var(--raw-c);}
+  .callout.prep{border-left-color:var(--prep-c); background:rgba(138,180,248,0.06);} .callout.prep b{color:var(--prep-c);}
+  .callout.orm{border-left-color:var(--orm-c); background:rgba(224,160,90,0.06);} .callout.orm b{color:var(--orm-c);}
+  .callout.warn{border-left-color:var(--danger-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--danger-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · RAW ASYNC DRIVERS</div>
+  <h1>An ORM writes SQL <em>for</em> you. Sometimes that's exactly the problem.</h1>
+  <p class="lede">Every ORM trades some performance and control for convenience — object hydration, an identity map, and a SQL-generation layer standing between your code and the database. Most of the time that trade is worth it. This lab digs into the three places it stops being worth it: raw drivers like asyncpg talking the wire protocol almost directly, prepared statements that are both faster AND safer than string-built SQL, and the N+1 query trap that a JOIN quietly avoids.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Raw driver (asyncpg)</div>
+    <div class="pipe-label b">Prepared statements</div>
+    <div class="pipe-label c">ORM abstraction cost</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="overhead">1 · When Raw Drivers Outperform an ORM</a>
+  <a data-target="prepared">2 · Prepared Statements</a>
+  <a data-target="nplusone">3 · Abstraction vs Control: The N+1 Problem</a>
+  <a data-target="compare">4 · Side-by-Side: ORM vs Raw Driver</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: OVERHEAD ============ -->
+<section id="overhead">
+  <div class="kicker">01 — Convenience has a CPU cost, and sometimes a correctness cost too</div>
+  <h2>When raw drivers outperform an ORM</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine ordering food through a translator who has to convert your request into the restaurant's native language, relay it, wait for the kitchen's answer, translate that back, and also keep a running notebook of every dish you've ordered all night in case you ask about it again. Most of the time that's genuinely helpful — you don't speak the language, and the notebook saves you re-explaining yourself. But if you're placing the exact same simple order a thousand times a minute, all that translating and note-keeping starts to visibly slow the kitchen down, and you'd rather just shout the order directly to the cook in a language they already understand.</p>
+
+  <p>An ORM (Object-Relational Mapper) sits between your application code and the database, and that translation layer does real, measurable work on every query:</p>
+
+  <ul style="color:#cdd0d8;">
+    <li><strong>Object hydration</strong> — every row that comes back from the database gets turned into a full Python object, with attribute descriptors, type coercion, and often lazy-loading machinery attached, even if you only needed two of its twelve columns.</li>
+    <li><strong>Identity map / unit-of-work bookkeeping</strong> — the ORM tracks every object it has loaded in this session so that fetching the "same" row twice returns the same Python object and edits get batched into a single flush. That tracking has memory and CPU overhead on every load.</li>
+    <li><strong>SQL generation through an abstraction layer</strong> — your <code class="inline">query.filter(...).join(...)</code> chain has to be walked and compiled into SQL text at runtime, which costs cycles the raw driver never spends because you already wrote the SQL yourself.</li>
+    <li><strong>Often genuinely worse SQL</strong> — for a specific, tricky query (a complex aggregate, a recursive CTE, a query that needs a particular index hint or join order) a human who knows the schema can frequently hand-write something more efficient than what a general-purpose query builder produces, because the ORM has to stay correct for the general case, not your specific one.</li>
+  </ul>
+
+  <p>A raw driver like <code class="inline">asyncpg</code> skips essentially all of this. It speaks PostgreSQL's binary wire protocol almost directly, returns rows as lightweight record-like objects (not full tracked ORM entities), and executes exactly the SQL text you wrote — nothing is being generated, tracked, or hydrated into a rich object graph on your behalf.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHERE THIS ACTUALLY SHOWS UP</span></div>
+    <table class="cmp">
+      <tr><th>Scenario</th><th>Why raw driver wins</th></tr>
+      <tr><td>Extremely hot query path (thousands of req/s)</td><td>Object hydration and identity-map overhead is paid on <em>every single request</em> — at high enough volume, milliseconds of ORM overhead per call compound into real infrastructure cost and latency.</td></tr>
+      <tr><td>Bulk data pipelines / ETL</td><td>Loading millions of rows into full tracked ORM objects wastes memory and CPU the pipeline doesn't need — it's usually about to transform and discard the data anyway, not keep it around as a live object graph.</td></tr>
+      <tr><td>Precise control over exact SQL</td><td>A tricky analytical query, a specific index hint, or a hand-tuned JOIN order is sometimes only expressible (or only efficient) by writing the SQL text yourself, rather than coaxing a query builder into producing it.</td></tr>
+    </table>
+  </div>
+
+  <div class="callout raw"><b>Interview-ready definition:</b> raw async drivers outperform an ORM by skipping object hydration (materializing rows as rich, tracked Python objects), identity-map/unit-of-work bookkeeping, and runtime SQL-generation overhead — talking the database's wire protocol nearly directly and executing exactly the SQL text you wrote. This matters most on hot, high-throughput query paths, in bulk data pipelines that don't need a live object graph, and for tricky queries where a hand-written statement is more efficient than what a general-purpose query builder would generate. It is a genuine trade-off, not a free win: you give up the ORM's convenience (automatic object mapping, relationship traversal, database-agnostic code) in exchange for raw performance and exact control.</div>
+</section>
+
+<!-- ============ SECTION 2: PREPARED STATEMENTS ============ -->
+<section id="prepared">
+  <div class="kicker">02 — Parse once, plan once, execute many times</div>
+  <h2>Prepared statements: the actual mechanism</h2>
+
+  <p><strong>Start here, before the pipeline.</strong> Think of a chef who, the first time a particular dish is ordered, has to read the recipe, figure out the best order to prep ingredients, and decide which pans and burners to use — that's real up-front thinking. But once they've done that thinking once, every future order of the SAME dish just plugs in different quantities or spice levels into a workflow they've already worked out; they don't re-read the recipe or re-plan the kitchen layout from scratch every single time.</p>
+
+  <p>A SQL statement like <code class="inline">SELECT * FROM users WHERE id = $1</code> goes through two distinct phases the first time the database sees it: it is <strong>PARSED</strong> (checked for syntax, resolved against the schema) and <strong>PLANNED</strong> (the query optimizer decides HOW to execute it — which index to use, what join strategy, etc.), producing a reusable query plan. A <strong>prepared statement</strong> is exactly this: parse and plan done ONCE, then the resulting plan is EXECUTED MANY TIMES with different bound parameter values ($1 = 7, then $1 = 812, then $1 = 44...), skipping the re-parse and re-plan on every subsequent call.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PARSE ONCE, EXECUTE MANY: WATCH THE PIPELINE</span>
+      <div><button class="btn secondary" id="ps-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Statement: <code class="inline">SELECT * FROM users WHERE id = $1</code>. Click "Run" three times with different ids and watch which stages actually happen each time.</p>
+    <div class="pstage" id="ps-diagram">
+      <div class="pnode" data-stage="parse">PARSE</div>
+      <span class="parrow">→</span>
+      <div class="pnode" data-stage="plan">PLAN</div>
+      <span class="parrow">→</span>
+      <div class="pnode" data-stage="execute">EXECUTE</div>
+    </div>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;">
+      <button class="btn" id="ps-run">Run with next id ▸</button>
+    </div>
+    <div class="log" id="ps-log"><span class="line">First call: parse + plan + execute. Every call after: execute only, reusing the cached plan.</span></div>
+  </div>
+
+  <div class="callout prep"><b>Why this is faster:</b> parsing and query planning are not free — the planner has to consider index choices, estimate row counts, and pick a join strategy, which takes real CPU time. A prepared statement pays that cost exactly ONCE, no matter how many times you execute it afterward with different parameter values, instead of paying it fresh on every single call. For a query executed thousands of times per second, this is the difference between doing real optimizer work thousands of times per second and doing it once, ever.</div>
+
+  <h3>Why this is also safer: SQL injection</h3>
+
+  <p>The other half of the story is security, not just speed. When a query is built by concatenating a user-supplied value directly into the SQL text, that value becomes part of the SQL the database parses — which means a malicious value can inject its OWN SQL syntax into the statement. A parameterized query never does this: the parameter value is sent to the database separately from the SQL text, as pure data, and the database substitutes it into the already-parsed plan without ever re-parsing it as code. A malicious string like <code class="inline">1; DROP TABLE users;--</code> is treated as a literal parameter value — never as executable SQL — because by the time the parameter is bound, parsing is already over.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>STRING CONCATENATION VS PARAMETERIZED QUERY, AGAINST A MALICIOUS INPUT</span>
+      <div><button class="btn secondary" id="inj-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">User input field value: <code class="inline">1; DROP TABLE users;--</code>. Pick a query style and see exactly what SQL gets sent to the database.</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-inj="concat">Unsafe: string concatenation</button>
+      <button class="chip" data-inj="param">Safe: parameterized query</button>
+    </div>
+    <div id="inj-visual"></div>
+    <button class="btn" id="inj-run">Send the malicious input ▸</button>
+    <div class="log" id="inj-log"><span class="line">Pick a mode, then send the input, to see what actually reaches the database.</span></div>
+  </div>
+
+  <div class="callout warn"><b>Interview-ready definition (be precise here, not just "it's safer"):</b> prepared statements prevent SQL injection because the parameter value and the SQL command text travel to the database through two SEPARATE channels and are never combined before parsing happens. The SQL text (<code class="inline">SELECT * FROM users WHERE id = $1</code>) is parsed and planned first, with <code class="inline">$1</code> as an unfilled placeholder — parsing is fully complete before any user-supplied value is even sent. Only afterward is the parameter value bound into that already-fixed plan as inert data. Since the malicious value never passes through the SQL parser at all, it has no opportunity to be interpreted as SQL syntax — it can only ever be treated as the literal contents of one parameter, no matter what characters it contains. String concatenation has no such separation: the user's value becomes part of the text handed to the parser, so any SQL-meaningful characters inside it (quotes, semicolons, comment markers) are parsed as real SQL syntax, exactly as if the attacker had typed them into the query themselves.</div>
+</section>
+
+<!-- ============ SECTION 3: N+1 ============ -->
+<section id="nplusone">
+  <div class="kicker">03 — The trade-off made concrete: less abstraction, more control</div>
+  <h2>Abstraction vs control: the N+1 problem</h2>
+
+  <p><strong>Start here, before any queries.</strong> Imagine asking an assistant for a list of 5 book titles, and then, for each book, separately asking "who wrote this one?" one at a time — that's 1 trip to get the list plus 5 more trips, one per book, when you could have just asked "give me the 5 books AND their authors" in a single request and gotten everything back at once. The naive approach doesn't feel wrong in the moment (each individual question is simple and correct), but the total number of round trips scales directly with how many books you asked about.</p>
+
+  <p>This is exactly what happens with naive ORM lazy-loading. Fetching a list of posts is 1 query. Then looping over each post and accessing <code class="inline">post.author.username</code> triggers a SEPARATE query per post the first time that relationship is accessed, because the ORM didn't know up front that you'd need every post's author — it fetches each one lazily, on demand, the moment your code asks for it. For N posts, that's 1 query for the posts plus N queries for the N authors: <strong>N+1 total queries</strong>.</p>
+
+  <div class="code">
+<span class="c-cmt"># Naive ORM version -- looks completely innocent</span>
+posts = <span class="c-kw">await</span> session.execute(select(Post))
+posts = posts.scalars().all()          <span class="c-cmt"># query 1: fetch all posts</span>
+
+<span class="c-kw">for</span> post <span class="c-kw">in</span> posts:
+    print(post.author.username)         <span class="c-cmt"># query 2, 3, 4, ... N+1: one SELECT per post's author</span>
+  </div>
+
+  <p>A raw driver (or a properly written ORM query) avoids this entirely with a single JOIN:</p>
+
+  <div class="code">
+<span class="c-cmt">-- Raw driver / hand-written version -- ONE query total</span>
+<span class="c-kw">SELECT</span> posts.id, posts.title, users.username <span class="c-kw">AS</span> author_username
+<span class="c-kw">FROM</span> posts
+<span class="c-kw">JOIN</span> users <span class="c-kw">ON</span> posts.author_id = users.id;
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>N+1 IN ACTION: 5 POSTS, WATCH THE QUERY COUNT</span>
+      <div><button class="btn secondary" id="np-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">5 posts, each with a different author. Run either mode and watch exactly how many queries actually fire.</p>
+    <div style="display:flex; gap:0.6rem; flex-wrap:wrap; margin:0 0 1rem;">
+      <button class="btn" id="np-naive">Run naive ORM version (N+1) ▸</button>
+      <button class="btn" id="np-join">Run raw driver / JOIN version ▸</button>
+    </div>
+    <div class="nplus-visual" id="np-visual"></div>
+    <div class="nplus-tally" id="np-tally">Total queries fired so far: <b>0</b></div>
+    <div class="log" id="np-log"><span class="line">Pick a mode above to run the same logical fetch two different ways.</span></div>
+  </div>
+
+  <div class="callout orm"><b>Interview-ready definition:</b> the N+1 problem occurs when fetching a list of N parent records triggers 1 initial query, followed by N additional queries — one per parent — to lazily fetch a related child or parent record for each item individually, for a total of N+1 queries where a single JOIN (or an ORM's eager-loading feature) could have fetched everything in exactly 1 query. It is the sharpest concrete example of the ORM's abstraction/control trade-off: the convenience of writing <code class="inline">post.author.username</code> as if it were just a normal attribute access hides the fact that, without explicit eager loading, each access is a full separate round trip to the database.</div>
+</section>
+
+<!-- ============ SECTION 4: SIDE BY SIDE ============ -->
+<section id="compare">
+  <div class="kicker">04 — Same operation, three ways to write it</div>
+  <h2>Side-by-side: ORM (naive vs eager) vs raw driver</h2>
+
+  <p><strong>Start here, before the code.</strong> Three cooks can be asked for "the same finished dish" and produce wildly different amounts of kitchen activity to get there — one makes a dozen small trips to the pantry as they go, one plans ahead and grabs everything in one trip, and one just knows the recipe well enough to skip straight to plating. Same requested outcome, very different amounts of underlying work.</p>
+
+  <p>The task: get all posts along with each post's author's username. Here it is written three ways.</p>
+
+  <div class="dc-compare three">
+    <div class="dc-col orm">
+      <h4>ORM — naive (N+1)</h4>
+      <div class="code" style="margin:0; font-size:0.75rem;"><span class="c-kw">result</span> = <span class="c-kw">await</span> session.execute(
+    select(Post)
+)
+posts = result.scalars().all()
+
+<span class="c-kw">for</span> post <span class="c-kw">in</span> posts:
+    <span class="c-fn">print</span>(post.author.username)
+    <span class="c-cmt"># lazy-loads author,
+# 1 query per post</span></div>
+    </div>
+    <div class="dc-col orm">
+      <h4>ORM — eager-loaded (fixed)</h4>
+      <div class="code" style="margin:0; font-size:0.75rem;"><span class="c-kw">from</span> sqlalchemy.orm <span class="c-kw">import</span> selectinload
+
+result = <span class="c-kw">await</span> session.execute(
+    select(Post).options(
+        selectinload(Post.author)
+    )
+)
+posts = result.scalars().all()
+
+<span class="c-kw">for</span> post <span class="c-kw">in</span> posts:
+    <span class="c-fn">print</span>(post.author.username)
+    <span class="c-cmt"># no extra query --
+# already loaded</span></div>
+    </div>
+    <div class="dc-col raw">
+      <h4>Raw driver — hand-written JOIN</h4>
+      <div class="code" style="margin:0; font-size:0.75rem;">rows = <span class="c-kw">await</span> conn.fetch(
+    <span class="c-str">"""
+    SELECT p.id, p.title,
+           u.username AS author
+    FROM posts p
+    JOIN users u
+      ON p.author_id = u.id
+    """</span>
+)
+<span class="c-kw">for</span> row <span class="c-kw">in</span> rows:
+    <span class="c-fn">print</span>(row[<span class="c-str">"author"</span>])</div>
+    </div>
+  </div>
+
+  <p><code class="inline">selectinload</code> fixes the N+1 by issuing exactly 2 queries total: one for all the posts, and one more that fetches all of their authors in a single <code class="inline">WHERE id IN (...)</code> batch — still more than the raw driver's 1 query, but a huge improvement over N+1. <code class="inline">joinedload</code> instead folds everything into a single query using a SQL JOIN, much like the raw driver version, at the cost of the result set repeating post columns once per row.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHAT SQL ACTUALLY GETS SENT — LIVE COMPARISON</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-sql="naive">ORM — naive</button>
+      <button class="chip" data-sql="eager">ORM — eager-loaded (selectinload)</button>
+      <button class="chip" data-sql="raw">Raw driver — JOIN</button>
+    </div>
+    <div class="code" id="sql-out" style="margin:0;"></div>
+    <div class="log" id="sql-count" style="border-top:none; margin-top:0.6rem;"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Approach</th><th>Query count (5 posts)</th><th>Trade-off</th></tr>
+    <tr><td>ORM naive (lazy-loaded)</td><td>6 (1 + 5)</td><td>Simplest-looking code, silently the slowest — the danger is that it LOOKS fine in review</td></tr>
+    <tr><td>ORM eager (<code>selectinload</code>)</td><td>2</td><td>Still idiomatic ORM code, fixes N+1 with one extra line, small result-set duplication avoided</td></tr>
+    <tr><td>Raw driver JOIN</td><td>1</td><td>Fewest round trips and no ORM overhead, but you own the SQL and lose automatic object mapping</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> the same logical fetch can compile down to a wildly different number of database round trips depending entirely on HOW the ORM (or hand-written SQL) is told to load related data — naive lazy-loading defaults to N+1 queries, explicit eager-loading strategies like <code class="inline">selectinload</code> or <code class="inline">joinedload</code> collapse that to 1-2 queries while keeping ORM ergonomics, and a raw hand-written JOIN collapses it to exactly 1 query with the least abstraction and the most control. Choosing between them is a real engineering decision, not a "raw is always better" rule — it depends on how hot the code path is and how much you value keeping the ORM's object-mapping convenience.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Spotting N+1 in given ORM code</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A code reviewer sees this:<br><code class="inline">orders = await session.execute(select(Order)); orders = orders.scalars().all()</code><br><code class="inline">for o in orders: print(o.customer.email)</code><br>Is there an N+1 problem here? How would you confirm it, and how would you fix it?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes, this is a textbook N+1. The first line issues one query to fetch all
+orders. Inside the loop, "o.customer.email" accesses a relationship
+(customer) that was never eagerly loaded, so on the FIRST access for each
+distinct order, SQLAlchemy lazily issues a fresh SELECT to fetch that
+order's customer row. For N orders, that is 1 query for the orders plus up
+to N more queries for their customers.
+
+To confirm it, you would turn on SQL echo logging (e.g. engine created
+with echo=True) or attach a query-counting listener and watch the query
+count scale linearly with the number of orders returned -- 10 orders should
+produce roughly 11 queries if this is really happening.
+
+The fix is to eager-load the relationship up front: add
+".options(selectinload(Order.customer))" (or joinedload) to the initial
+select, so the customer data is fetched in 1-2 total queries instead of
+lazily, one per order, inside the loop.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Why prepared statements prevent SQL injection, precisely</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A junior engineer says "prepared statements are safer because the database sanitizes the input." Is that the correct mechanism? Explain precisely why prepared statements actually prevent injection.</p>
+    <details><summary>Show solution</summary><div class="solution">"Sanitizing input" is not the correct mechanism, and describing it that
+way hides what's actually happening. The real mechanism is a SEPARATION
+between the SQL text and the parameter values, in time and in channel.
+
+With a prepared statement, the SQL text (e.g. "SELECT * FROM users WHERE
+id = $1") is sent to the database and fully PARSED AND PLANNED first, with
+$1 left as an unfilled placeholder in the resulting plan -- this happens
+before the actual parameter value is even provided. Only afterward is the
+parameter value bound into that already-fixed, already-parsed plan, purely
+as inert data to be compared or inserted -- it is never re-submitted to the
+SQL parser at all.
+
+Because the malicious value never passes through the parser, characters
+that would normally have special SQL meaning (a closing quote, a
+semicolon, a comment marker like "--") are not interpreted as syntax --
+they are just the literal bytes of one parameter's value, no matter what
+they contain. This is categorically different from "sanitizing" (which
+implies scanning and possibly modifying/escaping dangerous characters in
+the input) -- a prepared statement doesn't need to detect or strip anything
+dangerous, because the value was never in a position to be parsed as code
+in the first place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Calculating total query count for N+1</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A page lists 40 products, and for each product the naive ORM code lazily loads that product's category name and its seller's display name (two separate relationships per product, both lazily loaded). How many total queries fire, and what would eager-loading both relationships bring it down to?</p>
+    <details><summary>Show solution</summary><div class="solution">Naive: 1 query for the 40 products, plus 40 queries for each product's
+category (one per product, lazily triggered), plus another 40 queries for
+each product's seller (also one per product) = 1 + 40 + 40 = 81 total
+queries. This is really "N+1" applied twice over, once per lazily-loaded
+relationship -- more precisely it's 1 + 2N for N products and 2 lazy
+relationships per product.
+
+With both relationships eager-loaded (e.g.
+".options(selectinload(Product.category), selectinload(Product.seller))"),
+each relationship collapses to 1 additional batched query total (a single
+"WHERE category_id IN (...)"-style query for all categories, and a single
+similar query for all sellers), bringing the total down to 1 + 1 + 1 = 3
+queries -- independent of how many products (N) there are, versus the
+naive version's cost scaling linearly with N.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing eager loading vs raw driver for a scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Two teams both need "list of posts with author username." Team A is building an internal admin dashboard viewed by a handful of employees, occasionally, with existing SQLAlchemy models already in place. Team B is building the main public API endpoint that serves this exact data to hundreds of thousands of requests per minute. What should each team choose, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Team A (internal admin dashboard, low traffic, existing ORM models)
+should use the ORM with eager loading (selectinload or joinedload). The
+traffic volume is low enough that the ORM's per-request overhead is
+completely irrelevant to user experience or infrastructure cost, and
+staying in the ORM keeps the code consistent with the rest of the
+codebase, gets automatic object mapping, and avoids maintaining a second,
+separate raw-SQL code path for something used rarely.
+
+Team B (hot public endpoint, hundreds of thousands of req/min) should
+strongly consider the raw driver with a hand-written JOIN, or at minimum
+benchmark eager-loaded ORM against it before deciding. At that request
+volume, even a small per-request overhead difference (object hydration,
+identity-map bookkeeping, extra query round trips) gets multiplied by an
+enormous number of requests, translating directly into real latency and
+infrastructure cost. The precise control over exactly what SQL executes,
+and the lower per-request overhead, are worth the loss of ORM convenience
+specifically because this is the hottest possible path in the system.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · When ORM overhead genuinely doesn't matter</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Explain, in terms of actual request volume and latency budgets, why "always use a raw driver, ORMs are slow" is bad advice -- give a concrete scenario where the ORM's overhead is the right trade to make.</p>
+    <details><summary>Show solution</summary><div class="solution">"ORMs are slow, always avoid them" ignores that the ORM's overhead is
+typically single-digit milliseconds per query -- often far smaller than
+network latency, downstream API calls, or business logic elsewhere in the
+same request. For a low-traffic internal tool (say, a handful of requests
+per minute, viewed by employees who are fine waiting an extra 20-50ms), that
+overhead is completely imperceptible to the end user and utterly
+insignificant to infrastructure cost -- optimizing it away by hand-writing
+raw SQL trades real developer time and code-maintainability risk for a
+performance gain nobody will ever notice or benefit from.
+
+The right trade genuinely reverses only once request volume and per-query
+frequency get high enough that the overhead is (a) multiplied by a large
+number of requests per second, turning milliseconds into meaningful
+aggregate infrastructure cost and queueing latency, or (b) sitting
+directly on a latency-sensitive hot path where every millisecond shaved
+measurably improves p99 latency for real users -- a checkout flow, a
+search-as-you-type endpoint, a feed that must render instantly. Blanket
+advice in either direction ("always ORM" or "always raw") ignores that
+this is a genuine cost/benefit trade that depends on traffic volume and
+how hot the specific path actually is, not a universal rule.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely why a prepared statement prevents SQL injection at the level of "the parser never sees the value," not just "it's safer," (2) how to calculate total query count for N+1 given N and the number of lazily-loaded relationships per row, and (3) how to decide between ORM eager-loading and a raw hand-written JOIN for a given traffic scenario? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — raw async drivers.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll('nav a[data-target]').forEach(a=>{
+    a.addEventListener('click', ()=>{
+      const el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:'smooth', block:'start'}); }
+    });
+  });
+})();
+
+/* SECTION 2a: PREPARED STATEMENT PIPELINE */
+(function(){
+  const runBtn = document.getElementById('ps-run');
+  const resetBtn = document.getElementById('ps-reset');
+  const logEl = document.getElementById('ps-log');
+  const nodes = document.querySelectorAll('#ps-diagram .pnode');
+  let callCount = 0;
+  const ids = [7, 812, 44, 91, 3];
+  let timers = [];
+
+  function clearActive(){
+    nodes.forEach(n=>{ n.classList.remove('active'); n.classList.remove('skip'); });
+  }
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    clearActive();
+    const id = ids[callCount % ids.length];
+    const firstCall = callCount === 0;
+    callCount++;
+
+    if(firstCall){
+      log('<b>Call ' + callCount + ':</b> SELECT * FROM users WHERE id = $1, bound to $1 = ' + id + ' (first time seeing this statement)');
+      const stages = ['parse','plan','execute'];
+      stages.forEach((s,i)=>{
+        timers.push(setTimeout(()=>{
+          clearActive();
+          for(let j=0;j<=i;j++){ document.querySelector('.pnode[data-stage="'+stages[j]+'"]').classList.add('active'); }
+          if(s==='parse') log('&nbsp;&nbsp;→ PARSE: statement text checked for syntax, resolved against schema.');
+          if(s==='plan') log('&nbsp;&nbsp;→ PLAN: optimizer picks an index/join strategy, produces a reusable query plan.');
+          if(s==='execute') log('&nbsp;&nbsp;→ EXECUTE: plan run with id = ' + id + '. <b>Plan is now cached for reuse.</b>');
+        }, i*500));
+      });
+    } else {
+      log('<b>Call ' + callCount + ':</b> same statement, bound to $1 = ' + id + ' (plan already cached)');
+      timers.push(setTimeout(()=>{
+        document.querySelector('.pnode[data-stage="parse"]').classList.add('skip');
+        document.querySelector('.pnode[data-stage="plan"]').classList.add('skip');
+        document.querySelector('.pnode[data-stage="execute"]').classList.add('active');
+        log('&nbsp;&nbsp;→ PARSE and PLAN <b>skipped</b> — reusing the cached plan from call 1.');
+        log('&nbsp;&nbsp;→ EXECUTE only: plan run directly with id = ' + id + '. Much cheaper than call 1.');
+      }, 300));
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    callCount = 0;
+    clearActive();
+    logEl.innerHTML = '<span class="line">First call: parse + plan + execute. Every call after: execute only, reusing the cached plan.</span>';
+  });
+})();
+
+/* SECTION 2b: SQL INJECTION DEMO */
+(function(){
+  const chips = document.querySelectorAll('[data-inj]');
+  const visual = document.getElementById('inj-visual');
+  const runBtn = document.getElementById('inj-run');
+  const resetBtn = document.getElementById('inj-reset');
+  const logEl = document.getElementById('inj-log');
+  let mode = 'concat';
+  const malicious = "1; DROP TABLE users;--";
+
+  function build(){
+    visual.innerHTML = '';
+  }
+  build();
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      mode = c.dataset.inj;
+      build();
+      logEl.innerHTML = '<span class="line">Mode switched to ' + (mode==='concat' ? 'unsafe string concatenation' : 'safe parameterized query') + '. Click send.</span>';
+    });
+  });
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  runBtn.addEventListener('click', ()=>{
+    build();
+    logEl.innerHTML = '';
+    log('User input received: <code class="inline">' + malicious + '</code>');
+
+    if(mode === 'concat'){
+      const box = document.createElement('div');
+      box.className = 'sql-box danger';
+      box.innerHTML = 'Application code:\n  query = "SELECT * FROM users WHERE id = " + user_input\n\nSQL actually sent to the database:\n  SELECT * FROM users WHERE id = <span class="hi-bad">1; DROP TABLE users;--</span>';
+      visual.appendChild(box);
+      setTimeout(()=>{
+        log('<b>DANGER:</b> the input was concatenated directly into the SQL text.');
+        log('The database parser sees THREE separate statements: a SELECT, a DROP TABLE, and a trailing comment eating the rest of the line.');
+        log('<b style="color:var(--danger-c);">Result: the DROP TABLE statement is parsed and would actually execute.</b>');
+      }, 300);
+    } else {
+      const box = document.createElement('div');
+      box.className = 'sql-box safe';
+      box.innerHTML = 'Application code:\n  query = "SELECT * FROM users WHERE id = $1"\n  await conn.fetch(query, user_input)\n\nSQL text sent (parsed FIRST, with $1 unfilled):\n  SELECT * FROM users WHERE id = $1\n\nParameter channel (sent separately, as data):\n  $1 = <span class="hi-good">"1; DROP TABLE users;--"</span>  (just a string value)';
+      visual.appendChild(box);
+      setTimeout(()=>{
+        log('<b>SAFE:</b> the SQL text and the parameter value travel to the database separately.');
+        log('The statement is fully parsed BEFORE the value is ever bound — the parser never sees the malicious text at all.');
+        log('The database tries to find a user whose id literally equals the string "1; DROP TABLE users;--".');
+        log('<b style="color:var(--ok-c);">Result: no matching row, no error, no SQL executed beyond the original SELECT. The injection attempt is neutralized.</b>');
+      }, 300);
+    }
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    build();
+    logEl.innerHTML = '<span class="line">Pick a mode, then send the input, to see what actually reaches the database.</span>';
+  });
+})();
+
+/* SECTION 3: N+1 DEMO */
+(function(){
+  const visual = document.getElementById('np-visual');
+  const tally = document.getElementById('np-tally');
+  const naiveBtn = document.getElementById('np-naive');
+  const joinBtn = document.getElementById('np-join');
+  const resetBtn = document.getElementById('np-reset');
+  const logEl = document.getElementById('np-log');
+  let timers = [];
+  const authors = ['grace', 'linus', 'ada', 'don', 'barbara'];
+
+  function log(msg){
+    const p = document.createElement('div'); p.className='line fadein';
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function addRow(text, cls){
+    const row = document.createElement('div');
+    row.className = 'nplus-row ' + cls;
+    row.textContent = text;
+    visual.appendChild(row);
+    requestAnimationFrame(()=>row.classList.add('show'));
+  }
+
+  naiveBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    visual.innerHTML = '';
+    logEl.innerHTML = '';
+    let count = 0;
+    timers.push(setTimeout(()=>{
+      count++;
+      addRow('Query 1: SELECT * FROM posts  (fetch all 5 posts)', 'posts');
+      log('Query 1 fired — 1 query for all 5 posts.');
+      tally.innerHTML = 'Total queries fired so far: <b>' + count + '</b>';
+    }, 200));
+
+    authors.forEach((author, i)=>{
+      timers.push(setTimeout(()=>{
+        count++;
+        addRow('Query ' + count + ': SELECT * FROM users WHERE id = ' + (i+1) + '  (post ' + (i+1) + '\'s author: ' + author + ')', 'author');
+        log('Query ' + count + ' fired — lazily loading author for post ' + (i+1) + '.');
+        tally.innerHTML = 'Total queries fired so far: <b>' + count + '</b>';
+      }, 700 + i*500));
+    });
+
+    timers.push(setTimeout(()=>{
+      log('<b>Result: 6 total queries for 5 posts (1 + 5 = N+1).</b>');
+    }, 700 + authors.length*500 + 300));
+  });
+
+  joinBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    visual.innerHTML = '';
+    logEl.innerHTML = '';
+    timers.push(setTimeout(()=>{
+      addRow('Query 1: SELECT p.*, u.username FROM posts p JOIN users u ON p.author_id = u.id  (all 5 posts + authors, one query)', 'join');
+      log('Query 1 fired — single JOIN returns all 5 posts with their authors already attached.');
+      tally.innerHTML = 'Total queries fired so far: <b>1</b>';
+    }, 200));
+    timers.push(setTimeout(()=>{
+      log('<b>Result: 1 total query for 5 posts, regardless of how many posts there are.</b>');
+    }, 700));
+  });
+
+  resetBtn.addEventListener('click', ()=>{
+    timers.forEach(t=>clearTimeout(t));
+    timers = [];
+    visual.innerHTML = '';
+    tally.innerHTML = 'Total queries fired so far: <b>0</b>';
+    logEl.innerHTML = '<span class="line">Pick a mode above to run the same logical fetch two different ways.</span>';
+  });
+})();
+
+/* SECTION 4: LIVE SQL COMPARISON */
+(function(){
+  const chips = document.querySelectorAll('[data-sql]');
+  const out = document.getElementById('sql-out');
+  const countEl = document.getElementById('sql-count');
+
+  const variants = {
+    naive: {
+      sql: '<span class="c-cmt">-- Query 1</span>\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> posts;\n\n<span class="c-cmt">-- Query 2..6, one per post, fired lazily in the loop</span>\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id = <span class="c-num">1</span>;\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id = <span class="c-num">2</span>;\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id = <span class="c-num">3</span>;\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id = <span class="c-num">4</span>;\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id = <span class="c-num">5</span>;',
+      count: '<span class="line"><b>6 queries</b> for 5 posts (1 + N). Scales linearly with the number of posts.</span>'
+    },
+    eager: {
+      sql: '<span class="c-cmt">-- Query 1</span>\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> posts;\n\n<span class="c-cmt">-- Query 2 -- one batched query for ALL authors at once</span>\n<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> users <span class="c-kw">WHERE</span> id <span class="c-kw">IN</span> (<span class="c-num">1</span>, <span class="c-num">2</span>, <span class="c-num">3</span>, <span class="c-num">4</span>, <span class="c-num">5</span>);',
+      count: '<span class="line"><b>2 queries</b> for 5 posts, regardless of N (selectinload batches the related fetch into one IN (...) query).</span>'
+    },
+    raw: {
+      sql: '<span class="c-cmt">-- Query 1 -- everything in one JOIN</span>\n<span class="c-kw">SELECT</span> p.id, p.title, u.username <span class="c-kw">AS</span> author\n<span class="c-kw">FROM</span> posts p\n<span class="c-kw">JOIN</span> users u <span class="c-kw">ON</span> p.author_id = u.id;',
+      count: '<span class="line"><b>1 query</b> for 5 posts, regardless of N. Fewest round trips, least abstraction.</span>'
+    }
+  };
+
+  function render(mode){
+    out.innerHTML = variants[mode].sql;
+    countEl.innerHTML = variants[mode].count;
+  }
+  render('naive');
+
+  chips.forEach(c=>{
+    c.addEventListener('click', ()=>{
+      chips.forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+      render(c.dataset.sql);
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -72,7 +72,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Forty-three labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Forty-nine labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, and backend API design — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -309,13 +309,19 @@
         <p>ACID in one sentence each, a comparison table from Read Uncommitted to Serializable, and dirty/non-repeatable/phantom reads traced statement by statement across two transactions.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/crud_done_right.html">
+        <span class="tag">Idempotency, Locking &amp; Soft Deletes</span>
+        <h3>CRUD Done Right</h3>
+        <p>The idempotency-key mechanism that prevents a double-charge on retry, optimistic vs pessimistic locking animated side by side, and soft delete vs hard delete trade-offs.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">10 labs</span>
+      <span class="count">15 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -378,6 +384,36 @@
         <p>A live token bucket refilling and draining, sliding window vs fixed window's boundary exploit, and why distributed rate limiting needs an atomic shared counter.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/sqlalchemy_async.html">
+        <span class="tag">AsyncSession, Declarative vs Core</span>
+        <h3>SQLAlchemy Async</h3>
+        <p>The async query lifecycle animated against the same event-loop model from asyncio fundamentals, plus Declarative vs Core for the same table side by side.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/raw_async_drivers.html">
+        <span class="tag">asyncpg, Prepared Statements &amp; Control</span>
+        <h3>Raw Async Drivers</h3>
+        <p>When a raw driver beats an ORM, how a prepared statement is parsed once and executed many times, and the N+1 query an ORM can generate that a hand-written JOIN avoids.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/connection_pooling.html">
+        <span class="tag">Pool Sizing &amp; Exhaustion</span>
+        <h3>Connection Pooling</h3>
+        <p>The real cost of a fresh DB connection, an animated pool of slots being checked in and out, and what happens the moment a burst of requests exceeds pool size.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/notification_service_design.html">
+        <span class="tag">System Design — Fan-Out &amp; Dead-Letter Queues</span>
+        <h3>Notification Service Design</h3>
+        <p>One event fanning out to email/push/SMS, a failed delivery retrying with backoff before landing in a dead-letter queue, and multi-channel formatting trade-offs.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/explicit_transactions.html">
+        <span class="tag">BEGIN/COMMIT/ROLLBACK &amp; Savepoints</span>
+        <h3>Explicit Transactions</h3>
+        <p>A money-transfer example showing exactly what breaks without a transaction wrapping both steps, plus savepoints for a partial rollback mid-transaction.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -434,7 +470,7 @@
 
 </main>
 
-<footer>materials/ · forty-three standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · forty-nine standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>
