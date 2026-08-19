@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — CI/CD Gating System Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --pass-c:#7fd8a0; --gate-c:#f2c14e; --fail-c:#ff6b6b; --canary-c:#4fc3f7; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--pass-c); color:var(--pass-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--gate-c); color:var(--gate-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.08);}
+  .pipe-label.d{border-color:var(--canary-c); color:var(--canary-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.pass{border-left-color:var(--pass-c); background:rgba(127,216,160,0.06);}
+  .log .line.gate{border-left-color:var(--gate-c); background:rgba(242,193,78,0.06);}
+  .log .line.fail{border-left-color:var(--fail-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pipeline stage tracker */
+  .pipeline{display:flex; gap:0.5rem; flex-wrap:wrap; margin:1.4rem 0;}
+  .stage{font-family:var(--mono); font-size:0.72rem; padding:0.6rem 0.9rem; border-radius:9px; border:1.5px solid var(--rule); color:var(--ink-dim); background:var(--panel-2); transition:all .35s ease; text-align:center; flex:1; min-width:100px;}
+  .stage.pass{border-color:var(--pass-c); color:var(--pass-c); background:rgba(127,216,160,0.1);}
+  .stage.active{border-color:var(--gate-c); color:var(--gate-c); background:rgba(242,193,78,0.12); box-shadow:0 0 10px rgba(242,193,78,0.25);}
+  .stage.blocked{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.12);}
+  .stage-arrow{display:flex; align-items:center; color:var(--ink-dim); font-family:var(--mono);}
+
+  /* blue-green / canary diagram */
+  .bg-stage{display:flex; gap:1.2rem; margin:1.2rem 0; flex-wrap:wrap;}
+  .bg-node{font-family:var(--mono); font-size:0.78rem; padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); min-width:140px; text-align:center; transition:all .4s ease;}
+  .bg-node.live{border-color:var(--pass-c); color:var(--pass-c); box-shadow:0 0 10px rgba(127,216,160,0.25);}
+  .bg-node.standby{border-color:var(--canary-c); color:var(--canary-c);}
+  .bg-node.rolled-back{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.1);}
+  .bg-node .sub{font-size:0.65rem; color:var(--ink-dim); margin-top:0.3rem;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--pass-c);} .dc-col.a h4{color:var(--pass-c);}
+  .dc-col.b{border-color:var(--fail-c);} .dc-col.b h4{color:var(--fail-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--fail-c);}
+  .callout.gate{border-left-color:var(--gate-c); background:rgba(242,193,78,0.06);} .callout.gate b{color:var(--gate-c);}
+  .callout.pass{border-left-color:var(--pass-c); background:rgba(127,216,160,0.06);} .callout.pass b{color:var(--pass-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND &amp; APIS LAB · SYSTEM DESIGN — CI/CD GATING SYSTEM</div>
+  <h1>Passing the tests was never the whole bar. Passing the <em>evals</em> is.</h1>
+  <p class="lede">A normal CI pipeline blocks a deploy when unit tests fail. A CI/CD pipeline for an LLM-backed system needs a SECOND, independent gate: the same eval suite <code class="inline">pytest_evals_practice.html</code> built, run against a candidate build, blocking the deploy if eval scores fall below a threshold — even when every unit test passed cleanly. This lab designs that gate end to end, animates a build that passes tests but fails evals getting blocked before production, and works through automated vs. manual rollback strategy on failure.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Tests pass — necessary, not sufficient</div>
+    <div class="pipe-label b">Eval gate — the threshold that actually blocks a bad model</div>
+    <div class="pipe-label c">Blocked before production, not after</div>
+    <div class="pipe-label d">Blue-green / canary — fast, safe rollback</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="gate">1 · Gating Deploys on Eval Thresholds</a>
+  <a data-target="pipeline">2 · The Full Pipeline, Live</a>
+  <a data-target="rollback">3 · Rollback Strategy on Failure</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: GATING ON EVAL THRESHOLDS ============ -->
+<section id="gate">
+  <div class="kicker">01 — Why "the tests pass" isn't the same claim as "the model is still good"</div>
+  <h2>Gating deploys on test/eval thresholds</h2>
+
+  <p><strong>Start here, before any pipeline diagram.</strong> Think about a driving test that only checks whether the car starts, the headlights work, and the seatbelt clicks — every one of those checks can pass on a car whose driver has never actually learned to parallel park or merge onto a highway safely. Those mechanical checks are necessary (a car that doesn't start shouldn't be on the road at all) but they say NOTHING about whether the driver is actually competent at driving. A real driving test needs a SECOND, behaviorally-focused evaluation on top of the mechanical checklist — and only passing BOTH means the car is actually safe to put on the road.</p>
+
+  <p>A CI/CD pipeline for an LLM-backed system has exactly this two-layer structure. <strong>Unit and integration tests</strong> are the mechanical checklist: does the code import without errors, does the API return a 200, does the database migration apply cleanly. These are necessary — a build that fails them should never ship — but they say nothing about whether the MODEL'S BEHAVIOR is still acceptable. A candidate build can pass every unit test while its underlying prompt change or model swap has quietly made its answers worse, its tool-call reliability worse, or its cost per request far higher. That's exactly the gap <code class="inline">pytest_evals_practice.html</code>'s eval suite — deterministic checks, trajectory checks, rubric-based checks — was built to catch, and a CI/CD pipeline for this kind of system needs to run that SAME suite as its own gate, with its own pass/fail threshold, separate from and in addition to ordinary tests.</p>
+
+  <div class="code"><span class="c-cmt"># deploy_pipeline.py — two independent gates, both must pass
+# reuses pytest_evals_practice.html's exact suite as the second gate</span>
+
+<span class="c-kw">def</span> <span class="c-fn">run_deploy_pipeline</span>(candidate_build):
+    <span class="c-cmt"># GATE 1 — ordinary tests. Necessary, but says nothing about model quality.</span>
+    test_result = run_pytest_suite(candidate_build, suite=<span class="c-str">"unit_and_integration"</span>)
+    <span class="c-kw">if</span> <span class="c-kw">not</span> test_result.passed:
+        <span class="c-kw">return</span> block_deploy(<span class="c-str">"unit/integration tests failed"</span>, test_result)
+
+    <span class="c-cmt"># GATE 2 — the eval suite, exactly pytest_evals_practice.html's suite,</span>
+    <span class="c-cmt"># run against THIS candidate build specifically</span>
+    eval_result = run_eval_suite(candidate_build, suite=<span class="c-str">"capstone_agent_evals"</span>)
+    EVAL_THRESHOLD = <span class="c-num">0.90</span>  <span class="c-cmt"># e.g. 90% of eval checks must pass</span>
+
+    <span class="c-kw">if</span> eval_result.pass_rate < EVAL_THRESHOLD:
+        <span class="c-kw">return</span> block_deploy(
+            <span class="c-fn">f"eval pass rate {eval_result.pass_rate:.0%} below threshold {EVAL_THRESHOLD:.0%}"</span>,
+            eval_result
+        )
+
+    <span class="c-cmt"># both gates cleared — safe to proceed to rollout</span>
+    <span class="c-kw">return</span> promote_to_production(candidate_build)</div>
+
+  <p>Two design details matter here, both directly connected to earlier labs. First: the eval gate reuses the SAME suite <code class="inline">pytest_evals_practice.html</code> built against a fixed, recorded fixture — deterministic schema checks, the trajectory check verifying a genuine retry (not a fabrication), and rubric checks — so the CI gate isn't inventing new criteria, it's running the exact same, already-understood bar every candidate build has to clear. Second: the threshold is a NUMBER (0.90 above), not a binary "all evals must pass" — because a single flaky eval or a marginal regression in one edge case shouldn't necessarily block every deploy forever, but a build whose overall eval quality has genuinely regressed should. Where that threshold is set is itself a real design decision, revisited in this section's practice problems.</p>
+
+  <div class="callout gate"><b>Interview-ready definition:</b> gating deploys on eval thresholds means running the SAME kind of eval suite <code class="inline">deterministic_evals.html</code>, <code class="inline">trajectory_based_evals.html</code>, and <code class="inline">pytest_evals_practice.html</code> built — not just ordinary unit/integration tests — against every candidate build as a second, independent CI gate, blocking promotion to production if the eval pass rate (or a specific critical eval) falls below a defined threshold. This exists because passing unit tests only proves the CODE runs correctly; it says nothing about whether the MODEL'S BEHAVIOR — answer quality, trajectory correctness, cost — has regressed, which is exactly the gap an eval-based gate is designed to close before a regression ever reaches real users.</div>
+</section>
+
+<!-- ============ SECTION 2: THE FULL PIPELINE, LIVE ============ -->
+<section id="pipeline">
+  <div class="kicker">02 — Watching a build pass tests, then get blocked by the eval gate</div>
+  <h2>The full pipeline, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, a candidate build runs through both gates from section 1. Run it once as a HEALTHY build (clears both gates, reaches production), then run it again as a REGRESSED build — passes unit tests cleanly, but its eval pass rate has dropped below threshold, and gets blocked before ever reaching production.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>CANDIDATE BUILD → TWO GATES → PRODUCTION OR BLOCKED</span>
+      <div><button class="btn secondary" id="pl-reset">Reset</button></div>
+    </div>
+    <div style="display:flex; gap:0.6rem; margin-bottom:1rem; flex-wrap:wrap;">
+      <button class="btn" id="pl-healthy">Run healthy build ▸</button>
+      <button class="btn secondary" id="pl-regressed">Run regressed build ▸</button>
+    </div>
+    <div class="pipeline" id="pipeline-track">
+      <div class="stage" id="st-tests">Unit / integration tests</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-evals">Eval suite gate</div>
+      <div class="stage-arrow">→</div>
+      <div class="stage" id="st-prod">Production</div>
+    </div>
+    <div class="log" id="pl-log"></div>
+  </div>
+
+  <div class="callout warn"><b>What to notice:</b> the regressed build's log shows unit/integration tests passing CLEANLY — nothing about the code itself is broken. It's the eval gate specifically, checking pass rate against threshold exactly like <code class="inline">pytest_evals_practice.html</code>'s suite, that catches the regression and blocks the deploy. Without this second gate, this exact build would have shipped to production, tests green the whole way.</div>
+</section>
+
+<!-- ============ SECTION 3: ROLLBACK STRATEGY ============ -->
+<section id="rollback">
+  <div class="kicker">03 — What happens when a bad build gets through anyway</div>
+  <h2>Rollback strategy on failure</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Think about renovating one bathroom in a house you still live in, versus renovating the ENTIRE house before moving your family in. If you renovate incrementally and something's wrong (a leaking pipe), you can just move back into the OLD, still-fully-functional bathroom immediately — no rebuild needed, just switching back to what already worked. If instead you tore out the whole house and are living in the half-finished new one, "rolling back" means actually rebuilding the old house from scratch, which takes real time you don't have during an emergency. Rollback strategy is exactly this choice, made in advance: do you keep the OLD, known-good version standing and ready, or do you only have the NEW version and have to reconstruct the old one if something goes wrong?</p>
+
+  <p><strong>Automated rollback</strong> keeps the previous known-good version fully deployed and ready — often via <strong>blue-green deployment</strong> (two complete, identical production environments, "blue" and "green"; traffic points at whichever is currently live, and a rollback is just flipping that pointer back to the other one, typically in seconds) or <strong>canary releases</strong> (the new version receives a small percentage of real traffic first — e.g. 5% — while the vast majority still hits the old, proven version; if the canary's metrics or evals look bad, that 5% gets routed back and the rollout never expands further). Both approaches share the same underlying idea: the OLD version is never actually torn down until the new one has proven itself, so "rollback" is a fast, low-risk traffic-routing change, not a rebuild.</p>
+
+  <p><strong>Manual rollback</strong>, by contrast, typically means someone has to notice the problem, decide to roll back, and then actually execute a slower process — redeploying a previous build from scratch, restoring a database backup, or otherwise reconstructing the old state rather than just flipping back to it. This is slower for two independent reasons: the HUMAN decision loop (noticing, deciding, initiating) and the MECHANICAL rebuild time, versus automated rollback's near-instant traffic-routing flip triggered the moment the eval gate (or a post-deploy monitoring signal) detects a problem.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>BLUE-GREEN ROLLBACK — TRAFFIC FLIP, NOT A REBUILD</span>
+      <div><button class="btn secondary" id="bg-reset">Reset</button></div>
+    </div>
+    <div class="bg-stage" id="bg-stage">
+      <div class="bg-node live" id="bg-blue">BLUE (v1.4)<div class="sub">100% live traffic</div></div>
+      <div class="bg-node standby" id="bg-green">GREEN (v1.5, candidate)<div class="sub">deployed, 0% traffic — standby</div></div>
+    </div>
+    <button class="btn" id="bg-promote">Promote green to live ▸</button>
+    <div class="log" id="bg-log"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Strategy</th><th>Rollback speed</th><th>Mechanism</th></tr>
+    <tr><td>Automated (blue-green)</td><td>Seconds</td><td>Flip the traffic pointer back to the still-fully-deployed old environment — no rebuild</td></tr>
+    <tr><td>Automated (canary)</td><td>Seconds</td><td>Route the small canary traffic percentage back to the proven version; rollout simply never expands</td></tr>
+    <tr><td>Manual</td><td>Minutes to hours</td><td>A human notices, decides, then redeploys or restores the previous version from scratch</td></tr>
+  </table>
+
+  <div class="callout pass"><b>Interview-ready definition:</b> automated rollback keeps the previous known-good version fully deployed and ready to serve traffic immediately — via blue-green deployment (two complete environments, rollback is a traffic-pointer flip) or canary releases (the new version gets only a small traffic percentage until proven, so pulling back is routing, not rebuilding) — making rollback a fast, low-risk operation triggered the instant a failure signal (a failed eval gate, a bad post-deploy metric) appears. Manual rollback instead requires a human to notice, decide, and then execute a slower reconstruction of the old state, adding both a human decision-loop delay and a mechanical rebuild delay on top of however long the failure took to even notice in the first place.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Setting a defensible eval threshold</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's <code class="inline">EVAL_THRESHOLD = 0.90</code>, argue for why this shouldn't be set to exactly 1.0 (100% of evals must pass), and separately why it shouldn't be set arbitrarily low (like 0.50). What real trade-off is the threshold balancing?</p>
+    <details><summary>Show solution</summary><div class="solution">Not 1.0: a real eval suite, per pytest_evals_practice.html's own suite
+design, includes some checks closer to "soft signal" than "hard
+invariant" -- a rubric-based quality check, for instance, can have
+legitimate run-to-run variance even for a genuinely GOOD build (model
+outputs aren't perfectly deterministic). Requiring literally 100% pass
+rate means a single flaky or borderline eval -- not a real regression --
+blocks EVERY deploy indefinitely, which trains the team to either
+ignore the gate's failures (defeating its purpose) or delete the
+flakiest evals just to unblock shipping (actively making the suite
+worse over time).
+
+Not 0.50: this would let a build through even if roughly HALF its eval
+checks fail, which per section 1's whole argument defeats the purpose
+of having a gate at all -- a build failing half its trajectory and
+schema checks has a genuine, serious regression, not noise.
+
+The real trade-off: false positives (blocking a genuinely fine build
+because of eval flakiness, which erodes trust in the gate and pressures
+teams to bypass it) versus false negatives (letting a genuinely
+regressed build through because the bar was set too low). A threshold
+like 90% is a defensible middle ground -- tight enough to catch a real
+regression (most evals failing) while tolerant of the occasional flaky
+check a well-designed suite should mostly avoid in the first place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding which failure should block harder than the aggregate threshold</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">pytest_evals_practice.html</code>'s specific tests (<code class="inline">test_final_answer_matches_schema</code>, <code class="inline">test_retried_after_injected_failure</code>), should EVERY eval count equally toward the 90% aggregate threshold, or should some failures block the deploy regardless of the overall pass rate? Justify with a concrete example.</p>
+    <details><summary>Show solution</summary><div class="solution">Some failures should block UNCONDITIONALLY, regardless of aggregate
+pass rate -- specifically, deterministic schema-validation failures
+like test_final_answer_matches_schema. If the candidate build's final
+JSON answer doesn't even match the expected schema, that's not a
+"quality regression" in the same category as a slightly-worse rubric
+score -- it means DOWNSTREAM CONSUMERS of this agent's output will
+literally fail to parse the response, an unconditional break regardless
+of how well everything else scores. Treating this the same as one soft
+rubric point among many, averaged into a 90% threshold, could let a
+build with a genuinely broken output schema through as long as enough
+OTHER evals compensated in the aggregate -- clearly wrong.
+
+By contrast, test_retried_after_injected_failure (the trajectory check)
+is a reasonable candidate for the AGGREGATE threshold rather than an
+unconditional block -- a build that fabricates instead of retrying on
+ONE specific injected-failure fixture is a real regression worth
+counting, but it's closer to a quality signal than an unconditional
+correctness break the way a malformed schema is.
+
+The general design principle: split the eval suite into "hard gates"
+(any single failure blocks, no averaging) for invariants whose failure
+means the system is structurally broken, and "aggregate-threshold"
+checks for softer quality signals where some noise is tolerable -- a
+distinction directly mirroring deterministic_evals.html's split between
+schema validation (structural, binary) and rubric-based quality checks
+(softer, graded).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing between blue-green and canary for a specific scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team is deploying a change to the Month 4 capstone agent's prompt that they believe improves quality but haven't been able to fully validate with offline evals alone (some failure modes only show up under real, varied production traffic). Would blue-green or canary better fit this rollout, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Canary fits better here. Blue-green is a full, instant cutover -- once
+you flip the traffic pointer, 100% of real traffic hits the new version
+immediately, which is a poor fit when the whole premise is "we're not
+fully confident offline evals caught every failure mode, and want real
+traffic to help validate that." A canary release deliberately exposes
+the new version to only a SMALL percentage of real traffic first (e.g.
+5%), letting the team observe real-world eval/metric signals on that
+slice before deciding whether to expand the rollout -- directly suited
+to exactly the stated uncertainty ("offline evals alone weren't
+sufficient").
+
+Blue-green's strength is elsewhere: when the team IS confident (offline
+evals and tests both cleared per section 1's gates) and just wants the
+fastest possible cutover with an instant rollback option if something
+unexpected happens post-deploy -- not a gradual, traffic-percentage-
+based validation process. The two aren't mutually exclusive either --
+many real systems canary FIRST (small percentage, validate) and only
+then do a full blue-green-style cutover to 100% once the canary's
+metrics look clean, getting graduated validation AND a fast full
+cutover once confidence is established.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Tracing why the eval gate needs its OWN fixture, not live traffic</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">pytest_evals_practice.html</code>'s section 1 reasoning about captured fixtures vs. live calls, explain why the CI eval gate should run against a FIXED, recorded fixture (like the capstone agent's captured trajectory) rather than live production traffic, even though live traffic would in some sense be more "realistic."</p>
+    <details><summary>Show solution</summary><div class="solution">Per pytest_evals_practice.html's own section 1 interview-ready
+definition, a suite built against captured, fixed fixtures keeps the
+SUITE itself deterministic and fast -- the exact property a CI gate
+needs. A gate that instead evaluated against live, non-deterministic
+production traffic would have two serious problems specific to the
+CI/CD context: first, it couldn't run BEFORE a deploy at all, since
+"live traffic against the candidate build" requires the candidate
+build to already be receiving real traffic -- defeating the entire
+point of gating deploys BEFORE they reach production (section 1's core
+goal). Second, even if you could somehow route a slice of live traffic
+to a not-yet-promoted candidate, results would vary run to run purely
+from which real queries happened to arrive, making "did the pass rate
+cross the threshold" partly a function of random traffic composition
+rather than a repeatable, comparable signal across every candidate
+build a team ships.
+
+A fixed fixture, evaluated identically against every candidate build,
+gives an apples-to-apples comparison -- build A and build B are judged
+against the EXACT SAME scenario, isolating whatever changed in the
+build itself as the only variable. Canary releases (section 3) are the
+correct place for real, live-traffic-based validation -- but that
+happens AFTER the offline eval gate has already been cleared, as a
+second, complementary validation layer, not a replacement for the
+fixture-based CI gate.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing what happens when a canary's evals fail mid-rollout</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A canary release sends 5% of live traffic to a new build. After an hour, an automated system running <code class="inline">pytest_evals_practice.html</code>-style trajectory checks against SAMPLES of that 5% traffic detects a pass rate below threshold. Design what should happen next, using this lab's rollback reasoning.</p>
+    <details><summary>Show solution</summary><div class="solution">The correct automated response, per section 3's canary mechanics: route
+that 5% back to the proven previous version IMMEDIATELY -- this is
+exactly canary's "seconds, not minutes" rollback speed table entry,
+because the previous version was NEVER torn down; the canary was always
+just a small, reversible traffic slice on top of it. The rollout simply
+never expands past its current (or reverts to zero) percentage, and no
+rebuild or redeploy is needed -- purely a traffic-routing change.
+
+Beyond the immediate rollback, two more things should happen, both
+connecting to earlier labs: (1) the specific failing trajectory samples
+should be captured and preserved -- exactly database/audit_trail_
+schema.html's "replay, don't require the original conditions"
+principle -- so engineers can inspect precisely which real production
+inputs triggered the eval failures, not just see an aggregate "pass
+rate dropped" alert with no specifics. (2) The canary rollout should be
+marked BLOCKED at this specific traffic percentage rather than silently
+retried at the same percentage later -- the eval gate failing during a
+canary is exactly as serious a signal as it failing during the
+pre-deploy CI gate (section 1), and should require the same kind of
+explicit human review and a NEW candidate build (with a fix) before
+canarying again, not an automatic retry that could re-expose real users
+to the same regression a second time.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain precisely why passing unit tests doesn't guarantee a safe deploy for an LLM-backed system, (2) design a two-gate pipeline naming what each gate catches that the other cannot, and (3) compare automated vs. manual rollback speed and explain exactly WHY blue-green/canary rollback is fast (no rebuild, just a traffic-routing change)? <code class="inline">database/read_replicas_and_dashboard_caching.html</code> picks up Friday's DB design track — the dashboards observability teams actually use to WATCH deploys like this one in production.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — cicd gating system design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: PIPELINE LIVE DEMO */
+(function(){
+  var healthyBtn = document.getElementById("pl-healthy");
+  var regressedBtn = document.getElementById("pl-regressed");
+  var resetBtn = document.getElementById("pl-reset");
+  var logEl = document.getElementById("pl-log");
+  var stTests = document.getElementById("st-tests");
+  var stEvals = document.getElementById("st-evals");
+  var stProd = document.getElementById("st-prod");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetStages(){
+    [stTests, stEvals, stProd].forEach(function(s){ s.className = "stage"; });
+    logEl.innerHTML = "";
+  }
+
+  async function runPipeline(healthy){
+    healthyBtn.disabled = true; regressedBtn.disabled = true;
+    resetStages();
+
+    stTests.classList.add("active");
+    log('<b>Gate 1 — unit/integration tests:</b> running against the candidate build...', "gate");
+    await wait(600);
+    stTests.classList.remove("active"); stTests.classList.add("pass");
+    log('<b style="color:var(--pass-c);">Gate 1 PASSED</b> — all unit and integration tests green. This says nothing yet about model quality.', "pass");
+    await wait(500);
+
+    stEvals.classList.add("active");
+    log('<b>Gate 2 — eval suite gate:</b> running pytest_evals_practice.html-style suite against this exact build...', "gate");
+    await wait(700);
+
+    if(healthy){
+      stEvals.classList.remove("active"); stEvals.classList.add("pass");
+      log('<b style="color:var(--pass-c);">Gate 2 PASSED</b> — eval pass rate 96% (threshold: 90%). Deterministic, trajectory, and rubric checks all within bounds.', "pass");
+      await wait(500);
+      stProd.classList.add("pass");
+      log('<b style="color:var(--pass-c);">Promoted to production.</b> Both gates cleared.');
+    } else {
+      stEvals.classList.remove("active"); stEvals.classList.add("blocked");
+      log('<b style="color:var(--fail-c);">Gate 2 FAILED</b> — eval pass rate 71% (threshold: 90%). test_retried_after_injected_failure is failing: this build fabricates instead of retrying.', "fail");
+      await wait(500);
+      log('<b style="color:var(--fail-c);">DEPLOY BLOCKED.</b> The build never reaches production — despite Gate 1 passing cleanly, the eval gate caught a real regression Gate 1 was structurally blind to.', "fail");
+    }
+
+    healthyBtn.disabled = false; regressedBtn.disabled = false;
+  }
+
+  healthyBtn.addEventListener("click", function(){ runPipeline(true); });
+  regressedBtn.addEventListener("click", function(){ runPipeline(false); });
+  resetBtn.addEventListener("click", function(){
+    resetStages();
+    healthyBtn.disabled = false; regressedBtn.disabled = false;
+  });
+})();
+
+/* SECTION 3: BLUE-GREEN ROLLBACK DEMO */
+(function(){
+  var promoteBtn = document.getElementById("bg-promote");
+  var resetBtn = document.getElementById("bg-reset");
+  var logEl = document.getElementById("bg-log");
+  var blueNode = document.getElementById("bg-blue");
+  var greenNode = document.getElementById("bg-green");
+  var promoted = false;
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function reset(){
+    blueNode.className = "bg-node live";
+    blueNode.innerHTML = 'BLUE (v1.4)<div class="sub">100% live traffic</div>';
+    greenNode.className = "bg-node standby";
+    greenNode.innerHTML = 'GREEN (v1.5, candidate)<div class="sub">deployed, 0% traffic — standby</div>';
+    logEl.innerHTML = "";
+    promoted = false;
+    promoteBtn.textContent = "Promote green to live ▸";
+  }
+
+  promoteBtn.addEventListener("click", async function(){
+    promoteBtn.disabled = true;
+
+    if(!promoted){
+      log('<b>Traffic pointer flips:</b> green (v1.5) now receives 100% of live traffic. Blue (v1.4) stays fully deployed, untouched, on standby.', "pass");
+      blueNode.className = "bg-node standby";
+      blueNode.innerHTML = 'BLUE (v1.4)<div class="sub">still fully deployed — standby</div>';
+      greenNode.className = "bg-node live";
+      greenNode.innerHTML = 'GREEN (v1.5)<div class="sub">100% live traffic</div>';
+      await wait(600);
+      log('<b style="color:var(--fail-c);">Post-deploy signal:</b> error rate on green spikes 3 minutes after cutover.', "fail");
+      await wait(500);
+      log('<b>Rolling back:</b> flipping the traffic pointer back to blue — NO rebuild, NO redeploy, just routing.', "gate");
+      await wait(600);
+      blueNode.className = "bg-node live";
+      blueNode.innerHTML = 'BLUE (v1.4)<div class="sub">100% live traffic — restored</div>';
+      greenNode.className = "bg-node rolled-back";
+      greenNode.innerHTML = 'GREEN (v1.5)<div class="sub">rolled back — 0% traffic</div>';
+      log('<b style="color:var(--pass-c);">Rollback complete.</b> Total time: seconds. Blue was never torn down, so there was nothing to rebuild.', "pass");
+      promoted = true;
+      promoteBtn.textContent = "Run again ▸";
+    } else {
+      reset();
+    }
+
+    promoteBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", reset);
+})();
+</script>
+</body>
+</html>

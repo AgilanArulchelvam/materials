@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — OpenTelemetry Basics</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --metric-c:#f2c14e; --log-c:#c792ea; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--metric-c); color:var(--metric-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--log-c); color:var(--log-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);}
+  .log .line.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);}
+  .log .line.logl{border-left-color:var(--log-c); background:rgba(199,146,234,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* trace waterfall */
+  .waterfall{margin:1.2rem 0;}
+  .wf-row{display:flex; align-items:center; gap:0.6rem; margin:0.45rem 0; font-family:var(--mono); font-size:0.72rem;}
+  .wf-row .wf-label{width:190px; flex-shrink:0; color:var(--ink-dim); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wf-row.depth-1 .wf-label{padding-right:0.6rem;}
+  .wf-row.depth-2 .wf-label{padding-right:1.4rem;}
+  .wf-track{flex:1; height:24px; background:var(--panel-2); border-radius:5px; position:relative; overflow:hidden;}
+  .wf-bar{position:absolute; height:100%; border-radius:5px; background:var(--span-c); opacity:0; transition:opacity .3s ease, width .5s ease, left .5s ease; display:flex; align-items:center; padding-left:0.4rem; color:#0b0d11; font-size:0.65rem; font-weight:700; white-space:nowrap;}
+  .wf-bar.visible{opacity:1;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--span-c);} .dc-col.a h4{color:var(--span-c);}
+  .dc-col.b{border-color:var(--metric-c);} .dc-col.b h4{color:var(--metric-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+  .callout.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);} .callout.metric b{color:var(--metric-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · OPENTELEMETRY BASICS</div>
+  <h1>A trace is a tree. Every branch is a span. That's the whole model.</h1>
+  <p class="lede"><code class="inline">systems/observability_pipeline_design.html</code> defined traces, metrics, and logs conceptually — three questions, three kinds of record. This lab goes one level deeper into the pillar that OpenTelemetry standardizes most concretely: how a trace is actually BUILT, in real code, out of nested <strong>spans</strong> — and gives you a precise, code-level answer to "what does each pillar actually give you that the other two structurally cannot."</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Trace = one request. Span = one unit of work inside it.</div>
+    <div class="pipe-label b">Metrics — how many/how much/how fast, in aggregate</div>
+    <div class="pipe-label c">Logs — what exactly happened, at this moment</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="model">1 · Traces and Spans — the Nesting Model</a>
+  <a data-target="pillars">2 · Metrics vs Traces vs Logs, Precisely</a>
+  <a data-target="live">3 · Build a Trace Tree, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TRACES AND SPANS ============ -->
+<section id="model">
+  <div class="kicker">01 — A trace is a tree of spans, not a flat list</div>
+  <h2>Traces and spans — the nesting model</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about a restaurant order. The whole meal — from the moment you sit down to the moment you pay — is ONE experience with a clear start and end. Inside that experience, distinct pieces of work happen: the kitchen prepares your appetizer, then your entrée, and inside "prepare the entrée" there's a further sub-step, "fire the grill." Each of these pieces of work has its own start time, its own end time, and its own PARENT — "fire the grill" happened INSIDE "prepare the entrée," which happened INSIDE "the whole meal." A trace is exactly this: one end-to-end request (the whole meal), decomposed into a TREE of nested spans (kitchen prep, entrée, grill), each span timestamped and aware of which span it happened inside.</p>
+
+  <p>Concretely: a <strong>trace</strong> represents one end-to-end request — a single HTTP call, a single agent invocation — from the moment it starts to the moment it finishes. A trace is composed of <strong>spans</strong>, and each span represents one unit of work within that request. Spans NEST: a parent span like <code class="inline">handle_request</code> can contain child spans like <code class="inline">call_database</code> and <code class="inline">call_llm</code>, and those children could themselves have their own children. Every span records a start time, an end time (so its duration is just end minus start), a name, and a set of key-value attributes describing what happened — plus a reference to its parent span, which is the ONE piece of data that turns a flat pile of timestamped events into an actual tree.</p>
+
+  <div class="code"><span class="c-cmt"># real OpenTelemetry-style code — creating a parent span and a nested child span
+# (this is the actual Python OTel SDK shape, not pseudocode)</span>
+<span class="c-kw">from</span> opentelemetry <span class="c-kw">import</span> trace
+
+tracer = trace.get_tracer(<span class="c-str">"agent-service"</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">handle_request</span>(request):
+    <span class="c-cmt"># the PARENT span — represents the entire request, start to finish</span>
+    <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"handle_request"</span>) <span class="c-kw">as</span> parent_span:
+        parent_span.set_attribute(<span class="c-str">"request.id"</span>, request.id)
+        parent_span.set_attribute(<span class="c-str">"request.query"</span>, request.query)
+
+        <span class="c-cmt"># a CHILD span, nested inside handle_request — automatically picks up</span>
+        <span class="c-cmt"># handle_request as its parent because it's opened while that span is "current"</span>
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"call_database"</span>) <span class="c-kw">as</span> db_span:
+            db_span.set_attribute(<span class="c-str">"db.statement"</span>, <span class="c-str">"query_orders"</span>)
+            orders = query_orders(request)
+            db_span.set_attribute(<span class="c-str">"db.rows_returned"</span>, len(orders))
+        <span class="c-cmt"># db_span closes here — its duration is now fixed: end_time - start_time</span>
+
+        <span class="c-cmt"># a SECOND child span, also nested directly inside handle_request</span>
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"call_llm"</span>) <span class="c-kw">as</span> llm_span:
+            llm_span.set_attribute(<span class="c-str">"llm.model"</span>, <span class="c-str">"claude-sonnet-5"</span>)
+            summary = summarize(orders)
+            llm_span.set_attribute(<span class="c-str">"llm.output_tokens"</span>, <span class="c-num">142</span>)
+
+        <span class="c-kw">return</span> summary
+    <span class="c-cmt"># parent_span closes here — its duration spans BOTH children plus any</span>
+    <span class="c-cmt"># gap between them; it is, by construction, at least as long as its longest child</span></div>
+
+  <p>Two mechanics worth being precise about, because they're exactly what makes this a TREE rather than a flat log of timestamped lines. First: <code class="inline">start_as_current_span</code> doesn't just create a span — it also makes that span the "current" one in a thread-local/context-local sense, so any span opened WHILE it's current automatically becomes its child, with no manual parent-ID wiring required in this simple sequential case. Second: a parent span's own reported duration is measured independently of its children — it's just that parent's own start-to-end time — but because the parent's <code class="inline">with</code> block wraps the children's, the parent's end time can never be earlier than its last child's end time. A parent is never SHORTER than the longest path through its own children; the whole tree's shape is enforced by nesting, not by any extra bookkeeping.</p>
+
+  <div class="callout span"><b>Interview-ready definition:</b> a trace represents one end-to-end request, composed of nested spans, where each span represents one unit of work — a parent span (e.g. <code class="inline">handle_request</code>) can contain child spans (e.g. <code class="inline">call_database</code>, <code class="inline">call_llm</code>), and those children can have their own children in turn. Every span records a start time, an end time, a name, structured attributes, and a reference to its parent, which is what turns the collection of spans into an actual TREE rather than a flat list of timestamped events — and it's that tree structure, not just the individual timestamps, that lets you answer "where inside this one request did the time actually go."</div>
+</section>
+
+<!-- ============ SECTION 2: THE THREE PILLARS, PRECISELY ============ -->
+<section id="pillars">
+  <div class="kicker">02 — Going deeper than Week 1's conceptual pass</div>
+  <h2>Metrics vs traces vs logs — what each is for, precisely</h2>
+
+  <p><strong>Start here, before the table.</strong> <code class="inline">systems/observability_pipeline_design.html</code> already built the everyday-analogy version of this (a GPS trail for one delivery vs. a dashboard of average delivery time vs. a dispatcher's log entries). This section restates the same three pillars in the exact terms that matter once you're actually writing OpenTelemetry code, not just reasoning about them conceptually — because "traces, metrics, and logs" stops being three vague nouns and becomes three concrete SDK objects (<code class="inline">Span</code>, <code class="inline">Counter</code>/<code class="inline">Histogram</code>, <code class="inline">Logger</code>) with genuinely different shapes.</p>
+
+  <table class="cmp">
+    <tr><th>Pillar</th><th>Question it answers</th><th>What it's shaped like, concretely</th></tr>
+    <tr><td>Metrics</td><td>"How many / how much / how fast, <strong>in aggregate</strong>?"</td><td>A number that gets incremented or observed over time — <code>requests_total</code>, <code>llm_call_duration_ms</code> — with no memory of any ONE request's identity once recorded</td></tr>
+    <tr><td>Traces (spans)</td><td>"What happened to <strong>THIS SPECIFIC request</strong>?"</td><td>A tree of timestamped, named, attributed spans, all sharing one <code>trace_id</code>, causally ordered by parent/child nesting</td></tr>
+    <tr><td>Logs</td><td>"What exactly happened <strong>at this moment</strong>, in detail?"</td><td>A discrete, timestamped, usually free-text or semi-structured line — one event, described in narrative detail a span's structured attributes alone often don't carry</td></tr>
+  </table>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>A span's attributes ARE structured</h4>
+      <p>A span on <code class="inline">call_llm</code> might carry <code class="inline">llm.model</code>, <code class="inline">llm.output_tokens</code> as clean key-value attributes — but it's still fundamentally about ONE call's timing and identity within ONE trace, not an aggregate across every call this service has ever made.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>A log line can be equally structured, but isn't a tree</h4>
+      <p>A log line like <code class="inline">"[agent-service] WARN retry #1 for get_order_detail(ord-129)"</code> can carry a <code class="inline">trace_id</code> for correlation, but it has no PARENT/CHILD relationship to any other log line the way a span has to its parent span — logs are a list, not a tree.</p>
+    </div>
+  </div>
+
+  <p>The precise reason none of the three substitutes for the others: a <strong>metric</strong> like <code class="inline">agent_tool_calls_total</code> is, at write time, DELIBERATELY stripped of per-request identity — the moment it's incremented, the specific request that caused the increment is gone, replaced by one bigger number. That's not a limitation to work around, it's the entire mechanism that makes metrics cheap enough to keep for months. A <strong>trace's spans</strong>, by contrast, keep per-request identity but pay for it — a full span tree is comparatively expensive to store per request, which is exactly why <code class="inline">observability_pipeline_design.html</code>'s section 3 argued for sampling traces rather than metrics. And a <strong>log line</strong> sits in between: cheaper than a full span tree, richer in narrative detail than a bare metric, but with no structural tree of its own — a log line about a retry doesn't inherently know it happened "inside" the <code class="inline">call_database</code> span unless something (a shared <code class="inline">trace_id</code>, or emitting the log AS a span event) explicitly links them.</p>
+
+  <div class="callout metric"><b>Interview-ready definition:</b> metrics answer "how many/how much/how fast, in aggregate" — a cheap, always-on number that has already discarded per-request identity at write time. Traces answer "what happened to THIS specific request" — a per-request tree of nested spans, each with its own timing and attributes, expensive enough at real volume that it typically needs sampling. Logs answer "what exactly happened at this moment, in detail" — a discrete, timestamped, often free-text record of one specific event, correlatable to a trace via a shared <code class="inline">trace_id</code> but structurally a flat list, not a tree. Each pillar's cheapness/richness trade-off is a direct consequence of how much per-request detail it keeps — the more detail kept, the more it costs, and the more it costs, the shorter you can afford to retain it at full fidelity.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE DEMO ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching the tree actually get built, span by span</div>
+  <h2>Build a trace tree, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below is the exact scenario from section 1's code — <code class="inline">handle_request</code> opening, spawning <code class="inline">call_database</code> and <code class="inline">call_llm</code> as children, with <code class="inline">call_llm</code> itself spawning a nested <code class="inline">tokenize_prompt</code> child. Watch each span open (bar starts growing) and close (bar stops, duration locks in), forming a nested waterfall exactly like a real tracing UI would render it.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRACE TREE FORMING LIVE — trace_id: <code style="color:var(--span-c);">a1c4e9</code></span>
+      <div><button class="btn secondary" id="wf-reset">Reset</button></div>
+    </div>
+    <div class="waterfall" id="waterfall">
+      <div class="wf-row depth-1"><div class="wf-label">handle_request</div><div class="wf-track"><div class="wf-bar" id="bar-parent" style="background:var(--span-c);"></div></div></div>
+      <div class="wf-row depth-2"><div class="wf-label">↳ call_database</div><div class="wf-track"><div class="wf-bar" id="bar-db" style="background:var(--metric-c); color:#14100c;"></div></div></div>
+      <div class="wf-row depth-2"><div class="wf-label">↳ call_llm</div><div class="wf-track"><div class="wf-bar" id="bar-llm" style="background:var(--log-c); color:#14100c;"></div></div></div>
+      <div class="wf-row depth-2" style="padding-left:1.6rem;"><div class="wf-label">&nbsp;&nbsp;↳ tokenize_prompt</div><div class="wf-track"><div class="wf-bar" id="bar-tok" style="background:var(--accent); color:#14100c;"></div></div></div>
+    </div>
+    <button class="btn" id="wf-run">Run the request ▸</button>
+    <div class="log" id="wf-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> <code class="inline">tokenize_prompt</code> is nested TWO levels deep — inside <code class="inline">call_llm</code>, which is itself inside <code class="inline">handle_request</code> — and its bar sits entirely within <code class="inline">call_llm</code>'s time window, which itself sits entirely within <code class="inline">handle_request</code>'s. That containment isn't a coincidence of the animation timing; it's the actual STRUCTURAL guarantee nesting spans in code (section 1's <code class="inline">with</code> blocks) gives you for free — a child span can never outlive the parent block it was opened inside.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Writing a 3-level nested span for a concrete scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's code shape, write the OpenTelemetry spans for: a parent span <code class="inline">process_order</code>, containing a child <code class="inline">validate_payment</code>, which itself contains a child <code class="inline">call_fraud_check_api</code>.</p>
+    <details><summary>Show solution</summary><div class="solution">with tracer.start_as_current_span("process_order") as order_span:
+    order_span.set_attribute("order.id", order.id)
+
+    with tracer.start_as_current_span("validate_payment") as pay_span:
+        pay_span.set_attribute("payment.method", order.payment_method)
+
+        with tracer.start_as_current_span("call_fraud_check_api") as fraud_span:
+            fraud_span.set_attribute("fraud_check.provider", "vendor_x")
+            result = call_fraud_api(order)
+            fraud_span.set_attribute("fraud_check.result", result.verdict)
+        # call_fraud_check_api closes -- its duration is fixed
+
+    # validate_payment closes -- its duration spans call_fraud_check_api
+    # plus any of its own work before/after that call
+
+# process_order closes -- its duration spans validate_payment entirely
+
+This is exactly section 1's nesting mechanic one level deeper:
+call_fraud_check_api is a child of validate_payment (opened while
+validate_payment is "current"), and validate_payment is a child of
+process_order for the same reason. The resulting tree has 3 levels, and
+each span's duration is independently measured but structurally
+contained within its parent's time window, precisely because each
+inner span is opened and closed entirely within its parent's `with`
+block.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing which pillar a specific debugging question needs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate asks: "our p99 latency for <code class="inline">call_llm</code> spiked to 4 seconds starting an hour ago — which specific requests were affected, and where in THEIR execution did the extra time go?" Using section 2's table, name which pillar answers which half of this question, and why one alone can't answer both halves.</p>
+    <details><summary>Show solution</summary><div class="solution">"p99 latency ... spiked ... starting an hour ago" is a METRIC question --
+p99 is, by definition, an aggregate statistic computed across many
+requests' durations, and "spiked starting an hour ago" is a trend
+observation only possible because metrics are cheap enough to graph
+continuously over a long window. No trace, by itself, could tell you a
+trend existed at all -- a single trace only ever describes one request.
+
+"which specific requests were affected, and where in THEIR execution did
+the extra time go" is a TRACE question -- this needs the per-request
+identity and nested timing metrics deliberately discarded at write time.
+Once the metric has told you SOMETHING is wrong in aggregate, you'd query
+traces filtered to slow call_llm spans within that time window, then
+open one of those specific traces and read its span tree (per section
+1's nesting model) to see whether the extra time was in, say, a nested
+tokenize_prompt child span specifically, versus the call_llm span's own
+non-child time.
+
+Why one pillar can't answer both: the metric was never designed to keep
+per-request detail (that's the whole reason it's cheap enough to trend
+over an hour), and a trace was never designed to aggregate across many
+requests (that's the whole reason it can afford to keep detailed,
+nested, per-request structure). This is precisely
+observability_pipeline_design.html's core argument, now demonstrated on
+a single realistic question that genuinely needs BOTH pillars, each for
+a different half of the answer.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why a parent span's duration isn't just "sum of children"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In section 3's live demo, <code class="inline">handle_request</code>'s total duration is NOT simply <code class="inline">call_database</code>'s duration plus <code class="inline">call_llm</code>'s duration added together. Explain precisely why, using section 1's mechanics.</p>
+    <details><summary>Show solution</summary><div class="solution">A parent span's duration is measured independently -- it's just that
+parent span's OWN start time subtracted from its OWN end time, per
+section 1. Summing the children's durations would only equal the
+parent's duration in the special case where the children ran
+back-to-back with literally zero gap between them AND the parent did no
+work of its own outside those children's spans.
+
+In practice this essentially never holds exactly: there's almost always
+some gap between call_database closing and call_llm opening (the parent
+span's own code doing something in between -- assembling the query
+result into a prompt, for instance), and that gap is real time the
+parent span's duration includes but neither child span accounts for.
+Additionally, if the parent does ANY work before its first child opens
+or after its last child closes (setting an initial attribute, or
+formatting a final return value), that time also counts toward the
+parent's own duration without belonging to any child span at all.
+
+The correct relationship is an INEQUALITY, not an equation: the parent's
+duration is always greater than or equal to the longest single
+uninterrupted stretch covered by its children, never less -- because
+each child is fully nested within the parent's own with block (section
+1's structural guarantee) -- but it can exceed the sum of children's
+durations by any amount, depending on how much of the parent's own,
+non-child work happened in between.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Deciding whether a piece of information belongs on a span attribute or a log line</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's precise distinctions, would you record "the LLM call's token count" as a span attribute or a log line? What about "a free-text explanation of why a retry was triggered, written by the code at the moment it decided to retry"? Justify each.</p>
+    <details><summary>Show solution</summary><div class="solution">Token count -- span attribute. It's a small, structured, well-typed
+piece of data (an integer) describing a property of ONE specific span
+(call_llm) that's genuinely useful to filter/aggregate ON later (e.g.
+"show me all call_llm spans where output_tokens > 500") -- exactly the
+kind of structured key-value data section 1's set_attribute calls are
+for, and exactly the shape a tracing backend can efficiently index and
+query across many spans.
+
+The free-text retry explanation -- log line (or, in OpenTelemetry's
+actual model, a SPAN EVENT attached to the relevant span, which is a
+structured way of embedding a log-like narrative moment inside a
+specific span's timeline). This is narrative, event-like detail --
+"what exactly happened, in detail, at this moment" per section 2's
+table -- rather than a structured, filterable property of the span as a
+whole. Cramming a long free-text narrative into a span ATTRIBUTE would
+technically work but misuses the attribute mechanism, which per section
+2's design is meant for small, structured, queryable key-value pairs,
+not prose -- exactly the same category error as trying to answer a
+metric-shaped question ("how many total retries happened this hour")
+by reading through individual log lines by hand, when a proper metric
+counter would answer it instantly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Predicting what changes if a child span's tracer call is accidentally left out of the parent's `with` block</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose a developer accidentally writes <code class="inline">call_llm</code>'s span-opening code OUTSIDE <code class="inline">handle_request</code>'s <code class="inline">with</code> block (after it has already closed), rather than inside it. Using section 1's "current span" mechanic, what happens to the resulting trace tree, and why is this a realistic, easy-to-make bug?</p>
+    <details><summary>Show solution</summary><div class="solution">Because start_as_current_span's parent-assignment relies on which span
+is "current" at the moment a new span opens (section 1), and
+handle_request's with block has already exited by the time call_llm's
+span opens, call_llm would no longer automatically become a CHILD of
+handle_request. Depending on the SDK's exact default behavior, it would
+either become a new, unrelated ROOT span of its own trace entirely (its
+own trace_id, disconnected from handle_request's), or -- if some other
+span happened to be "current" at that point instead -- a child of
+whatever THAT span was, silently attaching it to the wrong parent.
+
+Either way, the resulting trace tree is now WRONG: querying
+handle_request's trace_id would no longer show call_llm as part of it
+at all, even though call_llm genuinely happened as part of serving that
+same request. This is a realistic, easy-to-make bug specifically
+because span parenting in most OTel SDKs is IMPLICIT (based on
+context/current-span state) rather than requiring the developer to
+explicitly pass a parent span ID every time -- convenient when the
+nesting matches the code's actual block structure (section 1's normal
+case), but silently wrong the moment a span-opening call gets moved
+outside the block it was meant to be nested inside, with no error or
+warning at all -- the code still runs fine, it just produces a
+structurally incorrect trace.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write nested OpenTelemetry-style span code 3 levels deep from memory, (2) explain precisely which question each of the three pillars answers and why none substitutes for another, and (3) explain the inequality relationship between a parent span's duration and its children's? <code class="inline">langsmith_or_phoenix.html</code> picks this up directly — raw OpenTelemetry spans are generic; the next lab shows what an LLM-aware tracing tool adds on top.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — opentelemetry basics.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: TRACE TREE WATERFALL */
+(function(){
+  var runBtn = document.getElementById("wf-run");
+  var resetBtn = document.getElementById("wf-reset");
+  var logEl = document.getElementById("wf-log");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function showBar(id, leftPct, widthPct, label){
+    var el = document.getElementById(id);
+    el.style.left = leftPct + "%";
+    el.style.width = widthPct + "%";
+    el.textContent = label;
+    el.classList.add("visible");
+  }
+
+  function resetAll(){
+    ["bar-parent","bar-db","bar-llm","bar-tok"].forEach(function(id){
+      var el = document.getElementById(id);
+      el.classList.remove("visible");
+      el.style.width = "0%";
+      el.style.left = "0%";
+      el.textContent = "";
+    });
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log('<b>Span opens:</b> handle_request — parent span, trace_id=a1c4e9 assigned.', "span");
+    showBar("bar-parent", 0, 100, "handle_request (opening…)");
+    await wait(500);
+
+    log('<b>Child span opens:</b> call_database — nested inside handle_request (it was the "current" span).', "span");
+    showBar("bar-db", 0, 32, "call_database — 210ms");
+    await wait(600);
+
+    log('<b>Child span closes:</b> call_database — duration locked at 210ms.', "span");
+    await wait(300);
+
+    log('<b>Second child span opens:</b> call_llm — also nested directly inside handle_request.', "span");
+    showBar("bar-llm", 32, 58, "call_llm (opening…)");
+    await wait(500);
+
+    log('<b>Grandchild span opens:</b> tokenize_prompt — nested inside call_llm, which is itself nested inside handle_request. 3 levels deep.', "span");
+    showBar("bar-tok", 36, 18, "tokenize_prompt — 90ms");
+    await wait(600);
+
+    log('<b>Grandchild span closes:</b> tokenize_prompt — duration locked at 90ms, entirely within call_llm\'s window.', "logl");
+    await wait(400);
+
+    log('<b>call_llm closes:</b> duration locked at 480ms — this includes tokenize_prompt\'s 90ms PLUS the LLM call itself PLUS any of call_llm\'s own non-child work.', "span");
+    await wait(400);
+
+    log('<b>handle_request closes:</b> duration locked at 940ms — spans both children\'s windows plus the gap between them. NOT simply 210 + 480 = 690ms, per Practice Problem 3.', "metric");
+    await wait(300);
+
+    log('<b>Trace complete.</b> One trace_id=a1c4e9, 4 spans total, forming a 3-level tree: handle_request → {call_database, call_llm → {tokenize_prompt}}. This is exactly what a tracing backend UI renders as a waterfall.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    resetAll();
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

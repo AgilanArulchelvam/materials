@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Instrument the Month 4 Agent</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --metric-c:#f2c14e; --log-c:#c792ea; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--metric-c); color:var(--metric-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--log-c); color:var(--log-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.d{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:420px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);}
+  .log .line.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);}
+  .log .line.logl{border-left-color:var(--log-c); background:rgba(199,146,234,0.06);}
+  .log .line.fail{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* trace waterfall, deep nesting for the capstone */
+  .waterfall{margin:1.2rem 0;}
+  .wf-row{display:flex; align-items:center; gap:0.6rem; margin:0.4rem 0; font-family:var(--mono); font-size:0.7rem;}
+  .wf-row .wf-label{width:230px; flex-shrink:0; color:var(--ink-dim); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wf-track{flex:1; height:22px; background:var(--panel-2); border-radius:5px; position:relative; overflow:hidden;}
+  .wf-bar{position:absolute; height:100%; border-radius:5px; opacity:0; transition:opacity .3s ease, width .5s ease, left .5s ease; display:flex; align-items:center; padding-left:0.4rem; color:#0b0d11; font-size:0.62rem; font-weight:700; white-space:nowrap;}
+  .wf-bar.visible{opacity:1;}
+  .wf-bar.fail{background:var(--bad-c) !important; color:#12141a;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+  .callout.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);} .callout.metric b{color:var(--metric-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · INSTRUMENT THE MONTH 4 AGENT</div>
+  <h1>Take the capstone agent. Wrap every step in a span. Watch the whole run become one browsable tree.</h1>
+  <p class="lede"><code class="inline">mcp-and-agents/final_multi_agent_workflow.html</code> built Month 4's capstone: an agent that discovers MCP tools, plans, executes a 3-step task with one deliberately injected <code class="inline">get_order_detail</code> failure, recovers via retry, and returns a validated JSON answer. This lab instruments that EXACT agent with real tracing — wrapping the planning step, every tool call, and every LLM call in its own span — so the whole execution becomes one browsable trace, with the injected failure and retry showing up exactly where they happened.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Wrap the plan in one span</div>
+    <div class="pipe-label b">Wrap every tool call, including the failed one, in its own span</div>
+    <div class="pipe-label c">Wrap the LLM synthesis call in an LLM-aware span</div>
+    <div class="pipe-label d">The injected failure and retry both show up as real spans</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="what">1 · What Gets Wrapped, and Why</a>
+  <a data-target="code">2 · Instrumenting the Capstone, Piece by Piece</a>
+  <a data-target="live">3 · Run the Instrumented Agent, See the Trace Tree</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHAT GETS WRAPPED ============ -->
+<section id="what">
+  <div class="kicker">01 — Deciding the span boundaries before writing any wrapper code</div>
+  <h2>What gets wrapped, and why</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about adding mile markers to a road trip you're about to drive, before you start driving. You wouldn't put a marker only at the very start and very end — you'd want one at "left the driveway," one at "merged onto the highway," one at "hit traffic and had to detour," one at "arrived." Each marker tells you WHERE in the trip a specific thing happened, so if someone later asks "where did all the extra time go," you can point at a specific stretch, not just say "somewhere between start and end." Instrumenting an agent with spans is the same idea, decided BEFORE the agent runs: pick the boundaries that will actually matter when someone is debugging a slow or failed run later.</p>
+
+  <p>For the Month 4 capstone specifically, per <code class="inline">final_multi_agent_workflow.html</code>'s own section 2 plan table and section 3 stage tracker, there are exactly four kinds of unit worth their own span: the overall request (the root span, spanning the whole task), the planning step (deciding the 3-step approach), each individual tool call (<code class="inline">query_orders</code>, and one <code class="inline">get_order_detail</code> call per qualifying order — including the one that fails and its retry, each as its OWN span), and the final synthesis step's LLM call (assembling the structured JSON answer). This maps directly onto <code class="inline">opentelemetry_basics.html</code>'s nesting model: the root span is <code class="inline">handle_capstone_task</code>, and everything else nests inside it, exactly the way <code class="inline">call_database</code> and <code class="inline">call_llm</code> nested inside <code class="inline">handle_request</code> in that lab's section 1.</p>
+
+  <table class="cmp">
+    <tr><th>Unit of work</th><th>Span name</th><th>Why it gets its own span</th></tr>
+    <tr><td>Whole capstone request</td><td><code>handle_capstone_task</code></td><td>The root — every other span nests inside this one, giving the full run one <code>trace_id</code></td></tr>
+    <tr><td>Planning step</td><td><code>plan_task</code></td><td>Section 2's upfront plan is itself real work with its own duration — worth isolating from execution time</td></tr>
+    <tr><td>Each tool call</td><td><code>tool_call:query_orders</code>, <code>tool_call:get_order_detail</code> (×N)</td><td>Each is a genuinely separate unit of work with its own latency, arguments, and success/failure outcome — including the deliberately injected failure AND its retry as two DISTINCT spans</td></tr>
+    <tr><td>Final synthesis</td><td><code>synthesize_answer</code> (LLM-aware, per <code class="inline">langsmith_or_phoenix.html</code>)</td><td>This is the LLM call assembling the final JSON — worth capturing with full prompt/completion/cost detail, not just a generic span</td></tr>
+  </table>
+
+  <div class="callout span"><b>Interview-ready definition:</b> instrumenting an agent means deciding span boundaries around each genuinely distinct unit of work BEFORE execution — typically one root span for the whole request, one span for planning, one span per tool call (with a failed call and its retry as two separate spans, not one merged span), and one LLM-aware span for any step that calls a model — so that after the run, the resulting trace tree lets you answer "where specifically did time go, and where specifically did something fail" without needing to re-run or guess. The boundaries chosen determine what questions the resulting trace can answer later; too coarse (one span for the whole agent) loses the ability to localize a problem, too fine (a span for every single line of code) buries the signal in noise.</div>
+</section>
+
+<!-- ============ SECTION 2: INSTRUMENTING THE CODE ============ -->
+<section id="code">
+  <div class="kicker">02 — Wrapping the actual capstone agent's code, section by section</div>
+  <h2>Instrumenting the capstone, piece by piece</h2>
+
+  <p>Starting from <code class="inline">opentelemetry_basics.html</code>'s exact <code class="inline">start_as_current_span</code> pattern, applied to <code class="inline">final_multi_agent_workflow.html</code>'s actual scenario — the same order IDs, the same injected failure on <code class="inline">ord-129</code>, the same retry, that <code class="inline">pytest_evals_practice.html</code>'s fixture already captured:</p>
+
+  <div class="code"><span class="c-cmt"># instrumented_capstone_agent.py
+# wraps final_multi_agent_workflow.html's exact scenario in real spans</span>
+<span class="c-kw">from</span> opentelemetry <span class="c-kw">import</span> trace
+<span class="c-kw">from</span> llm_tracing <span class="c-kw">import</span> traced_llm_call  <span class="c-cmt"># LLM-aware wrapper, per langsmith_or_phoenix.html</span>
+
+tracer = trace.get_tracer(<span class="c-str">"capstone-agent"</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">handle_capstone_task</span>(task):
+    <span class="c-cmt"># ROOT span — the whole run gets one trace_id</span>
+    <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"handle_capstone_task"</span>) <span class="c-kw">as</span> root_span:
+        root_span.set_attribute(<span class="c-str">"task.description"</span>, task.description)
+
+        <span class="c-cmt"># PLANNING span — nested directly inside the root</span>
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"plan_task"</span>) <span class="c-kw">as</span> plan_span:
+            plan = build_plan(task)  <span class="c-cmt"># query_orders -> get_order_detail x N -> synthesize</span>
+            plan_span.set_attribute(<span class="c-str">"plan.step_count"</span>, len(plan.steps))
+
+        <span class="c-cmt"># TOOL CALL span #1 — query_orders</span>
+        <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-str">"tool_call:query_orders"</span>) <span class="c-kw">as</span> qo_span:
+            qo_span.set_attribute(<span class="c-str">"tool.name"</span>, <span class="c-str">"query_orders"</span>)
+            qo_span.set_attribute(<span class="c-str">"tool.args"</span>, str({<span class="c-str">"min_total"</span>: <span class="c-num">500</span>, <span class="c-str">"period"</span>: <span class="c-str">"2026-07"</span>}))
+            orders = query_orders(min_total=<span class="c-num">500</span>, period=<span class="c-str">"2026-07"</span>)  <span class="c-cmt"># 4 qualifying orders</span>
+            qo_span.set_attribute(<span class="c-str">"tool.result"</span>, <span class="c-str">"success"</span>)
+            qo_span.set_attribute(<span class="c-str">"tool.rows_returned"</span>, len(orders))
+
+        <span class="c-cmt"># TOOL CALL span PER ORDER — including the one that fails, then retries</span>
+        <span class="c-kw">for</span> order <span class="c-kw">in</span> orders:
+            <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-fn">f"tool_call:get_order_detail({order.id})"</span>) <span class="c-kw">as</span> od_span:
+                od_span.set_attribute(<span class="c-str">"tool.name"</span>, <span class="c-str">"get_order_detail"</span>)
+                od_span.set_attribute(<span class="c-str">"tool.args.order_id"</span>, order.id)
+                <span class="c-kw">try</span>:
+                    detail = get_order_detail(order.id)  <span class="c-cmt"># ord-129 raises here, first attempt</span>
+                    od_span.set_attribute(<span class="c-str">"tool.result"</span>, <span class="c-str">"success"</span>)
+                <span class="c-kw">except</span> TransientError <span class="c-kw">as</span> e:
+                    od_span.set_attribute(<span class="c-str">"tool.result"</span>, <span class="c-str">"error"</span>)
+                    od_span.set_attribute(<span class="c-str">"tool.error_detail"</span>, str(e))
+                    <span class="c-cmt"># the RETRY gets its OWN span, per loop_termination_logic.html's</span>
+                    <span class="c-cmt"># "a retry is just another pass through the loop body"</span>
+                    <span class="c-kw">with</span> tracer.start_as_current_span(<span class="c-fn">f"tool_call:get_order_detail({order.id})_retry"</span>) <span class="c-kw">as</span> retry_span:
+                        retry_span.set_attribute(<span class="c-str">"tool.name"</span>, <span class="c-str">"get_order_detail"</span>)
+                        retry_span.set_attribute(<span class="c-str">"tool.args.order_id"</span>, order.id)
+                        retry_span.set_attribute(<span class="c-str">"tool.is_retry"</span>, <span class="c-kw">True</span>)
+                        detail = get_order_detail(order.id)  <span class="c-cmt"># succeeds this time</span>
+                        retry_span.set_attribute(<span class="c-str">"tool.result"</span>, <span class="c-str">"success"</span>)
+
+        <span class="c-cmt"># SYNTHESIS span — LLM-aware, captures prompt/completion/tokens/cost</span>
+        <span class="c-kw">with</span> traced_llm_call(<span class="c-str">"synthesize_answer"</span>, model=<span class="c-str">"claude-sonnet-5"</span>) <span class="c-kw">as</span> llm_span:
+            final_answer = synthesize_final_json(orders)  <span class="c-cmt"># the structured JSON from final_multi_agent_workflow.html</span>
+            <span class="c-cmt"># prompt, completion, input/output tokens, cost all captured</span>
+            <span class="c-cmt"># automatically by traced_llm_call, per langsmith_or_phoenix.html</span>
+
+        root_span.set_attribute(<span class="c-str">"task.orders_found"</span>, final_answer[<span class="c-str">"orders_found"</span>])
+        <span class="c-kw">return</span> final_answer</div>
+
+  <p>Notice the retry gets its OWN span rather than being folded into the first attempt's span — this exactly mirrors the trajectory data <code class="inline">pytest_evals_practice.html</code>'s fixture already recorded as two separate trajectory entries (one <code class="inline">"result": "error"</code>, one <code class="inline">"result": "success"</code> for the same <code class="inline">order_id</code>). A trace and a trajectory fixture are, at this point, describing the exact same underlying event sequence — this lab is just making that sequence visible as a real, timed, browsable tree instead of a list of dicts in a test file.</p>
+
+  <div class="callout metric"><b>Interview-ready definition:</b> instrumenting an existing agent means inserting <code class="inline">start_as_current_span</code> calls (or an LLM-aware equivalent for model calls) around each of the span boundaries decided in section 1, without changing the agent's actual logic — the <code class="inline">try</code>/<code class="inline">except</code> around <code class="inline">get_order_detail</code> still does exactly what it did before, it's now just wrapped so the failure and the subsequent retry each produce their own timed, attributed span, nested correctly inside the tool-call loop, which itself nests inside the root request span — turning a run that previously left only log lines and a final answer into one complete, walkable trace tree.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE TRACE TREE ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching the instrumented capstone actually run, span by span</div>
+  <h2>Run the instrumented agent, see the trace tree</h2>
+
+  <p><strong>Start here, before clicking.</strong> This replays <code class="inline">final_multi_agent_workflow.html</code>'s exact scenario — 4 qualifying orders, one injected failure on <code class="inline">ord-129</code>, a genuine retry — but this time every step is a real span in a real waterfall, exactly what section 2's instrumented code above would actually produce. Watch the failed span turn red, then the retry span appear right beside it.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>INSTRUMENTED CAPSTONE RUN — trace_id: <code style="color:var(--span-c);">cap-7731f</code></span>
+      <div><button class="btn secondary" id="wf-reset">Reset</button></div>
+    </div>
+    <div class="waterfall" id="waterfall">
+      <div class="wf-row"><div class="wf-label">handle_capstone_task</div><div class="wf-track"><div class="wf-bar" id="bar-root" style="background:var(--span-c);"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ plan_task</div><div class="wf-track"><div class="wf-bar" id="bar-plan" style="background:var(--log-c); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:query_orders</div><div class="wf-track"><div class="wf-bar" id="bar-qo" style="background:var(--metric-c); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:get_order_detail(ord-101)</div><div class="wf-track"><div class="wf-bar" id="bar-101" style="background:var(--metric-c); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:get_order_detail(ord-114)</div><div class="wf-track"><div class="wf-bar" id="bar-114" style="background:var(--metric-c); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:get_order_detail(ord-129)</div><div class="wf-track"><div class="wf-bar wf-bar-fail" id="bar-129" ></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:get_order_detail(ord-129)_retry</div><div class="wf-track"><div class="wf-bar" id="bar-129r" style="background:var(--accent); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ tool_call:get_order_detail(ord-137)</div><div class="wf-track"><div class="wf-bar" id="bar-137" style="background:var(--metric-c); color:#12141a;"></div></div></div>
+      <div class="wf-row"><div class="wf-label">↳ synthesize_answer (LLM-aware)</div><div class="wf-track"><div class="wf-bar" id="bar-synth" style="background:var(--span-c);"></div></div></div>
+    </div>
+    <button class="btn" id="wf-run">Run the instrumented capstone ▸</button>
+    <div class="log" id="wf-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the failed <code class="inline">ord-129</code> span (red) and its retry span sit SIDE BY SIDE as two DISTINCT spans, not one merged span pretending the failure never happened — exactly section 2's design decision. Anyone opening this trace later can see immediately, without reading a single log line, which specific order hit a transient failure and that it recovered — the checkpoint requirement from <code class="inline">final_multi_agent_workflow.html</code>, now visible as a shape in a trace tree instead of something you'd have to infer from a final JSON answer alone.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding whether the retry should be a child of the failed span or a sibling</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's code opens the retry span AFTER the first <code class="inline">get_order_detail</code> span's <code class="inline">with</code> block has already caught the exception, nested inside the <code class="inline">except</code> block rather than inside the original attempt's span. Using <code class="inline">opentelemetry_basics.html</code>'s Problem 5 reasoning, is the retry a CHILD of the failed span, or a SIBLING? Justify precisely.</p>
+    <details><summary>Show solution</summary><div class="solution">Looking at section 2's code carefully: the retry's `with
+tracer.start_as_current_span(...)` block is written INSIDE the `except`
+block, which itself is inside the outer `for order in orders:` loop's
+body -- but the FIRST attempt's span (`od_span`) has already exited its
+own `with` block by the time the except clause runs (the exception
+propagated OUT of that with block). So per opentelemetry_basics.html's
+"current span" mechanic, the retry span's parent is whatever span is
+CURRENT at the moment it opens -- which is the tool-call loop's
+enclosing context, not od_span specifically (od_span has already
+closed). That makes the retry a SIBLING of the failed attempt, not a
+child -- both nest one level inside handle_capstone_task's tool-call
+loop, at the same depth, appearing as two separate rows in section 3's
+waterfall exactly as drawn (bar-129 and bar-129r are siblings, not one
+nested inside the other).
+
+This is a deliberate design choice, not an accident: making the retry a
+CHILD of the failed attempt would incorrectly suggest the retry only
+happened "because of" or "as part of" the failed span's own internal
+work, when actually it's a NEW, independent attempt at the same logical
+operation. Siblings correctly represent "two separate tries at the same
+tool call," which is exactly what pytest_evals_practice.html's
+CAPTURED_TRAJECTORY fixture also represents as two separate list
+entries rather than one nested structure.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Verifying end-to-end tool call capture against the checkpoint requirement</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The roadmap's Week 2 goal is "verify traces capture tool calls end-to-end." Using section 3's live trace tree, write out the specific checklist you'd run through to verify this for the capstone agent, and what a FAILING instrumentation would look like for each item.</p>
+    <details><summary>Show solution</summary><div class="solution">Checklist, using section 3's tree as the source of truth for what
+"correct" looks like:
+
+1. Every tool call the agent actually made has a corresponding span --
+   count the tool_call: spans (5 here: query_orders + 4x
+   get_order_detail, ord-129 attempted twice) and cross-check against
+   the actual number of calls final_multi_agent_workflow.html's
+   scenario makes. FAILING case: a tool call happened but produced no
+   span at all -- e.g. a call wrapped incorrectly outside any
+   start_as_current_span block, silently invisible in the trace despite
+   genuinely having executed.
+
+2. Each tool-call span's parent is the expected one (nested under
+   handle_capstone_task, not accidentally a disconnected root span of
+   its own trace). FAILING case: exactly opentelemetry_basics.html's
+   Problem 5 bug -- a span-opening call moved outside the intended
+   `with` block, silently becoming an unrelated root span with a
+   DIFFERENT trace_id, invisible when querying this trace_id.
+
+3. The failed attempt and its retry are BOTH present as separate spans,
+   with the failed one's tool.result attribute actually set to "error"
+   (not silently omitted or overwritten). FAILING case: only the
+   successful retry span exists because the failed attempt's span
+   context manager swallowed the exception before set_attribute ran,
+   erasing evidence the failure ever happened -- exactly the kind of
+   silent data loss trajectory_based_evals.html's Run B scenario warned
+   about, now at the tracing layer instead of the eval layer.
+
+4. The synthesis step's LLM-aware span actually captured prompt/
+   completion/tokens/cost, not just a generic span with no LLM-specific
+   fields. FAILING case: traced_llm_call was swapped for a plain
+   start_as_current_span by mistake, silently reverting to raw OTel's
+   generic capture -- exactly the gap langsmith_or_phoenix.html's
+   section 1 described.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reasoning about what a slow trace would reveal for this specific agent</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose a real run of this instrumented capstone agent takes 6 seconds total, and a teammate suspects the retry logic is the culprit. Using section 3's trace tree structure, how would you confirm or rule this out WITHOUT re-running the agent?</p>
+    <details><summary>Show solution</summary><div class="solution">Open the ALREADY-CAPTURED trace for that specific slow run (per
+opentelemetry_basics.html's core value: a trace records exactly what
+happened for ONE specific request, replayable after the fact) and read
+the durations directly off each span in the waterfall, exactly as
+drawn in section 3: handle_capstone_task's total duration is the sum of
+gaps plus whichever child spans ran, per opentelemetry_basics.html's
+Problem 3 inequality relationship. Specifically check:
+tool_call:get_order_detail(ord-129) alone (the failed attempt) plus
+tool_call:get_order_detail(ord-129)_retry (the successful retry)
+together -- if these two spans combined only account for, say, 800ms of
+the 6 total seconds, the retry logic is almost certainly NOT the
+bottleneck, and the teammate's suspicion is ruled out directly from the
+trace with no new run needed.
+
+If instead those two spans combined account for something like 4.5 of
+the 6 seconds, that's strong evidence the retry (or more likely, the
+transient failure's own timeout/backoff before the retry even started)
+IS a major contributor -- and specifically WHICH of the two spans (the
+failed attempt's own duration vs. a gap before the retry span opens vs.
+the retry's own duration) pinpoints whether the problem is the failure
+itself being slow to detect, a delay before retrying, or the retry call
+itself being slow. This is exactly the "metric flags a trend, trace
+diagnoses a specific instance" split opentelemetry_basics.html's
+Problem 2 established, now applied to one real captured trace instead
+of a hypothetical.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Explaining why the planning span matters even though it makes no tool calls</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's table gives <code class="inline">plan_task</code> its own span even though, per <code class="inline">final_multi_agent_workflow.html</code>'s section 2, planning makes no tool calls at all. Why is this still worth a dedicated span rather than just being folded into the root span's own "before the first child" time?</p>
+    <details><summary>Show solution</summary><div class="solution">Per opentelemetry_basics.html's Problem 3, ANY time the root span
+spends before its first child opens is, by default, invisible as its
+own named quantity -- it just silently inflates the root span's total
+duration without a label explaining WHAT that time was spent on. If
+plan_task were NOT its own span, a slow run's trace would show
+handle_capstone_task taking longer than the sum of its visible
+tool-call children, with no way to tell whether that extra time was
+genuinely spent planning, or was dead time from some other
+unaccounted-for cause (a slow import, a cold connection pool, etc.) --
+exactly the ambiguity that inequality relationship warns about.
+
+Giving planning its own explicit span converts an invisible gap into a
+named, measurable quantity: now a slow run can be diagnosed as
+"planning took 3 of the 6 seconds" specifically, rather than "3 seconds
+went somewhere before the first tool call, cause unknown." This
+connects directly to section 1's core design principle -- span
+boundaries should be drawn around anything that, if slow, you'd
+actually want to know about by name later, and "the agent spent an
+unusually long time deciding its plan" is exactly this kind of
+question, even though planning itself makes no further tool calls or
+sub-spans of its own.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the span for a hypothetical SECOND failure on the same order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">final_multi_agent_workflow.html</code>'s Problem 3 (what happens if <code class="inline">ord-129</code> fails twice, both the first attempt AND the retry), extend section 2's instrumentation code to correctly trace this case, including how the resulting spans should differ from the single-failure case shown.</p>
+    <details><summary>Show solution</summary><div class="solution">with tracer.start_as_current_span(f"tool_call:get_order_detail({order.id})") as od_span:
+    od_span.set_attribute("tool.name", "get_order_detail")
+    od_span.set_attribute("tool.args.order_id", order.id)
+    try:
+        detail = get_order_detail(order.id)
+        od_span.set_attribute("tool.result", "success")
+    except TransientError as e:
+        od_span.set_attribute("tool.result", "error")
+        od_span.set_attribute("tool.error_detail", str(e))
+        with tracer.start_as_current_span(f"tool_call:get_order_detail({order.id})_retry") as retry_span:
+            retry_span.set_attribute("tool.is_retry", True)
+            try:
+                detail = get_order_detail(order.id)
+                retry_span.set_attribute("tool.result", "success")
+            except TransientError as e2:
+                # per final_multi_agent_workflow.html Problem 3: the
+                # retry budget is exhausted -- record the ABANDONMENT
+                # as its own attribute on THIS span, not a third span
+                retry_span.set_attribute("tool.result", "error")
+                retry_span.set_attribute("tool.error_detail", str(e2))
+                retry_span.set_attribute("order.abandoned", True)
+                detail = None  # this order goes into orders_omitted
+
+Difference from the single-failure case: the retry_span's tool.result
+now reads "error" instead of "success", and a new attribute,
+order.abandoned=True, is set directly on that SAME retry span rather
+than opening a third span for a second retry -- because
+final_multi_agent_workflow.html's Problem 3 established a BOUNDED
+retry budget (attempt once, retry once, then abandon), not unlimited
+retries. A trace reader querying for order.abandoned=True spans could
+now find every order that hit this specific fate directly, and cross-
+reference it against orders_omitted in the final JSON answer exactly
+the way pytest_evals_practice.html's test_final_answer_reflects_the_
+recovered_order test cross-checked the OPPOSITE (successful-recovery)
+case.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) name the four span boundaries this lab chose for the capstone agent and justify each, (2) explain precisely why the retry span is a sibling of the failed attempt's span rather than its child, and (3) walk through how you'd diagnose a slow real run using only the already-captured trace, no re-running? <code class="inline">trace_dashboard_practice.html</code> picks this up directly — building a real mini-dashboard to browse traces exactly like the one this lab just produced.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — instrument the month 4 agent.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: INSTRUMENTED CAPSTONE TRACE TREE */
+(function(){
+  var runBtn = document.getElementById("wf-run");
+  var resetBtn = document.getElementById("wf-reset");
+  var logEl = document.getElementById("wf-log");
+
+  var BAR_IDS = ["bar-root","bar-plan","bar-qo","bar-101","bar-114","bar-129","bar-129r","bar-137","bar-synth"];
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function showBar(id, leftPct, widthPct, label, isFail){
+    var el = document.getElementById(id);
+    el.style.left = leftPct + "%";
+    el.style.width = widthPct + "%";
+    el.textContent = label;
+    if(isFail){ el.classList.add("fail"); }
+    el.classList.add("visible");
+  }
+
+  function resetAll(){
+    BAR_IDS.forEach(function(id){
+      var el = document.getElementById(id);
+      el.classList.remove("visible", "fail");
+      el.style.width = "0%";
+      el.style.left = "0%";
+      el.textContent = "";
+    });
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log('<b>Root span opens:</b> handle_capstone_task — trace_id=cap-7731f assigned.', "span");
+    showBar("bar-root", 0, 100, "handle_capstone_task");
+    await wait(450);
+
+    log('<b>plan_task span:</b> agent decides the 3-step plan — query_orders, then get_order_detail per order, then synthesize.', "logl");
+    showBar("bar-plan", 0, 10, "plan_task — 120ms");
+    await wait(500);
+
+    log('<b>tool_call:query_orders span:</b> 4 qualifying orders found (ord-101, ord-114, ord-129, ord-137).', "metric");
+    showBar("bar-qo", 10, 12, "query_orders — 180ms");
+    await wait(500);
+
+    log('<b>tool_call:get_order_detail(ord-101) span:</b> success, $612, 3 items.', "metric");
+    showBar("bar-101", 22, 9, "ord-101 ✓");
+    await wait(400);
+
+    log('<b>tool_call:get_order_detail(ord-114) span:</b> success, $780, 2 items.', "metric");
+    showBar("bar-114", 31, 9, "ord-114 ✓");
+    await wait(400);
+
+    log('<b style="color:var(--bad-c);">tool_call:get_order_detail(ord-129) span:</b> FAILS — injected transient error, tool.result="error".', "fail");
+    showBar("bar-129", 40, 8, "ord-129 FAIL", true);
+    await wait(500);
+
+    log('<b style="color:var(--accent);">tool_call:get_order_detail(ord-129)_retry span:</b> SIBLING of the failed span, not a child — succeeds this time, $511, 1 item.', "span");
+    showBar("bar-129r", 48, 9, "ord-129 retry ✓");
+    await wait(500);
+
+    log('<b>tool_call:get_order_detail(ord-137) span:</b> success, $945, 4 items.', "metric");
+    showBar("bar-137", 57, 9, "ord-137 ✓");
+    await wait(400);
+
+    log('<b>synthesize_answer span (LLM-aware):</b> full prompt/completion/tokens/cost captured automatically, per langsmith_or_phoenix.html.', "span");
+    showBar("bar-synth", 66, 30, "synthesize_answer — 340ms");
+    await wait(550);
+
+    log('<b>Trace complete.</b> 9 spans total, one continuous tree under trace_id=cap-7731f — the injected failure and its recovery are both first-class, queryable spans, not something buried inside a log line or only visible in the final JSON.');
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    resetAll();
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

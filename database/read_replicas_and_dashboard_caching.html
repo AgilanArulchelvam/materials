@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Read Replicas &amp; Dashboard Caching</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --leader-c:#f2c14e; --follower-c:#4fc3f7; --lag-c:#ff6b6b; --cache-c:#7fd8a0; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--leader-c); color:var(--leader-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--follower-c); color:var(--follower-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--cache-c); color:var(--cache-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* routing diagram: dashboard vs prod traffic to primary/replica */
+  .route-stage{display:flex; flex-direction:column; gap:1rem; margin:1.2rem 0;}
+  .route-row{display:flex; align-items:center; gap:1rem; flex-wrap:wrap;}
+  .route-node{font-family:var(--mono); font-size:0.8rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); min-width:150px; text-align:center; transition:all .4s ease;}
+  .route-node.primary{border-color:var(--leader-c); color:var(--leader-c);}
+  .route-node.replica{border-color:var(--follower-c); color:var(--follower-c);}
+  .route-node.hit{background:rgba(79,195,247,0.2); box-shadow:0 0 12px rgba(79,195,247,0.4);}
+  .route-node .val{font-size:0.7rem; color:var(--ink-dim); display:block; margin-top:0.3rem;}
+  .route-arrow{font-family:var(--mono); font-size:0.9rem; color:var(--ink-dim); transition:color .3s;}
+  .route-arrow.active{color:var(--follower-c);}
+  .route-arrow.blocked{color:var(--lag-c);}
+
+  /* cache TTL bar for dashboard queries */
+  .ttl-track{height:26px; background:var(--panel-2); border-radius:6px; position:relative; overflow:hidden; margin:0.6rem 0;}
+  .ttl-fill{position:absolute; height:100%; background:var(--cache-c); width:100%; transition:width linear;}
+  .ttl-label{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.72rem; color:#12141a; font-weight:700;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--leader-c);} .dc-col.a h4{color:var(--leader-c);}
+  .dc-col.b{border-color:var(--follower-c);} .dc-col.b h4{color:var(--follower-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--lag-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--lag-c);}
+  .callout.cache{border-left-color:var(--cache-c); background:rgba(127,216,160,0.06);} .callout.cache b{color:var(--cache-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · READ REPLICAS &amp; DASHBOARD CACHING</div>
+  <h1>Every dashboard query is a favor the primary database didn't ask to do.</h1>
+  <p class="lede">An observability dashboard — the exact kind <code class="inline">trace_dashboard_practice.html</code> builds — runs expensive aggregate queries (p99 latency over an hour, error rate by service) that have nothing to do with serving real users, yet compete for the SAME primary database connection pool and disk I/O as production traffic. This lab routes those dashboard reads to a read replica instead, then layers a short-TTL cache on top for the identical queries many viewers ask at once — reusing <code class="inline">replication.html</code>'s leader-follower model and <code class="inline">caching_layer_design.html</code>'s write/eviction reasoning, applied to one concrete, very common workload.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Primary — production writes AND reads, never dashboard reads</div>
+    <div class="pipe-label b">Read replica — isolates dashboard load entirely</div>
+    <div class="pipe-label c">Short-TTL cache — the same query, asked by 40 viewers, computed once</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="offload">1 · Offloading Dashboard Queries to a Replica</a>
+  <a data-target="caching">2 · Caching Strategy for Frequent Queries</a>
+  <a data-target="live">3 · Both Together, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: OFFLOAD TO REPLICA ============ -->
+<section id="offload">
+  <div class="kicker">01 — Dashboard queries and production queries are different customers of the same database</div>
+  <h2>Offloading dashboard queries from primary</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a small bakery's single register also has to handle a researcher who walks in once an hour and asks the cashier to manually count every receipt from the past week to compute average sale size — while paying customers are standing in line. Even if the researcher is polite and infrequent, that manual count TIES UP the same cashier and register that paying customers need for their (much faster, much more time-sensitive) transactions. The fix isn't to tell the researcher to stop asking questions — it's to give the researcher a SEPARATE, synced copy of the week's receipts to comb through, so the register stays free for actual sales the whole time.</p>
+
+  <p>An observability dashboard is exactly this researcher. Queries like "p99 latency for <code class="inline">call_llm</code> spans over the last hour" or "error rate by service, last 24 hours" — the kind <code class="inline">trace_dashboard_practice.html</code>'s dashboard runs — are typically expensive AGGREGATE queries: scanning, grouping, and computing statistics over potentially millions of rows, very different from a production query's typical shape (fetch one row by primary key, or a small filtered set). Running these aggregate queries against the <strong>primary</strong> database — the same one handling live production reads and writes — means dashboard load competes directly with production traffic for the primary's connection pool (<code class="inline">connection_pooling.html</code>'s exact concern) and disk I/O, potentially slowing down or even destabilizing the actual production workload just because someone opened a dashboard.</p>
+
+  <p>The fix reuses <code class="inline">replication.html</code>'s leader-follower model directly: dashboard queries get routed to a <strong>read replica</strong> instead of the primary. The replica receives the same writes as the primary (with the same replication lag <code class="inline">replication.html</code>'s section 1 already established — dashboard data can be a few seconds to minutes stale, which is almost always an acceptable trade-off for an aggregate trend dashboard, unlike a production read that needs the LATEST committed row). Because the replica is a physically separate machine, however much load the dashboard's expensive queries generate, it can never directly compete with the primary's own connection pool or I/O capacity — the isolation is structural, not just a scheduling hope.</p>
+
+  <div class="code"><span class="c-cmt"># routing dashboard reads to a replica, production reads/writes to primary</span>
+
+<span class="c-kw">def</span> <span class="c-fn">get_db_connection</span>(query_type: str):
+    <span class="c-kw">if</span> query_type == <span class="c-str">"production_write"</span> <span class="c-kw">or</span> query_type == <span class="c-str">"production_read"</span>:
+        <span class="c-cmt"># writes always go to primary; production reads too, since they</span>
+        <span class="c-cmt"># need the freshest committed data, no tolerance for replication lag</span>
+        <span class="c-kw">return</span> primary_pool.get_connection()
+    <span class="c-kw">elif</span> query_type == <span class="c-str">"dashboard_aggregate"</span>:
+        <span class="c-cmt"># dashboard queries tolerate a few seconds/minutes of lag just fine --</span>
+        <span class="c-cmt"># route to the replica, isolating this load entirely from primary</span>
+        <span class="c-kw">return</span> replica_pool.get_connection()
+
+<span class="c-cmt"># example: the p99-latency dashboard query from opentelemetry_basics.html's</span>
+<span class="c-cmt"># Problem 2 scenario, now correctly routed</span>
+<span class="c-kw">def</span> <span class="c-fn">get_p99_latency_last_hour</span>(service: str):
+    conn = get_db_connection(<span class="c-str">"dashboard_aggregate"</span>)  <span class="c-cmt"># -&gt; replica, not primary</span>
+    <span class="c-kw">return</span> conn.execute(
+        <span class="c-str">"SELECT percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms) "</span>
+        <span class="c-str">"FROM spans WHERE service = %s AND start_time > NOW() - INTERVAL '1 hour'"</span>,
+        [service]
+    )</div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> offloading dashboard queries to a read replica routes expensive, aggregate-heavy observability queries away from the primary database entirely, so dashboard load can never directly compete with production reads/writes for the primary's connection pool or disk I/O. This works because dashboard queries — unlike production reads that need the latest committed row — tolerate the replica's normal replication lag (<code class="inline">replication.html</code> section 1) just fine; a trend dashboard being a few seconds or minutes behind real-time is an acceptable trade-off for structurally isolating the load, whereas a production read serving an actual user transaction generally is not.</div>
+</section>
+
+<!-- ============ SECTION 2: CACHING FREQUENT QUERIES ============ -->
+<section id="caching">
+  <div class="kicker">02 — Ten people looking at the same hour of data shouldn't mean ten identical expensive queries</div>
+  <h2>Caching strategy for frequent queries</h2>
+
+  <p><strong>Start here, before the mechanics.</strong> Imagine a museum tour guide who, every single time a NEW visitor asks "how old is this painting," walks all the way to the archive room, pulls the physical records, and reads the answer back out loud — even though the last five visitors asked the EXACT SAME question about the EXACT SAME painting in the last ten minutes. The obviously better approach: after answering once, jot the answer on a sticky note taped right next to the painting, and just read the sticky note for the next several visitors — only walking back to the archive again once the note's information might plausibly be stale.</p>
+
+  <p>Even after section 1's replica offload, a real observability dashboard has a SECOND, independent inefficiency: many different viewers (or the same viewer refreshing repeatedly) very often ask for the SAME time range and SAME aggregate query within a short window — "p99 latency for the last hour" doesn't meaningfully change between one viewer's request and another's thirty seconds later. Re-running that expensive aggregate query, even against a replica specifically isolated for this load (section 1), is still wasted work if the answer would be IDENTICAL to a query that already ran seconds ago. This is exactly <code class="inline">caching_layer_design.html</code>'s territory, applied to this specific workload: cache the query's result for a short <strong>TTL</strong> (time-to-live) — long enough to absorb the burst of near-simultaneous identical requests, short enough that the dashboard still feels close to real-time.</p>
+
+  <div class="code"><span class="c-cmt"># short-TTL cache on top of the replica-routed dashboard query</span>
+
+CACHE_TTL_SECONDS = <span class="c-num">30</span>  <span class="c-cmt"># tune per caching_layer_design.html's consistency/staleness trade-off</span>
+
+<span class="c-kw">def</span> <span class="c-fn">get_p99_latency_cached</span>(service: str):
+    cache_key = <span class="c-fn">f"dash:p99:{service}:{current_minute_bucket()}"</span>
+    cached = redis_client.get(cache_key)
+    <span class="c-kw">if</span> cached <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span>:
+        <span class="c-kw">return</span> cached  <span class="c-cmt"># cache hit -- no query against the replica at all</span>
+
+    <span class="c-cmt"># cache miss -- compute it once, against the replica (section 1), then cache</span>
+    result = get_p99_latency_last_hour(service)
+    redis_client.setex(cache_key, CACHE_TTL_SECONDS, result)
+    <span class="c-kw">return</span> result</div>
+
+  <p>Two design choices worth being precise about, both direct applications of <code class="inline">caching_layer_design.html</code>'s framework. First: this is a <strong>read-through, short-TTL cache</strong>, not write-through/write-back at all — there's no "write" happening here in the caching-layer sense, since the underlying data (the spans/traces) is written elsewhere, by the production system, not by this dashboard read path. Second: the TTL itself is the entire consistency/staleness knob — a 30-second TTL means up to 30 seconds of staleness on a dashboard number, which for a TREND view ("is p99 rising over the last hour") is an entirely acceptable trade-off, the same reasoning <code class="inline">caching_layer_design.html</code>'s section 3 applied to cache consistency generally, now with a very concrete, very defensible use case: nobody needs sub-second freshness on an aggregate that's already averaging over the past hour.</p>
+
+  <div class="callout cache"><b>Interview-ready definition:</b> caching frequent dashboard queries means storing a short-TTL cached copy of an expensive aggregate query's result, keyed by the specific query parameters (service, time range), so that many viewers requesting the SAME aggregate within the TTL window get served the cached result instead of each triggering an independent, identical, expensive query — even against an already-isolated read replica. The TTL is chosen as a direct trade-off between staleness (how out-of-date the cached number can be) and load reduction (how long a burst of identical requests gets absorbed by one cached value), following <code class="inline">caching_layer_design.html</code>'s general consistency-vs-cost framework, applied here to a workload where a data point already representing an hour-long trend can easily tolerate tens of seconds of additional staleness.</div>
+</section>
+
+<!-- ============ SECTION 3: BOTH TOGETHER, LIVE ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching 5 viewers hit the same dashboard query, routed and cached correctly</div>
+  <h2>Both together, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, 5 different dashboard viewers request the SAME query ("p99 latency, last hour, agent-service") within a short window, right after a production write happens on the primary. Watch the write stay on primary, the FIRST dashboard read go to the replica and populate the cache, and the next 4 reads get served straight from cache — no replica hit, no primary contention, at all.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>1 WRITE + 5 DASHBOARD READS — WATCH WHERE EACH ONE GOES</span>
+      <div><button class="btn secondary" id="rt-reset">Reset</button></div>
+    </div>
+    <div class="route-stage" id="route-stage">
+      <div class="route-row">
+        <div class="route-node primary" id="node-primary">PRIMARY<div class="val">production writes + reads</div></div>
+        <div class="route-arrow" id="arrow-repl">⇢ replicates ⇢</div>
+        <div class="route-node replica" id="node-replica">READ REPLICA<div class="val">dashboard queries only</div></div>
+      </div>
+    </div>
+    <div class="ttl-track" id="ttl-track" style="display:none;">
+      <div class="ttl-fill" id="ttl-fill"></div>
+      <div class="ttl-label" id="ttl-label">cache TTL</div>
+    </div>
+    <button class="btn" id="rt-run">Run: 1 write, then 5 dashboard reads ▸</button>
+    <div class="log" id="rt-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> only viewer 1's request actually reaches the replica and runs the expensive aggregate query. Viewers 2 through 5 — all asking for the exact same query within the TTL window — are served entirely from cache, touching neither the replica nor the primary at all. The primary, meanwhile, never sees a single one of these 5 dashboard reads; it only ever sees the one production write, exactly section 1's isolation goal.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deciding which query type goes to primary vs replica</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's routing function, classify each of the following as <code class="inline">production_read</code> (primary) or <code class="inline">dashboard_aggregate</code> (replica), and justify each: (a) fetching a single trace's full span tree by <code class="inline">trace_id</code> for <code class="inline">trace_dashboard_practice.html</code>'s waterfall view, (b) checking whether a specific order exists before processing a refund, (c) computing average trace duration by hour for the past week.</p>
+    <details><summary>Show solution</summary><div class="solution">(a) Fetching one trace's full span tree by trace_id -- this is
+genuinely ambiguous and worth reasoning through explicitly: if it's
+being viewed moments after that exact trace was captured (e.g. someone
+debugging a request that JUST failed), replication lag could mean the
+replica doesn't have it yet, arguing for primary. But if it's a
+dashboard feature browsing HISTORICAL traces (as trace_dashboard_
+practice.html's list-then-drill-in UI implies -- traces already sitting
+in the "recent traces" list), the data is already at least a few
+seconds old by the time it's clicked, so the replica's normal lag is a
+non-issue -- route to replica. The general rule this illustrates: it's
+not "read vs write" alone that decides the routing, it's whether the
+read can tolerate the replica's lag GIVEN how fresh the underlying data
+needs to be for this specific use case.
+
+(b) Checking whether a specific order exists before processing a
+refund -- PRIMARY, unambiguously. This is a production read gating a
+write with real consequences (processing a refund incorrectly because
+the replica hadn't yet replicated a very recent order creation would be
+a genuine correctness bug, not just a stale dashboard number) --
+exactly why section 1 routes production reads to primary by default,
+not just production writes.
+
+(c) Computing average trace duration by hour for the past week --
+REPLICA, unambiguously. A classic dashboard_aggregate query: expensive
+(scanning/grouping over a week of data), and a trend over an entire
+week tolerates the replica's seconds-to-minutes lag with zero
+meaningful impact on the answer's usefulness.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Picking a TTL for a specific dashboard panel</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's TTL reasoning, would you set a LONGER or SHORTER cache TTL for a "current active agent sessions" panel (meant to show what's happening RIGHT NOW) compared to the "p99 latency, last hour" panel this lab used? Justify with the staleness-vs-load trade-off.</p>
+    <details><summary>Show solution</summary><div class="solution">SHORTER TTL for "current active agent sessions" -- possibly even no
+caching at all, or a TTL of just a few seconds. The entire VALUE of
+that panel is showing what's happening RIGHT NOW -- a viewer looking at
+"active sessions" wants near-real-time truth, and 30 seconds of
+staleness (this lab's example TTL) could mean showing sessions that
+already ended, or missing ones that just started, undermining the
+panel's actual purpose. This directly mirrors caching_layer_design.html's
+section 3 point: the TTL choice is a bet on how wrong a stale answer is
+allowed to be, and "what's happening right now" tolerates almost no
+staleness by definition.
+
+By contrast, "p99 latency, last hour" is already, by its own definition,
+an aggregate SMOOTHED over 60 minutes of data -- a data point that's
+already averaging over an hour genuinely doesn't change in any
+meaningful way between one 30-second window and the next, so a 30 (or
+even 60+) second TTL costs essentially nothing in perceived freshness
+while meaningfully reducing repeated-query load (section 2's core
+trade-off). The general principle: TTL should scale with how "already
+smoothed over time" the underlying metric is -- point-in-time state
+tolerates almost no caching; long-window aggregates tolerate
+comparatively generous caching.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why the cache key needs the time bucket, not just the service name</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's <code class="inline">cache_key</code> includes <code class="inline">current_minute_bucket()</code>, not just the service name. What would go wrong if the cache key were just <code class="inline">f"dash:p99:{service}"</code> with no time component, and the TTL were set to 30 seconds?</p>
+    <details><summary>Show solution</summary><div class="solution">Without a time bucket in the key, the FIRST time this query ever runs
+for a service, its result gets cached under a key that never changes --
+and every subsequent call within the 30-second TTL correctly reuses it,
+which is fine SHORT-term. But once that entry EXPIRES and gets
+recomputed, it recomputes for "the last hour AS OF right now" -- a
+DIFFERENT actual time window than the previous cached value, even
+though the key is identical. This isn't wrong per se (each fresh
+computation IS correctly "the last hour as of now"), but it does mean
+the cache key alone gives no way to distinguish "this specific hour's
+p99" from "whatever hour happened to be current when this entry was
+last computed" -- which becomes a real problem the moment you want to
+cache MULTIPLE distinct time-bucketed views simultaneously (e.g. "p99
+for 2-3pm" and "p99 for 3-4pm" as two separate, independently
+cacheable, non-overlapping dashboard panels a user might view side by
+side).
+
+Including current_minute_bucket() in the key means each distinct time
+bucket gets its OWN cache entry, so two different time-range panels
+never collide or overwrite each other's cached value, and repeated
+requests for the SAME bucket within the TTL still correctly hit the
+same cached entry. This is the same key-design discipline database/
+time_series_schema.html's retention/bucketing logic already
+established -- the bucket boundary is part of the query's actual
+identity, not an incidental detail.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing what happens if the cache is skipped but the replica offload isn't</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose section 1's replica routing is correctly implemented but section 2's caching layer is accidentally disabled. 40 dashboard viewers all load the same panel within the same 10-second window. What happens, and is production traffic still protected?</p>
+    <details><summary>Show solution</summary><div class="solution">Production traffic IS still protected -- this is the key thing section
+1's replica routing guarantees on its own, independent of caching.
+All 40 of these dashboard queries hit the REPLICA, not the primary, so
+however much load 40 near-simultaneous expensive aggregate queries
+generate, it lands entirely on the replica's own connection pool and
+I/O capacity -- production reads/writes against the primary remain
+completely unaffected, exactly section 1's isolation guarantee, which
+doesn't depend on caching at all.
+
+However, the REPLICA itself is now doing 40x more work than necessary --
+the exact inefficiency section 2 exists to eliminate. All 40 viewers
+are asking for the IDENTICAL query (same service, same time bucket), so
+39 of those 40 executions are pure waste: recomputing an answer that
+was already computed moments earlier by request #1. If the replica's
+own capacity is limited, this could cause the DASHBOARD itself to
+become slow or start timing out for viewers, even though production is
+fine -- a real, if less severe, problem than section 1's original
+concern, and precisely the gap section 2's caching layer closes. The
+two techniques are complementary, not redundant: replica routing
+protects PRODUCTION from dashboard load; caching protects the REPLICA
+(and the dashboard's own responsiveness) from redundant dashboard
+load.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the interaction between cache invalidation and replication lag</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A viewer complains that a dashboard number stayed wrong for 90 seconds after a burst of new traces should have changed it, even though the cache TTL is only 30 seconds. Using both section 1's replication lag and section 2's TTL together, what's the worst-case total staleness this system can produce, and is 90 seconds consistent with that?</p>
+    <details><summary>Show solution</summary><div class="solution">The two staleness sources STACK, they don't cancel out: replication
+lag (section 1) is however long it takes a write to propagate from
+primary to replica -- say, up to some bound X seconds under normal
+conditions. Cache TTL (section 2) then adds UP TO another 30 seconds on
+top, in the worst case (a viewer's request lands the INSTANT after a
+fresh cache entry was populated with slightly-stale replica data, right
+before the underlying replica data itself updates).
+
+Worst case total staleness ≈ replication lag (X) + cache TTL (30s). If
+replication lag under some real load spike is, say, 60 seconds (well
+within replication.html's own established range of "milliseconds to
+seconds, occasionally worse under load"), then worst-case total
+staleness could indeed approach 60 + 30 = 90 seconds -- meaning the
+complained-about 90 seconds is entirely consistent with normal system
+behavior under a replication lag spike, not necessarily a bug.
+
+The actionable takeaway: when diagnosing "why is this dashboard number
+stale," you have to check BOTH layers independently -- is the cache
+TTL itself the dominant factor (check cache entry timestamp vs now), or
+is the underlying REPLICA itself behind the primary (check replication
+lag directly, exactly as replication.html's own live demo visualizes)?
+Treating "the dashboard is stale" as a single, one-cause problem misses
+that this system has two independent, stacking sources of staleness,
+each requiring a different fix (lowering the TTL helps one; addressing
+replica lag/capacity helps the other).</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain precisely why routing dashboard reads to a replica protects production traffic even without any caching at all, (2) design a cache key and TTL for a specific dashboard panel and justify the TTL against the staleness-vs-load trade-off, and (3) reason through how replication lag and cache TTL stack to produce a worst-case total staleness bound? <code class="inline">trace_dashboard_practice.html</code> picks this up directly — the actual mini trace-dashboard whose queries this lab was designed to protect.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — read replicas and dashboard caching.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: WRITE + 5 DASHBOARD READS, ROUTING + CACHE DEMO */
+(function(){
+  var runBtn = document.getElementById("rt-run");
+  var resetBtn = document.getElementById("rt-reset");
+  var logEl = document.getElementById("rt-log");
+  var primaryNode = document.getElementById("node-primary");
+  var replicaNode = document.getElementById("node-replica");
+  var arrowRepl = document.getElementById("arrow-repl");
+  var ttlTrack = document.getElementById("ttl-track");
+  var ttlFill = document.getElementById("ttl-fill");
+  var ttlLabel = document.getElementById("ttl-label");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function flash(node){
+    node.classList.add("hit");
+    setTimeout(function(){ node.classList.remove("hit"); }, 500);
+  }
+
+  function resetAll(){
+    logEl.innerHTML = "";
+    arrowRepl.classList.remove("active", "blocked");
+    ttlTrack.style.display = "none";
+    ttlFill.style.width = "100%";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log('<b>Production write:</b> a new trace lands in the database.', "");
+    flash(primaryNode);
+    await wait(500);
+
+    arrowRepl.classList.add("active");
+    log('<b>Replication:</b> the write propagates from primary to replica (normal lag applies, per replication.html).', "");
+    await wait(600);
+    flash(replicaNode);
+    arrowRepl.classList.remove("active");
+    await wait(300);
+
+    log('<b>Viewer 1</b> requests "p99 latency, last hour, agent-service" — cache MISS.', "");
+    await wait(400);
+    log('  → routed to REPLICA (not primary), per section 1.', "");
+    flash(replicaNode);
+    await wait(500);
+    log('  → replica computes the aggregate, result cached with a 30s TTL.', "");
+    ttlTrack.style.display = "block";
+    ttlFill.style.transition = "none";
+    ttlFill.style.width = "100%";
+    ttlLabel.textContent = "cache TTL: 30s remaining";
+    await wait(50);
+    ttlFill.style.transition = "width 4.5s linear";
+    ttlFill.style.width = "0%";
+    await wait(500);
+
+    for(var i = 2; i <= 5; i++){
+      log('<b>Viewer ' + i + '</b> requests the SAME query — cache HIT. Served instantly, no replica query, no primary contact at all.', "");
+      await wait(500);
+    }
+
+    log('<b>Result:</b> 1 write to primary, 1 replicated read on the replica, and 4 of 5 dashboard reads served entirely from cache. The primary saw only its one write — zero dashboard load reached it.');
+
+    await wait(3500);
+    ttlLabel.textContent = "TTL expired — next request recomputes";
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

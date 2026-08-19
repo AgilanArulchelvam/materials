@@ -81,7 +81,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>One hundred and seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>One hundred and thirteen labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, MCP &amp; agentic systems, and AI evals &amp; observability — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -390,13 +390,19 @@
         <p>An eval_run/eval_result header-detail pair, a failing trajectory result traced back to the exact trace_id that produced it, and the pass-rate-over-time queries a real eval pipeline actually runs.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/read_replicas_and_dashboard_caching.html">
+        <span class="tag">DB Design — Read Replicas &amp; Short-TTL Caching</span>
+        <h3>Read Replicas &amp; Dashboard Caching</h3>
+        <p>Routing expensive observability-dashboard queries to a read replica instead of primary, plus a short-TTL cache so 40 viewers asking the same question trigger one query, not forty.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">23 labs</span>
+      <span class="count">24 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -535,6 +541,12 @@
         <span class="tag">Cold Recall — Gateway + Queue, Secured End to End</span>
         <h3>System Design Review, Month 4 Final Cold</h3>
         <p>Re-derive the MCP gateway and the async tool job queue once more, then weave in this week's security concepts — sandboxing, permission scoping — into the same architecture, tracing exactly where each defense layer has to sit.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card backend" href="backend/cicd_gating_system_design.html">
+        <span class="tag">System Design — Eval-Gated Deploys &amp; Rollback</span>
+        <h3>CI/CD Gating System Design</h3>
+        <p>A build that passes every unit test but fails its eval gate, blocked before it ever reaches production, plus automated blue-green/canary rollback versus a slower manual one.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -771,7 +783,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Evals &amp; Observability</h2>
-      <span class="count">4 labs</span>
+      <span class="count">8 labs</span>
     </div>
     <div class="cards">
       <a class="card eval" href="evals-and-observability/deterministic_evals.html">
@@ -796,6 +808,30 @@
         <span class="tag">Practice — A Real Suite for the Month 4 Agent</span>
         <h3>Pytest Evals Practice</h3>
         <p>Building a complete pytest suite piece by piece against final_multi_agent_workflow.html's capstone — deterministic, trajectory, and rubric checks, run live as one suite.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/opentelemetry_basics.html">
+        <span class="tag">Traces, Spans &amp; the Nesting Model</span>
+        <h3>OpenTelemetry Basics</h3>
+        <p>A real nested span tree built live from OpenTelemetry-style code, plus a precise, code-level restatement of metrics vs traces vs logs beyond Week 1's conceptual pass.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/langsmith_or_phoenix.html">
+        <span class="tag">What LLM-Aware Tracing Adds Over Raw OpenTelemetry</span>
+        <h3>LangSmith or Arize Phoenix</h3>
+        <p>The exact same LLM call captured two ways — a generic OTel span with two manual attributes vs. a full prompt/completion/token/cost trace captured automatically.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/instrument_month4_agent.html">
+        <span class="tag">Wrapping the Capstone Agent in Real Spans</span>
+        <h3>Instrument the Month 4 Agent</h3>
+        <p>The full Month 4 capstone — planning, every tool call, the injected failure and its retry as sibling spans, and the LLM synthesis call — rendered as one browsable trace tree.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card eval" href="evals-and-observability/trace_dashboard_practice.html">
+        <span class="tag">Practice — A Real Mini Trace-Viewing Dashboard</span>
+        <h3>Trace Dashboard Practice</h3>
+        <p>Four real captured traces from the instrumented capstone agent, browsable as a genuine dashboard — a filterable list that expands into each trace's full span waterfall.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -854,7 +890,7 @@
 
 </main>
 
-<footer>materials/ · one hundred and seven standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and thirteen standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

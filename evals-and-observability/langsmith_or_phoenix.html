@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — LangSmith or Arize Phoenix</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --metric-c:#f2c14e; --log-c:#c792ea; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--metric-c); color:var(--metric-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--log-c); color:var(--log-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);}
+  .log .line.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);}
+  .log .line.logl{border-left-color:var(--log-c); background:rgba(199,146,234,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--span-c);} .dc-col.a h4{color:var(--span-c);}
+  .dc-col.b{border-color:var(--accent);} .dc-col.b h4{color:var(--accent);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .toggle-row{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .cost-bar{display:flex; align-items:center; gap:0.6rem; margin:0.4rem 0; font-family:var(--mono); font-size:0.75rem;}
+  .cost-bar .lbl{width:130px; flex-shrink:0; color:var(--ink-dim);}
+  .cost-bar .track{flex:1; height:20px; background:var(--panel-2); border-radius:5px; overflow:hidden;}
+  .cost-bar .fill{height:100%; border-radius:5px; background:var(--metric-c); width:0%; transition:width .6s ease;}
+  .cost-bar .val{width:70px; text-align:right; color:var(--ink-dim);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+  .callout.metric{border-left-color:var(--metric-c); background:rgba(242,193,78,0.06);} .callout.metric b{color:var(--metric-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · LANGSMITH OR ARIZE PHOENIX</div>
+  <h1>OpenTelemetry knows a span happened. It has no idea an LLM was involved.</h1>
+  <p class="lede"><code class="inline">opentelemetry_basics.html</code> built a real, working span tree — but every attribute on it was something a HUMAN had to remember to set by hand (<code class="inline">llm.model</code>, <code class="inline">llm.output_tokens</code>). Raw OpenTelemetry is a GENERIC tracing protocol: it has no built-in concept of "prompt," "completion," or "cost." LLM-specific tracing tools like <strong>LangSmith</strong> and <strong>Arize Phoenix</strong> exist specifically to close that gap — automatically capturing the full prompt/completion pair, token usage, and dollar cost per call, with a UI built for browsing and comparing agent traces rather than generic request spans.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Raw OTel span — generic key-value attributes, nothing LLM-specific</div>
+    <div class="pipe-label b">LLM-aware trace — prompt, completion, tokens, cost, all first-class</div>
+    <div class="pipe-label c">Purpose-built UI for browsing agent traces, not generic spans</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="gap">1 · The Gap — Generic Spans vs LLM-Aware Traces</a>
+  <a data-target="before-after">2 · Before/After — the Same Call, Two Views</a>
+  <a data-target="live">3 · Toggle Between Them, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE GAP ============ -->
+<section id="gap">
+  <div class="kicker">01 — A span is just a bag of key-value pairs, unless something teaches it what an LLM call IS</div>
+  <h2>The gap: generic spans vs LLM-aware traces</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about the difference between a generic package-tracking system and a system built specifically for tracking restaurant deliveries. The generic tracker knows "package left location A at 2:00pm, arrived at location B at 2:20pm" — useful, but it has no idea WHAT was in the package, whether it was still hot on arrival, or what it cost to make. A delivery-specific tracker, by contrast, was built knowing packages are FOOD ORDERS — it automatically captures the dish, the ingredients, the kitchen prep time, and the price, because someone designed the system around the specific shape of what's actually being tracked, not just "a thing moved from A to B."</p>
+
+  <p>Raw OpenTelemetry is the generic tracker. <code class="inline">opentelemetry_basics.html</code>'s <code class="inline">call_llm</code> span is, to the OTel SDK, structurally IDENTICAL to a <code class="inline">call_database</code> span — both are just a name, a start time, an end time, and whatever attributes a developer manually thought to call <code class="inline">set_attribute</code> for. OpenTelemetry's core spec has no built-in schema for "this span represents an LLM call" — no field it automatically knows means "the prompt," no field it knows means "the completion," no field it knows means "this cost $0.003." Every one of those has to be manually attached, by a human, remembering to do it correctly, on every single call site, with no guarantee of consistency across a codebase.</p>
+
+  <p><strong>LangSmith</strong> and <strong>Arize Phoenix</strong> are LLM-specific tracing and observability tools built on top of this same span/trace foundation, but with first-class understanding of what an LLM call actually is. Instrumenting an LLM call with either tool (typically via a decorator or an SDK wrapper around your model client) automatically captures the full prompt sent, the full completion received, input and output token counts, the model name, latency, and — because token counts and model are both known — a computed dollar cost per call, without a developer manually calling <code class="inline">set_attribute</code> for each of these individually. The UI on top is ALSO purpose-built: browsing a list of agent runs, drilling into one trace's LLM calls specifically, comparing two prompt variants' completions side by side — none of which a generic OTel-compatible backend (built for arbitrary microservice traces) was designed around.</p>
+
+  <div class="callout span"><b>Interview-ready definition:</b> raw OpenTelemetry is a generic, protocol-level tracing standard — it has no built-in concept of "prompt," "completion," "token count," or "tool call"; every LLM-relevant attribute has to be manually attached to a span's generic key-value attribute bag by a developer. LLM-specific tracing tools like LangSmith and Arize Phoenix add first-class understanding of these concepts on top of that same span/trace foundation: automatically capturing the full prompt/completion pair, token usage, and per-call cost, plus a UI purpose-built for browsing, filtering, and comparing agent traces — rather than a generic backend that treats an LLM call the same as any other timed unit of work.</div>
+</section>
+
+<!-- ============ SECTION 2: BEFORE/AFTER ============ -->
+<section id="before-after">
+  <div class="kicker">02 — The exact same LLM call, captured two different ways</div>
+  <h2>Before/after: the same call, two views</h2>
+
+  <p><strong>Start here, before the comparison.</strong> Below is ONE real LLM call — the same <code class="inline">call_llm</code> span from <code class="inline">opentelemetry_basics.html</code>'s section 1 code — captured first the way raw OpenTelemetry captures it by default, then the way an LLM-aware tool captures it automatically. Nothing about the underlying call changed. What changed is how much of its actual content the tracing layer understood well enough to surface.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Raw OpenTelemetry span</h4>
+      <p style="margin-bottom:0.6rem;">Whatever a developer remembered to set, manually, as generic attributes:</p>
+      <div class="code" style="margin:0; font-size:0.78rem;">span: call_llm
+  duration: 480ms
+  llm.model: "claude-sonnet-5"
+  llm.output_tokens: 142</div>
+    </div>
+    <div class="dc-col b">
+      <h4>LangSmith / Phoenix-style trace</h4>
+      <p style="margin-bottom:0.6rem;">Captured automatically by the LLM-aware wrapper, no manual attribute calls:</p>
+      <div class="code" style="margin:0; font-size:0.78rem;">LLM call: call_llm
+  duration: 480ms
+  model: claude-sonnet-5
+  prompt: "Summarize these 4 orders
+    for a July 2026 report: ord-101
+    ($612, 3 items), ord-114 ($780,
+    2 items)..."
+  completion: "Found 4 orders over
+    $500 from July 2026, totaling
+    $2,848 across 10 items..."
+  input_tokens: 310
+  output_tokens: 142
+  cost: $0.0071</div>
+    </div>
+  </div>
+
+  <p>Notice exactly what's missing on the left and present on the right: the raw span has NO record of what was actually asked or what was actually answered — <code class="inline">llm.output_tokens</code> is a number a developer chose to track, but the actual PROMPT and COMPLETION text simply aren't there unless someone specifically wrote code to dump them into attributes too (and even then, most teams don't, because raw attribute dumping wasn't designed with prompt-sized text payloads in mind). The right side has all of that, plus a cost figure computed automatically from the token counts and the known per-token pricing for that model — something raw OpenTelemetry has no mechanism to compute at all, because it doesn't know it's looking at an LLM call in the first place.</p>
+
+  <table class="cmp">
+    <tr><th>What you'd need to answer</th><th>Raw OTel span alone</th><th>LLM-aware trace</th></tr>
+    <tr><td>"How long did this call take?"</td><td>Yes — duration is a core span field either way</td><td>Yes</td></tr>
+    <tr><td>"What exactly did we ask the model?"</td><td>Only if manually dumped into an attribute</td><td>Yes — captured automatically as a first-class field</td></tr>
+    <tr><td>"What did it actually say back?"</td><td>Only if manually dumped into an attribute</td><td>Yes — captured automatically</td></tr>
+    <tr><td>"What did this single call cost, in dollars?"</td><td>No — no built-in pricing awareness</td><td>Yes — computed from token counts + known model pricing</td></tr>
+    <tr><td>"Show me every LLM call where the completion mentioned 'refund'"</td><td>Not practically — would need custom indexing over free-text attributes</td><td>Yes — the UI is built to search/filter over prompt and completion content directly</td></tr>
+  </table>
+
+  <div class="callout metric"><b>Interview-ready definition:</b> the concrete gap between a raw OpenTelemetry span and an LLM-aware trace is exactly this table — duration and basic identity fields are available either way, because those are generic span concepts. Everything specific to an LLM call being an LLM call — the actual prompt and completion text, automatically computed token-based cost, and a UI that can search/filter/compare across that content — requires a tool that was built knowing what an LLM call's shape actually is, not a generic tracing protocol that treats it as an undifferentiated unit of work.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE TOGGLE ============ -->
+<section id="live">
+  <div class="kicker">03 — Same call, same trace_id, toggle the view</div>
+  <h2>Toggle between raw and LLM-aware, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> This replays <code class="inline">opentelemetry_basics.html</code>'s exact <code class="inline">handle_request → call_llm</code> scenario. Toggle between "Raw OTel" and "LLM-aware" to watch the SAME underlying call get logged with drastically different levels of detail — nothing about the call itself changes, only how much of it the tracing layer was built to understand.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>ONE LLM CALL, TWO CAPTURE MODES</span>
+      <div><button class="btn secondary" id="tg-reset">Reset</button></div>
+    </div>
+    <div class="toggle-row">
+      <button class="chip active" data-mode="raw">Raw OpenTelemetry</button>
+      <button class="chip" data-mode="aware">LangSmith / Phoenix-style</button>
+    </div>
+    <button class="btn" id="tg-run">Capture the call ▸</button>
+    <div class="log" id="tg-log"></div>
+    <div id="cost-block" style="display:none; margin-top:1rem;">
+      <div class="cost-bar"><span class="lbl">input_tokens</span><div class="track"><div class="fill" id="bar-in"></div></div><span class="val" id="val-in">—</span></div>
+      <div class="cost-bar"><span class="lbl">output_tokens</span><div class="track"><div class="fill" id="bar-out"></div></div><span class="val" id="val-out">—</span></div>
+      <div class="cost-bar"><span class="lbl">cost (USD)</span><div class="track"><div class="fill" id="bar-cost" style="background:var(--accent);"></div></div><span class="val" id="val-cost">—</span></div>
+    </div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> in "Raw OTel" mode, the log shows exactly the two attributes a developer remembered to set — model name and output token count — and nothing else. Switch to "LLM-aware" mode and re-run: the SAME call now shows the full prompt, the full completion, input tokens, AND a computed cost, with zero extra code written by hand for this specific call — the wrapper library did that capture automatically, because it was built already knowing "this is an LLM call, here's what matters about it."</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Naming exactly which fields a raw OTel span is missing for a given debugging question</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate asks: "our LLM cost tripled this week — which specific calls got more expensive, and was it more tokens per call or a higher per-token price?" Using section 1's gap, explain why a raw OpenTelemetry span (with only <code class="inline">llm.model</code> and <code class="inline">llm.output_tokens</code> set) can partially answer this but an LLM-aware trace answers it completely.</p>
+    <details><summary>Show solution</summary><div class="solution">Partial answer from the raw span: llm.output_tokens IS present, so you
+COULD compute "average output tokens per call this week vs last week"
+and see if that number rose -- this is one real half of the question,
+and it works because output_tokens happens to be a field this
+particular raw span was manually configured to track.
+
+What the raw span structurally cannot answer: whether the PRICE per
+token changed (e.g. a silent model swap from a cheaper to a pricier
+model for some calls) requires knowing model name PER CALL and cross-
+referencing it against that model's actual per-token pricing -- llm.model
+is present here, but nothing in raw OpenTelemetry computes cost from it,
+because raw OTel has no built-in pricing table for any model at all.
+You'd have to manually join span data against an external pricing sheet
+yourself, span by span, to reconstruct this.
+
+An LLM-aware trace answers the full question directly: cost is already
+computed per call (section 2's table), so you can directly compare
+week-over-week cost broken down by model and by token count without any
+manual join -- exactly the reason section 1 called cost computation a
+capability raw OpenTelemetry has no mechanism for at all, not just a
+field nobody happened to set.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding whether a raw OTel-only setup is sufficient for a given team</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A small team's service makes exactly one LLM call per request, with no branching agent logic, and they only ever need to know request latency and error rate. Do they need LangSmith or Phoenix on top of raw OpenTelemetry? Justify using section 1's reasoning about what the LLM-aware layer is actually FOR.</p>
+    <details><summary>Show solution</summary><div class="solution">Probably not, or only marginally -- LangSmith/Phoenix earn their value
+specifically when you need to inspect or compare PROMPT/COMPLETION
+CONTENT, token-level cost, or browse/filter across many LLM-specific
+traces (section 1's whole argument). A team that only ever needs
+latency and error rate is asking exactly the kind of question raw
+OpenTelemetry was already built for -- duration and status are core,
+generic span fields, no LLM-specific understanding required at all.
+
+This directly mirrors trajectory_based_evals.html's Problem 3 reasoning
+about when a specialized eval type is or isn't worth adding: the extra
+tool earns its keep when the SPECIFIC gap it closes (here: prompt/
+completion/cost visibility) is actually a question you need answered.
+For a single-call, no-branching service tracking only latency/error
+rate, that gap is simply not being asked about, so a generic OTel setup
+plus a basic dashboard is sufficient -- though the moment this team wants
+to debug WHY a specific request produced a bad answer, or wants to track
+spend, they'd hit exactly the wall section 1 describes and need the
+LLM-aware layer at that point, not before.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why LangSmith/Phoenix are built ON TOP of spans/traces, not instead of them</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">opentelemetry_basics.html</code>'s section 1 nesting model, explain why an LLM-aware trace for <code class="inline">call_llm</code> STILL needs to be a span nested inside <code class="inline">handle_request</code>, rather than a totally separate kind of record with no relationship to the rest of the request's trace.</p>
+    <details><summary>Show solution</summary><div class="solution">Because the LLM call didn't happen in isolation -- it happened AS ONE
+STEP inside a larger request (handle_request), alongside other spans
+like call_database (opentelemetry_basics.html section 1). If the
+LLM-aware capture produced a totally disconnected record with no parent
+relationship, you'd lose the ability to answer questions that require
+the LLM call's position IN CONTEXT: was this slow LLM call the reason
+the whole request was slow, or was call_database the bottleneck instead?
+Did this specific LLM call happen as part of THIS specific user's
+request, or some other one?
+
+This is exactly why LangSmith and Phoenix are built as an ADDITIONAL
+LAYER of understanding on top of the same span/trace tree structure,
+not a replacement for it -- the call_llm span still nests inside
+handle_request exactly as section 1's nesting model requires, still
+shares the same trace_id, and still has a start time, end time, and
+parent reference. What's different is that THIS particular span ALSO
+carries the LLM-specific fields (prompt, completion, cost) an LLM-aware
+wrapper knows to attach automatically -- the tree structure that makes a
+trace a trace, per opentelemetry_basics.html section 1's interview-ready
+definition, is unchanged; only the richness of one node's attributes
+is enhanced.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Estimating cost from token counts and pricing, by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's example call (310 input tokens, 142 output tokens), suppose the model's pricing is $3 per million input tokens and $15 per million output tokens. Compute this call's exact cost, and explain why an LLM-aware tool can automate this while raw OpenTelemetry cannot.</p>
+    <details><summary>Show solution</summary><div class="solution">Input cost: 310 tokens * ($3 / 1,000,000) = $0.00093
+Output cost: 142 tokens * ($15 / 1,000,000) = $0.00213
+Total: $0.00093 + $0.00213 = $0.00306, which rounds to roughly
+$0.0031 -- close to (and illustrating the same order of magnitude as)
+section 2's displayed $0.0071 figure for a slightly larger example call.
+
+Why an LLM-aware tool can automate this and raw OpenTelemetry cannot:
+computing this number requires knowing (a) both token counts separately
+(input AND output, since they're priced differently) and (b) a
+per-model pricing table mapping model name to its specific input/output
+rates. Raw OpenTelemetry has neither built in -- it has no concept of
+"this model costs $X per token" at all, per section 1's core point,
+because pricing is an LLM-domain-specific fact, not a generic tracing
+concept. An LLM-aware tool ships with (or lets you configure) exactly
+this pricing table per supported model, so the moment it captures
+model name + input/output token counts (which it does automatically,
+per section 1), it can immediately compute cost with no extra
+instrumentation code required per call site.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing what to instrument first if adopting an LLM-aware tool on an existing OTel setup</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team already has raw OpenTelemetry spans for every service, including several <code class="inline">call_llm</code>-style spans across different agents. They're adopting an LLM-aware tool. Using this lab's reasoning, what's the highest-value first step, and why is instrumenting every non-LLM span (like <code class="inline">call_database</code>) NOT the priority?</p>
+    <details><summary>Show solution</summary><div class="solution">Highest-value first step: wrap specifically the LLM call sites (every
+call_llm-equivalent span across their agents) with the LLM-aware tool's
+instrumentation, so prompt/completion/token/cost capture becomes
+automatic for exactly the spans where raw OpenTelemetry was structurally
+blind per section 1 -- this closes the actual gap the adoption is meant
+to close, immediately, for the highest-value data.
+
+Why call_database and other non-LLM spans are NOT the priority: per
+section 1's whole argument, raw OpenTelemetry already handles generic,
+non-LLM spans perfectly well -- duration, name, generic attributes are
+exactly what it was designed for, and an LLM-aware tool adds nothing
+NEW for a database call the way it does for an LLM call (there's no
+"prompt," "completion," or per-token cost concept for a SQL query to
+begin with). Re-instrumenting call_database spans with the LLM-aware
+tool would cost migration effort for zero additional capability gained --
+the entire value proposition established in section 1 is specifically
+about the LLM-shaped gap, so effort belongs there first, leaving
+non-LLM spans exactly as they already are under plain OpenTelemetry.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) name the specific fields raw OpenTelemetry structurally cannot capture about an LLM call and explain WHY, (2) walk through the same call captured both ways and point out exactly what's missing on the raw side, and (3) explain why an LLM-aware trace still has to nest as a proper span inside its parent trace rather than existing as a disconnected record? <code class="inline">instrument_month4_agent.html</code> picks this up directly — applying exactly this LLM-aware instrumentation to Month 4's actual capstone agent, tool calls and all.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — langsmith or arize phoenix.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: TOGGLE CAPTURE MODE */
+(function(){
+  var runBtn = document.getElementById("tg-run");
+  var resetBtn = document.getElementById("tg-reset");
+  var logEl = document.getElementById("tg-log");
+  var costBlock = document.getElementById("cost-block");
+  var chips = document.querySelectorAll(".chip[data-mode]");
+  var mode = "raw";
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function setBar(fillId, valId, pct, label){
+    document.getElementById(fillId).style.width = pct + "%";
+    document.getElementById(valId).textContent = label;
+  }
+
+  chips.forEach(function(chip){
+    chip.addEventListener("click", function(){
+      chips.forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      mode = chip.dataset.mode;
+    });
+  });
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    costBlock.style.display = "none";
+
+    log('<b>Span opens:</b> call_llm — nested inside handle_request, trace_id=a1c4e9 (same call as opentelemetry_basics.html).', "span");
+    await wait(500);
+
+    if(mode === "raw"){
+      log('<b>Capturing as raw OpenTelemetry span</b> — only what a developer manually set via set_attribute():', "span");
+      await wait(500);
+      log('  llm.model = "claude-sonnet-5"', "span");
+      await wait(350);
+      log('  llm.output_tokens = 142', "span");
+      await wait(350);
+      log('<b style="color:var(--bad-c);">Missing:</b> prompt text, completion text, input token count, and cost — none of these are fields raw OpenTelemetry knows to track for an LLM call.', "logl");
+    } else {
+      log('<b>Capturing via LLM-aware wrapper</b> — automatic, no per-call manual attribute code:', "metric");
+      await wait(500);
+      log('  model = "claude-sonnet-5"', "metric");
+      await wait(300);
+      log('  prompt = "Summarize these 4 orders for a July 2026 report: ord-101 ($612, 3 items), ord-114 ($780, 2 items)..."', "metric");
+      await wait(400);
+      log('  completion = "Found 4 orders over $500 from July 2026, totaling $2,848 across 10 items..."', "metric");
+      await wait(400);
+      log('  input_tokens = 310, output_tokens = 142', "metric");
+      await wait(350);
+      log('  <b>cost = $0.0071</b> — computed automatically from token counts + known per-token pricing for claude-sonnet-5.', "metric");
+      await wait(300);
+
+      costBlock.style.display = "block";
+      setBar("bar-in", "val-in", 62, "310");
+      setBar("bar-out", "val-out", 28, "142");
+      setBar("bar-cost", "val-cost", 45, "$0.0071");
+    }
+
+    log('<b>Trace complete.</b> Same trace_id, same nesting inside handle_request — only the amount of LLM-specific detail captured differs by mode.');
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    costBlock.style.display = "none";
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

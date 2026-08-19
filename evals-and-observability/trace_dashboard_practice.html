@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Trace Dashboard Practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --metric-c:#f2c14e; --log-c:#c792ea; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--metric-c); color:var(--metric-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:300px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* the dashboard itself */
+  .dash{display:grid; grid-template-columns:1fr; gap:0; margin:1.4rem 0; border:1px solid var(--rule); border-radius:12px; overflow:hidden;}
+  .dash-filters{display:flex; gap:0.6rem; flex-wrap:wrap; padding:1rem 1.2rem; background:var(--panel-2); border-bottom:1px solid var(--rule);}
+  .chip{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .trace-list{background:var(--panel);}
+  .trace-row{display:grid; grid-template-columns:130px 1fr 90px 90px 28px; gap:0.8rem; align-items:center; padding:0.85rem 1.2rem; border-bottom:1px solid var(--rule); cursor:pointer; transition:background .15s;}
+  .trace-row:last-child{border-bottom:none;}
+  .trace-row:hover{background:var(--panel-2);}
+  .trace-row.selected{background:rgba(79,195,247,0.08); border-left:3px solid var(--span-c);}
+  .trace-row .tid{font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim);}
+  .trace-row .tname{font-family:var(--mono); font-size:0.82rem; color:var(--ink);}
+  .trace-row .tdur{font-family:var(--mono); font-size:0.78rem; text-align:right; color:var(--ink-dim);}
+  .trace-row .tstatus{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; padding:0.2rem 0.55rem; border-radius:20px; text-align:center; border:1px solid;}
+  .trace-row .tstatus.ok{color:var(--accent); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+  .trace-row .tstatus.error{color:var(--bad-c); border-color:var(--bad-c); background:rgba(255,107,107,0.1);}
+  .trace-row .texpand{font-family:var(--mono); color:var(--ink-dim); text-align:center; transition:transform .2s;}
+  .trace-row.selected .texpand{transform:rotate(90deg); color:var(--span-c);}
+
+  .trace-detail{background:#0b0d11; padding:1.2rem; display:none;}
+  .trace-detail.open{display:block;}
+
+  .waterfall{margin:0.4rem 0;}
+  .wf-row{display:flex; align-items:center; gap:0.6rem; margin:0.35rem 0; font-family:var(--mono); font-size:0.7rem;}
+  .wf-row .wf-label{width:200px; flex-shrink:0; color:var(--ink-dim); text-align:right; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wf-track{flex:1; height:20px; background:var(--panel-2); border-radius:5px; position:relative; overflow:hidden;}
+  .wf-bar{position:absolute; height:100%; border-radius:5px; display:flex; align-items:center; padding-left:0.4rem; color:#0b0d11; font-size:0.62rem; font-weight:700; white-space:nowrap;}
+  .wf-bar.fail{background:var(--bad-c) !important; color:#12141a;}
+
+  .dash-empty{padding:2.5rem 1.2rem; text-align:center; color:var(--ink-dim); font-family:var(--mono); font-size:0.85rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · SATURDAY PRACTICE — TRACE-VIEWING DASHBOARD</div>
+  <h1>Everything this week built, condensed into one small tool you can actually click through.</h1>
+  <p class="lede">This is Week 2's hands-on capstone: a real, minimal trace-viewing dashboard, built right into this page. Four sample traces from the instrumented Month 4 agent (<code class="inline">instrument_month4_agent.html</code>) — varying durations, one containing the injected failure and its retry — rendered as a real dashboard: a list of recent traces with duration and status, clicking one expands its full span waterfall, and a filter to show only traces with errors. Not a mockup — the filtering and expansion are genuinely wired up and running in your browser right now.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">List view — duration, status, at a glance</div>
+    <div class="pipe-label b">Click to expand — the full span waterfall</div>
+    <div class="pipe-label c">Filter — errors only, in one click</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="design">1 · Designing the Dashboard's Data Shape</a>
+  <a data-target="dashboard">2 · The Dashboard, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: DESIGN ============ -->
+<section id="design">
+  <div class="kicker">01 — What a trace-viewing dashboard actually needs to hold, before any UI code</div>
+  <h2>Designing the dashboard's data shape</h2>
+
+  <p><strong>Start here, before any UI code.</strong> Think about a hospital's patient board — the kind with a row per patient, showing name, room, and status at a glance, where clicking (or walking to) any one patient's room gets you their FULL chart. The board itself doesn't try to show every patient's full chart all at once — that would be unreadable. It shows just enough per row to triage which patient needs attention, and defers the full detail until someone actually clicks in. A trace dashboard needs exactly this two-level structure: a scannable LIST view showing just enough per trace to notice something's wrong, and a DETAIL view (the waterfall, reused directly from <code class="inline">opentelemetry_basics.html</code> and <code class="inline">instrument_month4_agent.html</code>) that only renders once a specific trace is selected.</p>
+
+  <p>Four sample traces make up this dashboard's data, all variations on the exact scenario <code class="inline">instrument_month4_agent.html</code> instrumented — the SAME agent, run four different times, with genuinely different outcomes each time (real production traffic never looks identical run to run):</p>
+
+  <table class="cmp">
+    <tr><th>Trace</th><th>What happened</th><th>Duration</th><th>Status</th></tr>
+    <tr><td><code>cap-7731f</code></td><td>The exact scenario from <code class="inline">instrument_month4_agent.html</code> — ord-129 fails once, retries, succeeds</td><td>1,120ms</td><td>OK (recovered)</td></tr>
+    <tr><td><code>cap-8842a</code></td><td>A clean run — all 4 orders fetched successfully on the first attempt, no failures at all</td><td>640ms</td><td>OK</td></tr>
+    <tr><td><code>cap-9013c</code></td><td>ord-114's detail fetch fails TWICE — first attempt and retry both fail, order abandoned per <code class="inline">final_multi_agent_workflow.html</code> Problem 3</td><td>1,480ms</td><td>ERROR (order omitted)</td></tr>
+    <tr><td><code>cap-9954d</code></td><td>A slow run — no failures, but <code class="inline">synthesize_answer</code>'s LLM call takes far longer than usual</td><td>2,310ms</td><td>OK (slow)</td></tr>
+  </table>
+
+  <div class="callout span"><b>Interview-ready definition:</b> a trace-viewing dashboard's data shape needs exactly two levels: a lightweight per-trace SUMMARY (trace ID, total duration, overall status) cheap enough to render a whole list of at once, and a full per-trace DETAIL (the complete span tree/waterfall) that's only computed or rendered once a specific trace is selected — mirroring <code class="inline">database/read_replicas_and_dashboard_caching.html</code>'s point that a dashboard's LIST view is itself a distinct, comparatively cheap query pattern from any one trace's full detail view, and shouldn't eagerly fetch or render every trace's full detail just to populate a summary list.</div>
+</section>
+
+<!-- ============ SECTION 2: THE DASHBOARD, LIVE ============ -->
+<section id="dashboard">
+  <div class="kicker">02 — A genuine, running mini-dashboard, not a mockup</div>
+  <h2>The dashboard, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> This is a real, working dashboard. Filter to "Errors only" and watch the list actually shrink to just <code class="inline">cap-9013c</code>. Click any trace row to expand its full span waterfall in place — the same visual language <code class="inline">opentelemetry_basics.html</code> and <code class="inline">instrument_month4_agent.html</code> both used, now serving as the dashboard's own detail view.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RECENT TRACES — CAPSTONE AGENT, LAST 4 RUNS</span></div>
+    <div class="dash">
+      <div class="dash-filters">
+        <button class="chip active" data-filter="all">All traces</button>
+        <button class="chip" data-filter="error">Errors only</button>
+        <button class="chip" data-filter="slow">Slow (&gt;1500ms)</button>
+      </div>
+      <div class="trace-list" id="trace-list"></div>
+      <div class="dash-empty" id="dash-empty" style="display:none;">No traces match this filter.</div>
+    </div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the "Errors only" filter operates on the SAME status field the list view already renders — no separate lookup needed, exactly the lightweight-summary design section 1 argued for. And each trace's waterfall, once expanded, is built from that trace's own actual span data — <code class="inline">cap-9013c</code>'s waterfall genuinely shows TWO failed spans for ord-114 (first attempt AND retry, both red), a visibly different shape from <code class="inline">cap-7731f</code>'s single-failure-then-recovery shape, right there in the dashboard, with no extra explanation needed.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing cap-9954d from the list view alone, before expanding it</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's dashboard, look at <code class="inline">cap-9954d</code>'s list-view row WITHOUT expanding it. What can you already conclude, and what can you NOT yet conclude, about why it's slow?</p>
+    <details><summary>Show solution</summary><div class="solution">What you CAN conclude from the list view alone: this trace's status is
+OK (no tool_call errors, no injected-failure-retry pattern present) but
+its duration (2,310ms) is meaningfully higher than the other OK traces
+(640ms and 1,120ms) -- so something in this specific run took longer
+than normal, but nothing FAILED outright. This mirrors opentelemetry_
+basics.html's Problem 2 distinction exactly: the list view's duration
+column is closer to a per-trace METRIC-like summary (a single number),
+while the CAUSE of that number requires the trace's actual span-level
+detail.
+
+What you CANNOT yet conclude from the list view alone: WHICH span
+inside this trace is responsible for the extra time -- was it plan_task
+running long, one specific get_order_detail call being slow even though
+it eventually succeeded, or (as section 1's table actually states)
+synthesize_answer's LLM call taking unusually long. The list view's
+single duration number is, by design (section 1), too coarse to
+localize this -- you have to click into the waterfall (the detail view)
+to see each span's individual duration and find the one specific span
+that's inflated, exactly why the dashboard has a detail level at all
+rather than only ever showing the list.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Designing a filter this dashboard doesn't have yet</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's dashboard has "All," "Errors only," and "Slow" filters. Design a THIRD filter — "Recovered" (traces where a tool call failed at least once but the trace's overall status is still OK) — and explain exactly which field(s) on each trace this filter would need to check.</p>
+    <details><summary>Show solution</summary><div class="solution">A "Recovered" filter needs a field this dashboard's summary-level data
+doesn't currently expose directly: whether ANY span within the trace
+had a failed attempt, independent of whether the trace's OVERALL status
+ended up OK or ERROR. Concretely, each trace's summary record would
+need an additional boolean, something like had_retry: true/false,
+computed once (when the trace is captured/indexed) by scanning its
+spans for at least one span with tool.result="error" immediately
+followed by a sibling span with tool.is_retry=true and
+tool.result="success" -- exactly the pattern instrument_month4_agent.
+html's section 2 code produces for cap-7731f specifically.
+
+The filter itself would then be: show only traces where had_retry ===
+true AND status === "ok" -- cap-7731f matches (ord-129 failed once,
+retried, succeeded, overall status OK); cap-9013c does NOT match
+(ord-114 failed twice and was abandoned, so status is ERROR, not a
+"recovered" case); cap-8842a and cap-9954d don't match either (no
+failures at all). This is a genuinely useful filter beyond the two
+already built, because it answers a different question than "errors
+only" -- "errors only" finds traces where something is STILL broken,
+while "recovered" finds traces where the SYSTEM WORKED AS DESIGNED
+under adversity, which is itself worth being able to review (e.g. to
+confirm the retry logic is firing at a reasonable rate, not too often
+or too rarely).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why the waterfall is only rendered on click, not eagerly for all 4 traces</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">database/read_replicas_and_dashboard_caching.html</code>'s reasoning, why does this dashboard render only the SELECTED trace's waterfall, rather than pre-rendering all 4 traces' waterfalls up front so clicking feels instant?</p>
+    <details><summary>Show solution</summary><div class="solution">This mirrors read_replicas_and_dashboard_caching.html's core argument
+almost exactly, just applied to rendering cost instead of query cost:
+eagerly computing/rendering every trace's FULL detail view (every span,
+every attribute, every waterfall bar) up front is wasted work for the
+(likely large majority of) traces a viewer never actually clicks into --
+in a REAL system with potentially thousands of recent traces rather
+than this lab's 4, eagerly rendering every single one's full waterfall
+would be enormously wasteful compared to rendering only the lightweight
+list-view summary for all of them and deferring the expensive detail
+render to the moment (and ONLY the moment) a specific trace is actually
+selected.
+
+This is precisely section 1's two-level data shape argument, now
+extended to RENDERING cost specifically, not just data-fetching cost:
+the list view's per-row cost should stay cheap and roughly constant
+regardless of how many traces exist, while the detail view's
+(necessarily higher) cost is paid exactly once, exactly when needed --
+the same "defer expensive work until it's actually asked for" principle
+underlying lazy evaluation (python/iterators_and_generators.html),
+short-TTL caching (this week's own database lab), and now this
+dashboard's own click-to-expand UI, applied at yet another layer of the
+same system.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Comparing cap-7731f and cap-9013c's waterfalls as evidence of different retry-budget outcomes</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Expand both <code class="inline">cap-7731f</code> and <code class="inline">cap-9013c</code> in section 2's dashboard. Using <code class="inline">final_multi_agent_workflow.html</code>'s Problem 3 (bounded retry budget, abandon after exhausting it), explain precisely what structural difference between their two waterfalls reflects that design decision.</p>
+    <details><summary>Show solution</summary><div class="solution">cap-7731f's waterfall shows exactly ONE failed span (ord-129's first
+attempt) immediately followed by exactly ONE retry span that SUCCEEDS --
+two spans total for that order, the second one green. cap-9013c's
+waterfall shows exactly TWO failed spans for ord-114 -- the first
+attempt AND the retry, BOTH red -- with no third span attempting a
+second retry.
+
+This directly reflects final_multi_agent_workflow.html's Problem 3
+design: the retry budget is bounded at exactly one retry (attempt once,
+retry once, then stop), not unlimited retries until success. cap-9013c's
+waterfall is the concrete, visual proof that this bound is actually
+being respected in the instrumented agent's real behavior -- if the
+agent instead retried indefinitely, cap-9013c's waterfall would show
+THREE, FOUR, or more attempt spans for ord-114 before either succeeding
+or giving up, not exactly two. Seeing this bound directly IN THE TRACE
+DATA, rather than just trusting the code does what Problem 3's solution
+claimed, is exactly the value a real trace-viewing dashboard adds:
+instrument_month4_agent.html's Problem 5 extended the instrumentation
+code to handle this exact double-failure case by setting
+order.abandoned=True on the retry span rather than opening a third
+span -- and cap-9013c's waterfall, with precisely two red spans and no
+third attempt, is that same design decision made visible as a shape you
+can literally see rather than just reason about from code.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing what "small" should mean for this dashboard as trace volume grows</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">This lab's dashboard hardcodes exactly 4 sample traces. If the real capstone agent ran thousands of times per day, what would need to change about the LIST view specifically (not the detail/waterfall view) to keep the dashboard usable, and which earlier lab's reasoning directly applies?</p>
+    <details><summary>Show solution</summary><div class="solution">Two changes, both directly reusing earlier labs' reasoning rather than
+inventing anything new:
+
+(1) Pagination/a bounded time window, not "list every trace ever." This
+is exactly database/time_series_schema.html's retention/access-pattern
+argument -- nobody scrolling a trace dashboard actually wants to see
+literally every trace since the agent's first deployment; they want
+"recent" traces, bounded to something like the last N or the last hour,
+with older traces still queryable on demand (e.g. by trace_id or a date
+filter) but not eagerly loaded into the default list view.
+
+(2) The list itself should be served from a source that can handle this
+volume without competing with production load -- directly database/
+read_replicas_and_dashboard_caching.html's own subject: querying
+"recent traces, most recent first, with duration and status" is exactly
+the dashboard_aggregate query type that lab routed to a read replica,
+plus a short-TTL cache on top, since many viewers loading this SAME
+dashboard within a short window would otherwise trigger redundant
+identical "give me the last 50 traces" queries. At thousands of
+traces/day, this stops being an optional optimization and becomes load-
+bearing -- exactly the threshold read_replicas_and_dashboard_caching.
+html's section 1 opening analogy (a researcher tying up the register)
+was describing.
+
+What does NOT need to change: the detail/waterfall view's rendering
+approach (section 2's click-to-expand) stays exactly the same
+regardless of total trace volume, precisely because Problem 3
+established it only ever renders ONE trace's detail at a time --
+volume growth affects the LIST view's query cost, not the detail
+view's per-click rendering cost, which was already designed to be
+independent of how many traces exist in total.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain why a trace dashboard needs a two-level data shape rather than one flat structure, (2) design a new filter and name exactly which fields it needs, and (3) read two different traces' waterfalls and explain what specific structural difference between them reflects a real design decision from earlier in the month? This closes out Month 5 Week 2 — OpenTelemetry's raw span/trace mechanics, what an LLM-aware tool adds on top, instrumenting a real agent end to end, the CI/CD gate that uses eval results to block bad deploys, the DB design that keeps dashboards like this one fast, and finally this dashboard itself, built and running.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — trace dashboard practice.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: THE MINI TRACE DASHBOARD */
+(function(){
+  var TRACES = [
+    {
+      id: "cap-7731f",
+      name: "handle_capstone_task",
+      duration: 1120,
+      status: "ok",
+      note: "Recovered — ord-129 failed once, retried, succeeded",
+      spans: [
+        {label: "handle_capstone_task", left: 0, width: 100, dur: "1120ms", fail: false},
+        {label: "↳ plan_task", left: 0, width: 9, dur: "100ms", fail: false},
+        {label: "↳ tool_call:query_orders", left: 9, width: 12, dur: "135ms", fail: false},
+        {label: "↳ get_order_detail(ord-101)", left: 21, width: 9, dur: "100ms", fail: false},
+        {label: "↳ get_order_detail(ord-114)", left: 30, width: 9, dur: "100ms", fail: false},
+        {label: "↳ get_order_detail(ord-129)", left: 39, width: 8, dur: "90ms — FAIL", fail: true},
+        {label: "↳ get_order_detail(ord-129)_retry", left: 47, width: 9, dur: "100ms", fail: false},
+        {label: "↳ get_order_detail(ord-137)", left: 56, width: 9, dur: "100ms", fail: false},
+        {label: "↳ synthesize_answer", left: 65, width: 30, dur: "336ms", fail: false}
+      ]
+    },
+    {
+      id: "cap-8842a",
+      name: "handle_capstone_task",
+      duration: 640,
+      status: "ok",
+      note: "Clean run — all 4 orders succeeded on first attempt",
+      spans: [
+        {label: "handle_capstone_task", left: 0, width: 100, dur: "640ms", fail: false},
+        {label: "↳ plan_task", left: 0, width: 15, dur: "96ms", fail: false},
+        {label: "↳ tool_call:query_orders", left: 15, width: 18, dur: "115ms", fail: false},
+        {label: "↳ get_order_detail(ord-201)", left: 33, width: 14, dur: "90ms", fail: false},
+        {label: "↳ get_order_detail(ord-207)", left: 47, width: 14, dur: "90ms", fail: false},
+        {label: "↳ get_order_detail(ord-212)", left: 61, width: 14, dur: "90ms", fail: false},
+        {label: "↳ synthesize_answer", left: 75, width: 25, dur: "160ms", fail: false}
+      ]
+    },
+    {
+      id: "cap-9013c",
+      name: "handle_capstone_task",
+      duration: 1480,
+      status: "error",
+      note: "ord-114 failed twice — first attempt AND retry — abandoned, per Problem 3's bounded retry budget",
+      spans: [
+        {label: "handle_capstone_task", left: 0, width: 100, dur: "1480ms", fail: false},
+        {label: "↳ plan_task", left: 0, width: 7, dur: "104ms", fail: false},
+        {label: "↳ tool_call:query_orders", left: 7, width: 10, dur: "148ms", fail: false},
+        {label: "↳ get_order_detail(ord-101)", left: 17, width: 7, dur: "104ms", fail: false},
+        {label: "↳ get_order_detail(ord-114)", left: 24, width: 7, dur: "104ms — FAIL", fail: true},
+        {label: "↳ get_order_detail(ord-114)_retry", left: 31, width: 7, dur: "104ms — FAIL", fail: true},
+        {label: "↳ get_order_detail(ord-129)", left: 38, width: 7, dur: "104ms", fail: false},
+        {label: "↳ get_order_detail(ord-137)", left: 45, width: 7, dur: "104ms", fail: false},
+        {label: "↳ synthesize_answer", left: 52, width: 45, dur: "666ms", fail: false}
+      ]
+    },
+    {
+      id: "cap-9954d",
+      name: "handle_capstone_task",
+      duration: 2310,
+      status: "ok",
+      note: "Slow — no failures, but synthesize_answer's LLM call ran unusually long",
+      spans: [
+        {label: "handle_capstone_task", left: 0, width: 100, dur: "2310ms", fail: false},
+        {label: "↳ plan_task", left: 0, width: 5, dur: "108ms", fail: false},
+        {label: "↳ tool_call:query_orders", left: 5, width: 7, dur: "155ms", fail: false},
+        {label: "↳ get_order_detail(ord-301)", left: 12, width: 5, dur: "108ms", fail: false},
+        {label: "↳ get_order_detail(ord-305)", left: 17, width: 5, dur: "108ms", fail: false},
+        {label: "↳ get_order_detail(ord-309)", left: 22, width: 5, dur: "108ms", fail: false},
+        {label: "↳ synthesize_answer", left: 27, width: 73, dur: "1687ms — unusually slow", fail: false}
+      ]
+    }
+  ];
+
+  var listEl = document.getElementById("trace-list");
+  var emptyEl = document.getElementById("dash-empty");
+  var filterChips = document.querySelectorAll(".chip[data-filter]");
+  var currentFilter = "all";
+  var expandedId = null;
+
+  function fmtDur(ms){
+    return ms + "ms";
+  }
+
+  function waterfallHTML(spans){
+    var html = '<div class="waterfall">';
+    spans.forEach(function(s){
+      var barColor = s.fail ? "" : (s.left === 0 ? "var(--span-c)" : "var(--metric-c)");
+      var barClass = s.fail ? "wf-bar fail" : "wf-bar";
+      var style = s.fail
+        ? "left:" + s.left + "%; width:" + s.width + "%;"
+        : "left:" + s.left + "%; width:" + s.width + "%; background:" + barColor + "; color:#12141a;";
+      html += '<div class="wf-row"><div class="wf-label">' + s.label + '</div><div class="wf-track"><div class="' + barClass + '" style="' + style + '">' + s.dur + '</div></div></div>';
+    });
+    html += '</div>';
+    return html;
+  }
+
+  function matchesFilter(trace){
+    if(currentFilter === "all") return true;
+    if(currentFilter === "error") return trace.status === "error";
+    if(currentFilter === "slow") return trace.duration > 1500;
+    return true;
+  }
+
+  function render(){
+    var filtered = TRACES.filter(matchesFilter);
+    listEl.innerHTML = "";
+
+    if(filtered.length === 0){
+      emptyEl.style.display = "block";
+      return;
+    }
+    emptyEl.style.display = "none";
+
+    filtered.forEach(function(trace){
+      var row = document.createElement("div");
+      row.className = "trace-row" + (expandedId === trace.id ? " selected" : "");
+      row.innerHTML =
+        '<span class="tid">' + trace.id + '</span>' +
+        '<span class="tname">' + trace.name + '</span>' +
+        '<span class="tdur">' + fmtDur(trace.duration) + '</span>' +
+        '<span class="tstatus ' + (trace.status === "ok" ? "ok" : "error") + '">' + (trace.status === "ok" ? "OK" : "ERROR") + '</span>' +
+        '<span class="texpand">▸</span>';
+      row.addEventListener("click", function(){
+        expandedId = (expandedId === trace.id) ? null : trace.id;
+        render();
+      });
+      listEl.appendChild(row);
+
+      if(expandedId === trace.id){
+        var detail = document.createElement("div");
+        detail.className = "trace-detail open";
+        detail.innerHTML =
+          '<p style="margin:0 0 0.8rem; font-size:0.82rem; color:var(--ink-dim);">' + trace.note + '</p>' +
+          waterfallHTML(trace.spans);
+        listEl.appendChild(detail);
+      }
+    });
+  }
+
+  filterChips.forEach(function(chip){
+    chip.addEventListener("click", function(){
+      filterChips.forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      currentFilter = chip.dataset.filter;
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
