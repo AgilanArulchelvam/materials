@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Real-Time RAG Engine Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --ingest-c:#4fc3f7; --index-c:#f2c14e; --query-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--ingest-c); color:var(--ingest-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--index-c); color:var(--index-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--query-c); color:var(--query-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ingest{border-left-color:var(--ingest-c); background:rgba(79,195,247,0.06);}
+  .log .line.index{border-left-color:var(--index-c); background:rgba(242,193,78,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .arch{display:flex; flex-direction:column; align-items:center; gap:0.9rem; margin:1.4rem 0;}
+  .arch-row{display:flex; align-items:center; justify-content:center; gap:1.1rem; flex-wrap:wrap; width:100%;}
+  .arch-node{font-family:var(--mono); font-size:0.76rem; padding:0.75rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:120px; transition:all .35s ease;}
+  .arch-node.ingest{border-color:var(--ingest-c); color:var(--ingest-c);}
+  .arch-node.index{border-color:var(--index-c); color:var(--index-c);}
+  .arch-node.query{border-color:var(--query-c); color:var(--query-c);}
+  .arch-node.active{box-shadow:0 0 12px currentColor;}
+  .arch-node .sub{font-size:0.62rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .arch-arrow{font-family:var(--mono); color:var(--ink-dim); font-size:0.9rem;}
+  .arch-arrow.active{color:var(--index-c);}
+
+  .budget-bar{display:flex; width:100%; height:2.2rem; border-radius:8px; overflow:hidden; border:1px solid var(--rule); margin:0.8rem 0; font-family:var(--mono); font-size:0.68rem;}
+  .budget-seg{display:flex; align-items:center; justify-content:center; color:#12141a; font-weight:600; white-space:nowrap; overflow:hidden;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.ingest{border-left-color:var(--ingest-c); background:rgba(79,195,247,0.06);} .callout.ingest b{color:var(--ingest-c);}
+  .callout.index{border-left-color:var(--index-c); background:rgba(242,193,78,0.06);} .callout.index b{color:var(--index-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN MOCK · REAL-TIME RAG ENGINE</div>
+  <h1>A document lands. Seconds later, someone's query needs to be able to find it.</h1>
+  <p class="lede">Everything in <code class="inline">storage-and-rag/</code> so far — <code class="inline">hybrid_search.html</code>, <code class="inline">hnsw_indexing.html</code>, <code class="inline">reranking.html</code>, <code class="inline">context_assembly.html</code> — assumed a mostly-static corpus you index once and query many times. This lab assumes the opposite: documents are added and updated continuously, and each one must become searchable within seconds, not after a nightly rebuild. Full mock: requirements, capacity estimation, the real-time index-update problem, and how it all feeds an LLM's context window.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Ingestion — embed and index within a seconds-scale SLA</div>
+    <div class="pipe-label b">Incremental index updates — no full rebuild in the hot path</div>
+    <div class="pipe-label c">Query-time budget — retrieval + generation under one latency ceiling</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="requirements">1 · Requirements Gathering</a>
+  <a data-target="capacity">2 · Capacity Estimation</a>
+  <a data-target="architecture">3 · Architecture</a>
+  <a data-target="tradeoffs">4 · Trade-offs</a>
+  <a data-target="window">5 · The Not-Yet-Indexed Window, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: REQUIREMENTS ============ -->
+<section id="requirements">
+  <div class="kicker">01 — "Real-time" is a latency number, not a vibe. Pin it down.</div>
+  <h2>Requirements gathering</h2>
+
+  <p><strong>Start here, before any pipeline diagram.</strong> Think about the difference between a library that reprints its entire card catalog once a year (every book added since the last printing is simply unfindable until the next one) versus a library where the front desk clerk, the moment a new book is shelved, immediately writes one new card and slots it into the existing catalog drawer — no reprinting, no waiting for the next batch. A traditional RAG pipeline that rebuilds its vector index nightly is the annual reprint. A real-time RAG engine is the clerk: every new or updated document gets folded into the EXISTING searchable index within seconds, not at the next scheduled rebuild.</p>
+
+  <p>The prompt: <em>"Design a RAG engine that serves low-latency queries over a corpus with near-real-time updates."</em> This builds directly on <code class="inline">storage-and-rag/hybrid_search.html</code> (combining keyword and vector search) and <code class="inline">hnsw_indexing.html</code> (the ANN index structure itself) — both assumed here, not re-taught.</p>
+
+  <h3>Functional requirements</h3>
+  <ul>
+    <li><strong>Ingestion pipeline</strong> — new/updated documents are chunked (per <code class="inline">chunking_semantic_and_windowed.html</code> / <code class="inline">chunking_parent_child.html</code>), embedded, and made searchable.</li>
+    <li><strong>Freshness SLA</strong> — a document must be findable in query results within a bounded, small window after ingestion — this is THE defining constraint of this lab, and needs a real number.</li>
+    <li><strong>Hybrid retrieval at query time</strong> — combining keyword and vector search per <code class="inline">hybrid_search.html</code>, plus reranking per <code class="inline">reranking.html</code>.</li>
+    <li><strong>Generation integration</strong> — retrieved chunks feed an LLM's context window, per <code class="inline">context_assembly.html</code> and <code class="inline">token_budget_management.html</code>.</li>
+    <li><strong>Updates and deletes</strong> — not just new documents; an existing document's content can change or be removed, and stale content must stop being retrieved promptly.</li>
+  </ul>
+
+  <h3>Non-functional requirements — numbers to pin down out loud</h3>
+  <table class="cmp">
+    <tr><th>Question to ask</th><th>Assumption we'll use</th></tr>
+    <tr><td>Corpus size?</td><td>~20M documents, averaging ~4 chunks each after chunking → ~80M chunks</td></tr>
+    <tr><td>Ingestion rate?</td><td>~50 new/updated documents per second sustained, bursty up to 500/sec during bulk imports</td></tr>
+    <tr><td>Freshness SLA?</td><td>A new document must be retrievable within 5 seconds of ingestion (p95)</td></tr>
+    <tr><td>Query rate?</td><td>~1,200 queries/sec sustained</td></tr>
+    <tr><td>End-to-end query latency budget?</td><td>800ms p95 total, retrieval + generation combined</td></tr>
+    <tr><td>Consistency needs?</td><td>Retrieval can be eventually consistent within the 5s SLA; the generation step must never silently use a chunk known to be deleted/stale beyond that window</td></tr>
+  </table>
+
+  <div class="callout ingest"><b>Interview-ready definition:</b> requirements gathering for a real-time RAG engine means treating "real-time" as a concrete freshness SLA (here, 5 seconds p95 from ingestion to retrievable) rather than a qualitative goal, and separating that from the SEPARATE query-time latency budget (800ms p95 for retrieval + generation) — the two numbers pull on different parts of the system (index-update path vs. query path) and get conflated if not stated explicitly, which is exactly the mistake this lab's capacity estimation and architecture sections are structured to avoid.</div>
+</section>
+
+<!-- ============ SECTION 2: CAPACITY ESTIMATION ============ -->
+<section id="capacity">
+  <div class="kicker">02 — Docs/sec, index size, and where the 800ms actually goes</div>
+  <h2>Capacity estimation</h2>
+
+  <p><strong>Start here, before the math.</strong> Two separate capacity questions live in this system, and conflating them is a common mistake: how much WORK the ingestion path does per second (embedding + indexing throughput), and how much SPACE the resulting index occupies plus how the 800ms query budget gets spent. Work both chains separately.</p>
+
+  <h3>Ingestion throughput</h3>
+  <div class="code">docs_per_sec_sustained = <span class="c-num">50</span>
+docs_per_sec_burst = <span class="c-num">500</span>   <span class="c-cmt"># bulk import scenario</span>
+avg_chunks_per_doc = <span class="c-num">4</span>
+
+chunks_per_sec_sustained = docs_per_sec_sustained * avg_chunks_per_doc  <span class="c-cmt"># 200 chunks/sec</span>
+chunks_per_sec_burst = docs_per_sec_burst * avg_chunks_per_doc          <span class="c-cmt"># 2,000 chunks/sec</span>
+
+<span class="c-cmt"># Embedding is the expensive step -- a single embedding model instance
+# (batched inference) handles roughly ~300 chunks/sec at typical
+# embedding-model latency/throughput</span>
+chunks_per_embedder = <span class="c-num">300</span>
+embedders_needed_burst = chunks_per_sec_burst / chunks_per_embedder  <span class="c-cmt"># ~6.7 -> 7 embedder replicas</span>
+
+<span class="c-cmt"># Provision for BURST, not sustained -- the 5s freshness SLA (section 1)
+# must hold even during a bulk import, which is exactly when it's
+# hardest to hit</span></div>
+
+  <h3>Index size</h3>
+  <div class="code">total_chunks = <span class="c-num">80</span>_<span class="c-num">000</span>_<span class="c-num">000</span>
+embedding_dims = <span class="c-num">1536</span>   <span class="c-cmt"># typical for a mid-size embedding model</span>
+bytes_per_float = <span class="c-num">4</span>      <span class="c-cmt"># float32</span>
+
+raw_vector_bytes = total_chunks * embedding_dims * bytes_per_float
+<span class="c-cmt"># 80M * 1536 * 4 = ~492GB, just for the raw vectors, no index overhead</span>
+
+<span class="c-cmt"># HNSW (per hnsw_indexing.html) adds real overhead for the graph
+# structure itself -- roughly 1.3-1.8x the raw vector size is a
+# reasonable planning multiplier</span>
+hnsw_overhead_multiplier = <span class="c-num">1.5</span>
+total_index_bytes = raw_vector_bytes * hnsw_overhead_multiplier  <span class="c-cmt"># ~738GB</span>
+
+<span class="c-cmt"># ~740GB is squarely "does not fit comfortably in memory on one
+# machine" at a size where you want fast HNSW traversal -- this number
+# alone justifies a SHARDED vector index across multiple nodes, each
+# holding a partition of the 80M chunks in memory</span></div>
+
+  <h3>Query latency budget breakdown (800ms p95 total)</h3>
+  <div class="budget-bar">
+    <div class="budget-seg" style="background:var(--ingest-c); flex:12;">Query embed 100ms</div>
+    <div class="budget-seg" style="background:var(--index-c); flex:20;">Hybrid retrieval 150ms</div>
+    <div class="budget-seg" style="background:var(--query-c); flex:10;">Rerank 80ms</div>
+    <div class="budget-seg" style="background:var(--accent); flex:58; color:#12141a;">LLM generation 470ms</div>
+  </div>
+  <p style="font-size:0.85rem; color:var(--ink-dim);">Query embedding (~100ms) → hybrid vector+keyword retrieval across sharded index (~150ms) → cross-encoder reranking of top-K per <code class="inline">reranking.html</code> (~80ms) → LLM generation over assembled context (~470ms, the dominant cost — matching <code class="inline">rag_qa_system_design.html</code>'s finding that generation, not retrieval, usually dominates end-to-end latency).</p>
+
+  <div class="callout index"><b>Interview-ready definition:</b> capacity estimation here produces three numbers that each justify a specific design decision: burst embedding throughput (~2,000 chunks/sec, requiring ~7 embedder replicas — justifying horizontal scaling of the embedding step specifically for burst, not average, load), index size (~740GB, too large for one machine's memory at HNSW's overhead multiplier — justifying a sharded vector index), and the 800ms latency budget breakdown (generation dominates at ~470ms, echoing <code class="inline">rag_qa_system_design.html</code> — meaning retrieval-side optimizations have a hard ceiling on how much they can move the total).</div>
+</section>
+
+<!-- ============ SECTION 3: ARCHITECTURE ============ -->
+<section id="architecture">
+  <div class="kicker">03 — Two paths, two different consistency requirements, one shared index</div>
+  <h2>Architecture</h2>
+
+  <p><strong>Start here, before the diagram.</strong> The whole design splits into two paths that meet at the index: an INGESTION path (chunk → embed → write into the index, optimized for the 5-second freshness SLA) and a QUERY path (embed query → retrieve → rerank → generate, optimized for the 800ms latency budget). The hardest problem is what happens to a query that arrives while a relevant document is mid-ingestion — section 5 makes this concrete.</p>
+
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-node ingest" id="node-doc">New Doc<div class="sub">chunk + embed</div></div>
+      <div class="arch-arrow" id="arrow-1">→</div>
+      <div class="arch-node index" id="node-writer">Incremental Writer<div class="sub">insert into live shard</div></div>
+      <div class="arch-arrow" id="arrow-2">→</div>
+      <div class="arch-node index" id="node-shard">Sharded HNSW Index<div class="sub">~740GB, N shards</div></div>
+    </div>
+    <div class="arch-row" style="margin-top:0.6rem;">
+      <div class="arch-node query" id="node-q">Query<div class="sub">embed + hybrid search</div></div>
+      <div class="arch-arrow" id="arrow-3">→</div>
+      <div class="arch-node query" id="node-rerank">Rerank<div class="sub">cross-encoder top-K</div></div>
+      <div class="arch-arrow" id="arrow-4">→</div>
+      <div class="arch-node query" id="node-gen">LLM Generation<div class="sub">context-budgeted</div></div>
+    </div>
+  </div>
+
+  <h3>1 — Incremental index updates, not periodic rebuild</h3>
+  <p>HNSW (per <code class="inline">hnsw_indexing.html</code>) supports incremental insertion natively — new vectors can be added to an existing graph without rebuilding it from scratch, unlike some ANN structures (e.g. certain IVF configurations per <code class="inline">ivf_indexing.html</code>) that are cheaper to query but more expensive to update incrementally. This is the central reason HNSW, not IVF, is the right index choice for THIS specific system: the 5-second freshness SLA is structurally incompatible with any index strategy whose update path is "periodically rebuild the whole thing." Each new chunk is embedded and inserted directly into its shard's live HNSW graph, typically within a second or two of ingestion — comfortably inside the 5-second budget.</p>
+
+  <h3>2 — The "not yet indexed" window</h3>
+  <p>Between a document being ingested and its chunks finishing embedding + insertion, there IS a window — bounded by the 5-second SLA — where a query that should retrieve it won't. This is not a bug to eliminate; it's an explicit, bounded consistency trade-off (eventual consistency, per section 1's non-functional requirements) that every real-time system with an indexing step has. The design goal isn't "never let this window exist" — it's "keep the window short and bounded, and make sure nothing downstream assumes zero latency here."</p>
+
+  <h3>3 — Deletes and updates: tombstone, don't rewrite in place</h3>
+  <p>An update is modeled as a delete of the old chunks plus an insert of new ones, not an in-place vector mutation — HNSW graphs are not efficiently mutated in place once built. Deletes are handled via TOMBSTONING (marking a chunk ID as deleted in a fast-lookup side structure) rather than immediately removing it from the graph, because removing a node from an HNSW graph while preserving its navigability properties is expensive; the query path checks the tombstone set and filters deleted results out post-retrieval, with a periodic background compaction pass that actually rebuilds affected graph regions to reclaim space.</p>
+
+  <h3>4 — Context assembly under the generation budget</h3>
+  <p>Retrieved, reranked chunks feed the LLM exactly per <code class="inline">context_assembly.html</code> and <code class="inline">token_budget_management.html</code>: a fixed token budget for context (leaving room for the system prompt, conversation history, and the model's own output), with reranking (section 2's 80ms step) existing specifically to make sure the chunks that DO fit in that budget are the most relevant ones, not just the top-K by raw vector similarity.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> the architecture is two paths sharing one index: an ingestion path that embeds and incrementally inserts each new chunk directly into a sharded HNSW graph (chosen specifically because HNSW supports true incremental updates, unlike rebuild-oriented index structures), and a query path that embeds the query, retrieves hybrid results, reranks, and generates within the 800ms budget. Deletes/updates use tombstoning with background compaction rather than expensive in-place graph mutation, and the "not yet indexed" window between ingestion and searchability is an explicit, bounded eventual-consistency trade-off — not an error condition.</div>
+</section>
+
+<!-- ============ SECTION 4: TRADE-OFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">04 — What each real-time design choice actually costs</div>
+  <h2>Trade-offs</h2>
+
+  <table class="cmp">
+    <tr><th>Decision</th><th>What we chose</th><th>What it costs</th></tr>
+    <tr><td><strong>Incremental HNSW updates</strong></td><td>Insert directly into the live graph, no rebuild</td><td>Graph quality degrades slightly over many incremental insertions without periodic optimization (a lightly stale HNSW graph has marginally worse recall than a freshly-built one) — mitigated by section 3's periodic background compaction pass, at the cost of periodic background CPU/memory overhead</td></tr>
+    <tr><td><strong>vs. periodic full rebuild</strong></td><td>(rejected as the primary path) rebuild the entire index on a fixed schedule</td><td>Would trivially violate the 5-second freshness SLA for any document ingested between rebuilds — the entire premise of "real-time" — though a periodic rebuild is still useful as a background QUALITY pass, not as the primary update mechanism</td></tr>
+    <tr><td><strong>Tombstoning deletes</strong></td><td>Mark-and-filter, with background compaction</td><td>A deleted chunk technically still occupies graph space and gets traversed (though filtered from results) until compaction runs — real, if small, wasted work per query on recently-deleted content, in exchange for avoiding expensive synchronous graph surgery on every delete</td></tr>
+    <tr><td><strong>Sharding the index</strong></td><td>~740GB split across N shards, query fans out and merges</td><td>Query-time fan-out (querying every shard, or a relevant subset) adds coordination overhead and a "slowest shard" tail-latency risk — directly eating into the 150ms retrieval slice of section 2's latency budget, and getting worse as shard count grows</td></tr>
+    <tr><td><strong>Eventual consistency for the freshness window</strong></td><td>A document may be briefly unfindable for up to 5 seconds after ingestion</td><td>Genuinely wrong answers are possible in that exact window (a user asks about something just uploaded and gets a "no information found" response) — acceptable per the non-functional requirement, but worth naming explicitly as a real, user-visible limitation, not a hidden one</td></tr>
+  </table>
+
+  <div class="callout warn"><b>What a strong interview answer sounds like:</b> not "I'll use HNSW because it's fast" — but "I'll use HNSW specifically because it supports true incremental insertion, which IVF-style indexes are comparatively worse at, and that incremental-update property is the load-bearing requirement here given the 5-second freshness SLA from section 1 — if the freshness requirement were instead 'nightly is fine,' IVF's better query-time performance might actually win that trade-off instead." Defending a choice against the SPECIFIC requirement that drove it, not a generic property, is what distinguishes a real design decision from a memorized fact.</div>
+</section>
+
+<!-- ============ SECTION 5: THE NOT-YET-INDEXED WINDOW LIVE ============ -->
+<section id="window">
+  <div class="kicker">05 — Watching a document cross from "ingested" to "retrievable"</div>
+  <h2>The not-yet-indexed window, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> A document is uploaded, then a query arrives almost immediately asking about its content. Watch exactly when the document becomes retrievable relative to when the query runs — and what the query sees if it arrives inside that window versus after it.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>INGESTION VS. QUERY TIMING</span>
+      <div><button class="btn secondary" id="win-reset">Reset</button></div>
+    </div>
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-node ingest" id="node-upload">Document Uploaded<div class="sub" id="sub-upload">t = 0.0s</div></div>
+        <div class="arch-node index" id="node-embed">Embedding + Insert<div class="sub" id="sub-embed">pending</div></div>
+        <div class="arch-node query" id="node-live">Retrievable<div class="sub" id="sub-live">not yet</div></div>
+      </div>
+    </div>
+    <button class="btn" id="win-early">Run query at t=1.2s (inside window) ▸</button>
+    <button class="btn secondary" id="win-late">Run query at t=4.0s (after indexed) ▸</button>
+    <div class="log" id="win-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the query at t=1.2s and the query at t=4.0s ask the EXACT SAME QUESTION about the exact same document — the only difference is timing relative to the (bounded, SLA-covered) indexing window. This is what section 4's "eventual consistency is a real, user-visible limitation" point looks like concretely: it's not a rare edge case, it's a predictable, bounded window that any query landing inside it will experience the same way.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now defend the design yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. Treat these as interviewer follow-ups.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Justifying HNSW over IVF for this specific system</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An interviewer asks: "IVF indexes are often faster to query than HNSW at similar recall — why didn't you choose IVF here?" Answer using section 1's specific requirements, not a general index comparison.</p>
+    <details><summary>Show solution</summary><div class="solution">The answer has to be anchored to section 1's 5-second freshness SLA,
+not a generic "HNSW vs IVF" comparison, because query speed alone isn't
+the deciding factor for THIS system. IVF indexes partition the vector
+space into clusters (per ivf_indexing.html) and are often faster to
+query, but adding new vectors well after the clusters were built can
+degrade cluster quality over time, and IVF implementations often lean
+more heavily on periodic re-clustering/rebuilding to maintain good
+recall as the corpus evolves -- exactly the "periodic full rebuild"
+option section 4 explicitly rejected as incompatible with a 5-second
+freshness requirement.
+
+HNSW, by contrast, supports genuinely incremental graph insertion as
+its native update model (section 3), which is what lets a new chunk go
+from "ingested" to "in the live, queryable graph" in roughly a second or
+two -- comfortably inside the SLA -- without needing to wait for or
+trigger any full-index operation. If section 1's freshness SLA were
+instead "nightly rebuild is acceptable" (a genuinely different set of
+requirements), IVF's query-time speed advantage would become the
+dominant consideration and could well win that trade-off instead. The
+correct interview answer names the SPECIFIC requirement (freshness SLA)
+that made incremental-update support the deciding property, rather than
+asserting HNSW is unconditionally better.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Recomputing the burst embedder count under a tighter freshness SLA</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Product now wants a 2-second freshness SLA instead of 5 seconds, with the same burst rate (500 docs/sec, 2,000 chunks/sec) and the same per-embedder throughput (300 chunks/sec). Does the embedder replica count from section 2 need to change? What else in the pipeline might need to change that pure throughput math wouldn't reveal?</p>
+    <details><summary>Show solution</summary><div class="solution">The raw REPLICA COUNT for embedding throughput doesn't actually need to
+change from section 2's ~7 -- that number was sized to keep up with
+2,000 chunks/sec of SUSTAINED burst arrival rate, which is a throughput
+requirement independent of the SLA's time window. 7 embedders handling
+2,000 chunks/sec keeps the QUEUE of pending chunks from growing
+unboundedly regardless of whether the freshness target is 2s or 5s --
+throughput determines whether you keep up with arrival rate at all, not
+how fast an individual chunk moves through the pipeline once accepted.
+
+What DOES need scrutiny is the total pipeline LATENCY per chunk end-to-
+end -- embedding time, network hops, HNSW insertion time, and any
+queueing delay if the embedders are momentarily saturated. At 5 seconds
+of budget, a chunk sitting in a queue for 1-2 seconds during a burst
+before an embedder picks it up is tolerable. At a 2-second budget,
+that same queueing delay alone could consume the entire SLA, even with
+throughput nominally "keeping up" on average -- this is the classic gap
+between AVERAGE throughput sufficiency and TAIL latency sufficiency
+that raw throughput math doesn't surface. The real fix under a tighter
+SLA is provisioning embedders with MORE headroom above the sustained
+burst rate specifically to keep queueing delay low (e.g. sizing for
+1.5x the 2,000 chunks/sec burst rather than exactly 1x), and possibly
+prioritizing embedding requests by arrival order with a tighter timeout
+alert if any chunk's queue wait threatens the 2-second budget on its
+own -- exactly the kind of p95/tail-focused reasoning
+distributed_telemetry_ingester_design.html's ingestion tier sizing used
+for burst headroom, now applied to a latency SLA instead of a pure
+throughput target.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Handling a query that arrives during the "not yet indexed" window for a CRITICAL update</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 4 accepts the not-yet-indexed window as a bounded, tolerable trade-off for general documents. Suppose one specific use case is "a user just corrected a factual error in a document, and a query asking about that exact fact must never return the STALE (pre-correction) answer, even briefly." Does section 3's design as-is satisfy this, and if not, what would you add?</p>
+    <details><summary>Show solution</summary><div class="solution">Section 3's design as-is does NOT satisfy this stronger requirement,
+and it's important to recognize why: the "not yet indexed" window
+(section 1's eventual consistency) bounds how long it takes for a
+document to become retrievable, but it says nothing about actively
+INVALIDATING the OLD, now-incorrect version during that same window.
+Under section 3's tombstone-based update model, the old chunks get
+tombstoned and new chunks get inserted -- but if tombstoning itself
+isn't instantaneous and synchronous with the update request, a query
+landing in the gap could retrieve the STALE chunk (not yet tombstoned)
+instead of just failing to find the NEW one, which is a meaningfully
+worse failure mode than section 4 explicitly signed up for ("briefly
+unfindable" is very different from "confidently wrong").
+
+The fix: this specific requirement needs the DELETE half of an update
+to be synchronous and immediate (tombstone the old chunk ID in the
+fast-lookup side structure BEFORE returning success on the update
+request, blocking briefly rather than being eventually consistent),
+while the INSERT half of the new content can remain on the normal
+eventual-consistency path from section 1. This is a legitimate,
+narrower SLA than the system's general one -- "never serve known-stale
+content" is a stronger, synchronous guarantee than "eventually become
+findable," and the two don't have to move at the same speed. A good
+interview answer recognizes that a single system can reasonably offer
+DIFFERENT consistency guarantees for different operations (tombstone-on-
+delete: synchronous; insert-on-create: eventually consistent within 5s)
+rather than assuming the whole pipeline must use one uniform
+consistency model everywhere.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reconciling sharding with the 150ms retrieval slice of the latency budget</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's ~740GB index needs sharding, and section 4 flagged that shard fan-out risks eating into the 150ms retrieval budget as shard count grows. If the corpus later grows 5x (to ~3.7TB, needing proportionally more shards), what specifically breaks first, and what's the mitigation?</p>
+    <details><summary>Show solution</summary><div class="solution">What breaks first is tail latency at the retrieval step specifically,
+via the classic "slowest shard" problem: a query that fans out to
+EVERY shard and waits for all of them to respond is only as fast as its
+SLOWEST responding shard, and as shard count grows (5x the data, likely
+somewhere near 5x the shard count to keep each shard's in-memory size
+manageable), the probability that AT LEAST ONE shard is having a
+momentarily slow moment (GC pause, a noisy neighbor process, a cold
+cache) on any given query goes UP, not down -- more shards queried per
+request means more chances for one of them to be the tail. This is a
+structural property of fan-out-and-wait-for-all designs, not something
+that improves just by adding more hardware per shard.
+
+The mitigation used in practice: query only a RELEVANT SUBSET of
+shards rather than all of them when possible (e.g. if shards are
+partitioned along a dimension correlated with the query, like recency
+or document category, a query can sometimes skip shards known to be
+irrelevant) -- but the more general and reliable fix is setting a
+per-shard timeout shorter than the overall 150ms slice and proceeding
+with whatever shards HAVE responded once that sub-timeout is hit
+(a "partial fan-out" tolerance), accepting slightly reduced recall on
+the rare query that hits a genuinely slow shard, in exchange for a hard
+ceiling on retrieval latency regardless of shard count. This is the
+same fundamental trade-off structure as the availability-vs-consistency
+choices elsewhere in this lab: 100% correctness (wait for every shard,
+always) is being deliberately traded for a bounded latency guarantee,
+exactly the same kind of explicit, defensible trade-off section 4 asked
+for rather than an unstated assumption.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) state the freshness SLA and the query latency budget as two SEPARATE numbers and explain why conflating them is a mistake, (2) explain why HNSW's incremental-update property specifically, not just "it's a good ANN index," is what makes it fit this system, and (3) explain what the not-yet-indexed window is and why it's a deliberate trade-off, not a bug? <code class="inline">dsa/combined_timed_mock_dsa_schema_system_design.html</code> is next — a timed context-switching mock across DSA, schema design, and system design together.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — real-time RAG engine design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 5: NOT-YET-INDEXED WINDOW DEMO */
+(function(){
+  var earlyBtn = document.getElementById("win-early");
+  var lateBtn = document.getElementById("win-late");
+  var resetBtn = document.getElementById("win-reset");
+  var logEl = document.getElementById("win-log");
+  var subUpload = document.getElementById("sub-upload");
+  var subEmbed = document.getElementById("sub-embed");
+  var subLive = document.getElementById("sub-live");
+  var nodeLive = document.getElementById("node-live");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetAll(){
+    subUpload.textContent = "t = 0.0s";
+    subEmbed.textContent = "pending";
+    subLive.textContent = "not yet";
+    nodeLive.classList.remove("active");
+    nodeLive.style.borderColor = ""; nodeLive.style.color = "";
+    logEl.innerHTML = "";
+  }
+
+  async function runTimeline(queryAtSeconds){
+    earlyBtn.disabled = true; lateBtn.disabled = true;
+    resetAll();
+
+    log("<b>t=0.0s</b> — Document uploaded. Chunking begins immediately.", "ingest");
+    await wait(400);
+
+    log("<b>t=0.3s</b> — Chunks sent to the embedding tier (section 2's ~7 replicas handling burst load).", "ingest");
+    subEmbed.textContent = "embedding...";
+    await wait(400);
+
+    if (queryAtSeconds < 3.5) {
+      log("<b>t=" + queryAtSeconds.toFixed(1) + "s</b> — Query arrives asking about this document’s content.", "index");
+      await wait(500);
+      log("<b>Result: NOT FOUND.</b> Indexing is still in progress (typically completes ~2-3s after upload) — this query lands inside the bounded \"not yet indexed\" window section 1 explicitly budgeted for (5s p95 SLA). The document exists, but the HNSW insert hasn’t landed yet.", "bad");
+    } else {
+      log("<b>t=2.8s</b> — Embedding and HNSW insertion complete. Document is now live in its shard.", "index");
+      subEmbed.textContent = "inserted";
+      subLive.textContent = "retrievable (t=2.8s)";
+      nodeLive.classList.add("active");
+      nodeLive.style.borderColor = "var(--query-c)"; nodeLive.style.color = "var(--query-c)";
+      await wait(500);
+      log("<b>t=" + queryAtSeconds.toFixed(1) + "s</b> — Query arrives asking about this document’s content.", "index");
+      await wait(500);
+      log("<b>Result: FOUND.</b> The query arrives after indexing completed — well inside the 5s SLA — and retrieves the document normally.");
+    }
+
+    earlyBtn.disabled = false; lateBtn.disabled = false;
+  }
+
+  earlyBtn.addEventListener("click", function(){ runTimeline(1.2); });
+  lateBtn.addEventListener("click", function(){ runTimeline(4.0); });
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

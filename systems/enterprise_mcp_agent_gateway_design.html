@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Enterprise MCP Agent Gateway Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --route-c:#4fc3f7; --auth-c:#f2c14e; --scale-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--route-c); color:var(--route-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--auth-c); color:var(--auth-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--scale-c); color:var(--scale-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.route{border-left-color:var(--route-c); background:rgba(79,195,247,0.06);}
+  .log .line.auth{border-left-color:var(--auth-c); background:rgba(242,193,78,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .arch{display:flex; flex-direction:column; align-items:center; gap:0.9rem; margin:1.4rem 0;}
+  .arch-row{display:flex; align-items:center; justify-content:center; gap:1.2rem; flex-wrap:wrap; width:100%;}
+  .arch-node{font-family:var(--mono); font-size:0.76rem; padding:0.75rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:130px; transition:all .35s ease;}
+  .arch-node.agent{border-color:var(--route-c); color:var(--route-c);}
+  .arch-node.gw{border-color:var(--auth-c); color:var(--auth-c);}
+  .arch-node.mcp{border-color:var(--scale-c); color:var(--scale-c);}
+  .arch-node.active{box-shadow:0 0 12px currentColor;}
+  .arch-node .sub{font-size:0.62rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .arch-arrow{font-family:var(--mono); color:var(--ink-dim); font-size:0.9rem;}
+  .arch-arrow.active{color:var(--auth-c);}
+
+  .calc{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .calc-row{display:flex; align-items:center; gap:0.8rem; margin:0.6rem 0; flex-wrap:wrap; font-family:var(--mono); font-size:0.82rem;}
+  .calc-row label{min-width:220px; color:var(--ink-dim);}
+  .calc-row input[type="range"]{flex:1; min-width:140px;}
+  .calc-row .val{color:var(--accent); font-weight:600; min-width:70px; text-align:right;}
+  .calc-out{margin-top:1rem; padding-top:1rem; border-top:1px dashed var(--rule); font-family:var(--mono); font-size:0.85rem;}
+  .calc-out div{margin:0.35rem 0; color:#cdd0d8;}
+  .calc-out b{color:var(--scale-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.route{border-left-color:var(--route-c); background:rgba(79,195,247,0.06);} .callout.route b{color:var(--route-c);}
+  .callout.auth{border-left-color:var(--auth-c); background:rgba(242,193,78,0.06);} .callout.auth b{color:var(--auth-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN MOCK · ENTERPRISE MCP AGENT GATEWAY</div>
+  <h1>One front door. Two hundred tools. A design doc, not a diagram.</h1>
+  <p class="lede"><code class="inline">mcp-and-agents/mcp_gateway_design.html</code> already built the core idea — one address, a routing table, centralized auth. This lab treats that as solved and runs the FULL enterprise version as a real interview mock: dozens of agent teams, hundreds of tools across dozens of MCP servers, real numbers for requests/sec and payload sizes, a tool schema registry, audit logging for compliance, and a design that survives a downstream tool going slow or failing outright. Clarify, estimate, design, defend — in that order.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Requirements first — functional and non-functional, out loud</div>
+    <div class="pipe-label b">Capacity estimation — real numbers, shown step by step</div>
+    <div class="pipe-label c">Trade-offs defended, not asserted</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="requirements">1 · Requirements Gathering</a>
+  <a data-target="capacity">2 · Capacity Estimation</a>
+  <a data-target="architecture">3 · Architecture</a>
+  <a data-target="tradeoffs">4 · Trade-offs</a>
+  <a data-target="failure">5 · Failure Handling, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: REQUIREMENTS ============ -->
+<section id="requirements">
+  <div class="kicker">01 — Never start drawing boxes before you know what you're solving for</div>
+  <h2>Requirements gathering</h2>
+
+  <p><strong>Start here, before any box on a whiteboard.</strong> Think about the difference between a hotel's single front desk and a hotel with one unmarked door per department (housekeeping, room service, maintenance, billing) that a guest has to somehow discover on their own. The front desk works because ONE trained person (or system) knows every department, can verify who you are once, and routes your request without you needing fifty different phone numbers memorized. That's the pitch for a gateway — but a real interview never starts by drawing the front desk. It starts by asking: how many guests, how many departments, what happens if housekeeping doesn't pick up?</p>
+
+  <p>Here the prompt is: <em>"Design a gateway that fronts multiple MCP servers/tools for an enterprise multi-agent system."</em> Before touching capacity numbers, pin down what "design a gateway" is actually asking for.</p>
+
+  <h3>Functional requirements</h3>
+  <ul>
+    <li><strong>Routing</strong> — every incoming <code class="inline">tools/call</code> request (per <code class="inline">mcp-and-agents/mcp_fundamentals_jsonrpc.html</code>'s JSON-RPC shape) reaches the correct downstream MCP server, keyed by tool name.</li>
+    <li><strong>Auth/authz per tool</strong> — not just "is this caller authenticated," but "is THIS specific agent, on behalf of THIS specific user, allowed to call THIS specific tool" — a much finer grain than the single-tenant auth <code class="inline">mcp_gateway_design.html</code> assumed.</li>
+    <li><strong>Rate limiting</strong> — per agent, per team, and possibly per downstream tool (a slow tool needs its own ceiling independent of how much headroom the gateway itself has), reusing <code class="inline">backend/rate_limiter_design.html</code>'s token-bucket design rather than reinventing it.</li>
+    <li><strong>Tool schema registry/discovery</strong> — agents need to discover which tools exist and their JSON schemas (per <code class="inline">mcp-and-agents/json_schema_tool_specs.html</code>) without every MCP server being queried directly on every agent startup.</li>
+    <li><strong>Audit logging</strong> — enterprise-grade: every tool call, who invoked it, on whose behalf, what arguments, what came back — for compliance review, not just debugging.</li>
+    <li><strong>Graceful degradation</strong> — a single slow or dead downstream MCP server must not take down calls to every OTHER tool.</li>
+  </ul>
+
+  <h3>Non-functional requirements — the numbers an interviewer expects you to ask for</h3>
+  <table class="cmp">
+    <tr><th>Question to ask</th><th>Assumption we'll use (state this out loud in a real interview)</th></tr>
+    <tr><td>How many agents/teams?</td><td>~2,000 internal agents (across ~150 teams) actively calling tools</td></tr>
+    <tr><td>How many distinct tools/MCP servers?</td><td>~400 tools spread across ~60 MCP servers</td></tr>
+    <tr><td>Peak call volume?</td><td>~150 tool calls/sec sustained, 5x burst at peak (~750/sec)</td></tr>
+    <tr><td>Latency budget?</td><td>Gateway overhead must stay under 15ms p99 on top of whatever the downstream tool itself takes</td></tr>
+    <tr><td>Consistency needs?</td><td>Routing table and permissions can be eventually consistent (seconds of staleness OK); audit logs must never be silently dropped</td></tr>
+    <tr><td>Availability target?</td><td>99.95% — the gateway is now a hard dependency for every agent in the company</td></tr>
+  </table>
+
+  <div class="callout route"><b>Interview-ready definition:</b> requirements gathering for an enterprise MCP gateway means separating what it must DO (route by tool name, authorize per-tool per-caller, rate-limit, expose a schema registry, audit-log every call, and degrade gracefully when one downstream tool misbehaves) from how it must PERFORM under load (call volume, latency budget, consistency tolerance, availability target) — and getting the interviewer to confirm or correct concrete numbers for the latter BEFORE any capacity estimation, since every number in section 2 is derived directly from these assumptions.</div>
+</section>
+
+<!-- ============ SECTION 2: CAPACITY ESTIMATION ============ -->
+<section id="capacity">
+  <div class="kicker">02 — Every number below is derived, not guessed</div>
+  <h2>Capacity estimation</h2>
+
+  <p><strong>Start here, before the math.</strong> Capacity estimation is just Fermi estimation with an engineering purpose: start from a small number of assumptions you can defend (users, request rate, payload size), and multiply your way to storage and throughput numbers that tell you whether you're building something that fits on one machine or needs to be distributed from day one. The value isn't precision — it's knowing whether the answer is "megabytes" or "terabytes," because that decides the entire architecture.</p>
+
+  <h3>Throughput</h3>
+  <div class="code"><span class="c-cmt"># From requirements: ~150 tool calls/sec sustained, 5x burst = 750/sec peak
+# Gateway must be provisioned for PEAK, not average -- this is the
+# single most common capacity-estimation mistake to call out loud</span>
+
+peak_qps = <span class="c-num">750</span>  <span class="c-cmt"># calls/sec at burst</span>
+
+<span class="c-cmt"># Each gateway instance, doing routing + authz + rate-limit check
+# (no heavy compute, mostly a hash lookup + a permission check),
+# can reasonably sustain ~2,000 req/sec before p99 latency degrades
+# -- this number itself would come from a load test in practice,
+# but is a defensible assumption to state and move on from</span>
+qps_per_instance = <span class="c-num">2000</span>
+
+instances_needed = peak_qps / qps_per_instance  <span class="c-cmt"># = 0.375</span>
+<span class="c-cmt"># round up AND add headroom for one instance failing (N+1, or N+2
+# for a fleet this small) -- 3 instances minimum, not 1</span></div>
+
+  <div class="callout"><b>Read the number, don't just compute it:</b> 750 QPS needs less than one instance mathematically — but the gateway is now a single point of failure for every agent in the company (non-functional requirement: 99.95% availability), so the REAL instance count is driven by fault tolerance, not raw throughput. Three small instances behind a load balancer beats one large one purely because a single-instance gateway violates the availability requirement regardless of how much spare capacity it has.</div>
+
+  <h3>Payload size and bandwidth</h3>
+  <div class="code"><span class="c-cmt"># Typical tool call: JSON-RPC request + response
+# request: tool name, arguments (avg ~2KB for a moderately complex
+# tool call -- e.g. a search query with filters)
+# response: tool result (avg ~8KB -- e.g. a handful of DB rows or
+# search results; some tools return much more, so this is a median,
+# not a max)</span>
+avg_request_bytes  = <span class="c-num">2</span>_<span class="c-num">000</span>
+avg_response_bytes = <span class="c-num">8</span>_<span class="c-num">000</span>
+avg_roundtrip_bytes = avg_request_bytes + avg_response_bytes  <span class="c-cmt"># 10KB</span>
+
+peak_bandwidth = peak_qps * avg_roundtrip_bytes  <span class="c-cmt"># 750 * 10KB = 7.5MB/sec = 60Mbps</span>
+<span class="c-cmt"># trivial for a modern NIC -- bandwidth is NOT the bottleneck here.
+# this is worth stating explicitly: it tells the interviewer you know
+# WHERE the actual constraint is (connection count / CPU for authz
+# checks / downstream latency), not just reciting a formula</span></div>
+
+  <h3>Audit log storage</h3>
+  <div class="code"><span class="c-cmt"># Every tool call gets ONE audit record: caller, tool, args (or a hash
+# of args if they're large/sensitive), result status, timestamp, latency
+# ~500 bytes per audit record, generously</span>
+avg_audit_record_bytes = <span class="c-num">500</span>
+
+calls_per_day = <span class="c-num">150</span> * <span class="c-num">86400</span>  <span class="c-cmt"># sustained qps * seconds/day = ~13M calls/day</span>
+audit_bytes_per_day = calls_per_day * avg_audit_record_bytes  <span class="c-cmt"># ~6.5GB/day</span>
+audit_bytes_per_year = audit_bytes_per_day * <span class="c-num">365</span>  <span class="c-cmt"># ~2.4TB/year</span>
+
+<span class="c-cmt"># compliance retention is often 1-7 years for enterprise audit trails --
+# at 7 years that's ~17TB. This is squarely "needs a columnar/log-
+# oriented store with tiered storage (hot recent data, cold archived
+# data)," not "fits in the gateway's own Postgres instance."</span></div>
+
+  <h3>Tool schema registry size</h3>
+  <div class="code">num_tools = <span class="c-num">400</span>
+avg_schema_bytes = <span class="c-num">3</span>_<span class="c-num">000</span>  <span class="c-cmt"># a JSON schema per json_schema_tool_specs.html, typically a few KB</span>
+registry_size = num_tools * avg_schema_bytes  <span class="c-cmt"># 1.2MB total</span>
+
+<span class="c-cmt"># TINY. This tells us the entire schema registry fits comfortably
+# in memory on every gateway instance -- caching it locally (refreshed
+# on a TTL or push-invalidated on change) is not just possible, it's
+# the obviously correct design. Section 3 builds on exactly this.</span></div>
+
+  <div class="callout auth"><b>Interview-ready definition:</b> capacity estimation here means deriving five numbers from the requirements: peak QPS (750, driven by burst not average), instance count (driven by availability, not raw throughput, once you compute that peak QPS is trivially low), bandwidth (60Mbps — cheap, not the bottleneck), audit log growth (~2.4TB/year, driving a columnar/tiered storage choice), and schema registry size (~1.2MB — small enough to cache fully in memory on every instance). The exercise isn't the arithmetic — it's using each number to make or justify a concrete design decision in section 3.</div>
+</section>
+
+<!-- ============ SECTION 3: ARCHITECTURE ============ -->
+<section id="architecture">
+  <div class="kicker">03 — What the numbers above actually buy you</div>
+  <h2>Architecture</h2>
+
+  <p><strong>Start here, before the diagram.</strong> An enterprise gateway is really three small, mostly-independent decisions stacked on top of <code class="inline">mcp_gateway_design.html</code>'s routing table: (1) where auth/authz checks happen relative to routing, (2) how the schema registry stays fresh without hammering every MCP server on every agent startup, and (3) how a slow downstream tool is prevented from starving requests meant for a different, healthy tool.</p>
+
+  <h3>Request path</h3>
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-node agent" id="node-agent">Agent<div class="sub">tools/call</div></div>
+      <div class="arch-arrow" id="arrow-1">→</div>
+      <div class="arch-node gw" id="node-lb">LB<div class="sub">N+2 gateway instances</div></div>
+      <div class="arch-arrow" id="arrow-2">→</div>
+      <div class="arch-node gw" id="node-gw">Gateway<div class="sub">authz + route + rate-limit</div></div>
+      <div class="arch-arrow" id="arrow-3">→</div>
+      <div class="arch-node mcp" id="node-mcp">MCP Server<div class="sub">1 of 60</div></div>
+    </div>
+    <div class="arch-row" style="margin-top:0.6rem;">
+      <div class="arch-node auth" id="node-registry" style="border-color:var(--accent); color:var(--accent);">Schema Registry<div class="sub">in-memory cache, TTL-refreshed</div></div>
+      <div class="arch-node auth" id="node-audit" style="border-color:var(--auth-c); color:var(--auth-c);">Audit Log<div class="sub">append-only, async write</div></div>
+    </div>
+  </div>
+
+  <h3>1 — Auth/authz at the gateway, not per MCP server</h3>
+  <p>Every downstream MCP server could re-implement its own auth check, but that means 60 teams independently maintaining 60 authorization implementations — a compliance and consistency nightmare. Instead, the gateway is the SINGLE enforcement point: it authenticates the calling agent (service identity, not end-user session, since agents call on behalf of users but authenticate as themselves), then checks a per-tool permission grant (agent X may call tool Y) against a permissions store, BEFORE the request is ever routed downstream. Downstream MCP servers trust the gateway's signed, short-lived token rather than re-checking permissions themselves — the same "verify once at the edge, trust downstream" pattern <code class="inline">backend/auth_jwt_oauth2.html</code> established for JWTs, now applied at tool-call granularity instead of per-HTTP-request granularity.</p>
+
+  <h3>2 — Schema registry: cached, not queried live</h3>
+  <p>Section 2's math showed the full registry is ~1.2MB — small enough that every gateway instance holds the ENTIRE registry in memory, refreshed on a short TTL (e.g. 30 seconds) or push-invalidated when an MCP server registers/updates a tool. This means an agent's <code class="inline">tools/list</code> discovery call never touches a downstream MCP server directly — it's served entirely from the gateway's local cache, which is both faster (no downstream round trip) and more resilient (a downstream MCP server being briefly unreachable doesn't break discovery for tools it doesn't even own).</p>
+
+  <h3>3 — Isolating a slow/failing downstream tool</h3>
+  <p>The single most important non-functional property: one misbehaving MCP server (slow, timing out, erroring) must not degrade calls to every OTHER tool. Three mechanisms, layered:</p>
+  <ul>
+    <li><strong>Per-backend connection pools</strong> — each downstream MCP server gets its own bounded connection pool (<code class="inline">backend/connection_pooling.html</code>'s pattern, applied per-backend instead of per-database); one server's slow responses can only exhaust ITS OWN pool, not a shared one.</li>
+    <li><strong>Per-backend timeouts</strong> — a tool call to a known-slow server gets a tighter or looser timeout than the gateway default, configured per tool, not globally.</li>
+    <li><strong>Circuit breaker per backend</strong> — after N consecutive failures/timeouts to one MCP server, the gateway trips a breaker and fails fast (returns an error immediately) for that server for a cooldown window, rather than letting every new request queue up waiting on a server that's already down.</li>
+  </ul>
+
+  <div class="callout"><b>Interview-ready definition:</b> the architecture centralizes auth/authz and schema discovery at the gateway edge (verify once, cache the schema registry entirely in memory since it's small), and isolates failure per downstream backend using per-backend connection pools, timeouts, and circuit breakers — so that request volume and failure blast radius are both scoped to ONE MCP server at a time, never to the gateway or its other backends as a whole.</div>
+</section>
+
+<!-- ============ SECTION 4: TRADE-OFFS ============ -->
+<section id="tradeoffs">
+  <div class="kicker">04 — Every design choice above has a real cost. Say it out loud.</div>
+  <h2>Trade-offs</h2>
+
+  <table class="cmp">
+    <tr><th>Decision</th><th>What we chose</th><th>What it costs</th></tr>
+    <tr><td><strong>Gateway as single front door</strong></td><td>All tool traffic flows through the gateway tier</td><td>The gateway becomes a hard dependency and a potential single point of failure for EVERY agent — mitigated by N+2 redundancy, but never eliminated; a bad gateway deploy now has blast radius across the entire company, not one team</td></tr>
+    <tr><td><strong>vs. per-team direct routing</strong></td><td>(rejected) each team's agents talk directly to the MCP servers they use</td><td>Removes the single point of failure, but re-creates the exact problem the gateway solves: 150 teams each independently implementing auth, rate limiting, and audit logging — a compliance and consistency disaster, and no single place to reason about total load</td></tr>
+    <tr><td><strong>Sync tool invocation</strong></td><td>Gateway blocks on the downstream call and returns the result inline</td><td>Simple, and matches MCP's request/response model directly — but a genuinely slow tool (e.g. a long-running search) ties up a gateway connection for its full duration, which is exactly why per-backend pools and timeouts (section 3) exist</td></tr>
+    <tr><td><strong>vs. async tool invocation</strong></td><td>(considered) gateway accepts the call, returns a job ID immediately, agent polls or subscribes for the result</td><td>Needed for genuinely long-running tools (minutes, not milliseconds) per <code class="inline">backend/async_tool_job_queue_design.html</code>'s job queue pattern — but adds real complexity (a job store, a polling or webhook path) that most tool calls, which complete in well under a second, don't need. Reasonable resolution: sync by default, with an explicit async mode for the small subset of genuinely long-running tools, not one mode for everything</td></tr>
+    <tr><td><strong>Caching tool schemas</strong></td><td>Full registry cached in memory, TTL/push-refreshed</td><td>An agent could briefly see a stale schema for a just-updated tool (window bounded by the TTL) — acceptable per the non-functional requirement that routing/schema data can be eventually consistent, explicitly NOT acceptable for audit logs, which is why audit logging is designed separately as append-only and synchronous-on-write rather than cached</td></tr>
+  </table>
+
+  <div class="callout warn"><b>What a strong interview answer sounds like:</b> not "I'll cache the schemas" — but "I'll cache the schemas because section 2's math showed the registry is under 2MB, small enough to hold entirely in memory, and the non-functional requirements explicitly said routing/permission data can tolerate seconds of staleness — but I would NOT apply that same reasoning to audit logs, because compliance audit trails can't tolerate being silently dropped or delayed, so those get a synchronous, durable write path instead." Every trade-off should trace back to a specific number or requirement from sections 1–2, not a general engineering instinct.</div>
+</section>
+
+<!-- ============ SECTION 5: FAILURE HANDLING LIVE ============ -->
+<section id="failure">
+  <div class="kicker">05 — Watching the circuit breaker actually isolate a bad backend</div>
+  <h2>Failure handling, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> Below, the calendar MCP server starts timing out. Watch the gateway's per-backend circuit breaker trip for JUST that server, while calls to the search and database servers keep flowing normally — exactly section 3's isolation guarantee, made concrete.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>GATEWAY — PER-BACKEND CIRCUIT BREAKER</span>
+      <div><button class="btn secondary" id="cb-reset">Reset</button></div>
+    </div>
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-node mcp" id="node-db">db-mcp-server<div class="sub" id="sub-db">healthy</div></div>
+        <div class="arch-node mcp" id="node-search">search-mcp-server<div class="sub" id="sub-search">healthy</div></div>
+        <div class="arch-node mcp" id="node-cal">calendar-mcp-server<div class="sub" id="sub-cal">healthy</div></div>
+      </div>
+    </div>
+    <button class="btn" id="cb-run">Simulate calendar-mcp-server timing out ▸</button>
+    <div class="log" id="cb-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the breaker trips per BACKEND, not globally — calls to <code class="inline">db-mcp-server</code> and <code class="inline">search-mcp-server</code> never even see the calendar server's failures, because each has its own connection pool, timeout, and breaker state. This is what "the gateway is a single point of failure" actually needs to NOT mean in practice: the gateway process staying up is necessary, but isolating one backend's failure from every other backend is a separate, equally important design property.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now defend the design yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. Treat these as interviewer follow-ups.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Defending the availability-driven instance count</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2 computed that 750 peak QPS needs less than one gateway instance mathematically, yet the design uses three. An interviewer pushes back: "isn't that over-provisioned?" How do you respond?</p>
+    <details><summary>Show solution</summary><div class="solution">No -- the instance count in this design was never driven by throughput,
+and saying so explicitly is the strong answer. Throughput math (peak_qps
+/ qps_per_instance) answers "how much CPU/connection capacity do I
+need," which here is genuinely small. But the non-functional
+requirement was 99.95% availability, and a SINGLE instance -- no matter
+how much spare capacity it has -- cannot meet an availability target,
+because any one deploy, crash, or node failure takes the entire gateway
+down for every agent in the company. Three instances (N+2 over a
+minimum of N=1) is the smallest fleet that tolerates a single instance
+failure without dropping below full capacity, and is sized for FAULT
+TOLERANCE, not load. The over-provisioning read is backwards: this is
+the gateway being correctly sized against a requirement (availability)
+that throughput math alone doesn't capture at all. A gateway sized ONLY
+from QPS math, ignoring availability, would be the actual mistake here.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Extending the design for a tool with 50MB responses</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">One new tool (a document-export tool) returns responses averaging 50MB, not section 2's assumed 8KB. Walk through which of section 2's numbers change, and whether anything in the architecture (section 3) needs to change as a result.</p>
+    <details><summary>Show solution</summary><div class="solution">Bandwidth is the number that changes materially. If even a small
+fraction of the 750 peak QPS is this new tool -- say 10 calls/sec of the
+750 -- that alone is 10 * 50MB = 500MB/sec just for this one tool,
+dwarfing the ~7.5MB/sec section 2 computed for the ENTIRE rest of the
+system combined. That's no longer "trivial for a modern NIC" -- it's a
+genuine bandwidth and buffering concern, and it means this tool's
+traffic needs to be treated as a distinct case, not folded into the
+general roundtrip-bytes assumption.
+
+Architecturally, two things follow. First, this tool almost certainly
+should NOT be synchronous through the gateway the way section 4's
+default assumes -- a 50MB payload is a strong signal this belongs in the
+async tool invocation path (job ID + polling/webhook, per
+async_tool_job_queue_design.html), both to avoid holding a gateway
+connection open for the transfer duration and because a response that
+large is a reasonable proxy for "this tool takes real, non-trivial time
+to produce its result" even if it happens to be fast today. Second, its
+per-backend connection pool (section 3) should likely be sized and
+timed out separately from other backends -- a shared timeout tuned for
+8KB JSON responses would incorrectly kill legitimate 50MB transfers.
+Audit logging also needs a tweak: logging the full 50MB response body
+per section 2's "~500 bytes per audit record" assumption breaks
+immediately -- the audit record for this tool should log a hash/pointer
+to the result, not the payload itself, exactly the parenthetical
+section 2 flagged for "large/sensitive" args.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing what a stale schema cache should never be allowed to do</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3 caches the tool schema registry with a 30-second TTL. A tool's schema changes to make a previously-optional argument REQUIRED. During the TTL window, an agent using the stale cached schema calls the tool without that argument. What should happen, and where should the failure surface?</p>
+    <details><summary>Show solution</summary><div class="solution">The call should fail, but it must fail at the DOWNSTREAM MCP server's
+own request validation, not be silently accepted -- and this is exactly
+why caching the schema for DISCOVERY purposes (what tools.list returns
+to agents) is safe under section 3's eventual-consistency assumption,
+while the gateway must never treat its cached schema as authoritative
+for VALIDATION. If the gateway tried to validate the request against
+its own stale cached schema before forwarding it, it would incorrectly
+accept a request missing the now-required argument, and the failure
+would surface downstream anyway (worse: possibly as a confusing runtime
+error inside the tool's own logic rather than a clean validation
+error). The correct design: the gateway's cached schema is used ONLY
+for what section 3 said -- serving discovery/tools.list quickly -- while
+the actual downstream MCP server remains the source of truth for
+request validation on every call, cache-staleness or not. This is a
+direct instance of the general principle non-functional requirements
+already drew a line around in section 1: routing/permission data can
+tolerate staleness, but anything where staleness produces an incorrect
+ALLOW (validating a request that shouldn't pass) needs a stronger
+guarantee than a cache with a TTL provides.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Reasoning about audit log durability vs. gateway latency</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The non-functional requirements state the gateway must add under 15ms p99 overhead, and that audit logs must never be silently dropped. If audit writes are synchronous (the gateway waits for the audit record to be durably written before returning the tool result to the agent), does this design meet both requirements simultaneously? What would you change if it doesn't?</p>
+    <details><summary>Show solution</summary><div class="solution">Not necessarily, and this is a genuine tension worth naming rather than
+hand-waving past. A fully synchronous audit write -- gateway blocks
+until the audit record is durably committed before responding to the
+agent -- directly adds the audit store's own write latency on top of
+the routing/authz overhead, and if that store is a general-purpose
+durable database under load, that alone could threaten the 15ms budget,
+especially at the tail (p99), where a single slow write is exactly what
+blows through a tight latency budget.
+
+The practical resolution real systems use: write the audit record to a
+LOCAL, fast, durable buffer synchronously (e.g. an in-process write-
+ahead log or a local append-only file, both fast and durable at the
+single-node level) as the ONE synchronous step, then asynchronously
+forward from that buffer to the actual audit log store (the columnar/
+tiered store section 2's 2.4TB/year estimate was sized for). This keeps
+the "never silently dropped" guarantee -- the record survives a gateway
+crash because it hit durable local storage before the response was
+returned -- while decoupling the SLOW part (writing to the shared audit
+store, batching, indexing) from the gateway's response path entirely.
+This is the same "durable-write-then-async-propagate" shape section 2
+of chat_app_at_scale_design.html used for message delivery, and the
+same batching principle distributed_telemetry_ingester_design.html
+applies to spans -- durability and low latency aren't actually in
+conflict once you separate "committed somewhere durable" from
+"propagated to its final destination" into two different steps.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) state the functional and non-functional requirements out loud and explain why availability — not throughput — drove the instance count, (2) walk through all five capacity numbers and what design decision each one justified, and (3) defend why sync tool invocation is the default and when async is actually needed? <code class="inline">systems/distributed_telemetry_ingester_design.html</code> is next — same interview-mock structure, aimed at ingesting the traces this very gateway would emit.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — enterprise MCP agent gateway design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 5: CIRCUIT BREAKER DEMO */
+(function(){
+  var runBtn = document.getElementById("cb-run");
+  var resetBtn = document.getElementById("cb-reset");
+  var logEl = document.getElementById("cb-log");
+  var nodeDb = document.getElementById("node-db");
+  var nodeSearch = document.getElementById("node-search");
+  var nodeCal = document.getElementById("node-cal");
+  var subDb = document.getElementById("sub-db");
+  var subSearch = document.getElementById("sub-search");
+  var subCal = document.getElementById("sub-cal");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetAll(){
+    [nodeDb, nodeSearch, nodeCal].forEach(function(n){ n.classList.remove("active"); });
+    subDb.textContent = "healthy"; subSearch.textContent = "healthy"; subCal.textContent = "healthy";
+    nodeCal.style.borderColor = ""; nodeCal.style.color = "";
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log("Requests arrive for all three backends: <b>db-mcp-server</b>, <b>search-mcp-server</b>, <b>calendar-mcp-server</b> — each with its own connection pool and timeout.", "route");
+    nodeDb.classList.add("active"); nodeSearch.classList.add("active"); nodeCal.classList.add("active");
+    await wait(500);
+
+    log("<b>calendar-mcp-server</b> starts timing out — 3 consecutive requests exceed its per-backend timeout.", "bad");
+    subCal.textContent = "timeout 1/3"; await wait(400);
+    subCal.textContent = "timeout 2/3"; await wait(400);
+    subCal.textContent = "timeout 3/3"; await wait(400);
+
+    log("<b>Circuit breaker trips for calendar-mcp-server ONLY.</b> The gateway now fails fast for this backend — no new requests wait on its pool.", "bad");
+    subCal.textContent = "OPEN — failing fast";
+    nodeCal.style.borderColor = "var(--bad-c)"; nodeCal.style.color = "var(--bad-c)";
+    nodeCal.classList.remove("active");
+    await wait(600);
+
+    log("Meanwhile, <b>db-mcp-server</b> and <b>search-mcp-server</b> keep serving requests normally — their pools, timeouts, and breaker state are completely separate.", "route");
+    subDb.textContent = "healthy — serving"; subSearch.textContent = "healthy — serving";
+    await wait(600);
+
+    log("After the cooldown window, the gateway sends a single probe request to calendar-mcp-server. If it succeeds, the breaker closes and normal traffic resumes for that backend too.");
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Scaffold: FastAPI + MCP</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --app-c:#4fc3f7; --mcp-c:#f2c14e; --obs-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--app-c); color:var(--app-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .tree{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0; line-height:1.7; color:#cdd0d8; white-space:pre;}
+  .tree .dir{color:var(--mcp-c);}
+  .tree .file{color:var(--app-c);}
+  .tree .cmt{color:#5f6675;}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--obs-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.app{border-left-color:var(--app-c); background:rgba(79,195,247,0.06);} .callout.app b{color:var(--app-c);}
+  .callout.mcp{border-left-color:var(--mcp-c); background:rgba(242,193,78,0.06);} .callout.mcp b{color:var(--mcp-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND LAB · CAPSTONE SCAFFOLD — FASTAPI + MCP SERVERS</div>
+  <h1>Not a design doc. The actual skeleton Weeks 2–3 get built on top of.</h1>
+  <p class="lede">Every design mock this week was a diagram and a defense. This lab is different: it's the literal, runnable starting point of the capstone itself — a FastAPI backend with health/readiness endpoints, an MCP server wired in (per <code class="inline">mcp-and-agents/mcp_server_stdio.html</code> and <code class="inline">mcp_server_sse.html</code>), explicit slots where the orchestrator/agent logic and Month 4/5's eval/tracing hooks will plug in, and a checklist to verify it actually works before Week 2 begins.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">FastAPI app — health/readiness first, features later</div>
+    <div class="pipe-label b">MCP server wired in — not re-taught, just connected</div>
+    <div class="pipe-label c">Named slots — where orchestration and evals plug in next</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="structure">1 · Project Structure</a>
+  <a data-target="app">2 · The FastAPI App</a>
+  <a data-target="mcp">3 · Wiring In an MCP Server</a>
+  <a data-target="slots">4 · Where Weeks 2–3 Plug In</a>
+  <a data-target="checklist">5 · Verify the Scaffold Works</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: PROJECT STRUCTURE ============ -->
+<section id="structure">
+  <div class="kicker">01 — Decide the shape before writing a single route</div>
+  <h2>Project structure</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about the difference between moving into an empty house and just piling boxes wherever you first set them down, versus deciding room-by-room what goes where BEFORE unpacking a single box — kitchen things in the kitchen, even if the kitchen is still empty on day one. A capstone scaffold is exactly the second approach: the directories below are mostly EMPTY or near-empty right now, but their existence and names commit to where things will live in Weeks 2–3, so nothing has to be reorganized later once real code starts filling them in.</p>
+
+  <div class="tree"><span class="dir">capstone/</span>
+├── <span class="file">main.py</span>              <span class="cmt"># FastAPI app entrypoint -- section 2</span>
+├── <span class="dir">app/</span>
+│   ├── <span class="file">__init__.py</span>
+│   ├── <span class="dir">routers/</span>          <span class="cmt"># HTTP route groups (health, chat, admin)</span>
+│   │   └── <span class="file">health.py</span>
+│   ├── <span class="dir">orchestrator/</span>      <span class="cmt"># EMPTY for now -- Week 2 slot, see section 4</span>
+│   │   └── <span class="file">__init__.py</span>
+│   ├── <span class="dir">mcp_servers/</span>       <span class="cmt"># MCP server(s) this backend hosts -- section 3</span>
+│   │   ├── <span class="file">__init__.py</span>
+│   │   └── <span class="file">example_server.py</span>
+│   ├── <span class="dir">observability/</span>     <span class="cmt"># EMPTY for now -- Week 2 slot, see section 4</span>
+│   │   └── <span class="file">__init__.py</span>
+│   └── <span class="dir">config.py</span>          <span class="cmt"># settings, env vars</span>
+├── <span class="dir">tests/</span>
+│   └── <span class="file">test_health.py</span>
+├── <span class="file">pyproject.toml</span>
+└── <span class="file">.env.example</span></div>
+
+  <p>Four directories, four responsibilities, deliberately kept separate: <code class="inline">routers/</code> owns HTTP surface area (per <code class="inline">backend/fastapi_routing_and_pydantic.html</code>'s routing patterns), <code class="inline">mcp_servers/</code> owns the MCP server(s) this backend hosts or proxies to (per <code class="inline">mcp-and-agents/mcp_server_stdio.html</code> / <code class="inline">mcp_server_sse.html</code>), <code class="inline">orchestrator/</code> is an intentionally EMPTY slot for the agent/orchestration logic Week 2 will fill in, and <code class="inline">observability/</code> is an intentionally EMPTY slot for the tracing/eval hooks Month 4–5 already built and Week 2 will wire in.</p>
+
+  <div class="callout app"><b>Interview-ready definition:</b> a scaffold's job is to commit to the SHAPE of a system — where each kind of code will eventually live — before most of that code exists, using empty-but-present directories as explicit placeholders rather than letting structure emerge ad hoc as features get added. This matters specifically for a capstone spanning multiple weeks: Week 2's "wire the orchestrator in" task should mean "fill in <code class="inline">app/orchestrator/</code>," not "figure out where orchestration code should even go."</div>
+</section>
+
+<!-- ============ SECTION 2: THE FASTAPI APP ============ -->
+<section id="app">
+  <div class="kicker">02 — Health and readiness before a single real feature</div>
+  <h2>The FastAPI app</h2>
+
+  <p><strong>Start here, before any business logic.</strong> Think about a new employee's first day: before they're handed any real work, someone checks that their badge opens the door and their laptop actually boots — trivial checks, but checks that would be a genuine problem to skip, because every subsequent thing depends on them silently working. A service's health and readiness endpoints are the same idea: before the capstone does anything interesting, it needs to be provably "the process is up" (liveness) and separately "the process is up AND ready to serve real traffic" (readiness) — two different questions, and conflating them is a common, costly mistake in real deployments.</p>
+
+  <div class="code"><span class="c-cmt"># main.py</span>
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> FastAPI
+<span class="c-kw">from</span> app.routers <span class="c-kw">import</span> health
+<span class="c-kw">from</span> app.config <span class="c-kw">import</span> get_settings
+
+<span class="c-kw">def</span> <span class="c-fn">create_app</span>() -> FastAPI:
+    settings = get_settings()
+    app = FastAPI(
+        title=<span class="c-str">"Capstone Agent Backend"</span>,
+        version=<span class="c-str">"0.1.0"</span>,
+    )
+
+    <span class="c-cmt"># health/readiness FIRST -- every other router gets registered after this,
+    # so even a broken feature router still leaves health checks reachable</span>
+    app.include_router(health.router)
+
+    <span class="c-cmt"># orchestrator and MCP routers get registered here in Week 2 --
+    # see section 4 for exactly what goes here and why it's still empty now</span>
+
+    <span class="c-kw">return</span> app
+
+app = create_app()</div>
+
+  <div class="code"><span class="c-cmt"># app/routers/health.py</span>
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> APIRouter
+<span class="c-kw">from</span> pydantic <span class="c-kw">import</span> BaseModel
+
+router = APIRouter(tags=[<span class="c-str">"health"</span>])
+
+<span class="c-kw">class</span> <span class="c-fn">HealthResponse</span>(BaseModel):
+    status: <span class="c-fn">str</span>
+
+<span class="c-cmt"># LIVENESS: "is the process running at all?" -- should almost never fail;
+# if it does, the process itself is broken (crashed event loop, deadlock)
+# and the orchestrator (k8s, etc.) should restart the whole container</span>
+<span class="c-fn">@router.get</span>(<span class="c-str">"/healthz"</span>, response_model=HealthResponse)
+<span class="c-kw">async def</span> <span class="c-fn">liveness</span>():
+    <span class="c-kw">return</span> HealthResponse(status=<span class="c-str">"alive"</span>)
+
+<span class="c-cmt"># READINESS: "is the process ready to serve REAL traffic?" -- checks actual
+# dependencies (can it reach its MCP server? its DB, once one exists?).
+# A process can be ALIVE but NOT READY (e.g. still starting up, or a
+# dependency is temporarily down) -- exactly the distinction
+# systems/load_balancers.html draws for why LBs check readiness, not
+# just liveness, before routing traffic to an instance</span>
+<span class="c-fn">@router.get</span>(<span class="c-str">"/readyz"</span>, response_model=HealthResponse)
+<span class="c-kw">async def</span> <span class="c-fn">readiness</span>():
+    <span class="c-cmt"># Week 2: check MCP server connectivity, DB connectivity, etc. here.
+    # For now, ready == alive, since there's nothing else to depend on yet.</span>
+    <span class="c-kw">return</span> HealthResponse(status=<span class="c-str">"ready"</span>)</div>
+
+  <div class="callout warn"><b>Interview-ready definition:</b> liveness answers "is this process running and not deadlocked" and should almost never fail short of the process itself being broken; readiness answers "is this process currently able to correctly serve a real request" and CAN legitimately fail temporarily (a dependency is down, startup isn't finished) without the process itself needing to be killed and restarted. Conflating the two — using one endpoint for both — means a load balancer either routes traffic to an instance that's up but can't actually serve requests, or an orchestrator restarts a perfectly healthy process just because one downstream dependency blipped.</div>
+</section>
+
+<!-- ============ SECTION 3: WIRING IN AN MCP SERVER ============ -->
+<section id="mcp">
+  <div class="kicker">03 — Connect the protocol you already know, don't re-learn it</div>
+  <h2>Wiring in an MCP server</h2>
+
+  <p><strong>Start here, before any MCP-specific code.</strong> This section assumes <code class="inline">mcp-and-agents/mcp_fundamentals_jsonrpc.html</code>'s JSON-RPC message shape, <code class="inline">mcp_server_stdio.html</code>'s stdio transport, and <code class="inline">mcp_server_sse.html</code>'s SSE transport as already-understood prerequisites — this section is purely about the WIRING: how an MCP server ends up reachable from this FastAPI app, not what MCP fundamentally is.</p>
+
+  <div class="code"><span class="c-cmt"># app/mcp_servers/example_server.py
+# A minimal MCP server exposing ONE example tool, using the SSE
+# transport (per mcp_server_sse.html) so it can be mounted directly
+# into the same FastAPI app rather than run as a separate process</span>
+<span class="c-kw">from</span> mcp.server <span class="c-kw">import</span> Server
+<span class="c-kw">from</span> mcp.types <span class="c-kw">import</span> Tool, TextContent
+
+capstone_mcp = Server(<span class="c-str">"capstone-tools"</span>)
+
+<span class="c-fn">@capstone_mcp.list_tools</span>()
+<span class="c-kw">async def</span> <span class="c-fn">list_tools</span>() -> <span class="c-fn">list</span>[Tool]:
+    <span class="c-cmt"># per json_schema_tool_specs.html's schema shape -- real tools get
+    # added here as Weeks 2-3 build them out</span>
+    <span class="c-kw">return</span> [
+        Tool(
+            name=<span class="c-str">"ping"</span>,
+            description=<span class="c-str">"Trivial example tool -- confirms the MCP server is reachable end to end"</span>,
+            inputSchema={<span class="c-str">"type"</span>: <span class="c-str">"object"</span>, <span class="c-str">"properties"</span>: {}},
+        )
+    ]
+
+<span class="c-fn">@capstone_mcp.call_tool</span>()
+<span class="c-kw">async def</span> <span class="c-fn">call_tool</span>(name: <span class="c-fn">str</span>, arguments: <span class="c-fn">dict</span>) -> <span class="c-fn">list</span>[TextContent]:
+    <span class="c-kw">if</span> name == <span class="c-str">"ping"</span>:
+        <span class="c-kw">return</span> [TextContent(type=<span class="c-str">"text"</span>, text=<span class="c-str">"pong"</span>)]
+    <span class="c-kw">raise</span> ValueError(<span class="c-fn">f"Unknown tool: {name}"</span>)</div>
+
+  <div class="code"><span class="c-cmt"># Mounting it into the FastAPI app -- goes in main.py's create_app(),
+# right where section 2 left the comment for it</span>
+<span class="c-kw">from</span> mcp.server.sse <span class="c-kw">import</span> SseServerTransport
+<span class="c-kw">from</span> app.mcp_servers.example_server <span class="c-kw">import</span> capstone_mcp
+
+<span class="c-kw">def</span> <span class="c-fn">mount_mcp</span>(app: FastAPI) -> <span class="c-kw">None</span>:
+    sse_transport = SseServerTransport(<span class="c-str">"/mcp/messages"</span>)
+
+    <span class="c-fn">@app.get</span>(<span class="c-str">"/mcp/sse"</span>)
+    <span class="c-kw">async def</span> <span class="c-fn">handle_sse</span>(request):
+        <span class="c-kw">async with</span> sse_transport.connect_sse(request) <span class="c-kw">as</span> (read, write):
+            <span class="c-kw">await</span> capstone_mcp.run(read, write, capstone_mcp.create_initialization_options())
+
+<span class="c-cmt"># then, in create_app():
+#   mount_mcp(app)
+# right after app.include_router(health.router)</span></div>
+
+  <p>Why SSE over stdio for this scaffold specifically: stdio (per <code class="inline">mcp_server_stdio.html</code>) is the right transport when an MCP server is spawned as a subprocess by its client (common for local dev tools), but this capstone's MCP server needs to be reachable over HTTP from the SAME FastAPI process that serves everything else — SSE is the transport built for exactly that shape, and it's what lets the readiness check in section 2 eventually verify "is my own MCP server actually responding" as one of its real dependency checks.</p>
+
+  <div class="callout mcp"><b>Interview-ready definition:</b> wiring an MCP server into a FastAPI backend means mounting the MCP server's transport (SSE, for an in-process HTTP-reachable server) as additional routes on the same FastAPI app, alongside the ordinary REST routes — the MCP server and the REST API are two DIFFERENT protocols served by the SAME process, not two separate services, which is exactly why this scaffold's <code class="inline">app/mcp_servers/</code> directory sits next to <code class="inline">app/routers/</code> rather than as a wholly separate deployable unit.</div>
+</section>
+
+<!-- ============ SECTION 4: WHERE WEEKS 2-3 PLUG IN ============ -->
+<section id="slots">
+  <div class="kicker">04 — Naming the empty slots so filling them in isn't a redesign</div>
+  <h2>Where the orchestrator and eval/tracing hooks plug in</h2>
+
+  <p><strong>Start here, before writing anything in these directories.</strong> The two directories left empty in section 1 — <code class="inline">app/orchestrator/</code> and <code class="inline">app/observability/</code> — are empty ON PURPOSE, not because they were forgotten. Naming and creating them now, even with nothing inside, is what makes "Week 2: wire the multi-agent orchestrator in" a matter of filling in a known slot rather than first deciding where orchestration code should even live.</p>
+
+  <table class="cmp">
+    <tr><th>Directory</th><th>What plugs in here (Weeks 2-3)</th><th>What it builds on</th></tr>
+    <tr><td><code class="inline">app/orchestrator/</code></td><td>The stateful multi-agent orchestrator — routing a user request through however many agent/tool-call steps it needs, per the roadmap's Week 2 "multi-agent orchestrator integration"</td><td><code class="inline">mcp-and-agents/stateful_graphs.html</code>, <code class="inline">multi_agent_delegation.html</code>, <code class="inline">final_multi_agent_workflow.html</code></td></tr>
+    <tr><td><code class="inline">app/observability/</code></td><td>OpenTelemetry instrumentation wrapping every request/tool-call/agent-step, plus eval hooks that score completed runs</td><td><code class="inline">evals-and-observability/opentelemetry_basics.html</code>, <code class="inline">latency_and_tracing_integration.html</code>, <code class="inline">instrument_month4_agent.html</code></td></tr>
+    <tr><td><code class="inline">app/routers/</code> (new routers, beyond <code class="inline">health.py</code>)</td><td>A <code class="inline">chat.py</code> or similar router exposing the orchestrator to end users over HTTP — a thin layer that calls into <code class="inline">app/orchestrator/</code>, per <code class="inline">fastapi_routing_and_pydantic.html</code>'s routing patterns</td><td><code class="inline">backend/sse.html</code> or <code class="inline">websockets.html</code> if streaming responses are needed</td></tr>
+    <tr><td>Database layer (not yet in the tree)</td><td>Persisting agent runs, tool calls, traces, eval results, per <code class="inline">database/capstone_capacity_estimation_practice.html</code>'s entity list — introduced once Week 2's "finalize capstone schema" task lands</td><td><code class="inline">database/eval_results_schema.html</code>, <code class="inline">eval_trace_schema_finalization.html</code>, <code class="inline">agent_memory_schemas.html</code></td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> a well-scaffolded system names its major future components as explicit, empty directories/modules BEFORE their content exists, with each slot's eventual contents and dependencies documented (as above) rather than left to be rediscovered later — this is what makes "integrate X" a bounded, well-defined task in Week 2 instead of an open-ended one that starts with "first, where does this even go."</div>
+</section>
+
+<!-- ============ SECTION 5: VERIFY THE SCAFFOLD WORKS ============ -->
+<section id="checklist">
+  <div class="kicker">05 — A scaffold that doesn't run is not a scaffold</div>
+  <h2>Verify the scaffold works</h2>
+
+  <p><strong>Start here, before moving to Week 2.</strong> A skeleton that "looks right" but has never actually been run is worse than no skeleton at all — it hides broken imports, missing dependencies, and wiring mistakes until Week 2, when there's real feature code layered on top and every bug is harder to isolate. This checklist is the literal verification pass: run it now, on the scaffold exactly as built in sections 1–3, before adding anything else.</p>
+
+  <div class="code"><span class="c-cmt"># from the capstone/ directory</span>
+uv <span class="c-fn">venv</span> && <span class="c-fn">source</span> .venv/bin/activate  <span class="c-cmt"># or your preferred env tool</span>
+uv <span class="c-fn">pip</span> install -e .
+
+<span class="c-cmt"># run it, per uvicorn_gunicorn_workers.html's dev-mode invocation</span>
+uvicorn main:app --reload --port <span class="c-num">8000</span>
+
+<span class="c-cmt"># in a second terminal:</span>
+curl http://localhost:<span class="c-num">8000</span>/healthz    <span class="c-cmt"># expect: {"status": "alive"}</span>
+curl http://localhost:<span class="c-num">8000</span>/readyz     <span class="c-cmt"># expect: {"status": "ready"}</span>
+curl http://localhost:<span class="c-num">8000</span>/mcp/sse    <span class="c-cmt"># expect: an open SSE connection, not a 404/500</span></div>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1"><code class="inline">uvicorn main:app --reload</code> starts with no import errors or tracebacks</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2"><code class="inline">GET /healthz</code> returns <code class="inline">200</code> with <code class="inline">{"status": "alive"}</code></label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3"><code class="inline">GET /readyz</code> returns <code class="inline">200</code> with <code class="inline">{"status": "ready"}</code></label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">The MCP SSE endpoint accepts a connection without erroring (a raw <code class="inline">curl</code> or an MCP client can reach <code class="inline">tools/list</code> and see the <code class="inline">ping</code> tool)</label></li>
+      <li><input type="checkbox" id="chk5"><label for="chk5">Calling the <code class="inline">ping</code> tool through the MCP connection returns <code class="inline">"pong"</code> — confirms the FULL round trip: FastAPI process → mounted MCP transport → tool handler → back to the caller</label></li>
+      <li><input type="checkbox" id="chk6"><label for="chk6"><code class="inline">pytest tests/test_health.py</code> passes (a real, if minimal, automated test — not just manual <code class="inline">curl</code> checks)</label></li>
+      <li><input type="checkbox" id="chk7"><label for="chk7"><code class="inline">app/orchestrator/</code> and <code class="inline">app/observability/</code> exist as empty, importable packages (each has an <code class="inline">__init__.py</code>) — confirms Week 2 has a place to start, not a blank slate</label></li>
+      <li><input type="checkbox" id="chk8"><label for="chk8">A fresh clone of the repo, following only this lab's setup commands from scratch, reaches a passing state — confirms the scaffold is reproducible, not just working on one machine</label></li>
+    </ul>
+  </div>
+
+  <div class="callout warn"><b>What "done" means for this lab specifically:</b> every box above checked, on THIS machine, today — not "the code looks like it should work." The entire value of scaffolding before building real features is catching wiring problems (a missing dependency, a transport misconfiguration, an import cycle between <code class="inline">app/orchestrator/</code> and <code class="inline">app/mcp_servers/</code>) while the codebase is still small enough that the cause is obvious, rather than three weeks from now when the same bug is buried under real feature code.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the scaffold yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out, then actually try it against the scaffold above if you have it running.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Making readiness actually check the MCP server</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's <code class="inline">/readyz</code> currently just returns <code class="inline">"ready"</code> unconditionally. Extend it to genuinely check that the MCP server mounted in section 3 is reachable and responsive, and explain what status code and body it should return if the MCP server is NOT responding.</p>
+    <details><summary>Show solution</summary><div class="solution">A real readiness check needs to actually EXERCISE the dependency, not
+just check that the mounting code ran without erroring at startup --
+those are different failure modes. A reasonable implementation calls
+the MCP server's own list_tools() handler directly (in-process, since
+it's mounted in the same app) with a short timeout, and reports failure
+if it raises or times out:
+
+async def readiness():
+    try:
+        tools = await asyncio.wait_for(capstone_mcp_list_tools_handler(), timeout=2.0)
+        mcp_ok = len(tools) >= 0  # just confirming it responded at all
+    except Exception:
+        mcp_ok = False
+
+    if not mcp_ok:
+        raise HTTPException(status_code=503, detail={"status": "not_ready", "reason": "mcp_server_unreachable"})
+    return HealthResponse(status="ready")
+
+The status code matters: 503 Service Unavailable, not 500 Internal
+Server Error -- a 503 tells a load balancer or orchestrator "temporarily
+don't route traffic here, but don't kill the process," which is exactly
+readiness's semantic per section 2's liveness/readiness distinction. A
+500 would incorrectly suggest the PROCESS itself is broken (liveness's
+concern), which could trigger an unnecessary restart even though the
+FastAPI process itself is perfectly healthy -- only its MCP dependency
+is temporarily down. This is precisely why the two checks need to stay
+semantically distinct even as readiness grows more dependencies over
+Weeks 2-3 (DB connectivity, external API reachability): every new
+dependency check added to /readyz should return 503 on failure, never
+crash the liveness check or the process itself.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding where a new "summarize_document" tool's logic should live</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Week 2 needs to add a real tool, <code class="inline">summarize_document</code>, that calls an LLM to summarize a document fetched from the capstone's storage. Using section 1's directory structure, where does the LLM-calling logic itself live — inside <code class="inline">app/mcp_servers/</code> alongside the tool registration, or somewhere else? Justify it.</p>
+    <details><summary>Show solution</summary><div class="solution">The tool REGISTRATION (the @capstone_mcp.call_tool() handler that MCP
+clients invoke) belongs in app/mcp_servers/, exactly where ping lives --
+that's the MCP-protocol-facing surface, and section 3 established this
+directory as owning "the MCP server(s) this backend hosts." But the
+actual LLM-calling logic (constructing the prompt, calling the model,
+parsing the response) should NOT be written inline inside that handler
+-- it belongs in a separate, protocol-agnostic module (e.g.
+app/services/summarization.py, a new directory this problem's answer
+correctly identifies as missing from section 1's initial tree) that the
+MCP tool handler calls into as a thin wrapper.
+
+The reasoning: MCP is one INTERFACE to this capability, but almost
+certainly not the only one Weeks 2-3 will want -- the orchestrator in
+app/orchestrator/ may also want to call summarization logic directly,
+without going through the MCP protocol layer at all, for an internal
+agent step that doesn't need to be exposed as an externally-callable
+tool. If the summarization logic is written INSIDE the MCP handler,
+reusing it from the orchestrator means either duplicating the logic or
+having the orchestrator call itself through its own MCP server -- an
+unnecessary protocol round-trip for an in-process call. Keeping business
+logic (services/) separate from protocol-facing wrappers (mcp_servers/,
+routers/) is the same separation-of-concerns instinct
+dependency_injection.html applies to route handlers vs. business logic,
+now applied to MCP tool handlers specifically -- the MCP handler's job
+is translating between MCP's protocol shape and a plain Python function
+call, nothing more.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing why <code class="inline">/mcp/sse</code> returns a 404 after adding a second router</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate adds a new <code class="inline">chat.py</code> router (per section 4) and, after registering it in <code class="inline">create_app()</code>, the previously-working <code class="inline">/mcp/sse</code> endpoint from section 3 starts returning 404. Using section 2's ordering comment ("health/readiness FIRST... every other router gets registered after this"), what's the most likely cause, and how would you confirm it?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause is a route path COLLISION or an ordering mistake
+introduced by where mount_mcp(app) got called relative to the new
+router registration -- most plausibly, the new chat.py router was
+registered using a prefix or a catch-all path that happens to shadow
+/mcp/sse, or mount_mcp(app) was accidentally moved to run AFTER
+something that already returns a response for that path pattern (e.g.
+a catch-all 404 handler or a wildcard route defined too early). FastAPI
+matches routes in REGISTRATION order for overlapping patterns, so an
+earlier-registered broad route (e.g. an accidentally-added
+@app.get("/{path:path}") catch-all in the new router, a realistic
+mistake when someone's first pass at a router uses a wildcard for
+flexibility) can intercept a request before FastAPI ever reaches the
+more specific /mcp/sse route registered afterward.
+
+To confirm: check the actual registration order in create_app() --
+verify mount_mcp(app) still runs, and specifically look for any newly
+added route in chat.py with a wildcard or overly broad path parameter
+that was registered BEFORE mount_mcp(app) in the function body. FastAPI
+also exposes app.routes (a list, in registration order) that can be
+printed/inspected directly to see the exact order and patterns being
+matched -- checking that list is a faster diagnostic than guessing from
+the code, since it shows FastAPI's actual matching order rather than
+requiring you to mentally trace the registration sequence. This is
+exactly why section 2's comment calling out registration order matters
+explicitly: as more routers get added in Weeks 2-3, ORDER becomes a
+real, easy-to-violate invariant, not just a style preference.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) explain the difference between liveness and readiness and why conflating them is a real production risk, (2) name which existing MCP lab justifies choosing SSE over stdio for this scaffold, and (3) walk through checklist item by item and confirm each one actually passes on your own machine? This closes out Week 1 — Week 2 begins wiring the real orchestrator, hybrid search, and eval/tracing dashboard into exactly the slots section 4 named.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone scaffold, FastAPI + MCP.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

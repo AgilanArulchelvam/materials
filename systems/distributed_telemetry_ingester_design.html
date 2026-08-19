@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Distributed Telemetry Ingester Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --ingest-c:#4fc3f7; --queue-c:#f2c14e; --store-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,138,101,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--ingest-c); color:var(--ingest-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--queue-c); color:var(--queue-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--store-c); color:var(--store-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.ingest{border-left-color:var(--ingest-c); background:rgba(79,195,247,0.06);}
+  .log .line.queue{border-left-color:var(--queue-c); background:rgba(242,193,78,0.06);}
+  .log .line.bad{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .arch{display:flex; flex-direction:column; align-items:center; gap:0.9rem; margin:1.4rem 0;}
+  .arch-row{display:flex; align-items:center; justify-content:center; gap:1.1rem; flex-wrap:wrap; width:100%;}
+  .arch-node{font-family:var(--mono); font-size:0.76rem; padding:0.75rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; min-width:120px; transition:all .35s ease;}
+  .arch-node.ingest{border-color:var(--ingest-c); color:var(--ingest-c);}
+  .arch-node.queue{border-color:var(--queue-c); color:var(--queue-c);}
+  .arch-node.store{border-color:var(--store-c); color:var(--store-c);}
+  .arch-node.active{box-shadow:0 0 12px currentColor;}
+  .arch-node .sub{font-size:0.62rem; color:var(--ink-dim); margin-top:0.3rem;}
+  .arch-arrow{font-family:var(--mono); color:var(--ink-dim); font-size:0.9rem;}
+  .arch-arrow.active{color:var(--queue-c);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.ingest{border-left-color:var(--ingest-c); background:rgba(79,195,247,0.06);} .callout.ingest b{color:var(--ingest-c);}
+  .callout.queue{border-left-color:var(--queue-c); background:rgba(242,193,78,0.06);} .callout.queue b{color:var(--queue-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN MOCK · DISTRIBUTED TELEMETRY INGESTER</div>
+  <h1>Every span your agents emit has to land somewhere, fast, without falling over.</h1>
+  <p class="lede"><code class="inline">evals-and-observability/opentelemetry_basics.html</code> established what a span and a trace ARE; <code class="inline">latency_and_tracing_integration.html</code> showed how to instrument code to emit them. Neither asked what happens when a fleet of services emits millions of spans per minute at production scale. This lab designs the ingestion pipeline that sits behind every tracing SDK: an ingestion API, buffering and batching, a durable queue, sharding by trace ID, storage trade-offs, backpressure, and sampling — the full mock, requirements through trade-offs.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Ingestion API — accept fast, never block the caller</div>
+    <div class="pipe-label b">Durable queue — buffer bursts, survive downstream outages</div>
+    <div class="pipe-label c">Sampling — the lever that controls cost at scale</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="requirements">1 · Requirements Gathering</a>
+  <a data-target="capacity">2 · Capacity Estimation</a>
+  <a data-target="architecture">3 · Architecture</a>
+  <a data-target="sampling">4 · Sampling Strategies</a>
+  <a data-target="backpressure">5 · Backpressure, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: REQUIREMENTS ============ -->
+<section id="requirements">
+  <div class="kicker">01 — What "ingest telemetry at scale" is actually asking</div>
+  <h2>Requirements gathering</h2>
+
+  <p><strong>Start here, before any pipeline diagram.</strong> Think about the difference between a small-town post office, where the postal worker personally sorts every letter into the right bin as it arrives, versus a regional mail-sorting FACILITY, where trucks dump tens of thousands of pieces of mail per hour onto conveyor belts, and the sorting itself happens downstream, in batches, by machines built for volume — because no single person could sort that fast, and the trucks can't be kept waiting at the loading dock while sorting happens. A tracing SDK emitting spans from one service, going straight into a database, is the postal worker. A distributed telemetry ingester is the regional facility: accept fast, buffer, and let sorting (storage, indexing) happen downstream at whatever pace it can sustain.</p>
+
+  <p>The prompt: <em>"Design a distributed ingestion pipeline for traces/spans/metrics at scale."</em> This builds directly on <code class="inline">opentelemetry_basics.html</code>'s span/trace model — a trace is a tree, a span is a node — so the vocabulary is assumed, not re-taught here.</p>
+
+  <h3>Functional requirements</h3>
+  <ul>
+    <li><strong>Ingestion API</strong> — services push spans/metrics to the ingester over a well-defined protocol (commonly gRPC or HTTP, per <code class="inline">backend/grpc.html</code> and <code class="inline">backend/http1_vs_http2.html</code>'s trade-offs), without blocking the emitting service's own request path.</li>
+    <li><strong>Durability under burst</strong> — a traffic spike (a deploy, an incident causing retry storms) must not drop spans outright or crash the ingester.</li>
+    <li><strong>Sharding by trace ID</strong> — all spans belonging to the same trace must eventually be groupable together for a single trace view, per <code class="inline">trace_dashboard_practice.html</code>'s dashboard needs.</li>
+    <li><strong>Sampling</strong> — at scale, storing every single span is often neither affordable nor useful; the system needs a principled way to keep a representative and USEFUL subset.</li>
+    <li><strong>Downstream storage</strong> — spans/traces need to be queryable (by trace ID, by service, by time range, by latency) for the dashboards <code class="inline">trace_dashboard_practice.html</code> already built, and metrics need to be queryable as time series for <code class="inline">latency_and_tracing_integration.html</code>'s percentile work.</li>
+  </ul>
+
+  <h3>Non-functional requirements — numbers to pin down out loud</h3>
+  <table class="cmp">
+    <tr><th>Question to ask</th><th>Assumption we'll use</th></tr>
+    <tr><td>How many services/instances emitting telemetry?</td><td>~3,000 service instances across the org</td></tr>
+    <tr><td>Spans per request?</td><td>~15 spans per traced request on average (one root span + child spans per DB call, tool call, LLM call)</td></tr>
+    <tr><td>Request rate across all services?</td><td>~20,000 requests/sec sustained org-wide</td></tr>
+    <tr><td>Retention?</td><td>Full-fidelity traces: 14 days hot; aggregated metrics: 13 months</td></tr>
+    <tr><td>Ingestion latency budget?</td><td>Ingestion API must ack the caller in under 5ms p99 — the CALLER (an app server on the hot path) cannot be slowed down by telemetry</td></tr>
+    <tr><td>Loss tolerance?</td><td>Some sampled-out spans are fine and intentional; spans that pass sampling must not be silently dropped by the pipeline itself</td></tr>
+  </table>
+
+  <div class="callout ingest"><b>Interview-ready definition:</b> requirements gathering for a telemetry ingester means separating the emitting service's need (ack fast, under 5ms, and never block the caller's actual request) from the pipeline's own needs (durably buffer bursts, shard for queryability, sample to control volume, and route to storage suited for the query pattern) — and confirming concrete numbers (request rate, spans/request, retention) before any capacity math, since ingestion latency and storage volume pull the design in different directions and the numbers decide how hard each pull actually is.</div>
+</section>
+
+<!-- ============ SECTION 2: CAPACITY ESTIMATION ============ -->
+<section id="capacity">
+  <div class="kicker">02 — From request rate to storage over a year, step by step</div>
+  <h2>Capacity estimation</h2>
+
+  <p><strong>Start here, before the math.</strong> The whole estimation chain here is one multiplication after another: requests → spans → bytes → bytes/sec → bytes/day → bytes/year, with ONE additional lever (the sampling rate) that can shrink the final number by an order of magnitude or more. Working the chain WITHOUT sampling first, then applying sampling, is what makes sampling's cost impact legible rather than just asserted.</p>
+
+  <h3>Spans per second</h3>
+  <div class="code">requests_per_sec = <span class="c-num">20</span>_<span class="c-num">000</span>
+spans_per_request = <span class="c-num">15</span>
+
+spans_per_sec = requests_per_sec * spans_per_request  <span class="c-cmt"># 300,000 spans/sec</span>
+<span class="c-cmt"># This is the number that decides everything downstream. 300K spans/sec
+# is squarely "needs a distributed, horizontally-scaled ingestion tier,"
+# not "a single process reading a socket."</span></div>
+
+  <h3>Bytes per second, before sampling</h3>
+  <div class="code"><span class="c-cmt"># A span: trace_id, span_id, parent_id, service name, operation name,
+# start/end timestamps, status, a handful of key-value attributes
+# (per opentelemetry_basics.html's span shape) -- ~500 bytes average,
+# serialized (protobuf, which OTel uses natively, is compact)</span>
+avg_span_bytes = <span class="c-num">500</span>
+
+raw_bytes_per_sec = spans_per_sec * avg_span_bytes  <span class="c-cmt"># 300,000 * 500 = 150,000,000 B/sec = 150MB/sec</span>
+raw_bytes_per_day = raw_bytes_per_sec * <span class="c-num">86400</span>  <span class="c-cmt"># ~13TB/day</span>
+
+<span class="c-cmt"># 13TB/day, UNSAMPLED, for 14 days of hot retention alone = ~180TB.
+# This is the number that makes sampling non-optional, not a nice-to-have
+# -- storing every span at this volume is a real, large infrastructure
+# cost, and most of those spans are for requests that were completely
+# unremarkable (fast, successful, boring).</span></div>
+
+  <h3>Bytes per second, after sampling</h3>
+  <div class="code"><span class="c-cmt"># A defensible sampling target for a system this size: keep 100% of
+# traces that are SLOW (p95+) or ERRORED, and a flat 2% of everything
+# else ("boring" traffic) -- this is a simplification of section 4's
+# tail-based sampling, previewed here just for the storage math</span>
+error_or_slow_fraction = <span class="c-num">0.03</span>   <span class="c-cmt"># ~3% of traces are slow/errored -- keep ALL of these</span>
+boring_sample_rate = <span class="c-num">0.02</span>       <span class="c-cmt"># keep 2% of the remaining 97%</span>
+
+effective_keep_rate = error_or_slow_fraction + (<span class="c-num">1</span> - error_or_slow_fraction) * boring_sample_rate
+<span class="c-cmt"># = 0.03 + 0.97 * 0.02 = 0.0494 -- keep ~5% of all spans</span>
+
+sampled_bytes_per_day = raw_bytes_per_day * effective_keep_rate  <span class="c-cmt"># ~13TB * 0.05 = ~650GB/day</span>
+hot_storage_14d = sampled_bytes_per_day * <span class="c-num">14</span>  <span class="c-cmt"># ~9.1TB -- a very different, very buildable number</span></div>
+
+  <div class="callout warn"><b>Read the number, don't just compute it:</b> sampling took hot storage from ~180TB to ~9TB — a 20x reduction — while DELIBERATELY keeping 100% of the traces most likely to matter for debugging (slow, errored). This is the entire argument for tail-based sampling over naive uniform sampling: uniform 5% sampling would have thrown away 95% of the rare error traces along with 95% of the boring ones, exactly the traces an on-call engineer needs most.</div>
+
+  <h3>Ingestion tier sizing</h3>
+  <div class="code">spans_per_sec = <span class="c-num">300</span>_<span class="c-num">000</span>
+<span class="c-cmt"># A single ingestion node, doing minimal work (validate, batch, write
+# to the durable queue) can reasonably sustain ~15,000 spans/sec</span>
+spans_per_node = <span class="c-num">15</span>_<span class="c-num">000</span>
+
+nodes_needed = spans_per_sec / spans_per_node  <span class="c-cmt"># = 20 nodes</span>
+<span class="c-cmt"># plus headroom for burst (deploys, retry storms can 3-5x this
+# instantaneously) -- provision for ~2.5x sustained, so ~50 ingestion
+# nodes, horizontally scaled behind a load balancer, each stateless</span></div>
+
+  <div class="callout queue"><b>Interview-ready definition:</b> capacity estimation here chains four numbers: spans/sec (300K, from request rate × spans/request), raw bytes/day (~13TB, before any sampling — the number that justifies sampling as a REQUIRED cost control, not optional), sampled bytes/day (~650GB, after a tail-based-style keep rate that preferentially retains slow/errored traces), and ingestion node count (~50, sized with burst headroom, not just sustained average). The 20x reduction from sampling is the single most important number in the whole estimate — it's what turns an unbuildable 180TB hot-storage requirement into a buildable 9TB one.</div>
+</section>
+
+<!-- ============ SECTION 3: ARCHITECTURE ============ -->
+<section id="architecture">
+  <div class="kicker">03 — Accept fast, buffer durably, sort downstream</div>
+  <h2>Architecture</h2>
+
+  <p><strong>Start here, before the diagram.</strong> The whole pipeline is the mail-sorting-facility analogy made literal: an ingestion tier that does almost nothing except accept and batch (the loading dock), a durable queue that survives the ingestion tier or storage tier having a bad day (the conveyor belt with buffer capacity), and a storage tier split by query pattern (the actual sorting, done by machines built for the specific kind of mail).</p>
+
+  <div class="arch">
+    <div class="arch-row">
+      <div class="arch-node ingest" id="node-sdk">Service<div class="sub">OTel SDK</div></div>
+      <div class="arch-arrow" id="arrow-1">→</div>
+      <div class="arch-node ingest" id="node-collector">Ingestion Tier<div class="sub">~50 nodes, batch + ack</div></div>
+      <div class="arch-arrow" id="arrow-2">→</div>
+      <div class="arch-node queue" id="node-queue">Durable Queue<div class="sub">partitioned by trace_id</div></div>
+      <div class="arch-arrow" id="arrow-3">→</div>
+      <div class="arch-node store" id="node-sampler">Tail Sampler<div class="sub">decide keep/drop per trace</div></div>
+    </div>
+    <div class="arch-row" style="margin-top:0.6rem;">
+      <div class="arch-node store" id="node-ts">Time-Series Store<div class="sub">metrics: latency %iles</div></div>
+      <div class="arch-node store" id="node-col">Columnar Store<div class="sub">traces: full-fidelity, sampled</div></div>
+    </div>
+  </div>
+
+  <h3>1 — Ingestion API: batch client-side, ack fast</h3>
+  <p>The SDK on each service does NOT send one network call per span — per section 1's 5ms ack budget, that would be both wasteful and slow. Instead, per <code class="inline">latency_and_tracing_integration.html</code>'s instrumentation pattern, the SDK buffers spans locally and flushes a BATCH (e.g. every 100 spans or every 1 second, whichever comes first) to the ingestion tier. The ingestion tier's job is deliberately minimal: validate the batch's shape, append it to the durable queue, and ack — no parsing individual spans for content, no sampling decisions, no storage writes on this path. This is exactly why it can hit a 5ms p99 ack: it's doing the least possible work before durability is achieved.</p>
+
+  <h3>2 — Durable queue, partitioned by trace_id</h3>
+  <p>A Kafka-like append-only log sits between ingestion and everything downstream. Partitioning by <code class="inline">trace_id</code> (hash the trace ID to a partition) — not by service name or random round-robin — guarantees every span belonging to the SAME trace lands in the SAME partition, which means a single consumer reading one partition sequentially can assemble a complete trace without needing to coordinate with consumers reading other partitions. This is the load-bearing sharding decision the prompt calls for: it turns "reassemble a trace scattered across arbitrary consumers" into "read one partition in order."</p>
+
+  <h3>3 — Storage split: time-series vs. columnar</h3>
+  <table class="cmp">
+    <tr><th></th><th>Time-series store</th><th>Columnar store</th></tr>
+    <tr><td><strong>What it holds</strong></td><td>Aggregated metrics: request counts, latency percentiles, error rates, bucketed by time</td><td>Full-fidelity sampled traces: every span, every attribute, individually queryable</td></tr>
+    <tr><td><strong>Query pattern</strong></td><td>"p99 latency for service X over the last hour" — range scans over time, pre-aggregated</td><td>"show me trace abc123" or "show me every trace with a DB span over 500ms" — point lookups and ad-hoc filtering across columns</td></tr>
+    <tr><td><strong>Why not one store for both</strong></td><td colspan="2">A time-series store is optimized for compact storage of NUMERIC aggregates over time and fast range queries, not for storing structured, high-cardinality span attributes. A columnar store is optimized for the opposite: flexible, ad-hoc filtering across many attribute columns, but is comparatively wasteful for something as simple as "the p99 over the last hour," which the time-series store answers in a pre-aggregated single read. Splitting them lets each be tuned for what it's actually good at, matching <code class="inline">database/time_series_schema.html</code>'s reasoning for choosing a time-series shape in the first place.</td></tr>
+  </table>
+
+  <div class="callout"><b>Interview-ready definition:</b> the architecture accepts spans through a thin, stateless ingestion tier that batches and acks fast (meeting the 5ms budget by doing minimal work before durability), buffers them in a durable queue partitioned by <code class="inline">trace_id</code> (so trace reassembly never requires cross-partition coordination), and splits storage into a time-series store for aggregated metrics/percentiles and a columnar store for full-fidelity sampled traces — because those two query patterns (range-aggregate vs. ad-hoc point lookup) are different enough that one store optimized for both would do neither well.</div>
+</section>
+
+<!-- ============ SECTION 4: SAMPLING STRATEGIES ============ -->
+<section id="sampling">
+  <div class="kicker">04 — The lever that turns an unaffordable system into an affordable one</div>
+  <h2>Sampling strategies: head-based vs. tail-based</h2>
+
+  <p><strong>Start here, before the trade-off table.</strong> Imagine a security guard deciding which cars to search at a checkpoint. A HEAD-based strategy decides at the moment each car arrives, with no information about what's actually in the trunk — e.g. "search every 20th car," a coin flip made before anything is known. A TAIL-based strategy waits until AFTER observing something about the car (it's swerving, the driver seems nervous) and decides based on that — which requires holding every car briefly before deciding, but catches the genuinely suspicious ones a blind 1-in-20 rule would mostly miss.</p>
+
+  <table class="cmp">
+    <tr><th></th><th>Head-based sampling</th><th>Tail-based sampling</th></tr>
+    <tr><td><strong>When the decision is made</strong></td><td>At the START of a trace (often at the root span, before any child spans exist) — e.g. "sample 5% of traces, decided by a coin flip on trace_id"</td><td>AFTER the full trace has completed — decision can use the trace's actual outcome (errored? slow? which service?)</td></tr>
+    <tr><td><strong>Cost/complexity</strong></td><td>Cheap and simple — no buffering needed, each service independently applies the same deterministic rule (e.g. hash trace_id, keep if below threshold) and gets a consistent answer</td><td>Requires buffering ALL spans of a trace somewhere until the trace is judged complete, THEN deciding — real memory/time cost, and "is this trace complete yet" is itself a nontrivial question (per <code class="inline">opentelemetry_basics.html</code>'s trace-as-a-tree model, a trace is "done" only once its root span closes)</td></tr>
+    <tr><td><strong>What it's good at</strong></td><td>Uniformly representative sampling of NORMAL traffic — good for overall volume/pattern trends</td><td>Guaranteeing you never lose the RARE, high-value traces (errors, outliers) — exactly section 2's 20x storage reduction relied on this</td></tr>
+    <tr><td><strong>What it's bad at</strong></td><td>By construction, samples errors and slow traces at the SAME low rate as everything else — a rare 0.1%-of-traffic bug could be sampled out entirely and never observed</td><td>More expensive to run (buffering, decision latency) and adds a processing stage between ingestion and storage</td></tr>
+  </table>
+
+  <p>Section 2's estimate used a tail-based-flavored rule (100% of slow/errored, 2% of the rest) precisely because head-based sampling cannot express "always keep the interesting ones" — a coin flip made before the trace exists structurally cannot know whether that trace is about to fail. The realistic production answer, and what most tracing backends actually implement: a HYBRID — a cheap head-based rate as a coarse volume control (so an ingestion tier isn't overwhelmed even before any sampling decision), combined with tail-based logic downstream (in the sampler stage of section 3's diagram) that can still override and retain any trace matching an "interesting" rule, even one head-based sampling would have dropped.</p>
+
+  <div class="callout ingest"><b>Interview-ready definition:</b> head-based sampling decides whether to keep a trace at its start, cheaply and without needing to buffer anything, but cannot condition on the trace's eventual outcome — so it samples rare, important traces (errors, outliers) at the same low rate as routine traffic. Tail-based sampling decides after the trace completes, which requires buffering the trace's spans until then, but can guarantee errored or slow traces are always kept — directly enabling the large storage reduction section 2 relied on. Production systems typically combine both: a coarse head-based rate to bound ingestion volume, plus tail-based logic downstream to retain anything that later proves interesting.</div>
+</section>
+
+<!-- ============ SECTION 5: BACKPRESSURE LIVE ============ -->
+<section id="backpressure">
+  <div class="kicker">05 — Watching the queue absorb a burst instead of the ingestion tier falling over</div>
+  <h2>Backpressure handling, live</h2>
+
+  <p><strong>Start here, before clicking.</strong> A deploy across the fleet triggers a burst 4x the sustained span rate. Watch how the durable queue (not the ingestion tier, and not the emitting services) is what absorbs the spike — exactly the buffering role section 3 assigned it.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>INGESTION BURST — 4x SPAN RATE FOR 10 SECONDS</span>
+      <div><button class="btn secondary" id="bp-reset">Reset</button></div>
+    </div>
+    <div class="arch">
+      <div class="arch-row">
+        <div class="arch-node ingest" id="node-svc">Services<div class="sub" id="sub-svc">300K spans/sec</div></div>
+        <div class="arch-node ingest" id="node-ing">Ingestion Tier<div class="sub" id="sub-ing">50 nodes, healthy</div></div>
+        <div class="arch-node queue" id="node-q">Durable Queue<div class="sub" id="sub-q">lag: 0s</div></div>
+        <div class="arch-node store" id="node-consumer">Sampler/Storage<div class="sub" id="sub-consumer">draining steadily</div></div>
+      </div>
+    </div>
+    <button class="btn" id="bp-run">Trigger fleet-wide deploy burst ▸</button>
+    <div class="log" id="bp-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> the ingestion tier keeps accepting and acking at its normal fast rate throughout — it never blocks the emitting services, because its only job is to append to the queue, and the queue can absorb a burst far faster than it can be written far beyond what downstream consumers (samplers, storage writers) can keep up with. Consumer LAG grows temporarily and drains back down once the burst passes — that lag, not a dropped span or a slow ingestion ack, is where backpressure actually shows up in this design.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now defend the design yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution. Treat these as interviewer follow-ups.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Justifying trace_id partitioning over round-robin</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An interviewer asks: "why not just round-robin spans across queue partitions for better load balancing, instead of partitioning by trace_id?" What's the answer, and what would round-robin break?</p>
+    <details><summary>Show solution</summary><div class="solution">Round-robin partitioning would break the property section 3's design
+depends on: that a single consumer reading ONE partition sequentially
+can assemble a complete trace without coordinating with any other
+consumer. If spans were round-robined, the 15 spans belonging to one
+trace (per section 1's average) would be scattered across up to 15
+different partitions, and reassembling that trace into the tree
+opentelemetry_basics.html describes would require EVERY consumer to
+somehow know about and communicate with every other consumer, or
+require a separate join/reassembly stage that reads across all
+partitions -- reintroducing real coordination complexity that
+trace_id-based partitioning was specifically designed to avoid.
+
+The load-balancing concern is real but secondary and solvable a
+different way: as long as there are meaningfully more distinct trace_ids
+than partitions (true at 300K spans/sec across many concurrent traces),
+hashing trace_id to a partition still distributes load roughly evenly
+across partitions in aggregate, even though any ONE trace's spans all
+land in the same partition. You get both properties -- even load
+distribution AND colocated trace spans -- because the unit of
+partitioning (trace_id) is high-cardinality enough that hashing it still
+spreads load well; round-robin would only be strictly necessary if
+trace_id had low cardinality or a skewed distribution, which isn't the
+case here.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Reconciling the 5ms ack budget with tail-based sampling's need to see the whole trace</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 requires the ingestion API to ack the emitting service in under 5ms. Section 4's tail-based sampling requires waiting until a trace is COMPLETE (which could be seconds, for a trace with a slow downstream call) before deciding to keep or drop it. Explain why these two requirements don't actually conflict, given section 3's architecture.</p>
+    <details><summary>Show solution</summary><div class="solution">They don't conflict because they apply to two DIFFERENT points in the
+pipeline, and section 3's architecture deliberately keeps them decoupled.
+The 5ms budget applies ONLY to the ack from the ingestion tier back to
+the emitting service -- i.e. "I have durably received and queued your
+batch of spans." It says nothing about how long it takes for those spans
+to be FULLY PROCESSED (sampled, stored, made queryable) downstream. The
+emitting service's request path is unblocked the moment the ingestion
+tier acks the batch write to the durable queue -- which, per section 3,
+is a cheap append operation, achievable well under 5ms because it does
+essentially no processing.
+
+Tail-based sampling happens entirely AFTER that ack, as a downstream
+consumer (the "Tail Sampler" stage in section 3's diagram) reading from
+the durable queue at its own pace, buffering spans per trace_id until
+each trace is judged complete, then deciding keep/drop. This is exactly
+why the durable queue exists as a separate stage rather than the
+ingestion tier doing sampling inline: it lets the FAST, latency-critical
+path (accept and durably queue) be architecturally separate from the
+SLOW, correctness-critical path (wait for a full trace, then decide).
+A design that tried to make the ingestion tier itself wait for trace
+completion before acking would violate the 5ms budget on any trace with
+a slow span -- which is precisely the case tail-based sampling most
+wants to observe. Decoupling ack-time from sampling-decision-time is
+what makes both requirements simultaneously satisfiable.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Recomputing storage if retention doubles</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Compliance now requires 28 days of hot trace retention instead of 14. Using section 2's sampled daily rate (~650GB/day), what's the new hot storage requirement, and does this change any architectural decision from section 3?</p>
+    <details><summary>Show solution</summary><div class="solution">Straightforward scaling of section 2's number: 650GB/day * 28 days =
+~18.2TB, roughly double the original ~9.1TB (exactly what doubling the
+retention window should do to a roughly constant daily ingest rate).
+
+Whether this changes section 3's architecture depends on what "hot"
+means operationally, which is worth stating explicitly rather than just
+recomputing the number. At ~9TB, a single well-provisioned columnar
+store cluster is comfortably sufficient. At ~18TB, it likely still is --
+this is not yet the kind of jump (section 2's earlier 180TB unsampled
+number, for contrast) that forces a fundamentally different storage
+tier. But it's a reasonable trigger to introduce TIERING within "hot"
+itself: e.g. the most recent 7 days on faster, more expensive storage
+(SSD-backed, optimized for the freshest and most frequently queried
+data -- most trace lookups are for recent incidents), and days 8-28 on
+a slightly cheaper tier with slightly higher query latency tolerance.
+This is the same hot/cold tiering instinct
+enterprise_mcp_agent_gateway_design.html applied to audit logs, now
+applied within the "hot" retention window itself rather than only at
+the hot/cold boundary -- a good interview answer recognizes that
+"double the number" doesn't automatically mean "double the
+infrastructure," and asks whether the SHAPE of the storage tier itself
+should change before just provisioning 2x more of the same thing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a trace that's missing spans in the dashboard</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user reports that <code class="inline">trace_dashboard_practice.html</code>'s dashboard shows a trace with only 3 of its expected 15 spans. Using this lab's pipeline (sections 1-4), list at least three distinct points in the pipeline where spans could have been lost or excluded, and how you'd distinguish which one happened.</p>
+    <details><summary>Show solution</summary><div class="solution">At least three genuinely distinct causes, each diagnosable differently:
+
+1. SAMPLING excluded them intentionally (section 4). If tail-based
+sampling judged this trace "boring" (fast, no errors) at the 2% keep
+rate, only a SUBSET of spans might have been retained if sampling were
+applied per-span rather than per-trace -- which is itself a design bug
+worth catching: section 4's sampling should be a per-TRACE decision
+(keep all 15 spans or none), never per-span, precisely to avoid this
+exact "partial trace" outcome. If spans are missing due to sampling
+misconfigured as per-span, that's diagnosable by checking whether ANY
+of the missing spans belonged to error/slow child operations (which a
+correct per-trace tail sampler would have force-kept).
+
+2. QUEUE partition lag or a consumer failure (section 3). If the tail
+sampler consumer reading trace_id's partition crashed or fell behind
+before all 15 spans for this trace had arrived in the queue, it might
+have judged the trace "complete" prematurely (e.g. on a timeout) and
+made its keep/drop decision before the remaining spans arrived. This is
+diagnosable by checking consumer lag metrics and timeout configuration
+for the sampler stage around the time this trace was emitted.
+
+3. Ingestion tier or client-side batching drop (sections 1, 3). If the
+emitting service's SDK batches and flushes locally before sending, an
+ungraceful shutdown or crash of that specific service instance between
+buffering a span and flushing the batch would lose exactly those
+unflushed spans -- diagnosable by checking whether the missing spans all
+originate from ONE particular service instance, and whether that
+instance had a crash/restart logged around the relevant timestamp.
+
+The general diagnostic principle: missing spans that are randomly
+distributed across services points at sampling (1); missing spans
+clustered by TIME point at a downstream consumer issue (2); missing
+spans clustered by SERVICE INSTANCE point at a client-side/ingestion
+issue (3) -- three different signatures for three different root causes,
+each requiring a different fix.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) walk the full chain from requests/sec to sampled storage/day and explain why sampling is a required cost control rather than an optimization, (2) explain trace_id partitioning's purpose in one sentence, and (3) explain why the 5ms ack budget and tail-based sampling don't conflict? <code class="inline">storage-and-rag/realtime_rag_engine_design.html</code> is next — same interview-mock structure, aimed at a query-latency-sensitive system instead of an ingestion-throughput one.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — distributed telemetry ingester design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 5: BACKPRESSURE DEMO */
+(function(){
+  var runBtn = document.getElementById("bp-run");
+  var resetBtn = document.getElementById("bp-reset");
+  var logEl = document.getElementById("bp-log");
+  var subSvc = document.getElementById("sub-svc");
+  var subIng = document.getElementById("sub-ing");
+  var subQ = document.getElementById("sub-q");
+  var subConsumer = document.getElementById("sub-consumer");
+  var nodeQ = document.getElementById("node-q");
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetAll(){
+    subSvc.textContent = "300K spans/sec";
+    subIng.textContent = "50 nodes, healthy";
+    subQ.textContent = "lag: 0s";
+    subConsumer.textContent = "draining steadily";
+    nodeQ.style.borderColor = ""; nodeQ.style.color = "";
+    logEl.innerHTML = "";
+  }
+
+  runBtn.addEventListener("click", async function(){
+    runBtn.disabled = true;
+    resetAll();
+
+    log("Fleet-wide deploy begins — every service instance restarts and immediately retries in-flight requests, spiking span emission to <b>~1.2M spans/sec</b> (4x sustained).", "ingest");
+    subSvc.textContent = "1.2M spans/sec (4x burst)";
+    await wait(600);
+
+    log("<b>Ingestion tier</b> keeps accepting and acking at its normal fast rate — its only job is to append batches to the durable queue, which is a cheap, constant-time operation regardless of overall volume.", "ingest");
+    subIng.textContent = "50 nodes, acking < 5ms";
+    await wait(600);
+
+    log("<b>Durable queue</b> absorbs the burst — writes to an append-only log scale far more easily than the downstream sampling/storage work does. Consumer lag starts climbing.", "queue");
+    subQ.textContent = "lag: 3s and growing";
+    nodeQ.style.borderColor = "var(--queue-c)"; nodeQ.style.color = "var(--queue-c)";
+    await wait(700);
+    subQ.textContent = "lag: 9s and growing";
+    await wait(700);
+
+    log("<b>Tail sampler / storage writers</b> keep consuming at their steady sustainable rate — they don't crash or reject work, they just fall further behind in real time.", "bad");
+    subConsumer.textContent = "draining at sustained rate (behind)";
+    await wait(700);
+
+    log("Burst subsides after ~10 seconds. Emission returns to 300K spans/sec. Consumers keep draining at their steady rate, and lag shrinks back toward zero over the following minute.");
+    subSvc.textContent = "300K spans/sec";
+    await wait(700);
+    subQ.textContent = "lag: 2s and draining";
+    await wait(600);
+    subQ.textContent = "lag: 0s";
+    subConsumer.textContent = "draining steadily";
+    nodeQ.style.borderColor = ""; nodeQ.style.color = "";
+
+    log("<b>No spans were dropped and no service was ever blocked.</b> The queue is precisely what let ingestion stay fast and constant-time while absorbing a 4x burst downstream consumers alone couldn't have kept up with in real time.");
+
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", resetAll);
+})();
+</script>
+</body>
+</html>

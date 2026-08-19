@@ -81,7 +81,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>One hundred and twenty-five labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>One hundred and thirty-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, MCP &amp; agentic systems, and AI evals &amp; observability — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -177,7 +177,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Data Structures &amp; Algorithms</h2>
-      <span class="count">8 labs</span>
+      <span class="count">9 labs</span>
     </div>
     <div class="cards">
       <a class="card dsa" href="dsa/big_o_and_linked_lists.html">
@@ -228,13 +228,19 @@
         <p>A complete runnable selectors-based echo server: blocking vs non-blocking sockets, and the register/wait/dispatch loop asyncio is built on top of.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card dsa" href="dsa/combined_timed_mock_dsa_schema_system_design.html">
+        <span class="tag">Timed Mock — Context-Switching Across Four Stations</span>
+        <h3>Combined Mock: DSA + Schema + System Design</h3>
+        <p>Four live-timer stations back to back — a graph problem, a schema question, a system design sketch, then a DSA follow-up — training the mode-switch itself, not depth in any one area.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Systems Fundamentals</h2>
-      <span class="count">9 labs</span>
+      <span class="count">11 labs</span>
     </div>
     <div class="cards">
       <a class="card systems" href="systems/latency_and_throughput.html">
@@ -291,13 +297,25 @@
         <p>Chat-app-at-scale, CI/CD eval gating, the nginx reverse proxy, and sharding/replication for eval data — each re-derived from a blank page before any answer is revealed, plus one request traced through all four at once.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card systems" href="systems/enterprise_mcp_agent_gateway_design.html">
+        <span class="tag">System Design Mock — Requirements → Capacity → Trade-offs</span>
+        <h3>Enterprise MCP Agent Gateway Design</h3>
+        <p>The full interview mock on top of the gateway basics: auth per tool, rate limiting, a schema registry cached in memory, per-backend circuit breakers, and capacity estimation with real numbers shown step by step.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card systems" href="systems/distributed_telemetry_ingester_design.html">
+        <span class="tag">System Design Mock — Ingestion, Sampling &amp; Backpressure</span>
+        <h3>Distributed Telemetry Ingester Design</h3>
+        <p>Ingesting 300K spans/sec: a durable queue partitioned by trace ID, time-series vs columnar storage, head- vs tail-based sampling, and a live demo of backpressure absorbing a fleet-wide burst.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">19 labs</span>
+      <span class="count">20 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -414,13 +432,19 @@
         <p>Extending eval_results_schema.html with a new eval_span table — parent_span_id nesting, generated duration columns — via an additive, backward-compatible migration with a real rollback plan.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/capstone_capacity_estimation_practice.html">
+        <span class="tag">DB Design — Estimate Storage &amp; Throughput for the Capstone</span>
+        <h3>Capstone Capacity Estimation Practice</h3>
+        <p>The general five-step estimation method, applied to the capstone's own agent-run/tool-call/span/eval schema — with a live calculator you can drag DAU, fan-out, and retention on and watch storage and QPS move.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">25 labs</span>
+      <span class="count">26 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -573,13 +597,19 @@
         <p>Long-lived, stateful WebSocket connections that break the stateless-API assumption, at-least-once delivery plus idempotency as the practical path to exactly-once, and a Redis pub/sub backplane routing messages across servers.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/capstone_scaffold_fastapi_mcp.html">
+        <span class="tag">Capstone — FastAPI + MCP Skeleton, Runnable Today</span>
+        <h3>Capstone Scaffold: FastAPI + MCP</h3>
+        <p>The literal starting skeleton: liveness vs readiness endpoints, an MCP server mounted over SSE, named empty slots for the orchestrator and eval/tracing hooks, and a checklist to verify it actually runs before Week 2.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Storage &amp; RAG</h2>
-      <span class="count">18 labs</span>
+      <span class="count">19 labs</span>
     </div>
     <div class="cards">
       <a class="card storage" href="storage-and-rag/btree_vs_columnar.html">
@@ -688,6 +718,12 @@
         <span class="tag">Survival Exercise — Recall vs Brute-Force</span>
         <h3>Benchmark &amp; Finish</h3>
         <p>What recall means precisely, a worked 5-neighbor example scoring 80%, and which parameters to tune to close the gap to a 90% recall target.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/realtime_rag_engine_design.html">
+        <span class="tag">System Design Mock — Freshness SLA &amp; Incremental Indexing</span>
+        <h3>Real-Time RAG Engine Design</h3>
+        <p>Serving low-latency queries over a corpus that updates continuously: incremental HNSW inserts instead of periodic rebuilds, the bounded "not yet indexed" window made concrete, and an 800ms query budget broken down stage by stage.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -962,7 +998,7 @@
 
 </main>
 
-<footer>materials/ · one hundred and twenty-five standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and thirty-one standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

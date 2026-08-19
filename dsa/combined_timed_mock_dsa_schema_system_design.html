@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Combined Timed Mock: DSA + Schema + System Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.2ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:120px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> COMBINED MOCK · DSA + SCHEMA + SYSTEM DESIGN, TIMED</div>
+  <h1>The skill isn't depth in any one station. It's not dragging the last one into this one.</h1>
+  <p class="lede">Every technique tested here already has its own dedicated lab — this one trains something none of them can: reorienting your entire mode of thinking on a clock, four times in a row, without the previous station's mental model leaking into the next. Four timed stations, each drawing on existing <code class="inline">dsa/</code>, <code class="inline">database/</code>, and <code class="inline">systems/</code> labs. Depth lives elsewhere. Speed of context-switch lives here.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Station 1 — DSA: a graph problem, 12 minutes</div>
+    <div class="pipe-label b">Station 2 — Schema: model it correctly, 10 minutes</div>
+    <div class="pipe-label c">Station 3 — System design: sketch it, 15 minutes</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="how">How This Mock Works</a>
+  <a data-target="s1">Station 1 · DSA</a>
+  <a data-target="s2">Station 2 · Schema Design</a>
+  <a data-target="s3">Station 3 · System Design</a>
+  <a data-target="s4">Station 4 · DSA Follow-Up</a>
+  <a data-target="reflection">Reflection: Context-Switching</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="kicker">Before station 1 — read this, not during</div>
+  <h2>How this mock works</h2>
+
+  <p><strong>Start here, before starting any timer.</strong> Think about a relay race versus a single runner doing four different events back to back. A relay race hands off a baton between four DIFFERENT runners, each specialized for their leg — no individual runner has to reorient. A decathlete, by contrast, is ONE person who has to go from the 100m sprint (explosive, seconds-long, all adrenaline) to the long jump (technical, patient, a completely different body mechanic) to the shot put (raw strength, no running at all) — and the actual skill decathlon training targets isn't "get better at sprinting" in isolation, it's minimizing the dead time and mental fumbling in the TRANSITION between events. A real system design interview loop is a decathlon, not a relay: you are one person, going from a DSA whiteboard problem straight into a schema design question straight into a full system sketch, often within the same hour, with no specialist handoff.</p>
+
+  <p>This mock has four stations. Each one is deliberately SHALLOW relative to its dedicated lab — the depth already exists in <code class="inline">dsa/graphs_bfs_dfs.html</code>, <code class="inline">database/normalization_3nf_and_er_modeling.html</code>, and the Week 1 design mocks. What this lab adds is the CLOCK and the FORCED SWITCH: each station has a visible countdown, and the moment it hits zero, you move on — finished or not — exactly like a real loop where the next interviewer doesn't care that you were 90% done with the last one.</p>
+
+  <div class="callout dsa"><b>How to actually use this lab:</b> work each station for real, on paper or in your own head, using the timer below as a hard stop — not a suggestion. Resist the urge to peek at a station's solution before your own timer runs out; the entire point is training the decision of WHEN to stop optimizing one answer and move to the next, which you can only practice by actually running out of time sometimes.</div>
+</section>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="s1">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 12:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">12:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Given a directed graph representing tool dependencies in an agent's plan (an edge <code class="inline">A → B</code> means tool A must run before tool B), determine whether the plan can be executed at all — i.e., detect whether the dependency graph contains a cycle — and if it can, produce one valid execution order.</p>
+    <p style="font-size:0.88rem;">This is <code class="inline">dsa/graph_cycle_detection.html</code>'s cycle detection combined with a topological sort, applied to an agent-planning context instead of an abstract graph — recognizing the SHAPE of a familiar problem under a new label, fast, is exactly the skill being tested. Sketch your approach (DFS with a recursion-stack set, or Kahn's algorithm via in-degree tracking) and its complexity before your timer runs out.</p>
+
+    <details><summary>Show reference approach (only after your timer ends)</summary><div class="solution">Two standard approaches, either is a strong answer:
+
+1. DFS with a three-color scheme (white/gray/black), per
+graph_cycle_detection.html: a node in the current recursion stack
+("gray") that's revisited means a back edge, hence a cycle. If DFS
+completes with no back edge found, the plan is executable; the
+topological order is the REVERSE of DFS finish order (append each node
+to the order as it's popped/finished, then reverse).
+
+2. Kahn's algorithm: compute in-degree for every node, push all
+0-in-degree nodes onto a queue, repeatedly pop a node, append it to the
+order, and decrement its neighbors' in-degrees, pushing any that reach
+0. If the final order has fewer nodes than the graph, a cycle exists
+among the unvisited remainder.
+
+Both are O(V + E) time, O(V) space. Kahn's is often preferred in an
+agent-planning context specifically because the ORDER it produces
+falls out naturally as a byproduct of the cycle check itself (no
+separate reverse step), and it generalizes cleanly to "give me ALL
+tools currently unblocked" at any point in execution -- relevant if
+tools can be dispatched in parallel whenever their dependencies are
+satisfied, which is a realistic elaboration of this exact problem.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="s2">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 10:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">10:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt — no ramp-up, go straight from graphs to tables:</strong> Model a schema for tracking agent tool-call results (an agent run produces an ordered sequence of tool calls, each with arguments, a result, a latency, and a success/failure status), where you need to efficiently answer "what's the failure rate of tool X over the last 24 hours" and "show me the full ordered call sequence for run Y." Sketch the tables, keys, and which normal form you're targeting.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/normalization_3nf_and_er_modeling.html</code>'s modeling approach and <code class="inline">database/eval_results_schema.html</code>'s "a score with no trace behind it is untrustworthy" shape, now for tool calls instead of eval scores. Sketch entities and foreign keys before your timer runs out — full DDL isn't the point, the entity/relationship shape is.</p>
+
+    <details><summary>Show reference approach (only after your timer ends)</summary><div class="solution">Core entities, in 3NF: an `agent_runs` table (run_id PK, agent_id,
+started_at, status) and a `tool_calls` table (call_id PK, run_id FK,
+sequence_number, tool_name, arguments JSON, result JSON, latency_ms,
+status, called_at). The ordered-sequence requirement is satisfied by
+sequence_number + an index on (run_id, sequence_number) -- retrieving
+run Y's full ordered call sequence is one indexed range scan, exactly
+eval_trace_schema_finalization.html's reasoning for why an explicit
+ordering column beats relying on insertion order or timestamp
+granularity alone.
+
+The failure-rate query ("tool X's failure rate over 24h") wants an
+index on (tool_name, called_at) at minimum, and at real scale would
+benefit from a separate aggregated rollup table (tool_name, hour_bucket,
+call_count, failure_count) maintained incrementally rather than scanning
+raw tool_calls on every dashboard load -- the same read-optimization
+instinct database/read_replicas_and_dashboard_caching.html applied to
+eval dashboards, now applied to tool-call failure rates. A strong answer
+explicitly names WHY 3NF here (no redundant tool metadata duplicated
+per call row -- if tool_name needs a description or owner, that belongs
+in a separate `tools` table, not repeated on every tool_calls row) and
+flags the aggregation table as an intentional, justified DEVIATION from
+strict normalization for read performance, not an oversight.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="s3">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 15:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">15:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt — now zoom all the way out, from one table to a whole system:</strong> Sketch, at a HIGH level (no deep capacity estimation — that's Week 1's dedicated mocks), how you'd architect a service that takes the tool-call data from Station 2's schema and exposes a real-time "which tools are currently failing above threshold" alerting signal to on-call engineers, at a scale of ~5,000 tool calls/sec.</p>
+    <p style="font-size:0.88rem;">This deliberately compresses <code class="inline">systems/distributed_telemetry_ingester_design.html</code>'s ingestion-pipeline shape and <code class="inline">systems/observability_pipeline_design.html</code>'s alerting concerns into a 15-minute sketch — the goal is naming the right 3-4 components and their responsibilities, not a full mock.</p>
+
+    <details><summary>Show reference approach (only after your timer ends)</summary><div class="solution">A strong 15-minute sketch names roughly four components without going
+deep on any one: (1) an ingestion path that receives tool-call
+completion events (success/fail + latency) and writes them somewhere
+durable fast, mirroring distributed_telemetry_ingester_design.html's
+"accept fast, buffer durably" shape rather than writing directly and
+synchronously to the Station 2 schema on the hot path; (2) a streaming
+aggregation layer that maintains a rolling per-tool failure-rate window
+(e.g. failures in the last 5 minutes / total calls in the last 5
+minutes, per tool_name) incrementally, rather than re-querying the full
+tool_calls table on every check; (3) a threshold evaluator that compares
+each tool's rolling rate against a configured threshold and fires an
+alert on crossing it, with de-duplication so a tool stuck above
+threshold doesn't re-alert every second; (4) the durable Station 2
+schema itself as the system of record for post-incident investigation
+(the full ordered call sequence), explicitly NOT on the alerting hot
+path -- alerting reads from the fast in-memory rolling aggregate, not
+from a database query, echoing observability_pipeline_design.html's
+"the dashboard's query path and the alerting path are not the same
+path" distinction.
+
+The interview skill being tested at THIS station specifically is
+naming the RIGHT four boxes and their responsibilities under real time
+pressure, then explicitly deferring capacity estimation ("I'd want to
+work out exact node counts the way I did in Monday's telemetry ingester
+design, but at a sketch level: five thousand calls/sec is squarely
+'needs a horizontally-scaled ingestion tier, not a single process' ")
+rather than trying to cram a full capacity-estimation pass into 15
+minutes at the cost of never reaching component 4.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: DSA FOLLOW-UP ============ -->
+<section id="s4">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 4 — DSA FOLLOW-UP · 8:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">8:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt — jump back to DSA thinking, cold, right after system design:</strong> Station 3's threshold evaluator needs to maintain, per tool, a rolling window of the last 5 minutes of call outcomes to compute a failure rate cheaply. Design the data structure that lets you add a new outcome AND evict outcomes older than 5 minutes, both in O(1) amortized time.</p>
+    <p style="font-size:0.88rem;">This is deliberately the HARDEST switch in the mock: from 15 minutes of high-level system boxes, straight back into precise data-structure reasoning, with zero transition time. Notice the mental gear-change required — that's the point, not the algorithm itself.</p>
+
+    <details><summary>Show reference approach (only after your timer ends)</summary><div class="solution">A queue (deque) of (timestamp, outcome) pairs plus two running counters
+(total_count, failure_count) is the standard answer -- this is a
+sliding-window-over-a-stream pattern, structurally the same shape as
+big_o_and_linked_lists.html's discussion of amortized O(1) operations
+on a deque. On each new outcome: append it to the back of the deque and
+increment total_count (and failure_count if it's a failure) -- O(1).
+Before computing the current rate, evict from the FRONT of the deque
+any entries older than 5 minutes, decrementing total_count/failure_count
+for each evicted entry -- this eviction step is O(1) AMORTIZED, not
+O(1) worst-case per call, because in the worst case many stale entries
+could be evicted in one pass, but each individual entry is only ever
+pushed once and evicted once across its entire lifetime, so the total
+eviction work across N calls is bounded by O(N), giving O(1) amortized
+per call over any sequence of operations -- the exact amortized-analysis
+argument big_o_and_linked_lists.html walks through for dynamic array
+resizing, now applied to a time-based eviction window instead of a
+capacity-based one.
+
+failure_rate = failure_count / total_count is then an O(1) read at any
+point, no need to iterate the deque itself. The follow-up worth
+anticipating: what if calls arrive out of order (network delay,
+distributed sources)? A strict monotonic-timestamp assumption breaks --
+the practical fix in a real distributed system is bucketing into fixed
+time buckets (e.g. per-second counts in a circular buffer of 300
+buckets for a 5-minute window) rather than a raw per-event deque, which
+tolerates minor out-of-order arrival within a bucket at the cost of
+per-second rather than per-event granularity -- a real trade-off worth
+naming even under an 8-minute clock.</div></details>
+  </div>
+</section>
+
+<!-- ============ REFLECTION ============ -->
+<section id="reflection">
+  <div class="kicker">The actual skill this mock trains</div>
+  <h2>Reflection: handling context-switching under time pressure</h2>
+
+  <p><strong>Start here, before reading the list below.</strong> Notice what just happened, if you ran the stations for real: Station 3 asked you to hold FOUR fuzzy, half-finished component boxes in your head and talk about them at a high level, deliberately avoiding precision. Station 4, immediately after, demanded the opposite — one precise, fully-specified data structure with a proven complexity bound. Anyone who tried to answer Station 4 with Station 3's "sketch it loosely, we'll come back" energy would give a genuinely bad answer, and anyone who tried to answer Station 3 with Station 4's "get every detail exactly right" energy would run out of time before naming the fourth component.</p>
+
+  <h3>What actually helps, station to station</h3>
+  <ul>
+    <li><strong>Name the mode change out loud, even to yourself.</strong> "Okay, this is a schema question now, not a graph question" — a two-second explicit reset is cheaper than the 90 seconds of fumbling that happens when your brain is still halfway solving the last problem while you start talking about the new one.</li>
+    <li><strong>Match your precision level to the station's actual ask.</strong> Station 1 and Station 4 want a specific, correct, complexity-bounded answer. Station 3 wants the right FOUR BOXES and their responsibilities, explicitly deferring depth ("I'd work this out the way <code class="inline">enterprise_mcp_agent_gateway_design.html</code> did, but at sketch level here"). Applying Station 1's precision bar to Station 3 is a real, common failure mode — you'll only get through two boxes.</li>
+    <li><strong>Let go of an unfinished station on the clock, deliberately.</strong> The clock hitting zero on Station 1 mid-proof is not a failure of Station 1 — it's success at the actual skill, which is not carrying that unfinished thread into Station 2's very different demands. A real loop's next interviewer has no idea (and doesn't care) that you were 90% done with the last one.</li>
+    <li><strong>Use the PREVIOUS station's artifact when a later one legitimately calls back to it — but don't force a connection that isn't there.</strong> Station 3 legitimately builds on Station 2's schema; Station 4 legitimately builds on Station 3's threshold evaluator. That's real continuity, not context bleed — the skill is distinguishing "this station actually depends on the last one" from "I'm just still thinking about the last one."</li>
+  </ul>
+
+  <div class="callout warn"><b>The failure mode this mock is built to surface:</b> not knowing less about graphs, schemas, or system design than you do in the dedicated labs — it's discovering, under a clock, that you're still mentally "in" Station 2's normalization argument three minutes into Station 3's high-level sketch, and that costs you the fourth component you never got to name. The fix isn't more DSA practice or more schema practice — both already exist at full depth elsewhere in this repo. The fix is running THIS exact drill again until the mode-switch itself stops costing visible time.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">One more full pass, cold</div>
+  <h2>Practice problems</h2>
+  <p>These aren't new technical problems — they're about the switching itself. Work through them honestly.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing your own slowest transition</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Run all four stations again, timing yourself honestly. Which transition (1→2, 2→3, or 3→4) took the longest to "arrive" at the new station's mode of thinking — not to solve the problem, just to stop thinking about the previous one? Why that specific transition, and not the others?</p>
+    <details><summary>Show solution</summary><div class="solution">There's no single correct answer here -- the value is in the honest
+self-diagnosis, not a specific outcome. But a common pattern worth
+checking for: the 2→3 transition (schema into system design) is often
+the SLOWEST for people who default to precision-first thinking, because
+Station 2 rewards getting a specific detail exactly right (is this 2NF
+or 3NF? which column is the foreign key?), and that same instinct
+actively HURTS in Station 3, where spending the first three minutes
+trying to nail exact table names or column types instead of naming the
+four architectural boxes is precision applied at the wrong altitude.
+The 3→4 transition (system design back into DSA) is often slow for the
+opposite reason -- people who just spent 15 minutes deliberately
+staying high-level have to consciously downshift back into "no, actually
+prove this data structure's complexity bound now," and the instinct to
+stay comfortably vague, which just worked for 15 minutes, is now the
+wrong instinct entirely.
+
+If you noticed a consistent slow transition across multiple runs of
+this mock, that's real, actionable signal -- it tells you which
+DIRECTION of altitude change (zooming in vs. zooming out) costs you
+more, which is more useful than knowing "I'm slow at system design" in
+the abstract, because the deficit here isn't depth (you have dedicated
+labs for that) -- it's the specific muscle of changing altitude
+quickly in one particular direction.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Simulating an interviewer follow-up that forces a switch back mid-station</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Real loops sometimes don't wait for your timer — an interviewer interrupts Station 3's system design sketch with "hold on, walk me back through how Station 2's schema would actually store the rolling window data you just mentioned." Practice answering this cold: reconcile Station 3's in-memory rolling window (Station 4's deque/bucket structure) with Station 2's durable schema. Are they the same storage, or genuinely different, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">They are genuinely DIFFERENT storage, serving different purposes, and
+conflating them is the wrong answer here -- recognizing that distinction
+under a surprise interruption is exactly the skill this problem is
+testing. Station 4's rolling window (a deque or bucketed circular
+buffer) is an EPHEMERAL, in-memory structure living inside the
+threshold evaluator process itself, optimized for O(1) amortized
+add/evict and existing ONLY to answer "what's the current failure rate
+right now" cheaply and continuously -- it is explicitly NOT meant to be
+durable; if the evaluator process restarts, rebuilding the last 5
+minutes of window state from Station 2's durable tool_calls table (a
+simple range query on called_at) is perfectly acceptable, because 5
+minutes of catch-up is a small, bounded cost.
+
+Station 2's schema, by contrast, is the durable system of record --
+every tool call, indefinitely retained (subject to whatever retention
+policy applies), queryable for the FULL ordered call sequence of any
+run, used for post-incident investigation, audit, and historical
+analysis -- none of which the ephemeral rolling window structure is
+built for or even capable of. The right answer to the interviewer's
+interruption is naming this split explicitly: "the rolling window is a
+derived, ephemeral, in-memory VIEW computed from the same stream of
+events that also gets durably persisted to Station 2's schema -- they're
+two different consumers of the same underlying event stream, not the
+same storage doing double duty." This is the same "hot path vs. system
+of record" split systems/observability_pipeline_design.html draws
+between a dashboard's live view and its durable backing store, and
+recognizing that pattern quickly, even mid-interruption, is a genuinely
+strong signal in a real loop.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) name which technique each of the four stations reused from an existing dedicated lab, (2) explain in one sentence why Station 3 deliberately avoids the depth Week 1's other design mocks require, and (3) name your own single slowest transition and why? <code class="inline">database/capstone_capacity_estimation_practice.html</code> is Friday's track next — capacity estimation practice aimed squarely at this repo's own capstone project.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — combined timed mock, DSA + schema + system design.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 12 * 60 },
+    { n: 2, seconds: 10 * 60 },
+    { n: 3, seconds: 15 * 60 },
+    { n: 4, seconds: 8 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+</script>
+</body>
+</html>
