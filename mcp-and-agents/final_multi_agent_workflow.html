@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Final Multi-Agent Workflow</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --mcp-c:#4fc3f7; --plan-c:#c792ea; --fail-c:#ff6b6b; --json-c:#7fd8a0; --accent:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--plan-c); color:var(--plan-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.c{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.08);}
+  .pipe-label.d{border-color:var(--json-c); color:var(--json-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;} .code .c-key{color:#4fc3f7;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:380px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.mcp{border-left-color:var(--mcp-c); background:rgba(79,195,247,0.06);}
+  .log .line.plan{border-left-color:var(--plan-c); background:rgba(199,146,234,0.06);}
+  .log .line.fail{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);}
+  .log .line.json{border-left-color:var(--json-c); background:rgba(127,216,160,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .stage-tracker{display:flex; gap:0.5rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .stage-pill{font-family:var(--mono); font-size:0.7rem; padding:0.5rem 0.8rem; border-radius:20px; border:1.5px solid var(--rule); color:var(--ink-dim); transition:all .3s ease;}
+  .stage-pill.done{border-color:var(--json-c); color:var(--json-c); background:rgba(127,216,160,0.1);}
+  .stage-pill.active{border-color:var(--accent); color:var(--accent); background:rgba(242,193,78,0.1); box-shadow:0 0 10px rgba(242,193,78,0.2);}
+  .stage-pill.fail-hit{border-color:var(--fail-c); color:var(--fail-c); background:rgba(255,107,107,0.1);}
+
+  .json-out{font-family:var(--mono); font-size:0.82rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1rem 0; color:#cdd0d8; white-space:pre-wrap;}
+  .json-out .k{color:var(--json-c);} .json-out .s{color:#7fd8a0;} .json-out .n{color:#c792ea;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--fail-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--fail-c);}
+  .callout.mcp{border-left-color:var(--mcp-c); background:rgba(79,195,247,0.06);} .callout.mcp b{color:var(--mcp-c);}
+  .callout.plan{border-left-color:var(--plan-c); background:rgba(199,146,234,0.06);} .callout.plan b{color:var(--plan-c);}
+  .callout.checkpoint{border-left-color:var(--accent); background:rgba(242,193,78,0.1); font-size:0.95rem;}
+  .callout.checkpoint b{color:var(--accent);}
+  .callout.checkpoint ul{margin:0.6rem 0 0; padding-left:1.3rem;}
+  .callout.checkpoint li{margin:0.4rem 0;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · CAPSTONE — FINAL MULTI-AGENT WORKFLOW</div>
+  <h1>Everything this month built, run end to end, on one real task.</h1>
+  <p class="lede">This is the capstone of Month 4: an MCP server exposing database query tools (Week 1), a client agent doing multi-step planning with the ReAct/Plan-and-Solve patterns and loop-termination discipline (Weeks 2-3), a deliberately injected tool failure handled gracefully, and a final answer returned as validated, structured JSON rather than free text (Week 3's schema work). One scenario, walked through completely: <em>"Find all orders over $500 from last month and summarize them."</em></p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">MCP tool discovery over a real server</div>
+    <div class="pipe-label b">Multi-step planning, ReAct-style</div>
+    <div class="pipe-label c">A deliberately injected failure, recovered gracefully</div>
+    <div class="pipe-label d">Final answer as validated, structured JSON</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="server">1 · The MCP Server's DB Query Tools</a>
+  <a data-target="plan">2 · The Agent's Plan</a>
+  <a data-target="run">3 · Run the Full Workflow, Step by Step</a>
+  <a data-target="checkpoint">Month 4 Checkpoint</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE MCP SERVER ============ -->
+<section id="server">
+  <div class="kicker">01 — What the client agent discovers before it plans anything</div>
+  <h2>The MCP server's DB query tools</h2>
+
+  <p><strong>Start here, before the plan.</strong> This week's capstone reuses everything Week 1 already established about MCP servers (<code class="inline">mcp_server_stdio.html</code>, <code class="inline">mcp_fundamentals_jsonrpc.html</code>): a server process exposes a small set of tools via <code class="inline">tools/list</code>, each with a name, description, and a JSON Schema for its parameters (<code class="inline">json_schema_tool_specs.html</code>, Week 3). For this scenario, the server exposes two DB query tools — nothing more elaborate is needed, and per <code class="inline">event_sourcing_vs_crud.html</code>'s "simpler is the right default" reasoning from earlier this week, a minimal, correctly-scoped tool surface beats an overbuilt one.</p>
+
+  <div class="code"><span class="c-cmt">// tools/list response from the DB-query MCP server</span>
+{
+  <span class="c-key">"tools"</span>: [
+    {
+      <span class="c-key">"name"</span>: <span class="c-str">"query_orders"</span>,
+      <span class="c-key">"description"</span>: <span class="c-str">"Query orders by date range and minimum total."</span>,
+      <span class="c-key">"inputSchema"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"object"</span>,
+        <span class="c-key">"properties"</span>: {
+          <span class="c-key">"start_date"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"string"</span>, <span class="c-key">"format"</span>: <span class="c-str">"date"</span>},
+          <span class="c-key">"end_date"</span>:   {<span class="c-key">"type"</span>: <span class="c-str">"string"</span>, <span class="c-key">"format"</span>: <span class="c-str">"date"</span>},
+          <span class="c-key">"min_total"</span>:  {<span class="c-key">"type"</span>: <span class="c-str">"number"</span>, <span class="c-key">"minimum"</span>: <span class="c-num">0</span>}
+        },
+        <span class="c-key">"required"</span>: [<span class="c-str">"start_date"</span>, <span class="c-str">"end_date"</span>, <span class="c-str">"min_total"</span>]
+      }
+    },
+    {
+      <span class="c-key">"name"</span>: <span class="c-str">"get_order_detail"</span>,
+      <span class="c-key">"description"</span>: <span class="c-str">"Fetch full line-item detail for one order ID."</span>,
+      <span class="c-key">"inputSchema"</span>: {
+        <span class="c-key">"type"</span>: <span class="c-str">"object"</span>,
+        <span class="c-key">"properties"</span>: { <span class="c-key">"order_id"</span>: {<span class="c-key">"type"</span>: <span class="c-str">"string"</span>} },
+        <span class="c-key">"required"</span>: [<span class="c-str">"order_id"</span>]
+      }
+    }
+  ]
+}</div>
+
+  <p>Per <code class="inline">permission_scoping.html</code> (this same week), the agent invoking these tools holds only <code class="inline">orders:read</code> — it was never granted any write or delete scope, because summarizing orders is genuinely all this task requires. Per <code class="inline">tool_call_sandboxing.html</code>, <code class="inline">query_orders</code> is itself scoped server-side to only the orders table — it has no path to touch any other table even if asked. Neither of this week's security mechanisms is incidental here — this capstone is deliberately reusing them, not just the earlier weeks' mechanics.</p>
+
+  <div class="callout mcp"><b>Interview-ready definition:</b> an MCP server exposing DB query tools advertises a small, precisely-scoped set of tools via <code class="inline">tools/list</code> — each with a JSON Schema constraining exactly what arguments it accepts — so a connecting agent can discover what's available and what's required before ever attempting a call, with the server itself enforcing both the schema (rejecting malformed calls before execution) and, per this week's security labs, the resource boundary and permission scope each tool call is subject to.</div>
+</section>
+
+<!-- ============ SECTION 2: THE AGENT'S PLAN ============ -->
+<section id="plan">
+  <div class="kicker">02 — Deciding the steps before committing to them</div>
+  <h2>The agent's plan</h2>
+
+  <p><strong>Start here, before the run.</strong> Given the task — "find all orders over $500 from last month and summarize them" — the agent works out a plan, echoing <code class="inline">plan_and_solve_pattern.html</code>'s upfront-planning approach layered with <code class="inline">react_pattern.html</code>'s interleaved execute-and-observe discipline for each individual step: plan the steps first, but still execute and observe one at a time, adapting if a step's result changes what the next step needs.</p>
+
+  <table class="cmp">
+    <tr><th>Step</th><th>Tool call</th><th>Why it's needed</th></tr>
+    <tr><td>1</td><td><code>query_orders(start_date="2026-07-01", end_date="2026-07-31", min_total=500)</code></td><td>Get the list of qualifying orders — the task's actual filter criteria, translated directly into the tool's schema</td></tr>
+    <tr><td>2</td><td><code>get_order_detail(order_id=...)</code> for each qualifying order</td><td>The summary needs line-item detail, which <code>query_orders</code> alone doesn't return — a genuine data dependency, the same shape <code class="inline">react_pattern.html</code>'s capital-then-population example established</td></tr>
+    <tr><td>3</td><td>(no tool call — synthesis)</td><td>Fold every fetched order's detail into one structured summary, per Week 3's JSON output discipline</td></tr>
+  </table>
+
+  <div class="callout plan"><b>Interview-ready definition:</b> multi-step planning for this task means the agent decides, before executing anything, that it needs a filtered list query followed by a per-order detail fetch followed by a synthesis step — then executes those steps one at a time, observing each result before committing to the next call's exact arguments (e.g. the specific order IDs step 2 needs come from step 1's actual result, not from the plan alone), exactly the interleaved execute-then-observe discipline <code class="inline">react_pattern.html</code> established, now applied on top of an upfront plan rather than discovered purely step by step.</div>
+</section>
+
+<!-- ============ SECTION 3: RUN THE WORKFLOW ============ -->
+<section id="run">
+  <div class="kicker">03 — Discovery, planning, execution, a deliberate failure, and a structured answer — one continuous trace</div>
+  <h2>Run the full workflow, step by step</h2>
+
+  <p><strong>Start here, before clicking.</strong> Step through the complete workflow below. Watch specifically for the deliberately injected failure partway through — one <code class="inline">get_order_detail</code> call will fail — and notice how the loop recovers using exactly <code class="inline">loop_termination_logic.html</code> and <code class="inline">deterministic_parsing.html</code>'s graceful-degradation pattern from Week 3, rather than crashing the whole task.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RUN THE CAPSTONE WORKFLOW — ONE STAGE AT A TIME</span>
+      <div><button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <div class="stage-tracker" id="stage-tracker">
+      <span class="stage-pill" id="pill-discover">Discover tools</span>
+      <span class="stage-pill" id="pill-plan">Plan</span>
+      <span class="stage-pill" id="pill-list">Query orders</span>
+      <span class="stage-pill" id="pill-detail">Fetch details</span>
+      <span class="stage-pill" id="pill-fail">Injected failure</span>
+      <span class="stage-pill" id="pill-recover">Recover</span>
+      <span class="stage-pill" id="pill-json">Structured JSON answer</span>
+    </div>
+    <button class="btn" id="run-next">Run next stage ▸</button>
+    <div class="log" id="run-log"></div>
+  </div>
+</section>
+
+<!-- ============ MONTH 4 CHECKPOINT ============ -->
+<section id="checkpoint">
+  <div class="callout checkpoint">
+    <b>Month 4 Checkpoint</b>
+    <p style="margin:0.6rem 0 0; color:#dcd9d0;">The roadmap's checkpoint for Month 4 as a whole reads:</p>
+    <ul>
+      <li><em>"Agent completes a 3-step task end-to-end with one deliberately injected tool failure, and recovers or fails gracefully."</em></li>
+    </ul>
+    <p style="margin:0.8rem 0 0; color:#dcd9d0;">Section 3's walkthrough IS this checkpoint, made concrete: the 3-step task is discover → query orders → fetch each order's detail → synthesize; the deliberately injected failure is one <code class="inline">get_order_detail</code> call failing partway through (simulating a real transient DB error); and the recovery follows Week 3's own <code class="inline">loop_termination_logic.html</code> discipline exactly — the failure is fed back into the transcript as a structured Observation, the loop's step budget absorbs the extra retry, and the task still completes with a valid, structured final answer rather than crashing outright or silently omitting the failed order without explanation.</p>
+    <p style="margin:0.8rem 0 0; color:#dcd9d0;">Passing this cold — narrating a 3-step agentic task, injecting your own failure partway through, and explaining exactly how it recovers or fails gracefully, without notes — is the actual bar for calling Month 4 complete.</p>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>These reason across the ENTIRE month, not just this lab — pull together whichever earlier lab genuinely answers each one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing exactly which max_steps budget this run consumes</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">loop_termination_logic.html</code>'s reasoning, suppose this scenario returns 4 qualifying orders from <code class="inline">query_orders</code>, and one of the 4 <code class="inline">get_order_detail</code> calls fails once before succeeding on retry. How many total loop iterations does this run consume, and what would be a defensible <code class="inline">max_steps</code> value for it?</p>
+    <details><summary>Show solution</summary><div class="solution">Counting iterations the same way function_calling_loop_practice.html's
+Problem 2 did: 1 (query_orders) + 4 (one get_order_detail call per
+qualifying order, counting only the SUCCESSFUL final attempt for the 3
+that worked first try) + 1 (the FAILED get_order_detail attempt for the
+4th order, which still counts as its own iteration per
+loop_termination_logic.html's Practice Problem 5 -- a retry is just
+another pass through the same loop body) + 1 (the retry that succeeds)
++ 1 (final synthesis/Final Answer step) = 8 iterations total.
+
+A defensible max_steps for this task: something like 12-14 -- following
+loop_termination_logic.html's Practice Problem 1 reasoning directly
+(set the cap meaningfully ABOVE the typical case, not merely equal to
+it), this task's typical-case count is 8 (as just computed, including
+one recoverable failure), so a cap of exactly 8 would leave ZERO room
+for a SECOND unlucky failure on a different order, and a cap like 3-4
+would cut off the task before even the first order's detail fetch
+completed. 12-14 gives headroom for one or two more failures than this
+particular run happened to hit, without being so loose (50+) that a
+genuinely runaway loop would burn excessive real cost before the cap
+ever intervened.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Validating the final JSON answer against a schema</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">json_schema_tool_specs.html</code>'s validation discipline, sketch a JSON Schema for this task's final structured answer (fields for the qualifying order count, a list of order summaries, and any orders that failed to fetch and had to be omitted). Why does the schema need a field for failed/omitted orders specifically?</p>
+    <details><summary>Show solution</summary><div class="solution">{
+  "type": "object",
+  "properties": {
+    "period": {"type": "string"},
+    "min_total": {"type": "number"},
+    "orders_found": {"type": "integer", "minimum": 0},
+    "orders_summarized": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "total": {"type": "number"},
+          "item_count": {"type": "integer"}
+        },
+        "required": ["order_id", "total", "item_count"]
+      }
+    },
+    "orders_omitted": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "order_id": {"type": "string"},
+          "reason": {"type": "string"}
+        },
+        "required": ["order_id", "reason"]
+      }
+    }
+  },
+  "required": ["orders_found", "orders_summarized", "orders_omitted"]
+}
+
+The orders_omitted field is required specifically because of THIS lab's
+own deliberately-injected-failure scenario: if the get_order_detail call
+that failed had eventually been abandoned rather than successfully
+retried (a real possibility loop_termination_logic.html's timeout/
+max_steps mechanisms exist to bound), silently returning
+orders_summarized with only 3 of the 4 qualifying orders -- with no
+mention that a 4th existed and was dropped -- would be actively
+misleading to whoever reads the final answer, understating the real
+total. This directly mirrors deterministic_parsing.html and
+react_pattern.html's shared insistence on surfacing failures explicitly
+rather than silently absorbing them -- the structured JSON answer needs
+its OWN field for "here's what we couldn't get and why," not just a
+silently-shorter list.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding what "fails gracefully" means if the SAME order fails twice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The checkpoint says the agent should "recover or fail gracefully." Using <code class="inline">async_tool_job_queue_design.html</code>'s dead-letter-queue reasoning and <code class="inline">loop_termination_logic.html</code>'s retry-budget point, what should happen if a SPECIFIC order's <code class="inline">get_order_detail</code> call fails on both its first attempt AND its retry?</p>
+    <details><summary>Show solution</summary><div class="solution">This is exactly the scenario a per-call retry budget (distinct from the
+overall max_steps budget) exists for, per loop_termination_logic.html's
+Practice Problem 5: rather than retrying this SAME order indefinitely
+(burning the whole session's step budget chasing one stubborn failure)
+or letting the entire task fail just because one order's detail fetch
+is having a bad day, the correct "fails gracefully" behavior is to
+ABANDON that specific order after a bounded number of attempts (e.g. 2,
+mirroring a tight per-call retry cap rather than the looser overall
+max_steps), record it in orders_omitted (Problem 2's schema field) with
+a reason like "get_order_detail failed twice, abandoned," and CONTINUE
+processing the remaining orders rather than treating one order's
+persistent failure as reason to fail the entire task.
+
+This mirrors async_tool_job_queue_design.html's dead-letter-queue logic
+almost exactly, just synchronous rather than queued: a job (here, one
+order's detail fetch) that can't succeed after a bounded number of
+attempts gets set aside rather than retried forever or silently dropped
+without a trace -- its failure is preserved (in orders_omitted) for
+later inspection, while the rest of the task's progress isn't held
+hostage to that one failure. "Recovers" describes the case where a retry
+succeeds (this lab's actual live-demo scenario); "fails gracefully"
+describes this case, where recovery genuinely isn't possible within a
+reasonable budget, and the honest, partial answer with a clearly marked
+omission is the correct final output -- not a crash, and not a silently
+incomplete answer with no indication anything was missing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Applying this week's permission scoping to a subtly different tool request</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose, mid-task, an injected instruction inside one order's notes field (a real possibility if order notes come from customer-submitted text) tries to redirect the agent to call a hypothetical <code class="inline">delete_order</code> tool. Using this week's <code class="inline">permission_scoping.html</code> and <code class="inline">prompt_injection_risks.html</code> together, trace what happens.</p>
+    <details><summary>Show solution</summary><div class="solution">This is precisely system_design_review_month4_final_cold.html's section
+3 scenario, replayed inside this capstone's own concrete task. Even if
+the injected instruction in the order notes fully succeeds at
+manipulating the agent's reasoning into WANTING to call delete_order
+(i.e. even assuming prompt_injection_risks.html's mitigations -- content
+delimiting, data-only instructions -- were bypassed), the call still has
+to pass permission_scoping.html's authorize_tool_call check before
+executing. Per section 1's setup, this agent's grant is exactly
+{"orders:read"} -- it was never granted any write or delete scope,
+because summarizing orders is genuinely all this task's job requires.
+"orders:delete" (or whatever scope delete_order would require) is not in
+{"orders:read"}, so the call is DENIED before any deletion occurs,
+regardless of how convincingly the agent was manipulated into generating
+it.
+
+The broader point this problem is testing: this capstone's own tool
+surface was deliberately kept minimal (section 1's two read-only query
+tools) and its agent deliberately scoped to read-only access -- not as
+an afterthought, but as this week's actual security lesson APPLIED to
+this specific task's design. A well-scoped agent for "summarize orders"
+never has delete_order reachable at all in the first place, which is a
+stronger, earlier defense than relying on a permission check to correctly
+deny a dangerous call that a more broadly-scoped agent COULD have
+generated -- least privilege, applied at design time, not just as a
+runtime check.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining why this capstone's synthesis step has no tool call</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's plan table marks step 3 (synthesis) as "no tool call." Using <code class="inline">deterministic_parsing.html</code>'s and this month's schema-validation discipline together, what specifically validates that step's OUTPUT if no tool is executing it, and why is that check still necessary even without a tool involved?</p>
+    <details><summary>Show solution</summary><div class="solution">Step 3 doesn't call a tool because it isn't fetching new information --
+it's ASSEMBLING information the agent already has (from steps 1 and 2's
+tool results, now sitting in the transcript) into the final structured
+answer. But "no tool call" doesn't mean "no validation needed" -- the
+model's generated JSON output for the final answer still has to be
+checked against Problem 2's schema using the SAME json.loads()-then-
+validate discipline deterministic_parsing.html established for tool
+call arguments, just applied to the FINAL output instead of an
+intermediate tool call's arguments.
+
+This is necessary for exactly the same reason schema validation matters
+anywhere else this month: a model generating "structured JSON" is still
+generating TEXT that is supposed to parse as valid JSON matching a
+specific shape -- it can still emit malformed JSON, omit a required
+field like orders_omitted, or put a string where the schema expects a
+number, exactly the same failure modes json_schema_tool_specs.html and
+deterministic_parsing.html catalogued for tool call arguments. If this
+final-answer validation is skipped just because "it's the last step, not
+a tool call," a caller consuming this agent's output downstream (another
+service parsing this JSON programmatically, not a human reading prose)
+would have no guarantee the output is actually well-formed -- the entire
+reason Week 3 pushed toward structured JSON output in the first place
+was to make the final answer machine-consumable, and an unvalidated
+final JSON blob only nominally achieves that.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, narrate this ENTIRE capstone scenario from memory — tool discovery, the plan, executing each step, the injected failure and its recovery, and the final structured JSON — while correctly naming which specific earlier lab each piece draws from? That's the actual test of whether Month 4 hangs together as one coherent system, not six unrelated topics that happened to share a folder.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — final multi-agent workflow.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: FULL WORKFLOW STEPPER */
+(function(){
+  var nextBtn = document.getElementById("run-next");
+  var resetBtn = document.getElementById("run-reset");
+  var logEl = document.getElementById("run-log");
+  var pillIds = ["pill-discover", "pill-plan", "pill-list", "pill-detail", "pill-fail", "pill-recover", "pill-json"];
+  var idx = 0;
+
+  function setPill(activeIdx, doneUpTo, failIdx){
+    pillIds.forEach(function(id, i){
+      var el = document.getElementById(id);
+      el.classList.remove("active", "done", "fail-hit");
+      if(i < doneUpTo) el.classList.add("done");
+      if(i === activeIdx) el.classList.add("active");
+      if(failIdx !== undefined && i === failIdx) el.classList.add("fail-hit");
+    });
+  }
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  var STAGES = [
+    function discover(){
+      setPill(0, 0);
+      log('<b>tools/list</b> → server responds with 2 tools: <b>query_orders</b> and <b>get_order_detail</b>, each with a JSON Schema. The agent now knows exactly what it can call and what each call requires.', "mcp");
+    },
+    function plan(){
+      setPill(1, 1);
+      log('<b>Plan:</b> (1) query_orders for last month, min_total=500 → (2) get_order_detail for each qualifying order → (3) synthesize a structured JSON summary. Three steps, decided upfront, executed one at a time.', "plan");
+    },
+    function listOrders(){
+      setPill(2, 2);
+      log('<b>Action:</b> query_orders({"start_date":"2026-07-01","end_date":"2026-07-31","min_total":500}) — validated against its schema first, then executed.');
+      log('<b>Observation:</b> 4 qualifying orders: ord-101 ($612), ord-114 ($780), ord-129 ($511), ord-137 ($945).');
+    },
+    function fetchDetails(){
+      setPill(3, 3);
+      log('<b>Action:</b> get_order_detail(order_id="ord-101") → <b>Observation:</b> 3 line items, total $612. Summarized successfully.');
+      log('<b>Action:</b> get_order_detail(order_id="ord-114") → <b>Observation:</b> 2 line items, total $780. Summarized successfully.');
+    },
+    function injectedFailure(){
+      setPill(4, 4, 4);
+      log('<b>Action:</b> get_order_detail(order_id="ord-129") — <b style="color:var(--fail-c);">DELIBERATELY INJECTED FAILURE:</b> the tool call times out / returns a transient DB connection error.', "fail");
+      log('<b>Observation:</b> "Error: connection reset while fetching order ord-129 — no result." Fed back into the transcript as a structured Observation, exactly per loop_termination_logic.html and deterministic_parsing.html\'s shared discipline — the loop does NOT crash.', "fail");
+    },
+    function recover(){
+      setPill(5, 5);
+      log('<b>Agent\'s next Thought:</b> "The last call failed transiently. This is worth one bounded retry before giving up on this specific order."');
+      log('<b>Action (retry):</b> get_order_detail(order_id="ord-129") → <b>Observation:</b> 1 line item, total $511. <b style="color:var(--json-c);">Recovered successfully on retry.</b>', "json");
+      log('<b>Action:</b> get_order_detail(order_id="ord-137") → <b>Observation:</b> 4 line items, total $945. Summarized successfully.');
+    },
+    function finalJson(){
+      setPill(6, 6);
+      log('<b>Synthesis (no tool call):</b> folding all 4 successfully-fetched orders into one structured JSON answer, validated against this task\'s own output schema before being returned.', "json");
+      var jsonEl = document.createElement("div");
+      jsonEl.className = "json-out fadein";
+      jsonEl.innerHTML = '{\n  <span class="k">"period"</span>: <span class="s">"2026-07"</span>,\n  <span class="k">"min_total"</span>: <span class="n">500</span>,\n  <span class="k">"orders_found"</span>: <span class="n">4</span>,\n  <span class="k">"orders_summarized"</span>: [\n    {<span class="k">"order_id"</span>: <span class="s">"ord-101"</span>, <span class="k">"total"</span>: <span class="n">612</span>, <span class="k">"item_count"</span>: <span class="n">3</span>},\n    {<span class="k">"order_id"</span>: <span class="s">"ord-114"</span>, <span class="k">"total"</span>: <span class="n">780</span>, <span class="k">"item_count"</span>: <span class="n">2</span>},\n    {<span class="k">"order_id"</span>: <span class="s">"ord-129"</span>, <span class="k">"total"</span>: <span class="n">511</span>, <span class="k">"item_count"</span>: <span class="n">1</span>},\n    {<span class="k">"order_id"</span>: <span class="s">"ord-137"</span>, <span class="k">"total"</span>: <span class="n">945</span>, <span class="k">"item_count"</span>: <span class="n">4</span>}\n  ],\n  <span class="k">"orders_omitted"</span>: []\n}';
+      logEl.appendChild(jsonEl);
+      logEl.scrollTop = logEl.scrollHeight;
+      log('<b style="color:var(--json-c);">Task complete.</b> orders_omitted is empty here because the injected failure was successfully RECOVERED — if the retry had also failed, ord-129 would appear in orders_omitted with a reason, per Practice Problem 3, rather than being silently dropped.', "json");
+    }
+  ];
+
+  nextBtn.addEventListener("click", function(){
+    if(idx >= STAGES.length){ return; }
+    STAGES[idx]();
+    idx++;
+    if(idx >= STAGES.length){
+      nextBtn.textContent = "Workflow complete";
+      nextBtn.disabled = true;
+    } else {
+      nextBtn.textContent = "Run next stage ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    logEl.innerHTML = "";
+    setPill(-1, 0);
+    nextBtn.disabled = false;
+    nextBtn.textContent = "Run next stage ▸";
+  });
+
+  setPill(-1, 0);
+})();
+</script>
+</body>
+</html>

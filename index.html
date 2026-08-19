@@ -78,7 +78,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Ninety-five labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>One hundred and one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, and MCP &amp; agentic systems — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -282,7 +282,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">14 labs</span>
+      <span class="count">15 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -369,13 +369,19 @@
         <p>A real tool_call_audit table storing full inputs and outputs (not a summary), why that fidelity matters for a debugging session hours later, and what a schema needs to support literal replay of a failed run.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/event_sourcing_vs_crud.html">
+        <span class="tag">DB Design — Immutable Events vs Mutable Rows</span>
+        <h3>Event Sourcing vs. CRUD</h3>
+        <p>An order's status derived by replaying OrderCreated/PaymentReceived/OrderShipped events instead of overwriting a status column, the replayability-vs-query-complexity trade-off, and when plain CRUD is simply the right, simpler default.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">22 labs</span>
+      <span class="count">23 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -510,6 +516,12 @@
         <p>Re-derive the MCP gateway and the async tool job queue with no notes, then trace how the two actually wire together in a real agentic system — the gateway routes, the agent decides to enqueue.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/system_design_review_month4_final_cold.html">
+        <span class="tag">Cold Recall — Gateway + Queue, Secured End to End</span>
+        <h3>System Design Review, Month 4 Final Cold</h3>
+        <p>Re-derive the MCP gateway and the async tool job queue once more, then weave in this week's security concepts — sandboxing, permission scoping — into the same architecture, tracing exactly where each defense layer has to sit.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -633,7 +645,7 @@
   <section class="group">
     <div class="group-head">
       <h2>MCP &amp; Agents</h2>
-      <span class="count">13 labs</span>
+      <span class="count">17 labs</span>
     </div>
     <div class="cards">
       <a class="card mcp" href="mcp-and-agents/mcp_fundamentals_jsonrpc.html">
@@ -714,6 +726,30 @@
         <p>A calculator tool and a real multi-step question run through the complete loop — generate, validate, parse, execute, feed back, repeat — with full state visible at every sub-stage, including a validation failure that gets recovered from mid-run.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card mcp" href="mcp-and-agents/prompt_injection_risks.html">
+        <span class="tag">Untrusted Content, Red-Team Tests &amp; Mitigations</span>
+        <h3>Prompt Injection Risks</h3>
+        <p>A webpage summary hijacked by an instruction hidden in the fetched content, red-team test cases probing whether guardrails hold, and why delimiting untrusted content reduces — but never fully closes — this open problem.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card mcp" href="mcp-and-agents/tool_call_sandboxing.html">
+        <span class="tag">Path Allowlists, Resolution &amp; Boundary Enforcement</span>
+        <h3>Tool Call Sandboxing</h3>
+        <p>A real sandboxed_read_file wrapper resolving a path before checking it against an allowlist, a traversal attempt blocked before open() ever runs, and an in-bounds request succeeding right beside it.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card mcp" href="mcp-and-agents/permission_scoping.html">
+        <span class="tag">calendar:read vs write vs delete, Least Privilege</span>
+        <h3>Permission Scoping</h3>
+        <p>A scoped permission model splitting one broad capability into calendar:read/write/delete, an over-broad delete request denied against a read-only grant, and a correctly-scoped request granted right beside it.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card mcp" href="mcp-and-agents/final_multi_agent_workflow.html">
+        <span class="tag">Capstone — MCP + Planning + Security + Structured JSON</span>
+        <h3>Final Multi-Agent Workflow</h3>
+        <p>The whole month tied together on one real task — MCP tool discovery, a multi-step plan, a deliberately injected tool failure recovered gracefully, and a final structured JSON answer — plus the Month 4 checkpoint.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -770,7 +806,7 @@
 
 </main>
 
-<footer>materials/ · ninety-five standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and one standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

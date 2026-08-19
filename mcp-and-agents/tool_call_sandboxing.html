@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Tool Call Sandboxing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --allow-c:#7fd8a0; --deny-c:#ff6b6b; --wall-c:#4fc3f7; --accent:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--wall-c); color:var(--wall-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--allow-c); color:var(--allow-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--deny-c); color:var(--deny-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.allow{border-left-color:var(--allow-c); background:rgba(127,216,160,0.06);}
+  .log .line.deny{border-left-color:var(--deny-c); background:rgba(255,107,107,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* sandbox boundary diagram */
+  .sandbox-diagram{display:flex; align-items:center; justify-content:center; gap:0; margin:1.6rem 0; flex-wrap:wrap;}
+  .sb-zone{border:2px dashed var(--wall-c); border-radius:14px; padding:1.4rem; position:relative; background:rgba(79,195,247,0.04);}
+  .sb-zone-label{position:absolute; top:-0.75rem; left:1rem; background:var(--bg); padding:0 0.5rem; font-family:var(--mono); font-size:0.68rem; color:var(--wall-c); text-transform:uppercase; letter-spacing:0.06em;}
+  .sb-path{font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.8rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); margin:0.3rem 0;}
+  .sb-path.inside{border-color:var(--allow-c); color:var(--allow-c);}
+  .sb-path.outside{border-color:var(--deny-c); color:var(--deny-c); opacity:0.7;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--deny-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--deny-c);}
+  .callout.wall{border-left-color:var(--wall-c); background:rgba(79,195,247,0.06);} .callout.wall b{color:var(--wall-c);}
+  .callout.allow{border-left-color:var(--allow-c); background:rgba(127,216,160,0.06);} .callout.allow b{color:var(--allow-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · TOOL CALL SANDBOXING</div>
+  <h1>A tool call executing on an agent's behalf shouldn't be able to touch whatever it wants.</h1>
+  <p class="lede"><code class="inline">prompt_injection_risks.html</code> established that an agent can be tricked into WANTING to do something harmful. Sandboxing is the layer underneath that: even if an agent decides (correctly or via injection) to call a tool with dangerous arguments, sandboxing constrains what that tool call is physically CAPABLE of touching — a "read file" tool restricted to one directory, a code-execution tool run with no network access. This lab builds a concrete allowlist-checking wrapper and shows exactly where an out-of-bounds request gets stopped.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">A boundary around what a tool call CAN touch</div>
+    <div class="pipe-label b">Requests inside the boundary succeed normally</div>
+    <div class="pipe-label c">Requests outside the boundary are rejected before they ever execute</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="idea">1 · The Core Idea: Constrain What a Tool Can Touch</a>
+  <a data-target="wrapper">2 · A Sandboxing Wrapper, Concretely</a>
+  <a data-target="live">3 · Watch a Blocked Call vs. an Allowed Call</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: THE CORE IDEA ============ -->
+<section id="idea">
+  <div class="kicker">01 — Not "will the agent behave," but "what CAN the tool physically reach"</div>
+  <h2>Isolating what a tool call can touch</h2>
+
+  <p><strong>Start here, before any code.</strong> Think about giving a new employee a building keycard. You could hand them a master key that opens every door in the building, trusting them to only ever use it on the doors relevant to their job — or you could issue a keycard programmed to open ONLY the specific doors their job actually requires, so that even if they're confused, careless, or someone tricks them into trying the wrong door, the door itself simply doesn't open. Sandboxing a tool call is the second approach applied to software: instead of trusting the AGENT's judgment about which files to read or which hosts to contact, you constrain the TOOL's actual reach so that even a compromised or confused agent can't get a tool to do something outside its intended boundary.</p>
+
+  <p>This is a genuinely different layer of defense than the ones <code class="inline">prompt_injection_risks.html</code> discussed. That lab's mitigations (delimiting untrusted content, instructing the model to treat it as data-only) try to stop the agent from ever WANTING to do something harmful in the first place. Sandboxing doesn't try to stop that at all — it assumes the agent's decision-making might fail (via injection, a bug, or a bad tool call the model generates for entirely mundane reasons) and asks instead: even if the agent DOES try to do something harmful, what is the tool itself physically capable of reaching?</p>
+
+  <div class="sandbox-diagram">
+    <div class="sb-zone">
+      <span class="sb-zone-label">sandbox boundary — allowed directories</span>
+      <div class="sb-path inside">/data/reports/*</div>
+      <div class="sb-path inside">/data/uploads/*</div>
+    </div>
+  </div>
+  <div class="sandbox-diagram" style="margin-top:-0.6rem;">
+    <div class="sb-path outside">/etc/passwd — outside the boundary, unreachable regardless of what the agent asks for</div>
+    <div class="sb-path outside">~/.ssh/id_rsa — outside the boundary, unreachable regardless of what the agent asks for</div>
+  </div>
+
+  <p>Two concrete forms this takes, both with the same underlying principle: a <strong>read-file tool restricted to a specific directory</strong> — no matter what path an agent's tool call requests, the tool refuses to read anything outside its allowed directory tree, full stop, independent of whether the request came from a legitimate need or an injected instruction. And a <strong>code-execution tool run inside an isolated container or process with no network access</strong> — even if an agent is tricked into generating code that tries to exfiltrate data over the network, the sandboxed execution environment has no network interface to exfiltrate anything over, making the attempt fail at the OS/container level regardless of what the code itself contains.</p>
+
+  <div class="callout wall"><b>Interview-ready definition:</b> tool call sandboxing constrains what a tool invocation is CAPABLE of touching — filesystem paths, network destinations, other system resources — independent of what the calling agent's decision-making process asked for. Where prompt injection mitigations try to prevent an agent from being tricked into requesting something harmful, sandboxing assumes that request might arrive anyway (from injection, a bug, or an honest mistake) and enforces a hard boundary at the point of EXECUTION, so a request outside that boundary fails regardless of why it was made.</div>
+</section>
+
+<!-- ============ SECTION 2: THE SANDBOXING WRAPPER ============ -->
+<section id="wrapper">
+  <div class="kicker">02 — A concrete allowlist check, before the tool ever runs</div>
+  <h2>A sandboxing wrapper, concretely</h2>
+
+  <p><strong>Start here, before the code.</strong> The mechanism is a checkpoint at a doorway: before a tool call's requested path is ever handed to the actual file-reading code, a wrapper function checks that path against an allowlist of permitted directories. If the requested path resolves to somewhere inside an allowed directory, the wrapper lets the real tool run. If it resolves to anywhere else — even via a clever relative path like <code class="inline">../../etc/passwd</code> — the wrapper rejects the request before the real file-reading code ever executes.</p>
+
+  <div class="code"><span class="c-kw">import</span> os
+
+ALLOWED_DIRECTORIES = [
+    <span class="c-str">"/data/reports"</span>,
+    <span class="c-str">"/data/uploads"</span>,
+]
+
+<span class="c-kw">def</span> <span class="c-fn">sandboxed_read_file</span>(requested_path: <span class="c-fn">str</span>) -> <span class="c-fn">dict</span>:
+    <span class="c-cmt"># resolve to an ABSOLUTE, canonical path first -- this is the step that
+    # defeats "../../etc/passwd"-style traversal tricks, since os.path.realpath
+    # collapses ".." segments and symlinks down to the actual target path
+    # BEFORE any comparison against the allowlist happens</span>
+    real_path = os.path.realpath(requested_path)
+
+    <span class="c-cmt"># check the RESOLVED path against every allowed directory -- a path is
+    # only permitted if it is genuinely INSIDE one of these trees, not
+    # merely if its unresolved string happens to start with the right prefix</span>
+    is_allowed = <span class="c-fn">any</span>(
+        real_path == allowed <span class="c-kw">or</span> real_path.startswith(allowed + os.sep)
+        <span class="c-kw">for</span> allowed <span class="c-kw">in</span> ALLOWED_DIRECTORIES
+    )
+
+    <span class="c-kw">if not</span> is_allowed:
+        <span class="c-cmt"># REJECTED before the real file-reading code ever runs --
+        # this return happens instead of ever calling open()</span>
+        <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"denied"</span>,
+                <span class="c-str">"error"</span>: <span class="c-fn">f"'{requested_path}' resolves outside the sandbox boundary"</span>}
+
+    <span class="c-cmt"># only reached if the path passed the allowlist check</span>
+    <span class="c-kw">with</span> <span class="c-fn">open</span>(real_path, <span class="c-str">"r"</span>) <span class="c-kw">as</span> f:
+        <span class="c-kw">return</span> {<span class="c-str">"status"</span>: <span class="c-str">"success"</span>, <span class="c-str">"content"</span>: f.read()}</div>
+
+  <p>Notice the order of operations is what makes this actually enforce a boundary: <code class="inline">os.path.realpath</code> resolves the path FIRST, collapsing any <code class="inline">..</code> traversal or symlink indirection down to where the path genuinely points — and only THEN is the resolved path compared against the allowlist. A naive version that checked the allowlist against the raw, unresolved string (e.g. just checking whether the requested string starts with <code class="inline">"/data/"</code>) could be defeated by a request like <code class="inline">/data/reports/../../etc/passwd</code>, which starts with the right prefix as a raw string but resolves to something entirely outside the sandbox once collapsed.</p>
+
+  <table class="cmp">
+    <tr><th>Requested path</th><th>Resolves to</th><th>Inside allowlist?</th><th>Result</th></tr>
+    <tr><td><code>/data/reports/q3.pdf</code></td><td><code>/data/reports/q3.pdf</code></td><td>Yes — inside <code>/data/reports</code></td><td>Allowed, tool executes normally</td></tr>
+    <tr><td><code>/data/reports/../../etc/passwd</code></td><td><code>/etc/passwd</code></td><td>No — resolves outside every allowed directory</td><td>Denied before <code>open()</code> is ever called</td></tr>
+    <tr><td><code>/data/uploads/user_42/file.csv</code></td><td><code>/data/uploads/user_42/file.csv</code></td><td>Yes — inside <code>/data/uploads</code></td><td>Allowed, tool executes normally</td></tr>
+    <tr><td><code>/home/user/.ssh/id_rsa</code></td><td><code>/home/user/.ssh/id_rsa</code></td><td>No — not under any allowed directory at all</td><td>Denied before <code>open()</code> is ever called</td></tr>
+  </table>
+
+  <p>The exact same pattern extends to a code-execution tool, just with a different resource being constrained: instead of checking a filesystem path against an allowlist of directories, the sandbox is the execution ENVIRONMENT itself — running submitted code inside a container or subprocess launched with no network interface attached and a read-only or entirely separate filesystem, so there is no allowlist check to bypass at all, because the capability (reaching the network, writing outside a scratch directory) simply doesn't exist inside that environment regardless of what the code tries to do.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRY THE SANDBOXED READ TOOL</span>
+      <div><button class="btn secondary" id="wrap-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-path="/data/reports/q3.pdf">/data/reports/q3.pdf</button>
+      <button class="chip" data-path="/data/uploads/user_42/file.csv">/data/uploads/user_42/file.csv</button>
+      <button class="chip" data-path="/data/reports/../../etc/passwd">/data/reports/../../etc/passwd</button>
+      <button class="chip" data-path="/home/user/.ssh/id_rsa">/home/user/.ssh/id_rsa</button>
+    </div>
+    <button class="btn" id="wrap-run">Call sandboxed_read_file() with this path ▸</button>
+    <div class="log" id="wrap-log"></div>
+  </div>
+
+  <div class="callout allow"><b>Interview-ready definition:</b> a sandboxing wrapper enforces a resource boundary by resolving a tool call's requested resource (a filesystem path, in this example) to its canonical, fully-resolved form BEFORE comparing it against an allowlist — closing off traversal tricks that could otherwise make an out-of-bounds request look, as a raw unresolved string, like it satisfies the allowlist. The check happens as a gate strictly before the tool's real operation (e.g. <code class="inline">open()</code>) ever runs, so a rejected request never reaches the underlying resource at all, rather than being caught by an error thrown by that resource afterward.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE ANIMATION ============ -->
+<section id="live">
+  <div class="kicker">03 — Same tool, same code path, two different outcomes</div>
+  <h2>Watch a blocked call vs. an allowed call, side by side</h2>
+
+  <p><strong>Start here, before running it.</strong> Below, trigger both a legitimate, in-bounds tool call and an out-of-bounds one attempting to escape the sandbox, and watch exactly where each is stopped (or isn't) relative to the allowlist check.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SANDBOX BOUNDARY — LIVE TRACE</span>
+      <div><button class="btn secondary" id="live-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-scenario="allowed">Request inside the sandbox — should succeed</button>
+      <button class="chip" data-scenario="blocked">Request escaping the sandbox — should be blocked</button>
+    </div>
+    <button class="btn" id="live-run">Run this scenario ▸</button>
+    <div class="log" id="live-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice across both:</b> the tool code being called is IDENTICAL in both cases — same function, same allowlist, same order of operations. What differs is only whether the resolved path happens to land inside or outside the boundary. This is the whole point of sandboxing as a defense layer: it doesn't require the agent to have behaved correctly, or the injection-mitigation layer to have caught anything upstream — the boundary holds regardless of how the request got generated.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining why the allowlist check must happen AFTER path resolution</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's code calls <code class="inline">os.path.realpath()</code> before checking the allowlist, not after. Write a concrete request that would incorrectly pass a NAIVE version of the check (comparing the raw, unresolved string against the allowlist), and explain why resolving first closes that gap.</p>
+    <details><summary>Show solution</summary><div class="solution">A concrete request that defeats a naive raw-string check: requested_path
+= "/data/reports/../../etc/passwd". As a raw STRING, this literally
+starts with "/data/reports" -- a naive check doing something like
+requested_path.startswith("/data/reports") would see this string,
+confirm the prefix matches, and incorrectly allow it. But the path this
+string actually POINTS TO, once ".." segments are resolved (each ".."
+moves up one directory), is /etc/passwd -- completely outside both
+allowed directories.
+
+Resolving first with os.path.realpath() converts the request to what it
+ACTUALLY resolves to on the filesystem (following ".." and any symlinks)
+BEFORE the string comparison ever happens, so the allowlist check is
+comparing against the true destination, not against a string that merely
+happens to start with the right characters. This is the general lesson:
+any check comparing untrusted input against a boundary needs to operate
+on the FULLY NORMALIZED form of that input, because there are often
+multiple different string representations that all resolve to the same
+(or a different, unintended) actual target -- checking the raw,
+un-normalized string is checking the wrong thing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Sandboxing a network-capable tool, not just a file-reading one</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1 and 2's reasoning, sketch (in words, not full code) how you'd sandbox a tool that makes outbound HTTP requests on the agent's behalf, so it can only reach a specific allowlist of hostnames. What's the equivalent of "resolve before comparing" for a hostname, given DNS exists?</p>
+    <details><summary>Show solution</summary><div class="solution">The structural shape is identical to section 2's file-path wrapper: a
+wrapper function intercepts the tool's requested URL BEFORE the actual
+HTTP request is made, extracts the hostname, and checks it against an
+ALLOWED_HOSTNAMES allowlist (e.g. ["api.internal-service.com",
+"data.trusted-partner.com"]) -- rejecting the request before any network
+call happens if the hostname isn't on the list.
+
+The DNS-specific version of "resolve before comparing": a naive check
+might compare the REQUESTED hostname string against the allowlist and
+stop there, but an attacker-controlled DNS response (or a hostname that
+LOOKS like an internal service via a clever subdomain trick, e.g.
+"api.internal-service.com.evil.com") could resolve to a completely
+different, unintended IP address than the allowlist author expected --
+the equivalent of the "../../etc/passwd" trick, but for network
+destinations instead of filesystem paths. A more robust version resolves
+the hostname to its actual IP address and checks THAT against a range of
+allowed IPs/CIDR blocks (or, more simply, still checks the exact
+hostname string but rejects anything that isn't an EXACT match, not
+merely "starts with" or "contains" the allowed name, closing off the
+subdomain-trick variant of the same underlying "the raw string looks
+right but resolves somewhere else" problem section 2 solved for
+filesystem paths).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding what the tool should return on a denial, connecting to loop_termination_logic</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using <code class="inline">loop_termination_logic.html</code>'s reasoning about feeding failures back into the transcript rather than crashing, what should <code class="inline">sandboxed_read_file</code> return when a request is denied, and why does that choice matter for how the agent loop continues?</p>
+    <details><summary>Show solution</summary><div class="solution">Section 2's code already gets this right: it returns a structured
+dict ({"status": "denied", "error": "...resolves outside the sandbox
+boundary"}) rather than raising an uncaught exception or crashing the
+whole process. This mirrors deterministic_parsing.html and
+loop_termination_logic.html's shared posture from earlier this month --
+a failure inside one tool call is fed back into the transcript as the
+next Observation, letting the model's NEXT step decide how to proceed
+(try a different, in-bounds path, explain to the user why it can't
+access that file, or give up gracefully) -- rather than the sandbox
+violation taking down the entire agent loop.
+
+Why this matters specifically for sandboxing: if a denial instead raised
+an unhandled exception that crashed the loop, an attacker (or an
+injected instruction) could use a SANDBOX VIOLATION ITSELF as a denial-
+of-service vector -- deliberately requesting an out-of-bounds path not
+because they expect it to succeed, but specifically to crash the agent
+and disrupt whatever legitimate task it was in the middle of. A
+structured "denied" result that flows back into the loop exactly like
+any other tool observation closes that off -- the sandbox boundary
+protects the RESOURCE, and the structured-failure-handling pattern
+protects the LOOP's own availability, two different things that both
+need to hold.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Distinguishing sandboxing from permission scoping</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">This week's next lab, <code class="inline">permission_scoping.html</code>, also restricts what a tool can do. Using this lab's "what a tool call can physically TOUCH" framing, articulate the genuine difference between sandboxing and permission scoping — are they the same mechanism with different names, or two different layers?</p>
+    <details><summary>Show solution</summary><div class="solution">They're two different, complementary layers, not the same mechanism
+under different names. Sandboxing (this lab) constrains WHAT RESOURCES a
+tool call can physically reach at the point of execution -- a filesystem
+boundary, a network allowlist, a container with no outbound access --
+independent of who is calling it or what they're authorized to do; it's
+enforced at the resource/execution layer, below the application's own
+notion of identity or permission.
+
+Permission scoping (next lab) constrains WHICH OPERATIONS a specific
+tool or agent is even ALLOWED to attempt in the first place, based on
+least-privilege identity -- e.g. a calendar tool granted calendar:read
+but not calendar:delete never even has the DELETE capability wired up
+for it to attempt, regardless of whether the underlying resource would
+have allowed a delete if asked. This is enforced at the
+authorization/capability layer, ABOVE the resource itself.
+
+Concretely, they can fail independently of each other: a tool could be
+correctly scoped (only has calendar:read permission, so it would never
+even generate a delete call) but still be UNSANDBOXED (if it also had a
+file-read capability with no directory allowlist, it could read any file
+on the system its process can access) -- correct permission scoping
+doesn't imply the resource-level boundary was ever enforced. Symmetrically,
+a perfectly sandboxed file-read tool (restricted to /data/reports) could
+still be handed to an agent that has NO business reading files at all --
+sandboxing the resource doesn't substitute for deciding, at the
+permission layer, whether this tool should be reachable by this agent in
+the first place. Real systems need both layers, each catching a
+different kind of over-broad access.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about a sandbox that's technically correct but too permissive</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team sets <code class="inline">ALLOWED_DIRECTORIES = ["/"]</code> (the entire filesystem root) for a read-file tool, reasoning "the allowlist check is implemented correctly, so we're sandboxed." Is this a real sandbox? What's actually wrong with it?</p>
+    <details><summary>Show solution</summary><div class="solution">The CHECK is implemented correctly (path resolution happens before
+comparison, exactly as section 2 specifies), but the boundary it enforces
+is functionally no boundary at all -- every possible resolved path on the
+entire filesystem is, trivially, "inside" an allowlist of ["/"], so the
+allowlist check will never actually deny anything. This is a real,
+common trap: the MECHANISM can be technically sound (correctly resolving
+paths, correctly comparing against the configured list) while the
+CONFIGURATION of that mechanism provides zero actual isolation, because
+"the entire filesystem" isn't a meaningfully constrained boundary.
+
+The deeper lesson: sandboxing's security value comes specifically from
+the allowlist being NARROW -- scoped tightly to exactly what the tool
+legitimately needs (echoing permission_scoping.html's least-privilege
+principle, applied here to resources instead of operations). A correctly
+-implemented check with an overly broad allowlist gives a false sense of
+security ("we have sandboxing!") without providing the actual protection
+sandboxing exists to provide -- section 1's whole motivating scenario (an
+agent tricked into requesting something harmful) is completely
+unmitigated if "harmful" and "allowed" overlap entirely because the
+allowlist was never actually scoped down from "everything." The fix
+isn't a different mechanism -- it's configuring the SAME mechanism with
+directories that reflect what this specific tool actually needs, nothing
+more.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the <code class="inline">sandboxed_read_file</code> wrapper from memory including WHY path resolution has to happen before the allowlist comparison, (2) name one concrete traversal trick that would defeat a naive raw-string check, and (3) explain the genuine difference between sandboxing (what a tool call can physically touch) and permission scoping (which operations a tool is even allowed to attempt), which is exactly what the next lab in this week builds?
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — tool call sandboxing.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: WRAPPER TRY-IT */
+(function(){
+  var chips = document.querySelectorAll("[data-path]");
+  var runBtn = document.getElementById("wrap-run");
+  var resetBtn = document.getElementById("wrap-reset");
+  var logEl = document.getElementById("wrap-log");
+  var selectedPath = "/data/reports/q3.pdf";
+  var busy = false;
+
+  var ALLOWED = ["/data/reports", "/data/uploads"];
+
+  function resolve(p){
+    // simplified simulation of os.path.realpath for demo purposes
+    if(p.indexOf("..") !== -1){
+      // simulate collapsing ../.. segments -- our two crafted example paths
+      // resolve to /etc/passwd for this demo
+      return "/etc/passwd";
+    }
+    return p;
+  }
+
+  function checkAllowed(realPath){
+    return ALLOWED.some(function(a){ return realPath === a || realPath.indexOf(a + "/") === 0; });
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      selectedPath = c.dataset.path;
+    });
+  });
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    log("<b>sandboxed_read_file(\"" + selectedPath + "\")</b> called.");
+    await wait(400);
+    var real = resolve(selectedPath);
+    log("Resolved (os.path.realpath) to: <b>" + real + "</b>");
+    await wait(400);
+    var allowed = checkAllowed(real);
+    log("Checking against allowlist [" + ALLOWED.join(", ") + "]...");
+    await wait(400);
+    if(allowed){
+      log('<b style="color:var(--allow-c);">ALLOWED</b> — resolved path is inside the sandbox boundary. open() proceeds normally.', "allow");
+    } else {
+      log('<b style="color:var(--deny-c);">DENIED</b> — resolved path is outside every allowed directory. Returns {"status":"denied", ...} — open() is never called.', "deny");
+    }
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+
+/* SECTION 3: LIVE SIDE-BY-SIDE */
+(function(){
+  var chips = document.querySelectorAll("[data-scenario]");
+  var runBtn = document.getElementById("live-run");
+  var resetBtn = document.getElementById("live-reset");
+  var logEl = document.getElementById("live-log");
+  var scenario = "allowed";
+  var busy = false;
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      scenario = c.dataset.scenario;
+      logEl.innerHTML = "";
+    });
+  });
+
+  function log(msg, cls){
+    var p = document.createElement("div"); p.className = "line fadein" + (cls ? (" " + cls) : "");
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    if(scenario === "allowed"){
+      log('<b>Agent requests:</b> read_file("/data/uploads/user_42/report.csv")');
+      await wait(400);
+      log("Wrapper resolves the path, checks against ALLOWED_DIRECTORIES...");
+      await wait(400);
+      log('<b style="color:var(--allow-c);">Inside the boundary.</b> open() executes. File contents returned as the tool result.', "allow");
+      await wait(400);
+      log("Agent loop continues normally with the file's real content as its Observation.");
+    } else {
+      log('<b>Agent requests:</b> read_file("/data/uploads/../../../etc/shadow") — either an honest bug in a generated path, or an injected instruction trying to escape the sandbox.');
+      await wait(400);
+      log("Wrapper resolves the path via os.path.realpath — collapses to /etc/shadow.");
+      await wait(400);
+      log('<b style="color:var(--deny-c);">Outside every allowed directory.</b> open() is never called — the request is rejected at the wrapper, before it ever reaches the real filesystem read.', "deny");
+      await wait(400);
+      log('Agent receives {"status": "denied", "error": "...resolves outside the sandbox boundary"} as its Observation — the loop continues, but with no access to /etc/shadow ever having occurred, regardless of why the request was made.');
+    }
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

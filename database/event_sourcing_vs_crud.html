@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Event Sourcing vs. CRUD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --event-c:#4fc3f7; --crud-c:#f2c14e; --project-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--event-c); color:var(--event-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--crud-c); color:var(--crud-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--project-c); color:var(--project-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.45rem 0.65rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.evt{border-left-color:var(--event-c); background:rgba(79,195,247,0.06);}
+  .log .line.proj{border-left-color:var(--project-c); background:rgba(127,216,160,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* event timeline */
+  .evt-row{display:flex; align-items:center; gap:0.8rem; margin:0.5rem 0; padding:0.6rem 0.8rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); font-family:var(--mono); font-size:0.78rem; opacity:0.3; transition:all .35s ease;}
+  .evt-row.active{opacity:1; border-color:var(--event-c); box-shadow:0 0 10px rgba(79,195,247,0.25);}
+  .evt-row .etype{font-size:0.68rem; padding:0.2rem 0.5rem; border-radius:12px; border:1px solid var(--event-c); color:var(--event-c);}
+
+  /* replay state accumulator */
+  .state-box{font-family:var(--mono); font-size:0.85rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1rem 0; color:#cdd0d8;}
+  .state-box .field{margin:0.3rem 0;}
+  .state-box .field b{color:var(--project-c);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--event-c);} .dc-col.a h4{color:var(--event-c);}
+  .dc-col.b{border-color:var(--crud-c);} .dc-col.b h4{color:var(--crud-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.event{border-left-color:var(--event-c); background:rgba(79,195,247,0.06);} .callout.event b{color:var(--event-c);}
+  .callout.crud{border-left-color:var(--crud-c); background:rgba(242,193,78,0.06);} .callout.crud b{color:var(--crud-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · EVENT SOURCING VS. CRUD</div>
+  <h1>A row that gets UPDATEd forgets what it used to be. A sequence of events never does.</h1>
+  <p class="lede"><code class="inline">audit_trail_schema.html</code> already borrowed one piece of this idea — recording what happened, not just the current state, so a failure could be replayed later. This lab names that idea directly: <strong>event sourcing</strong> stores state as a sequence of immutable events and derives current state by replaying them, trading query simplicity for full historical replayability. Most systems don't need this — knowing exactly when to reach for it, versus when a normal CRUD table is simply the right, simpler default, is the actual skill.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Store every state-CHANGE as an immutable event</div>
+    <div class="pipe-label b">Replayability vs. query complexity — a real trade-off</div>
+    <div class="pipe-label c">CRUD is the right default when you don't need the history</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="core">1 · Storing State as a Sequence of Events</a>
+  <a data-target="tradeoff">2 · Replayability vs. Query Complexity</a>
+  <a data-target="live">3 · Replay an Order's Events, Live</a>
+  <a data-target="when-crud">4 · When CRUD Is Simpler &amp; Sufficient</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: CORE IDEA ============ -->
+<section id="core">
+  <div class="kicker">01 — Store what HAPPENED, not just what's true right now</div>
+  <h2>Storing state as a sequence of events</h2>
+
+  <p><strong>Start here, before any DDL.</strong> Think about a bank statement versus a bank balance. A balance is a single number that gets silently overwritten every time money moves — look at it right now and you know how much is there, but you have no idea HOW it got there unless something else recorded that separately. A statement, by contrast, is a list of every individual transaction, in order — each deposit and withdrawal preserved forever as its own line. You can still compute the current balance from a statement (sum every line), but you can ALSO answer questions a bare balance never could: when exactly did this money arrive, what was the balance after any specific past transaction, did a specific transaction get reversed later. Event sourcing is a database applying the "statement" approach to ALL of an entity's state, not just its money.</p>
+
+  <p>Concretely: instead of an <code class="inline">orders</code> table with a single <code class="inline">status</code> column that gets <code class="inline">UPDATE</code>d in place every time the order's status changes — overwriting whatever the previous status was — event sourcing stores every status CHANGE as its own immutable row, appended to an events table, never updated or deleted once written:</p>
+
+  <div class="code"><span class="c-cmt">-- CRUD approach: one mutable row, overwritten on every change</span>
+<span class="c-kw">CREATE TABLE</span> orders (
+    order_id    <span class="c-kw">UUID PRIMARY KEY</span>,
+    status      <span class="c-kw">TEXT NOT NULL</span>,     <span class="c-cmt">-- overwritten in place by every UPDATE</span>
+    updated_at  <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+);
+<span class="c-cmt">-- after 3 status changes, this row shows ONLY the current status --</span>
+<span class="c-cmt">-- "shipped" -- with zero trace that it was ever "created" or "paid"</span>
+
+<span class="c-cmt">-- Event sourcing approach: an APPEND-ONLY log of every state change</span>
+<span class="c-kw">CREATE TABLE</span> order_events (
+    event_id    <span class="c-kw">UUID PRIMARY KEY DEFAULT</span> gen_random_uuid(),
+    order_id    <span class="c-kw">UUID NOT NULL</span>,
+    event_type  <span class="c-kw">TEXT NOT NULL</span>,      <span class="c-cmt">-- 'OrderCreated', 'PaymentReceived', 'OrderShipped'</span>
+    payload     <span class="c-kw">JSONB NOT NULL</span>,     <span class="c-cmt">-- whatever data THIS event carries</span>
+    occurred_at <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+    <span class="c-cmt">-- NOTE: no status column, no UPDATE ever runs against this table --</span>
+    <span class="c-cmt">-- every row, once written, is permanent and never modified</span>
+);
+
+<span class="c-cmt">-- one order's full history, as three separate, permanent rows</span>
+<span class="c-kw">INSERT INTO</span> order_events (order_id, event_type, payload, occurred_at) <span class="c-kw">VALUES</span>
+(<span class="c-str">'ord-501'</span>, <span class="c-str">'OrderCreated'</span>,   <span class="c-str">'{"items": ["sku-42"], "total": 89.00}'</span>, <span class="c-str">'2026-08-01 09:00'</span>),
+(<span class="c-str">'ord-501'</span>, <span class="c-str">'PaymentReceived'</span>, <span class="c-str">'{"amount": 89.00, "method": "card"}'</span>,   <span class="c-str">'2026-08-01 09:02'</span>),
+(<span class="c-str">'ord-501'</span>, <span class="c-str">'OrderShipped'</span>,    <span class="c-str">'{"carrier": "ups", "tracking": "1Z..."}'</span>, <span class="c-str">'2026-08-03 14:30'</span>);</div>
+
+  <p>To find the order's CURRENT status under event sourcing, you don't read a status column at all — there isn't one. You derive it by <strong>replaying</strong> (or "folding") every event for that order, in order, applying each one's effect on top of the last: start with no order, apply <code class="inline">OrderCreated</code> → status is "created"; apply <code class="inline">PaymentReceived</code> → status becomes "paid"; apply <code class="inline">OrderShipped</code> → status becomes "shipped". The final status is a COMPUTED result of walking the whole event sequence, not a value that was ever directly stored anywhere.</p>
+
+  <div class="callout event"><b>Interview-ready definition:</b> event sourcing stores an entity's state as a sequence of immutable, append-only events — each representing one discrete state CHANGE (<code class="inline">OrderCreated</code>, <code class="inline">PaymentReceived</code>, <code class="inline">OrderShipped</code>) — rather than storing only the entity's current state in a row that gets overwritten on each update. Current state is derived, not stored directly: it's computed by replaying (folding) every event for that entity, in order, from the beginning, applying each event's effect on top of the last. Nothing is ever updated or deleted from the event log — the full history is the source of truth, and "current state" is just one particular, derivable VIEW of that history.</div>
+</section>
+
+<!-- ============ SECTION 2: THE TRADE-OFF ============ -->
+<section id="tradeoff">
+  <div class="kicker">02 — Full history is not free — it's traded for something real</div>
+  <h2>Replayability vs. query complexity</h2>
+
+  <p><strong>Start here, before the trade-off table.</strong> Section 1's bank-statement analogy already hints at the cost: a statement is strictly MORE informative than a balance, but nobody actually wants to compute "what's my balance right now" by re-adding every transaction since the account opened, every single time they check it at an ATM. A statement's completeness comes at the cost of making the single most common question ("what's true right now") more work to answer than it would be if that answer were just sitting in a column somewhere.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>What event sourcing gives you</h4>
+      <p><strong>Full history, always.</strong> You can answer "what was this order's status at 9:01am on Aug 1st" (a moment BETWEEN two events) by replaying only the events that occurred before that timestamp. You can answer "how many orders were cancelled after payment but before shipping, in the last quarter" by scanning the event log for that exact pattern. This directly extends <code class="inline">audit_trail_schema.html</code>'s replay concept from last week — that lab's <code class="inline">tool_call_audit</code> log borrowed exactly this principle at a smaller scale (a detailed, ordered record of what happened, not just a final state) to support debugging a failed session after the fact.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>What it costs you</h4>
+      <p><strong>Query complexity for "what's true right now."</strong> "Show me every order currently in 'shipped' status" can't be a simple <code class="inline">WHERE status = 'shipped'</code> against a column that doesn't exist — it requires either replaying every order's full event history on every query (prohibitively slow at scale) or maintaining a separate, continuously-updated PROJECTION table that mirrors what a plain CRUD <code class="inline">status</code> column would have given you for free.</p>
+    </div>
+  </div>
+
+  <p>That second cost has a standard mitigation, worth naming precisely because it reveals the real shape of the trade-off: a <strong>projection</strong> (or "materialized view" / "read model") is a normal, CRUD-shaped table — e.g. an <code class="inline">order_current_state</code> table with a plain <code class="inline">status</code> column — that gets kept up to date by replaying new events onto it AS they arrive, rather than replaying the entire history from scratch on every read. This gives you fast, simple "what's true right now" queries again, but now you're maintaining TWO things instead of one: the immutable event log (the source of truth) AND at least one projection (a derived, disposable cache of one particular VIEW of that log) — and the projection has to be kept correctly in sync with the log as new events arrive, which is real, ongoing engineering work a plain CRUD table never required in the first place.</p>
+
+  <div class="code"><span class="c-cmt">-- a PROJECTION: a normal, fast-to-query table, kept in sync by replaying</span>
+<span class="c-cmt">-- new events onto it -- this is what makes "current state" queries fast</span>
+<span class="c-cmt">-- again, at the cost of maintaining this table as a second, derived thing</span>
+<span class="c-kw">CREATE TABLE</span> order_current_state (
+    order_id    <span class="c-kw">UUID PRIMARY KEY</span>,
+    status      <span class="c-kw">TEXT NOT NULL</span>,       <span class="c-cmt">-- the FOLDED result of that order's events so far</span>
+    total       <span class="c-kw">NUMERIC</span>,
+    last_event_at <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+);
+
+<span class="c-cmt">-- CRUD-shaped and fast: exactly the query event sourcing alone can't do cheaply</span>
+<span class="c-kw">SELECT</span> * <span class="c-kw">FROM</span> order_current_state <span class="c-kw">WHERE</span> status = <span class="c-str">'shipped'</span>;</div>
+
+  <table class="cmp">
+    <tr><th>Question</th><th>Plain CRUD table</th><th>Event log alone</th><th>Event log + projection</th></tr>
+    <tr><td>"What's this order's status right now?"</td><td>Trivial — <code>SELECT status</code></td><td>Requires replaying every event for that order</td><td>Trivial again — <code>SELECT status</code> from the projection</td></tr>
+    <tr><td>"What was this order's status at 9:01am on Aug 1st?"</td><td>Impossible — the prior value was overwritten and is gone</td><td>Replay events up to that timestamp — fully answerable</td><td>Answerable via the log (the projection alone can't answer this either — it only reflects NOW)</td></tr>
+    <tr><td>Ongoing maintenance burden</td><td>None beyond the table itself</td><td>None beyond appending events</td><td>Must keep the projection's replay logic correct and current as new events arrive</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The trade-off, stated precisely:</b> event sourcing doesn't make "what's true right now" queries impossible — it makes them require either a replay (slow, but always correct) or a maintained projection (fast, but now a second artifact that has to be kept in sync). A plain CRUD table gives you the "right now" answer for free, permanently, because that's the ONLY thing it was ever designed to answer — it never had a "what was true at 9:01am" question to answer in the first place, so it isn't giving anything up by not being able to answer it.</div>
+
+  <div class="callout event"><b>Interview-ready definition:</b> the core trade-off between event sourcing and CRUD is replayability versus query simplicity. Event sourcing preserves the full history of every state change, enabling reconstruction of state at any past point in time and rich queries over the sequence of changes itself — directly extending the replay-for-debugging value <code class="inline">audit_trail_schema.html</code> established for tool call logs — but answering "what's true right now" requires either replaying the full event history on every read or maintaining a separately-updated projection table, which is genuine additional complexity a plain CRUD table's single, always-current row never has to pay.</div>
+</section>
+
+<!-- ============ SECTION 3: LIVE REPLAY ============ -->
+<section id="live">
+  <div class="kicker">03 — Watching current state get DERIVED, not read</div>
+  <h2>Replay an order's events, live</h2>
+
+  <p><strong>Start here, before running it.</strong> Below is order <code class="inline">ord-501</code>'s full <code class="inline">order_events</code> history from section 1. Step through it one event at a time and watch the "current state" panel get built up by folding each event on top of the last — this is exactly what a query against the event log alone has to do, and exactly what a projection does automatically, ahead of time, as each event arrives.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>order_events FOR ord-501 — REPLAY TO DERIVE CURRENT STATE</span>
+      <div><button class="btn secondary" id="replay-reset">Reset</button></div>
+    </div>
+    <div id="replay-rows"></div>
+    <button class="btn" id="replay-run">Replay next event ▸</button>
+    <h3 style="margin-top:1.6rem;">Derived current state (this is NOT a stored column — it's the fold result so far)</h3>
+    <div class="state-box" id="state-box"><span style="color:var(--ink-dim); font-style:italic;">No events replayed yet.</span></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> at every intermediate step, the "current state" panel reflects EXACTLY what a plain CRUD <code class="inline">status</code> column would have shown at that same moment in time — the difference is that here, that value was just COMPUTED from history, not read directly. And unlike a CRUD table, nothing here prevents you from also asking what state looked like after only the first TWO events (paid, not yet shipped) — that answer is still fully recoverable, because the events that produced it were never overwritten.</div>
+</section>
+
+<!-- ============ SECTION 4: WHEN CRUD IS SIMPLER ============ -->
+<section id="when-crud">
+  <div class="kicker">04 — Most systems should just use CRUD. Really.</div>
+  <h2>When CRUD is simpler and sufficient</h2>
+
+  <p><strong>Start here, before deciding.</strong> Section 2 and 3 made event sourcing look appealing — full history, replayable state, nothing ever silently lost. It's tempting to conclude "this is strictly better, why wouldn't every table work this way?" The answer is the same one <code class="inline">audit_trail_schema.html</code>'s own Practice Problem 5 already reached from the other direction: event sourcing is a DELIBERATE trade, made specifically by systems that actually need historical replay or a full audit trail — not a universal upgrade. If you don't need that, a normal CRUD table with a plain <code class="inline">UPDATE</code> is simpler, and simpler should be the default absent a specific reason not to.</p>
+
+  <table class="cmp">
+    <tr><th>Signal</th><th>Favors event sourcing</th><th>Favors plain CRUD</th></tr>
+    <tr><td>Does the business genuinely need "what was true at time T in the past"?</td><td>Yes — e.g. financial ledgers, order lifecycle disputes, compliance audit requirements</td><td>No — most CRUD entities (a user's display name, a product's current price) only ever need to answer "what's true right now"</td></tr>
+    <tr><td>Is there real value in replaying history to debug or reconstruct behavior?</td><td>Yes — <code>audit_trail_schema.html</code>'s tool-call debugging case is exactly this</td><td>No — if nobody would ever ask "how did this get to its current value," the history has no consumer to justify the extra complexity</td></tr>
+    <tr><td>Engineering capacity to build and maintain projections correctly</td><td>Team has the capacity and the need justifies it</td><td>Team doesn't want to own projection-consistency bugs for a benefit nobody's asking for</td></tr>
+    <tr><td>"What's true right now" is the overwhelmingly dominant query pattern</td><td>Still fine with event sourcing + a projection, but that projection IS basically just a CRUD table anyway</td><td>Just use a CRUD table directly — you'd be building the event log's own escape hatch as your primary design</td></tr>
+  </table>
+
+  <p>Notice the last row's implication directly: if "what's true right now" is nearly everything your system needs, and you build event sourcing anyway, you typically end up building a CRUD-shaped projection table as your PRIMARY way of answering the overwhelming majority of your real queries — at which point you're paying event sourcing's full complexity cost (the event log, the replay/fold logic, projection-consistency maintenance) for a benefit (full history) that isn't actually being used. This is the same "don't reach for a more complex tool than the workload requires" reasoning <code class="inline">sql_vs_nosql.html</code> and <code class="inline">migrations_and_sql_vs_nosql_revisited.html</code> apply elsewhere this system's design has to reckon with — event sourcing is a real, valuable pattern for the RIGHT workload, and unnecessary, pure overhead for the wrong one.</p>
+
+  <div class="callout crud"><b>Interview-ready definition:</b> CRUD (a plain table with rows that get created, read, updated, and deleted directly) remains the correct default whenever a system doesn't have a genuine, specific need for historical replay, point-in-time reconstruction, or a full audit trail of every state change — which describes most tables in most systems. Event sourcing is a deliberate trade made BY systems that specifically need that history (financial ledgers, compliance-audited workflows, systems like <code class="inline">audit_trail_schema.html</code>'s tool-call log that exist explicitly to support later replay) — not a strictly-better default, because it introduces real, ongoing complexity (maintaining projections, replay logic) that a system without that specific need would be paying for no corresponding benefit.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Deriving state at a PAST point in time, not just "now"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 1's <code class="inline">order_events</code> schema, write the query logic (in words or pseudo-SQL) to determine order <code class="inline">ord-501</code>'s status as of 2026-08-02 (a date AFTER payment but BEFORE shipping). Could a plain CRUD <code class="inline">orders</code> table with only a <code class="inline">status</code> column ever answer this same question?</p>
+    <details><summary>Show solution</summary><div class="solution">SELECT event_type, payload, occurred_at FROM order_events
+WHERE order_id = 'ord-501' AND occurred_at <= '2026-08-02'
+ORDER BY occurred_at ASC;
+
+Then fold these results in order: OrderCreated (status becomes
+"created") -> PaymentReceived (status becomes "paid"). OrderShipped's
+occurred_at (2026-08-03) is AFTER the cutoff, so it's excluded by the
+WHERE clause and never applied -- the folded result as of 2026-08-02 is
+"paid", correctly reflecting that the order hadn't shipped yet at that
+point in time.
+
+A plain CRUD orders table with only a status column could NOT answer
+this at all -- by the time you're asking the question, the table's
+single status column has already been overwritten to "shipped" (the
+CURRENT value), and the "paid" value that was true on 2026-08-02 was
+destroyed the moment the UPDATE to "shipped" ran. This is section 2's
+trade-off made completely concrete: the event log answers a question
+(state as of a specific past moment) that a CRUD table's design makes
+structurally unanswerable, not just inconvenient -- the data needed to
+answer it was deleted by the CRUD table's own normal operation.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Diagnosing a projection that's fallen out of sync</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A system's <code class="inline">order_current_state</code> projection shows <code class="inline">ord-501</code> as status "paid", but the <code class="inline">order_events</code> log has an <code class="inline">OrderShipped</code> event for it from an hour ago. Using section 2's projection-maintenance reasoning, what's the most likely cause, and why is this a NEW category of bug that plain CRUD tables don't have?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause: the process responsible for replaying new events
+onto the projection (the "keep the projection in sync" logic section 2
+describes) either failed silently on the OrderShipped event specifically,
+is running behind (a queue or worker lag, similar in spirit to
+async_tool_job_queue_design.html's worker-processing delay), or has a
+bug that doesn't correctly handle this particular event_type. The event
+log itself (the source of truth) is NOT wrong -- it correctly has the
+OrderShipped event; the projection (a derived, secondary artifact) has
+simply failed to catch up to what the log already contains.
+
+Why this is a NEW category of bug plain CRUD doesn't have: a plain CRUD
+orders table has exactly ONE place status lives -- there's no "source of
+truth" and "derived copy" to fall out of sync with each other, because
+there's only ever one copy. Event sourcing's two-artifact design
+(immutable log + derived projection) introduces an entirely new failure
+mode -- projection staleness or corruption -- that simply cannot occur in
+a system with only one place any given piece of state is stored. This is
+exactly section 2's "ongoing maintenance burden" row made concrete: the
+projection isn't free to maintain, and "the projection disagrees with
+the log" is a genuinely new class of bug this architecture invites that
+a CRUD table's design makes impossible by construction.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding between event sourcing and CRUD for a specific new feature</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team is building a simple "user's display name" feature — just a name shown next to their posts, changeable anytime, with no requirement to ever show "what name did this user have when they made THIS specific post." Using section 4's table, which approach is correct here, and what would change your answer?</p>
+    <details><summary>Show solution</summary><div class="solution">Plain CRUD is correct here -- a users table with a display_name column
+that gets UPDATEd directly whenever the user changes it. Checking
+section 4's signals: there's no stated need to reconstruct "what was
+true at time T" (the problem explicitly says there's no requirement to
+show historical names per-post), no audit/compliance driver mentioned,
+and "what's the user's CURRENT display name" is clearly the dominant,
+essentially only, query pattern this feature needs. Building an
+event-sourced name_change_events log plus a projection for this would be
+pure unnecessary complexity -- paying event sourcing's maintenance cost
+(section 2's projection-sync burden, Problem 2's new failure mode) for a
+capability (point-in-time name reconstruction) nobody asked for and the
+product explicitly doesn't need.
+
+What WOULD change the answer: if a later requirement emerged that posts
+should display the name the user had AT THE TIME they posted (a
+genuinely common real feature, actually -- many platforms preserve the
+poster's name-at-post-time) -- that's precisely the kind of point-in-time
+reconstruction need section 4's first row names as favoring event
+sourcing. Even then, a simpler middle ground often suffices before
+reaching for full event sourcing: just DENORMALIZE the display name
+directly onto each post row at post-creation time (posts.author_name_at_
+post_time), a plain CRUD technique that captures the one specific
+historical fact actually needed without building a general-purpose event
+log for a single, narrow requirement -- worth naming because "we need
+SOME history" doesn't automatically mean "we need full event sourcing";
+sometimes a targeted CRUD-shaped solution to the SPECIFIC historical need
+is simpler than a general-purpose event log built for open-ended future
+questions nobody has asked yet.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Connecting event sourcing to audit_trail_schema's replay argument, precisely</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;"><code class="inline">audit_trail_schema.html</code> argued its <code class="inline">tool_call_audit</code> table "borrows event sourcing's core principle... without requiring the audit trail itself to be a full event-sourced system." Using this lab's definitions, name the ONE specific thing that audit trail is missing that would be required for it to count as TRUE event sourcing of the underlying entity (e.g. an agent's session state).</p>
+    <details><summary>Show solution</summary><div class="solution">The audit trail logs EVERY tool call as an immutable, ordered row --
+genuinely borrowing event sourcing's "record what happened, in order,
+never overwritten" principle. What it's missing to count as TRUE event
+sourcing of, say, an agent's session or conversation state specifically:
+there's no defined FOLD/REPLAY function that reconstructs a meaningful
+CURRENT STATE of the underlying entity (the agent's session) FROM those
+rows -- audit_trail_schema.html's rows exist purely for human debugging
+and replay-of-individual-calls, not to be replayed and folded into an
+authoritative "here is the agent's current state" the way section 1's
+order_events rows fold into an order's current status.
+
+Concretely: tool_call_audit has no equivalent of section 1's
+event_type-driven state transitions (OrderCreated -> status="created",
+etc.) -- there's no code anywhere that says "replay every
+tool_call_audit row for this agent_id, in order, and the fold result
+IS this agent's current, authoritative state," because nothing in the
+system actually derives the agent's live state that way; the audit
+trail is a side log for debugging, not the primary source of truth the
+system reads from to know what's currently true. That's the specific
+gap audit_trail_schema.html's own phrasing ("without requiring... a
+full event-sourced system") was already flagging -- it borrows the
+RECORDING discipline of event sourcing without adopting the REPLAY-AS-
+SOURCE-OF-TRUTH discipline that would make it the real thing.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about indexing an event log for replay performance</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using the leftmost-prefix indexing reasoning from <code class="inline">database/indexing.html</code> and <code class="inline">audit_trail_schema.html</code>'s Problem 1, what index would make replaying a single order's events (section 3's live demo) efficient at scale, and why does column ORDER in that index matter here specifically?</p>
+    <details><summary>Show solution</summary><div class="solution">An index on (order_id, occurred_at) -- order_id LEADING, occurred_at
+second. Replaying a single order's history is fundamentally: filter to
+exactly one order_id (an EQUALITY filter), then read its events in
+chronological ORDER (occurred_at ASC). Per indexing.html and
+audit_trail_schema.html's Problem 1's shared leftmost-prefix reasoning,
+the equality-filtered column belongs FIRST in the index so Postgres can
+narrow directly to just that one order's rows, with the sort/range
+column (occurred_at) second so those already-narrowed rows come back
+pre-ordered for the replay fold to consume directly, without a separate
+sort step.
+
+Column order matters specifically here because reversing it -- an index
+on (occurred_at, order_id) -- would be far less useful for THIS query
+pattern: it would let Postgres quickly find events in a given TIME range
+across ALL orders, but replaying one specific order's history would
+still require scanning through every order's events within whatever
+time range, filtering out all the OTHER orders' events along the way --
+exactly the wasted-scan problem audit_trail_schema.html's Problem 1
+described for a status-only index versus a (status, started_at)
+composite. Since section 3's replay pattern is fundamentally "give me
+ONE order's full history, in order," not "give me all events in a time
+window," (order_id, occurred_at) is the index shape that actually
+matches how this data gets queried in practice.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> could you, without notes, (1) write the <code class="inline">order_events</code> schema from memory and explain why it has no <code class="inline">status</code> column at all, (2) walk through folding three events into a current-state result by hand, (3) name the specific new failure mode (projection staleness) that event sourcing introduces which plain CRUD structurally cannot have, and (4) give one concrete feature where CRUD is obviously the right, simpler choice? This connects directly to <code class="inline">audit_trail_schema.html</code>'s replay concept from last week, and to the security/reliability reasoning this week's other labs build — Saturday's capstone, <code class="inline">final_multi_agent_workflow.html</code>, ties the whole month together.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — event sourcing vs. CRUD.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: REPLAY DEMO */
+(function(){
+  var rowsEl = document.getElementById("replay-rows");
+  var runBtn = document.getElementById("replay-run");
+  var resetBtn = document.getElementById("replay-reset");
+  var stateBox = document.getElementById("state-box");
+  var idx = 0;
+
+  var EVENTS = [
+    {type: "OrderCreated", payload: '{"items": ["sku-42"], "total": 89.00}', at: "2026-08-01 09:00", fold: {status: "created", total: "89.00", items: "[\"sku-42\"]"}},
+    {type: "PaymentReceived", payload: '{"amount": 89.00, "method": "card"}', at: "2026-08-01 09:02", fold: {status: "paid", total: "89.00", items: "[\"sku-42\"]", payment_method: "card"}},
+    {type: "OrderShipped", payload: '{"carrier": "ups", "tracking": "1Z..."}', at: "2026-08-03 14:30", fold: {status: "shipped", total: "89.00", items: "[\"sku-42\"]", payment_method: "card", carrier: "ups", tracking: "1Z..."}}
+  ];
+
+  function render(){
+    rowsEl.innerHTML = "";
+    EVENTS.forEach(function(ev, i){
+      var el = document.createElement("div");
+      el.className = "evt-row" + (i < idx ? " active" : "");
+      el.innerHTML = '<span class="etype">' + ev.type + '</span><span>' + (i < idx ? (ev.payload + " — " + ev.at) : "···") + '</span>';
+      rowsEl.appendChild(el);
+    });
+  }
+
+  function renderState(){
+    if(idx === 0){
+      stateBox.innerHTML = '<span style="color:var(--ink-dim); font-style:italic;">No events replayed yet.</span>';
+      return;
+    }
+    var fold = EVENTS[idx - 1].fold;
+    var html = "";
+    Object.keys(fold).forEach(function(k){
+      html += '<div class="field"><b>' + k + ':</b> ' + fold[k] + '</div>';
+    });
+    stateBox.innerHTML = html;
+  }
+
+  runBtn.addEventListener("click", function(){
+    if(idx >= EVENTS.length){ idx = 0; runBtn.textContent = "Replay next event ▸"; }
+    else {
+      idx++;
+      render();
+      renderState();
+      if(idx >= EVENTS.length){
+        runBtn.textContent = "Fully replayed — click to restart";
+      }
+      return;
+    }
+    render();
+    renderState();
+  });
+
+  resetBtn.addEventListener("click", function(){
+    idx = 0;
+    runBtn.textContent = "Replay next event ▸";
+    render();
+    renderState();
+  });
+
+  render();
+  renderState();
+})();
+</script>
+</body>
+</html>
