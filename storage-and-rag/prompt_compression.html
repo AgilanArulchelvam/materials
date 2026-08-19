@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Prompt Compression</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --old-c:#f2c14e; --recent-c:#4fc3f7; --summary-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--old-c); color:var(--old-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--summary-c); color:var(--summary-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--recent-c); color:var(--recent-c); background:rgba(79,195,247,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* conversation growing/compressing */
+  .convo-stage{display:flex; flex-direction:column; gap:0.4rem; margin:1.2rem 0; min-height:60px;}
+  .msg-row{font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.8rem; border-radius:7px; background:var(--panel-2); border:1px solid var(--rule); display:flex; justify-content:space-between; gap:0.6rem; opacity:0; transform:translateY(-4px); transition:opacity .35s, transform .35s, background .4s, border-color .4s;}
+  .msg-row.show{opacity:1; transform:translateY(0);}
+  .msg-row.old{border-left:3px solid var(--old-c);}
+  .msg-row.recent{border-left:3px solid var(--recent-c);}
+  .msg-row.compressing{background:rgba(127,216,160,0.08);}
+  .msg-row.removed{opacity:0; transform:translateX(20px) scale(0.9); max-height:0; padding:0; margin:0; border:none; overflow:hidden;}
+  .msg-row .mtoks{color:var(--ink-dim); font-size:0.7rem;}
+  .summary-row{font-family:var(--mono); font-size:0.8rem; padding:0.7rem 0.9rem; border-radius:7px; background:rgba(127,216,160,0.1); border:1.5px solid var(--summary-c); color:var(--ink); opacity:0; transform:scale(0.96); transition:opacity .5s, transform .5s;}
+  .summary-row.show{opacity:1; transform:scale(1);}
+  .summary-row .stag{font-family:var(--mono); font-size:0.65rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--summary-c); display:block; margin-bottom:0.3rem;}
+
+  /* before/after comparison */
+  .ba-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.4rem 0; align-items:start;}
+  @media(max-width:760px){.ba-compare{grid-template-columns:1fr;}}
+  .ba-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; text-align:center;}
+  .ba-col.before{border-color:var(--old-c);}
+  .ba-col.after{border-color:var(--summary-c);}
+  .ba-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .ba-col.before h4{color:var(--old-c);} .ba-col.after h4{color:var(--summary-c);}
+  .ba-big{font-family:var(--mono); font-size:2.2rem; font-weight:700; color:var(--ink); line-height:1;}
+  .ba-sub{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.4rem;}
+
+  /* lost detail example */
+  .detail-example{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.detail-example{grid-template-columns:1fr;}}
+  .detail-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem; background:var(--panel-2);}
+  .detail-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem; color:var(--old-c);}
+  .detail-col.after h4{color:var(--summary-c);}
+  .detail-col p{font-size:0.85rem; margin:0;}
+  .detail-col .highlight{color:var(--bad-c); font-weight:600;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.summary{border-left-color:var(--summary-c); background:rgba(127,216,160,0.06);} .callout.summary b{color:var(--summary-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CONTEXT &amp; RAG MECHANICS</div>
+  <h1>Keeping every message verbatim doesn't scale. Compressing the old ones always costs something.</h1>
+  <p class="lede">A conversation that runs long enough will eventually blow through the token budget from the last lab. Prompt compression is the fix: periodically fold older turns into a shorter summary that keeps the gist while dropping most of the raw text — but "the gist" is a lossy compression, and there's a real chance the exact detail that mattered got left out. This lab animates a conversation growing, gets compressed at a threshold, and shows a concrete case where a specific number becomes unrecoverable afterward.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">12 raw messages growing</div>
+    <div class="pipe-label b">Compressed to 1 summary + recent turns</div>
+    <div class="pipe-label c">A specific detail, lost</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="summarizing">1 · Summarizing Older Context</a>
+  <a data-target="tradeoff">2 · The Compression vs Information-Loss Trade-off</a>
+  <a data-target="animation">3 · Watch a Conversation Compress</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SUMMARIZING OLDER CONTEXT ============ -->
+<section id="summarizing">
+  <div class="kicker">01 — Verbatim doesn't scale, but the gist mostly does</div>
+  <h2>Summarizing older context</h2>
+
+  <p><strong>Start here, before any mechanics.</strong> Imagine keeping a diary of every conversation you've ever had with a close friend, written out word for word. After a few years, you'd have a shelf of notebooks — technically complete, but impractical to actually reread before your next conversation with them. What you'd realistically do instead is remember the GIST: "we talked about their job change, their trip to Portugal, and that ongoing disagreement with their sibling" — a few sentences that capture what mattered, discarding the exact wording of every single exchange. Most of the time, that's genuinely enough to pick the conversation back up naturally.</p>
+
+  <p><strong>Prompt compression</strong> applies this same idea to a growing conversation history. As a conversation accumulates turns, keeping every past message verbatim in the context window eventually becomes unaffordable — it's exactly the token-budget pressure from the previous lab. Instead of keeping everything, a common strategy is: periodically, once history crosses some threshold (a turn count, or a token count), take the OLDER portion of the conversation and replace it with a single, shorter <strong>summary</strong> — typically generated by asking the LLM itself to condense those older turns into a few sentences that preserve the gist (key facts, decisions, open questions) — while keeping the most RECENT turns verbatim, since those are most likely to still be directly relevant to the current exchange.</p>
+
+  <div class="code"><span class="c-cmt"># the compression shape: old turns -> one summary, recent turns stay verbatim</span>
+<span class="c-kw">def</span> <span class="c-fn">compress_if_needed</span>(history, threshold_turns=<span class="c-num">10</span>, keep_recent=<span class="c-num">3</span>):
+    <span class="c-kw">if</span> <span class="c-fn">len</span>(history) &lt;= threshold_turns:
+        <span class="c-kw">return</span> history  <span class="c-cmt"># still short enough, no compression needed yet</span>
+
+    older = history[:-keep_recent]     <span class="c-cmt"># everything except the most recent N turns</span>
+    recent = history[-keep_recent:]    <span class="c-cmt"># kept verbatim</span>
+
+    summary = <span class="c-fn">llm_summarize</span>(older)  <span class="c-cmt"># an extra LLM call, condensing older into a gist</span>
+    <span class="c-kw">return</span> [{<span class="c-str">"role"</span>: <span class="c-str">"system"</span>, <span class="c-str">"content"</span>: <span class="c-str">"Summary of earlier conversation: "</span> + summary}] + recent</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> prompt compression periodically replaces the older portion of a growing conversation history with a shorter LLM-generated summary that preserves the gist — key facts, decisions, and open threads — while keeping the most recent turns verbatim in full. This keeps total context size roughly bounded as a conversation continues indefinitely, rather than growing without limit, at the cost of an extra summarization LLM call each time compression runs and, critically, at the cost of losing whatever specific detail the summary didn't preserve.</div>
+</section>
+
+<!-- ============ SECTION 2: THE TRADE-OFF ============ -->
+<section id="tradeoff">
+  <div class="kicker">02 — The gist survives. The specific fact might not</div>
+  <h2>The trade-off: compression saves space, but a detail can vanish</h2>
+
+  <p><strong>Start here, before the example.</strong> Back to the diary analogy: your gist-level memory ("we talked about their trip to Portugal") is genuinely useful for picking the conversation back up naturally — but if your friend later says "remember, I told you the exact dates I'm free in October," and your memory only kept the gist, that specific detail is just gone. You didn't forget it through carelessness — you never kept it in a form your gist-level summary was capable of preserving in the first place. This is the real, structural trade-off of compression, not a bug to be engineered away: a summary is, by definition, LESS information than what it summarizes, and the compressor has to guess in advance what will and won't matter later.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>A SPECIFIC DETAIL, BEFORE AND AFTER COMPRESSION</span></div>
+    <div class="detail-example">
+      <div class="detail-col">
+        <h4>Before compression — raw message, turn 3</h4>
+        <p>"My account ID is <span class="highlight">AX-7734-Q</span>, and I need the refund processed to the card ending in <span class="highlight">4471</span>, not my original payment method."</p>
+      </div>
+      <div class="detail-col after">
+        <h4>After compression — the summary, turns 1-8</h4>
+        <p>"User discussed a refund request, mentioned wanting it sent to a different card than originally used, and asked follow-up questions about processing time."</p>
+      </div>
+    </div>
+    <p style="font-size:0.85rem; margin-top:1rem;">The summary correctly preserves the GIST — there's a refund, going to a different card. But the exact account ID (<code class="inline">AX-7734-Q</code>) and the exact last-four digits (<code class="inline">4471</code>) are gone. If the user later asks "can you confirm you're sending it to the right card," the model — now only seeing the summary, not the original message — has no way to recover those specific values. They weren't merely de-prioritized; they were never captured in the compressed form at all.</p>
+  </div>
+
+  <div class="callout warn"><b>Why this isn't a fixable bug, just a real trade-off:</b> a summarizer that tried to preserve every specific number, name, and exact phrase from the original messages wouldn't actually be compressing anything — it would just be a slightly reworded copy, defeating the entire point of freeing up token budget. Genuine compression requires the summarizer to make judgment calls about what's "gist" versus "specific detail," and it will sometimes guess wrong about which specific details turn out to matter later. This is precisely why systems that compress conversation history often also keep certain high-value facts (an account ID, a confirmed order number) pinned in a separate, never-compressed slot rather than trusting them to survive summarization at all.</div>
+
+  <div class="callout summary"><b>Interview-ready definition:</b> the core trade-off of prompt compression is that it exchanges recoverable, exact information for space — a summary preserves the general shape of what was discussed but, by construction, discards details the summarization step judged non-essential, and once the original verbatim turns are gone from context, those discarded details are genuinely unrecoverable from the summary alone. This isn't a solvable bug in the summarization prompt; it's an inherent property of lossy compression, which is why production systems often pair conversation compression with a separate mechanism (pinned facts, a structured memory store, or simply re-asking the user) for the small set of details that must never be allowed to depend on surviving a summary.</div>
+</section>
+
+<!-- ============ SECTION 3: ANIMATION ============ -->
+<section id="animation">
+  <div class="kicker">03 — Watch the growth, the threshold, and the collapse</div>
+  <h2>A conversation growing, then compressing at a threshold</h2>
+
+  <p><strong>Start here, before the demo.</strong> Below, a conversation grows turn by turn. Once it crosses a threshold, the older turns fold into a single summary block while the most recent turns stay verbatim — watch both the token count and the actual message list collapse.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>GROW TO 12 MESSAGES, THEN COMPRESS</span>
+      <div><button class="btn secondary" id="convo-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="convo-run">Run: grow conversation, then compress ▸</button>
+    <div class="convo-stage" id="convo-stage"></div>
+    <div class="log" id="convo-log"><span class="line">Click to grow a 12-message conversation, then watch compression fold the older turns into one summary.</span></div>
+  </div>
+
+  <div class="ba-compare">
+    <div class="ba-col before">
+      <h4>Before compression</h4>
+      <div class="ba-big" id="before-msgs">12 messages</div>
+      <div class="ba-sub" id="before-toks">~3,000 tokens</div>
+    </div>
+    <div class="ba-col after">
+      <h4>After compression</h4>
+      <div class="ba-big" id="after-msgs">1 summary + 3 recent</div>
+      <div class="ba-sub" id="after-toks">~800 tokens</div>
+    </div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> compressing a conversation at a threshold replaces a growing list of verbatim messages with a fixed-size structure — one summary of everything older, plus a small fixed number of the most recent turns kept in full — bounding total context size to roughly a constant regardless of how long the conversation ultimately runs, in exchange for the summary's lossy compression of everything it absorbed. This is the concrete mechanism that keeps a long-running conversation from eventually exceeding the token budget the previous lab established, applied specifically to the conversation-history section of that budget.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Computing the space savings from compression</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A conversation has 12 messages averaging 250 tokens each. After compression, the older 9 are replaced by a single 200-token summary, and the most recent 3 (250 tokens each) stay verbatim. What's the token count before and after, and what percentage reduction does this represent?</p>
+    <details><summary>Show solution</summary><div class="solution">Before: 12 messages x 250 tokens = 3,000 tokens.
+
+After: 1 summary (200 tokens) + 3 recent verbatim messages (3 x 250 =
+750 tokens) = 950 tokens.
+
+Reduction: (3,000 - 950) / 3,000 ≈ 68% fewer tokens. This is the same
+shape as the before/after comparison in section 3 (3,000 tokens down to
+roughly 800-950 depending on exact summary length) -- the space savings
+come almost entirely from replacing the 9 OLDEST messages (2,250 tokens
+worth) with a single 200-token summary, a more than 11x compression
+ratio on just that older portion, while the recent 3 messages are left
+completely untouched since they stayed verbatim in both cases.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Identifying what a summary would and wouldn't preserve</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given the same raw message from section 2 ("My account ID is AX-7734-Q, and I need the refund processed to the card ending in 4471, not my original payment method"), write what you'd expect a REASONABLE summarizer to keep versus drop, and explain why the drop is not a summarizer bug.</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable summarizer would likely KEEP: the general topic (a refund
+request) and the general instruction (send to a different card than
+originally used, not the original payment method) -- these are the
+kind of "gist" facts a summary is specifically designed to preserve,
+since they represent the shape of what was discussed and decided.
+
+It would likely DROP: the exact account ID string ("AX-7734-Q") and the
+exact last-four digits ("4471") -- these are precisely the kind of
+specific, low-level identifiers that a gist-level summary is not
+designed to retain, since summarization's whole purpose is condensing
+detail down to what's generally relevant, and specific IDs read as
+"detail" rather than "gist" to a summarization process with no way to
+know in advance that THIS specific number will be needed again later.
+
+This is not a summarizer bug because there's no way to summarize
+"compress this down significantly" while ALSO guaranteeing every
+specific number survives -- those two goals are in direct tension, and
+any summarizer that tried to satisfy both would end up not compressing
+much at all. The correct fix, per section 2's callout, isn't a better
+prompt for the summarizer -- it's not relying on compression to
+preserve values like account IDs in the first place, e.g. by pinning
+them in a separate, never-compressed slot.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing keep_recent and threshold_turns for a support-bot use case</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A customer support chatbot's users often reference something they said "a couple messages ago" but almost never something from more than 5-6 turns back. Using section 1's compress_if_needed pseudocode, would you set keep_recent higher or lower than a general-purpose assistant, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">keep_recent should be set HIGHER than a bare-minimum default (e.g.
+5-6 rather than 2-3) specifically because this use case's actual
+reference pattern -- users pointing back "a couple messages ago," with
+essentially no references beyond 5-6 turns back -- defines exactly how
+far back verbatim (uncompressed) context needs to reach to reliably
+cover real user behavior. If keep_recent were set too low (e.g. 2),
+a user referencing something from 4 turns back would find that detail
+already folded into the lossy summary, right in the exact failure mode
+section 2 describes, even though the reference was well within this
+particular product's normal usage pattern.
+
+Setting keep_recent to roughly match (or slightly exceed) the observed
+"how far back do users actually reference things" distribution is the
+right way to size this parameter -- not a fixed number chosen in the
+abstract, but one informed by this specific product's real usage, the
+same way the token-budget lab's problem 3 emphasized recency/relevance
+patterns specific to the actual workload. threshold_turns (when
+compression triggers at all) is a separate, more independent knob --
+it can stay whatever balances token savings against summarization call
+frequency/cost, since it doesn't interact with the "how far back do
+users reference things" concern the way keep_recent directly does.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a bug where the pinned account ID still got lost</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team adds a "pinned facts" mechanism per section 2's callout — important details like account IDs get extracted and stored separately, immune to compression. Despite this, a user's account ID still vanished from context after a compression event. On investigation, the pinning step runs by asking the LLM to "extract important facts from the conversation so far" AFTER compression has already happened, not before. What's wrong, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">The bug is a straightforward ordering problem: if the "extract
+important facts to pin" step runs AFTER compression, it's extracting
+facts from the ALREADY-COMPRESSED context -- meaning it's trying to
+pin details from the summary, not from the original raw messages. But
+the summary itself may have already dropped the account ID (exactly as
+section 2 describes happening to gist-level summaries), so there's
+nothing left in the compressed context for the pinning step to find
+and extract -- it can't pin a detail that's already gone by the time
+it runs.
+
+The fix is an ordering fix: pinning needs to happen BEFORE compression,
+scanning the RAW, still-verbatim messages for values worth protecting
+(account IDs, confirmed order numbers, specific dates/amounts) and
+storing them in the separate pinned-facts slot first -- only then
+should the older messages be handed to the summarizer and compressed.
+This way, the pinned facts mechanism is working from the same
+full-detail source the summarizer is compressing FROM, not from the
+summarizer's already-lossy output, which is exactly the distinction
+that makes "pin it separately" an actual fix rather than just another
+lossy step layered on top of the first one.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining why re-summarizing an already-compressed summary compounds the problem</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A long-running conversation compresses once at turn 12 (turns 1-9 into a summary, turns 10-12 kept verbatim), then keeps going and compresses AGAIN at turn 24 — this time summarizing the PREVIOUS summary plus turns 10-21 together into one new summary. Why does this repeated-compression pattern make information loss worse over time than a single one-time compression would?</p>
+    <details><summary>Show solution</summary><div class="solution">Each compression pass is independently lossy -- the first pass already
+discarded whatever the summarizer judged as non-gist detail from turns
+1-9. When the SECOND compression pass runs, it's summarizing the
+FIRST summary (which is already a lossy, reduced version of turns 1-9)
+together with turns 10-21 -- meaning the already-compressed content
+gets compressed AGAIN, on top of whatever it already lost the first
+time around.
+
+This compounds rather than merely repeats the loss: the second
+summarizer has no access to the original turns 1-9 raw text at all (it
+was already discarded after the first compression) -- it can only work
+from what the first summary preserved, and its own summarization pass
+can further compress or drop details that DID survive the first pass
+but don't make the cut for the second, more aggressive round of
+condensing. Each additional compression pass is compounding
+information loss on top of already-lossy input, rather than each pass
+independently starting from the full original detail -- which is
+exactly why very long-running conversations that compress repeatedly
+tend to retain less and less of the earliest parts of the conversation
+over time, even though each individual compression step, viewed in
+isolation, might look like a reasonable, modest amount of loss.
+
+This is a genuine argument for the "pin high-value facts before they
+can ever be compressed" strategy from section 2 and problem 4 --
+pinned facts, stored outside the compression pipeline entirely, don't
+degrade further on repeated compression passes the way anything living
+only inside the rolling summary does.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the compress_if_needed shape — what gets summarized, what stays verbatim, and why, (2) walk through a concrete example of a specific detail a summary would lose, and (3) explain why this loss is a structural trade-off rather than a fixable summarizer bug? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — prompt compression.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 3: CONVERSATION GROW + COMPRESS ANIMATION */
+(function(){
+  var stage = document.getElementById("convo-stage");
+  var runBtn = document.getElementById("convo-run");
+  var resetBtn = document.getElementById("convo-reset");
+  var logEl = document.getElementById("convo-log");
+  var beforeMsgs = document.getElementById("before-msgs");
+  var beforeToks = document.getElementById("before-toks");
+  var afterMsgs = document.getElementById("after-msgs");
+  var afterToks = document.getElementById("after-toks");
+  var busy = false;
+
+  var MESSAGES = [
+    "User: I'd like to set up a recurring order for coffee beans.",
+    "Assistant: Sure — how often would you like it to repeat?",
+    "User: Every 3 weeks, and I'd like the dark roast, 2 bags each time.",
+    "Assistant: Got it. Should it ship to your default address?",
+    "User: Yes, that's fine. Also my account ID is AX-7734-Q for reference.",
+    "Assistant: Noted. Your recurring order is set for every 3 weeks.",
+    "User: Actually, can you change delivery to biweekly instead?",
+    "Assistant: Updated — now every 2 weeks, same items and address.",
+    "User: One more thing — refund my last order to the card ending 4471.",
+    "Assistant: Refund initiated to the card ending 4471, 3-5 business days.",
+    "User: Thanks. How's the weather looking for delivery this week?",
+    "Assistant: I don't have weather data, but your order is on schedule."
+  ];
+  var TOKENS_PER_MSG = 250;
+  var THRESHOLD = 12;
+  var KEEP_RECENT = 3;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function reset(){
+    stage.innerHTML = "";
+    logEl.innerHTML = '<span class="line">Click to grow a 12-message conversation, then watch compression fold the older turns into one summary.</span>';
+    beforeMsgs.textContent = "12 messages";
+    beforeToks.textContent = "~3,000 tokens";
+    afterMsgs.textContent = "1 summary + 3 recent";
+    afterToks.textContent = "~800 tokens";
+    busy = false;
+    runBtn.disabled = false;
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    stage.innerHTML = "";
+    logEl.innerHTML = "";
+
+    log('<b>Growing the conversation</b> — each turn adds ~' + TOKENS_PER_MSG + ' tokens.');
+    for(var i = 0; i < MESSAGES.length; i++){
+      var row = document.createElement("div");
+      row.className = "msg-row old";
+      row.id = "msg-" + i;
+      row.innerHTML = "<span>" + MESSAGES[i] + "</span><span class=\"mtoks\">~" + TOKENS_PER_MSG + " tok</span>";
+      stage.appendChild(row);
+      await wait(50);
+      row.classList.add("show");
+      await wait(90);
+    }
+
+    var totalTokens = MESSAGES.length * TOKENS_PER_MSG;
+    log('<b>' + MESSAGES.length + ' messages</b>, ≈' + totalTokens + ' tokens total — threshold (' + THRESHOLD + ' messages) reached.');
+    await wait(500);
+
+    log('<b style="color:var(--summary-c);">Compressing:</b> folding the oldest ' + (MESSAGES.length - KEEP_RECENT) + ' messages into one summary. Keeping the most recent ' + KEEP_RECENT + ' verbatim.');
+    await wait(400);
+
+    // mark old ones as compressing, then remove
+    for(var j = 0; j < MESSAGES.length - KEEP_RECENT; j++){
+      document.getElementById("msg-" + j).classList.add("compressing");
+    }
+    await wait(500);
+    for(var k = 0; k < MESSAGES.length - KEEP_RECENT; k++){
+      document.getElementById("msg-" + k).classList.add("removed");
+      await wait(60);
+    }
+    await wait(300);
+
+    // insert summary at top
+    var summary = document.createElement("div");
+    summary.className = "summary-row";
+    summary.innerHTML = '<span class="stag">Compressed summary — turns 1-9</span>User set up a recurring dark-roast coffee order (2 bags, later changed to biweekly), account ID AX-7734-Q mentioned, and a refund was requested to a card — exact card digits and account ID not retained in this summary.';
+    stage.insertBefore(summary, stage.firstChild);
+    await wait(80);
+    summary.classList.add("show");
+
+    for(var m = 0; m < KEEP_RECENT; m++){
+      document.getElementById("msg-" + (MESSAGES.length - KEEP_RECENT + m)).classList.remove("old");
+      document.getElementById("msg-" + (MESSAGES.length - KEEP_RECENT + m)).classList.add("recent");
+    }
+
+    var summaryTokens = 200;
+    var recentTokens = KEEP_RECENT * TOKENS_PER_MSG;
+    var newTotal = summaryTokens + recentTokens;
+
+    beforeMsgs.textContent = MESSAGES.length + " messages";
+    beforeToks.textContent = "~" + totalTokens + " tokens";
+    afterMsgs.textContent = "1 summary + " + KEEP_RECENT + " recent";
+    afterToks.textContent = "~" + newTotal + " tokens";
+
+    log('<b style="color:var(--summary-c);">Compressed:</b> ' + totalTokens + ' tokens → ~' + newTotal + ' tokens (summary ~' + summaryTokens + ' + ' + KEEP_RECENT + ' recent turns ~' + recentTokens + ').');
+    log('<span style="color:var(--bad-c);">Lost in the summary:</span> the exact account ID (AX-7734-Q) and the exact card digits (4471) from the raw messages — neither survived compression, exactly as section 2 describes.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", reset);
+})();
+</script>
+</body>
+</html>

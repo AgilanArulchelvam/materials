@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Token Budget Management</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --sys-c:#c792ea; --ctx-c:#4fc3f7; --hist-c:#f2c14e; --out-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--sys-c); color:var(--sys-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.b{border-color:var(--ctx-c); color:var(--ctx-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--hist-c); color:var(--hist-c); background:rgba(242,193,78,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  textarea.charbox{width:100%; min-height:110px; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; color:var(--ink); font-family:var(--body); font-size:0.92rem; padding:0.8rem 1rem; resize:vertical;}
+  textarea.charbox:focus{outline:none; border-color:var(--accent);}
+  .counter-row{display:flex; gap:1.4rem; flex-wrap:wrap; margin-top:0.9rem; font-family:var(--mono); font-size:0.82rem;}
+  .counter-stat{background:var(--panel-2); border:1px solid var(--rule); border-radius:8px; padding:0.6rem 1rem; text-align:center; min-width:120px;}
+  .counter-stat .n{display:block; font-size:1.3rem; font-weight:700; color:var(--ctx-c); margin-top:0.2rem;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  /* budget bar */
+  .budget-shell{margin:1.4rem 0;}
+  .budget-track{height:52px; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; overflow:hidden; display:flex; position:relative;}
+  .budget-seg{height:100%; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.7rem; color:#0e0f13; font-weight:700; transition:width .5s ease, opacity .3s; overflow:hidden; white-space:nowrap;}
+  .budget-seg.sys{background:var(--sys-c);}
+  .budget-seg.ctx{background:var(--ctx-c);}
+  .budget-seg.hist{background:var(--hist-c);}
+  .budget-seg.out{background:var(--out-c);}
+  .budget-seg.cut{background:repeating-linear-gradient(135deg, var(--bad-c), var(--bad-c) 6px, #1a0e0e 6px, #1a0e0e 12px); color:var(--ink);}
+  .budget-marker{position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--bad-c); z-index:5;}
+  .budget-marker::after{content:"LIMIT"; position:absolute; top:-1.4rem; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:0.62rem; color:var(--bad-c); white-space:nowrap;}
+  .budget-legend{display:flex; gap:1rem; flex-wrap:wrap; margin-top:1rem; font-family:var(--mono); font-size:0.75rem;}
+  .budget-legend span{display:flex; align-items:center; gap:0.4rem;}
+  .budget-legend .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .budget-legend .sw.sys{background:var(--sys-c);} .budget-legend .sw.ctx{background:var(--ctx-c);}
+  .budget-legend .sw.hist{background:var(--hist-c);} .budget-legend .sw.out{background:var(--out-c);}
+  .budget-legend .sw.cut{background:var(--bad-c);}
+  .budget-total{font-family:var(--mono); font-size:0.8rem; color:var(--ink-dim); margin-top:0.6rem;}
+  .budget-total b{color:var(--ink);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--ctx-c);} .dc-col.a h4{color:var(--ctx-c);}
+  .dc-col.b{border-color:var(--hist-c);} .dc-col.b h4{color:var(--hist-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.ctx{border-left-color:var(--ctx-c); background:rgba(79,195,247,0.06);} .callout.ctx b{color:var(--ctx-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CONTEXT &amp; RAG MECHANICS</div>
+  <h1>The context window is a fixed-size box. Everything you want to put in it has to fit.</h1>
+  <p class="lede">An LLM's context window has a hard maximum number of tokens — not characters, not words, <em>tokens</em>, the model's own sub-word units. Every piece you want present at generation time — system instructions, retrieved chunks, conversation history, and room left over for the model's own output — has to share that one fixed budget. This lab builds a live token estimator, then a budget bar that fills up exactly the way a real prompt does, and shows precisely what gets cut when it overflows.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">~4 chars/token heuristic</div>
+    <div class="pipe-label b">Budget bar: 4 competing sections</div>
+    <div class="pipe-label c">What gets cut first, and why</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="estimating">1 · Estimating Token Counts</a>
+  <a data-target="strategies">2 · Staying Under Budget</a>
+  <a data-target="budgetbar">3 · The Budget Bar, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: ESTIMATING TOKEN COUNTS ============ -->
+<section id="estimating">
+  <div class="kicker">01 — A rough ruler, because you rarely have the real tokenizer on hand</div>
+  <h2>Estimating token counts for a context window</h2>
+
+  <p><strong>Start here, before any formulas.</strong> Imagine packing a moving truck without a scale — you don't know the exact weight of every box, but you know roughly "a box this size is about this heavy," so you can estimate whether everything will fit before you actually try to load it. Token budgeting works the same way: running the model's real tokenizer on every candidate piece of text before deciding what to include is often too slow or simply unavailable at the point in your pipeline where you're making these decisions, so you lean on a quick, good-enough heuristic instead — accurate enough to plan with, even though it isn't exact.</p>
+
+  <p>A <strong>token</strong> is the actual unit a language model reads and writes in — not a character, and not quite a word either. Modern tokenizers (like BPE — byte-pair encoding — variants) build a vocabulary of common sub-word pieces, so a single English word might be one token ("the") or split across two or three ("unbelievably" → "un" + "believ" + "ably"). Because exact tokenization depends on the specific model's vocabulary, the standard rough heuristic for English text is: <strong>~4 characters per token</strong>, or equivalently <strong>~0.75 words per token</strong> (roughly 3 tokens per 4 words). Neither is exact — both are planning estimates, useful specifically because they're cheap to compute without invoking a real tokenizer at all.</p>
+
+  <div class="code"><span class="c-cmt"># the rough heuristic — good enough for planning, not for billing</span>
+<span class="c-kw">def</span> <span class="c-fn">estimate_tokens_by_chars</span>(text):
+    <span class="c-kw">return</span> <span class="c-fn">round</span>(<span class="c-fn">len</span>(text) / <span class="c-num">4</span>)   <span class="c-cmt"># ~4 characters per token, English prose</span>
+
+<span class="c-kw">def</span> <span class="c-fn">estimate_tokens_by_words</span>(text):
+    words = text.split()
+    <span class="c-kw">return</span> <span class="c-fn">round</span>(<span class="c-fn">len</span>(words) / <span class="c-num">0.75</span>)  <span class="c-cmt"># ~0.75 words per token</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>LIVE CHARACTER COUNTER — TYPE OR PASTE ANY TEXT</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Type or paste a passage below (or reuse the sample). Watch both heuristics estimate its token count in real time, purely from character and word counts — no real tokenizer involved.</p>
+    <textarea class="charbox" id="tok-input">Retrieval-augmented generation combines a search step with a generation step: the system first retrieves relevant chunks of text from a knowledge base, then hands those chunks to a language model as additional context before it generates an answer.</textarea>
+    <div class="counter-row">
+      <div class="counter-stat">Characters<span class="n" id="tok-chars">0</span></div>
+      <div class="counter-stat">Words<span class="n" id="tok-words">0</span></div>
+      <div class="counter-stat">Est. tokens (÷4 chars)<span class="n" id="tok-est-chars">0</span></div>
+      <div class="counter-stat">Est. tokens (÷0.75 words)<span class="n" id="tok-est-words">0</span></div>
+    </div>
+  </div>
+
+  <h3>Where the heuristic breaks: code and non-English text</h3>
+  <p>The ~4-characters-per-token ratio is specifically an <strong>English prose</strong> average — it drifts noticeably for other kinds of text, and a real tokenizer's actual behavior on these cases can differ substantially from the heuristic's prediction.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Code</h4>
+      <p>Source code tends to tokenize <strong>less</strong> efficiently than prose per character — punctuation-heavy syntax (<code class="inline">{}, (), ::, =&gt;</code>), camelCase/snake_case identifiers, and indentation whitespace often each consume their own token or split into multiple sub-word pieces, so a 400-character code snippet can easily cost noticeably more than the ~100 tokens the ÷4 heuristic would predict.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Non-English text</h4>
+      <p>Many tokenizer vocabularies are trained on English-majority corpora, so languages that are underrepresented in that training data — or that don't use whitespace to separate words at all, like Chinese or Japanese — often tokenize far less efficiently per character. A given non-English passage can cost 2-3x (or more) the tokens the English-tuned ÷4 heuristic would estimate for the same character count.</p>
+    </div>
+  </div>
+
+  <div class="lab">
+    <div class="lab-title"><span>SAME HEURISTIC, THREE TEXT TYPES — WATCH THE ESTIMATE DRIFT FROM THE "REAL" TOKENIZER</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-sample="prose">English prose</button>
+      <button class="chip" data-sample="code">Python code</button>
+      <button class="chip" data-sample="nonenglish">Non-English text</button>
+    </div>
+    <div id="drift-display"></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a token is the actual sub-word unit a language model's tokenizer encodes and decodes, typically produced by a byte-pair-encoding-style algorithm over a fixed vocabulary — not equivalent to a character or a whole word. Because running the real tokenizer isn't always convenient or available, the standard planning heuristic for English prose is ~4 characters per token (equivalently ~0.75 words per token); this ratio is an approximation that measurably breaks down for token-dense text like source code (punctuation and identifiers tokenize less efficiently per character) and for non-English text (especially languages underrepresented in the tokenizer's training vocabulary, or without whitespace-delimited words), where the real token count can run meaningfully higher than the heuristic predicts.</div>
+</section>
+
+<!-- ============ SECTION 2: STRATEGIES ============ -->
+<section id="strategies">
+  <div class="kicker">02 — The budget is fixed. Something has to give when demand exceeds it</div>
+  <h2>Strategies for staying under budget</h2>
+
+  <p><strong>Start here, before the list.</strong> Imagine packing a single carry-on bag for a trip where you'd genuinely like to bring twice as much as it can hold. You don't just refuse to pack — you make deliberate trade-offs: some things get left behind entirely, some bulky items get compressed into smaller packing cubes, and you prioritize what you're most likely to actually need over what's merely nice to have. Staying under a token budget requires exactly this kind of deliberate triage, not a hope that everything will simply fit.</p>
+
+  <table class="cmp">
+    <tr><th>Strategy</th><th>What it does</th><th>Cost of using it</th></tr>
+    <tr><td>Truncation</td><td>Cut text off at a hard limit — e.g. keep only the first/last N tokens of a chunk or message</td><td>Simple and fast, but can cut off mid-sentence or drop the actually-important part of a long passage</td></tr>
+    <tr><td>Summarization</td><td>Replace older content with a shorter summary that preserves the gist (the subject of the next lab)</td><td>Costs an extra LLM call to produce the summary, and summaries can lose specific details irreversibly</td></tr>
+    <tr><td>Relevance prioritization</td><td>Rank retrieved chunks by relevance score and keep only the top-scoring ones within budget</td><td>Requires already having a relevance score (e.g. from retrieval/re-ranking) to rank against</td></tr>
+    <tr><td>Dropping low-priority context</td><td>Define an explicit priority order across context TYPES (e.g. system instructions &gt; current question &gt; top retrieved chunks &gt; older history) and drop from the bottom up</td><td>Requires deciding that priority order in advance — a design decision, not something the budget itself tells you</td></tr>
+  </table>
+
+  <p>These strategies are not mutually exclusive — a real pipeline typically combines several: relevance prioritization decides <em>which</em> retrieved chunks are worth including at all, truncation handles anything still too long once selected, and summarization specifically targets conversation history, which tends to be the fastest-growing, lowest-density part of the prompt as a conversation goes on.</p>
+
+  <div class="callout ctx"><b>Interview-ready definition:</b> staying under a token budget requires an explicit strategy for what to cut when total content exceeds the available window: truncation (hard-cutting text at a length limit, cheap but potentially destructive to meaning), summarization (compressing older content into a shorter gist via an extra LLM call, trading compute cost and some information loss for space), relevance-based prioritization (ranking candidate content by a relevance score and keeping only the top-scoring items), and priority-tiered dropping (defining in advance which categories of context — system instructions, current question, retrieved chunks, older history — are least essential and cutting those first). Real pipelines typically combine these rather than relying on just one.</div>
+</section>
+
+<!-- ============ SECTION 3: BUDGET BAR ============ -->
+<section id="budgetbar">
+  <div class="kicker">03 — Four sections competing for one fixed-width bar</div>
+  <h2>The context window budget bar, live</h2>
+
+  <p><strong>Start here, before the demo.</strong> A context window doesn't have one owner — it has to simultaneously hold the system prompt (instructions for how the model should behave), retrieved chunks (the RAG context pulled in for this specific question), conversation history (prior turns of the exchange), and it has to leave room at the end for the model's own output tokens, since generation also consumes the same shared budget. Below, adjust how much conversation history has accumulated and watch what happens as the bar approaches, then exceeds, its limit.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>FILL THE CONTEXT WINDOW — WATCH WHAT GETS CUT ON OVERFLOW</span>
+      <div><button class="btn secondary" id="budget-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-turns="3">Conversation: 3 turns (short)</button>
+      <button class="chip" data-turns="8">Conversation: 8 turns (medium)</button>
+      <button class="chip" data-turns="16">Conversation: 16 turns (long — will overflow)</button>
+    </div>
+    <div class="budget-shell">
+      <div class="budget-track" id="budget-track"></div>
+    </div>
+    <div class="budget-legend">
+      <span><span class="sw sys"></span>System prompt</span>
+      <span><span class="sw ctx"></span>Retrieved chunks</span>
+      <span><span class="sw hist"></span>Conversation history</span>
+      <span><span class="sw out"></span>Reserved output space</span>
+      <span><span class="sw cut"></span>Cut — didn't fit</span>
+    </div>
+    <div class="budget-total" id="budget-total"></div>
+    <div class="log" id="budget-log"><span class="line">Pick a conversation length above to see how the budget bar fills — and what gets cut once it can't fit everything.</span></div>
+  </div>
+
+  <div class="callout warn"><b>What gets cut, in order:</b> the system prompt and reserved output space are treated as non-negotiable — the model needs its instructions, and generation needs somewhere to write to, so those two are never the first things sacrificed. Between retrieved chunks and conversation history, the demo above cuts from the <strong>lowest-priority end of conversation history first</strong> (the oldest turns), then, if still over budget, drops the lowest-relevance retrieved chunks — mirroring the "prioritize more relevant chunks over less relevant ones, drop low-priority context first" strategy from section 2. A production system's actual cut order is a real design decision, not a law of nature — but SOME explicit order has to exist, or the overflow behavior is undefined.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a context window's token budget is shared across every section that must be present at generation time — system prompt, retrieved context, conversation history, and reserved space for the model's own output — and because the total is fixed while the demand from these sections grows over a long conversation, some explicit policy must determine what gets truncated, summarized, or dropped when total demand exceeds the budget. Treating this as an afterthought (no defined cut order) risks silently dropping the system prompt's instructions or truncating mid-generation output space, both of which are typically far more damaging than losing some lower-priority older conversation history.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Estimating tokens by hand with the ÷4 heuristic</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A retrieved chunk of English prose is 1,840 characters long. Using the ~4-characters-per-token heuristic, estimate its token count. If your context window has a hard limit of 400 tokens reserved for retrieved chunks, does this single chunk fit on its own?</p>
+    <details><summary>Show solution</summary><div class="solution">1,840 characters / 4 characters per token ≈ 460 tokens.
+
+This single chunk, estimated at ~460 tokens, does NOT fit within a
+400-token budget reserved for retrieved chunks on its own -- it would
+need to be truncated, or a different (shorter, or more relevant) chunk
+would need to be selected instead, or the per-chunk budget would need
+to be reconsidered. This is exactly the kind of quick, no-tokenizer-
+required estimate the heuristic exists for: deciding "does this
+roughly fit" before committing to including it, without needing to
+invoke the actual model tokenizer just to make that call.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why a code-heavy chunk breaks the heuristic's assumption</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A retrieved chunk is a 800-character Python function. The ÷4 heuristic estimates ~200 tokens. A real tokenizer run against the actual model reports 265 tokens. Explain specifically why the heuristic under-estimated here, tying your answer back to section 1.</p>
+    <details><summary>Show solution</summary><div class="solution">Section 1 specifically calls out that the ~4-characters-per-token ratio
+is an ENGLISH PROSE average, and that source code tokenizes less
+efficiently per character than prose -- punctuation-heavy syntax
+(parentheses, colons, brackets, operators), camelCase/snake_case
+identifiers that often split across multiple sub-word tokens, and
+indentation whitespace all tend to consume more tokens per character
+than ordinary English sentences do, where common words often map to a
+single token each.
+
+The 800-character Python function landing at 265 real tokens instead of
+the heuristic's predicted 200 is a direct instance of this drift: 800/4
+= 200 assumes prose-like token density, but code's higher proportion of
+punctuation and split identifiers pushes the real count meaningfully
+higher (265 tokens implies a real ratio closer to ~3 characters per
+token here, not 4). This is exactly why section 1 frames the ÷4
+heuristic as a rough PLANNING estimate rather than something to rely on
+for a hard, precise budget cutoff when the content in question is code
+or other non-prose text.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing a strategy for a specific overflow scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A chat assistant's conversation history has grown to 40 turns and is now, on its own, larger than the entire remaining token budget after the system prompt and current retrieved chunks are accounted for. The user's most recent 3 messages are clearly still relevant to the current question; turns 1-10 are about a completely different topic the user has since moved on from. Which strategy (or combination) from section 2 fits best here, and why not just truncate the oldest N tokens blindly?</p>
+    <details><summary>Show solution</summary><div class="solution">The best fit is a combination of relevance prioritization and
+summarization (or outright dropping) applied specifically to the OLDER,
+now-irrelevant portion of history, rather than blind truncation by
+token count. Since turns 1-10 are described as being about a completely
+different topic the user has since moved on from, they carry very
+little value toward answering the CURRENT question -- this is exactly
+the "drop low-priority context first" strategy from section 2, where
+"priority" here is determined by topical relevance to the current
+turn, not just recency.
+
+Blind truncation by raw token count (e.g. "just cut the oldest N
+tokens") happens to work out reasonably well in THIS specific scenario
+only because the least-relevant content also happens to be the oldest
+-- but that's a coincidence of this example, not something truncation
+guarantees in general. If the irrelevant turns were somewhere in the
+MIDDLE of the conversation instead of at the start, blind
+oldest-first truncation would cut the wrong content (or the right
+content for the wrong reason), while a relevance-based approach would
+still correctly identify and drop the actually-irrelevant turns
+regardless of where they fall in the sequence. The most recent 3
+messages, described as clearly still relevant, should be prioritized
+to stay in full rather than being caught in either truncation or
+summarization.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a budget bar that silently dropped the system prompt</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's RAG pipeline has a bug: under heavy load with long conversation histories, the assembled prompt sometimes truncates the SYSTEM PROMPT itself to make room, because their truncation logic just cuts from the end of the final concatenated string once it exceeds the token limit, with no awareness of which section is which. What breaks, and what's the fix, tying back to section 3?</p>
+    <details><summary>Show solution</summary><div class="solution">What breaks: if the system prompt happens to be placed near the end of
+the final concatenated string (or if the truncation logic simply
+doesn't distinguish between sections at all and just chops off
+whatever ends up at the tail once the limit is hit), a long enough
+conversation history can push the truncation point back far enough to
+eat into the system prompt itself -- silently removing the model's
+core behavioral instructions (tone, format constraints, safety
+guardrails, whatever the system prompt was responsible for) with no
+error or warning, since from the truncation logic's point of view it's
+just "characters past the limit," not "the instructions the model
+absolutely needs."
+
+The fix, directly from section 3's budget bar: the system prompt (and
+reserved output space) need to be treated as NON-NEGOTIABLE sections
+that are reserved and protected BEFORE anything else is allocated
+budget, not truncated as an undifferentiated tail of one long string.
+Concretely, this means computing the system prompt's token cost first,
+subtracting it (and the reserved output allowance) from the total
+budget up front, and only then deciding how much of the REMAINING
+budget retrieved chunks and conversation history are allowed to
+consume -- with cuts applied specifically to those lower-priority
+sections, never to the system prompt. This requires the assembly logic
+to be section-aware (know which tokens belong to which category)
+rather than treating the final prompt as one opaque string to truncate
+blindly.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about the reserved output space trade-off</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A model has a 8,000-token total context window. A team reserves 1,500 tokens for the model's output. Why does under-reserving this (e.g. reserving only 200 tokens) risk a real failure mode, and why does over-reserving it (e.g. reserving 6,000 tokens) also have a real cost? What does this reveal about reserved output space being just another competing section in the budget bar?</p>
+    <details><summary>Show solution</summary><div class="solution">Under-reserving (e.g. only 200 tokens reserved for output): if the
+model's genuinely correct, complete answer would naturally run longer
+than 200 tokens -- a detailed explanation, a multi-step answer, a
+longer piece of generated code -- the model's output gets cut off
+mid-generation once it hits the hard context-window ceiling, producing
+a visibly truncated, incomplete response. This is a direct, user-facing
+failure mode, not a subtle one: the answer just stops.
+
+Over-reserving (e.g. 6,000 of 8,000 tokens reserved for output, leaving
+only 2,000 for everything else): this squeezes the INPUT side of the
+budget -- system prompt, retrieved chunks, and conversation history now
+have to fit in a much smaller remaining space, which directly increases
+how aggressively section 2's strategies (truncation, summarization,
+dropping low-priority context) need to be applied, potentially
+degrading answer quality by feeding the model less relevant context
+than it could have had, purely because output space that may not even
+end up being fully used was reserved upfront and made unavailable to
+input.
+
+This reveals exactly what section 3 is illustrating: reserved output
+space isn't a special, budget-exempt category -- it's one more section
+competing for the same fixed total, with a real trade-off in both
+directions. Sizing it correctly means estimating (often from the
+specific task's typical response length) roughly how much output is
+actually needed, not defaulting to either extreme.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) both token-estimation heuristics from memory and compute one by hand, (2) why the heuristic drifts for code and non-English text specifically, and (3) name all four sections competing in a context window's budget bar and which ones should be protected from being cut first? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — token budget management.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1a: LIVE CHARACTER COUNTER */
+(function(){
+  var input = document.getElementById("tok-input");
+  var charsEl = document.getElementById("tok-chars");
+  var wordsEl = document.getElementById("tok-words");
+  var estCharsEl = document.getElementById("tok-est-chars");
+  var estWordsEl = document.getElementById("tok-est-words");
+
+  function update(){
+    var text = input.value;
+    var chars = text.length;
+    var words = text.trim().length ? text.trim().split(/\s+/).length : 0;
+    charsEl.textContent = chars;
+    wordsEl.textContent = words;
+    estCharsEl.textContent = Math.round(chars / 4);
+    estWordsEl.textContent = Math.round(words / 0.75);
+  }
+
+  input.addEventListener("input", update);
+  update();
+})();
+
+/* SECTION 1b: DRIFT DEMO — PROSE VS CODE VS NON-ENGLISH */
+(function(){
+  var chips = document.querySelectorAll("[data-sample]");
+  var display = document.getElementById("drift-display");
+
+  var SAMPLES = {
+    prose: {
+      label: "English prose",
+      text: "The library was quiet except for the soft hum of the air conditioning.",
+      chars: 73,
+      heuristicEst: 18,
+      realTokens: 17,
+      note: "Prose is exactly the case the ÷4 heuristic was calibrated for — the estimate (18) and the real tokenizer's count (17) land close together."
+    },
+    code: {
+      label: "Python code",
+      text: "def calc_total(items):\\n    return sum(i.price * i.qty for i in items)",
+      chars: 72,
+      heuristicEst: 18,
+      realTokens: 27,
+      note: "Punctuation (parentheses, colons, the * operator), the snake_case identifier calc_total, and indentation whitespace each cost more tokens per character than prose — the real tokenizer lands 50% above the heuristic's estimate."
+    },
+    nonenglish: {
+      label: "Non-English text (no whitespace word boundaries)",
+      text: "図書館は静かで、エアコンの柔らかい音だけが聞こえた。",
+      chars: 26,
+      heuristicEst: 7,
+      realTokens: 24,
+      note: "This tokenizer's vocabulary is English-majority — a script with no whitespace-delimited words tokenizes far less efficiently per character than the heuristic assumes, landing over 3x higher than the ÷4 estimate predicted."
+    }
+  };
+
+  function render(key){
+    var s = SAMPLES[key];
+    var diff = s.realTokens - s.heuristicEst;
+    var pct = Math.round((diff / s.heuristicEst) * 100);
+    display.innerHTML =
+      '<div class="code" style="margin-top:0;">' + s.text.replace(/</g,"&lt;") + '</div>' +
+      '<div class="counter-row">' +
+        '<div class="counter-stat">Characters<span class="n">' + s.chars + '</span></div>' +
+        '<div class="counter-stat">÷4 heuristic estimate<span class="n">' + s.heuristicEst + '</span></div>' +
+        '<div class="counter-stat">Real tokenizer count<span class="n" style="color:' + (diff > 3 ? "var(--bad-c)" : "var(--out-c)") + ';">' + s.realTokens + '</span></div>' +
+      '</div>' +
+      '<p style="font-size:0.85rem; margin-top:0.8rem;">' + s.note + ' (heuristic was ' + (pct >= 0 ? "off by +" + pct + "%" : pct + "%") + ' relative to the real count.)</p>';
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.sample);
+    });
+  });
+
+  render("prose");
+})();
+
+/* SECTION 3: BUDGET BAR */
+(function(){
+  var track = document.getElementById("budget-track");
+  var totalEl = document.getElementById("budget-total");
+  var logEl = document.getElementById("budget-log");
+  var chips = document.querySelectorAll("[data-turns]");
+  var resetBtn = document.getElementById("budget-reset");
+
+  var LIMIT = 4000; // token budget for this demo window
+  var SYS = 300;
+  var CTX = 900;
+  var OUT = 800;
+  var PER_TURN = 220; // avg tokens per conversation turn
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function render(turns){
+    var histTotal = turns * PER_TURN;
+    var reserved = SYS + CTX + OUT;
+    var histBudget = LIMIT - reserved;
+    var histFit = Math.min(histTotal, Math.max(histBudget, 0));
+    var histCut = histTotal - histFit;
+    var used = SYS + CTX + histFit + OUT;
+
+    track.innerHTML = "";
+    logEl.innerHTML = "";
+
+    var segs = [
+      {cls: "sys", label: "SYS " + SYS, val: SYS},
+      {cls: "ctx", label: "CTX " + CTX, val: CTX},
+      {cls: "hist", label: "HIST " + histFit, val: histFit},
+      {cls: "out", label: "OUT " + OUT, val: OUT}
+    ];
+    if(histCut > 0){
+      segs.push({cls: "cut", label: "CUT " + histCut, val: histCut});
+    }
+
+    var totalWidth = used + histCut; // full track represents everything that WANTED to be included
+    var trackScale = Math.max(totalWidth, LIMIT);
+
+    segs.forEach(function(s){
+      var el = document.createElement("div");
+      el.className = "budget-seg " + s.cls;
+      el.style.width = "0%";
+      el.textContent = s.val > 90 ? s.label : "";
+      track.appendChild(el);
+      setTimeout(function(){
+        el.style.width = ((s.val / trackScale) * 100) + "%";
+      }, 40);
+    });
+
+    if(totalWidth > LIMIT){
+      var marker = document.createElement("div");
+      marker.className = "budget-marker";
+      marker.style.left = ((LIMIT / trackScale) * 100) + "%";
+      track.appendChild(marker);
+    }
+
+    totalEl.innerHTML = "<b>" + used + " / " + LIMIT + " tokens used</b>" + (histCut > 0 ? ' &nbsp;·&nbsp; <span style="color:var(--bad-c);">' + histCut + " tokens of conversation history had to be cut</span>" : " — fits comfortably within budget.");
+
+    log('<b>' + turns + ' conversation turns</b> ≈ ' + histTotal + ' tokens of raw history (at ~' + PER_TURN + ' tokens/turn).');
+    log('Fixed allocations: system prompt ' + SYS + ', retrieved chunks ' + CTX + ', reserved output ' + OUT + ' = ' + reserved + ' tokens reserved.');
+    log('Remaining budget for history: ' + LIMIT + ' - ' + reserved + ' = ' + histBudget + ' tokens.');
+    if(histCut > 0){
+      log('<b style="color:var(--bad-c);">Overflow:</b> history alone (' + histTotal + ') exceeds its ' + histBudget + '-token allowance by ' + histCut + ' tokens — the oldest turns get dropped/summarized first, since system prompt and output space are protected.');
+    } else {
+      log('<b style="color:var(--out-c);">Everything fits</b> — no cutting needed at this conversation length.');
+    }
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(parseInt(c.dataset.turns, 10));
+    });
+  });
+
+  resetBtn.addEventListener("click", function(){
+    chips.forEach(function(x){ x.classList.remove("active"); });
+    chips[0].classList.add("active");
+    render(3);
+  });
+
+  render(3);
+})();
+</script>
+</body>
+</html>

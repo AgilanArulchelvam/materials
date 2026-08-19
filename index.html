@@ -75,7 +75,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>Sixty-five labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>Seventy-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, and storage engines &amp; RAG — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -279,7 +279,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">10 labs</span>
+      <span class="count">11 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -340,6 +340,12 @@
         <span class="tag">DB Design — Leader-Follower, Quorum &amp; Failover</span>
         <h3>Replication</h3>
         <p>A write racing out to followers with a visible lag window, the W+R&gt;N quorum rule worked with real numbers, and why an uncoordinated failover risks split brain.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card database" href="database/time_series_schema.html">
+        <span class="tag">DB Design — Wide vs Narrow, Retention &amp; Downsampling</span>
+        <h3>Time-Series Schema Design</h3>
+        <p>The same sensor data laid out narrow vs wide side by side, a raw-to-per-minute-to-per-hour retention pipeline aging data out, and why time-series access patterns differ from OLTP.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -471,7 +477,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Storage &amp; RAG</h2>
-      <span class="count">8 labs</span>
+      <span class="count">13 labs</span>
     </div>
     <div class="cards">
       <a class="card storage" href="storage-and-rag/btree_vs_columnar.html">
@@ -520,6 +526,36 @@
         <span class="tag">Bi-Encoder Retrieval → Cross-Encoder Re-ranking</span>
         <h3>Re-ranking</h3>
         <p>A large candidate set narrowed to a small precise top-K by a second-pass cross-encoder, and exactly why that model can't be precomputed the way retrieval's bi-encoder can.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/token_budget_management.html">
+        <span class="tag">Estimating Tokens &amp; Staying Under Budget</span>
+        <h3>Token Budget Management</h3>
+        <p>A live character/word-based token estimator that drifts on code and non-English text, plus a context-window budget bar that fills up and shows exactly what gets cut on overflow.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/prompt_compression.html">
+        <span class="tag">Summarizing Older Turns &amp; the Information-Loss Trade-off</span>
+        <h3>Prompt Compression</h3>
+        <p>A 12-message conversation growing then compressing into 1 summary + 3 recent turns, and a concrete detail — an exact account ID — that the summary can't recover.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/context_assembly.html">
+        <span class="tag">No Framework — Delimiters, Ordering &amp; Recency</span>
+        <h3>Context Assembly</h3>
+        <p>The literal string-building behind a RAG prompt, built piece by piece with a button, plus why retrieved context and the question usually belong closest to the end.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/rag_qa_system_design.html">
+        <span class="tag">System Design — Pipeline, Confidence &amp; Latency</span>
+        <h3>RAG Q&amp;A System Design</h3>
+        <p>The full embed → search → assemble → generate pipeline animated end to end, a similarity-threshold check that declines rather than hallucinates, and why generation dominates latency.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card storage" href="storage-and-rag/context_pipeline_practice.html">
+        <span class="tag">Practice — Mini Context-Assembly Pipeline</span>
+        <h3>Context Pipeline Practice</h3>
+        <p>A guided 4-stage walkthrough — retrieve, budget-check, assemble, inspect — run on a sample corpus, history, and question, tying together the whole week in one pipeline.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -578,7 +614,7 @@
 
 </main>
 
-<footer>materials/ · sixty-five standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · seventy-one standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

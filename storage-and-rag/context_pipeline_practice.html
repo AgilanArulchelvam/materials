@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Context Pipeline Practice</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --retrieve-c:#4fc3f7; --budget-c:#f2c14e; --assemble-c:#c792ea; --final-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--retrieve-c); color:var(--retrieve-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--budget-c); color:var(--budget-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--assemble-c); color:var(--assemble-c); background:rgba(199,146,234,0.08);}
+  .pipe-label.d{border-color:var(--final-c); color:var(--final-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* corpus display */
+  .corpus-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:0.9rem; margin:1.2rem 0;}
+  .doc-card{border:1.5px solid var(--rule); border-radius:10px; padding:0.9rem 1rem; background:var(--panel-2); font-size:0.82rem; transition:all .3s ease;}
+  .doc-card h5{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin:0 0 0.5rem;}
+  .doc-card p{margin:0; font-size:0.82rem; color:#cdd0d8;}
+  .doc-card.selected{border-color:var(--retrieve-c); box-shadow:0 0 12px rgba(79,195,247,0.25);}
+  .doc-card.selected h5{color:var(--retrieve-c);}
+  .doc-card .dscore{font-family:var(--mono); font-size:0.72rem; color:var(--retrieve-c); float:right;}
+
+  /* pipeline stage tracker */
+  .stage-tracker{display:flex; gap:0.5rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .stage-pill{font-family:var(--mono); font-size:0.72rem; padding:0.55rem 0.9rem; border-radius:20px; border:1.5px solid var(--rule); color:var(--ink-dim); transition:all .3s ease;}
+  .stage-pill.done{border-color:var(--final-c); color:var(--final-c); background:rgba(127,216,160,0.08);}
+  .stage-pill.active{border-color:var(--accent); color:var(--accent); background:rgba(255,138,101,0.1); box-shadow:0 0 10px rgba(255,138,101,0.2);}
+
+  /* step panel */
+  .step-panel{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.3rem; margin:1.2rem 0; min-height:100px;}
+  .step-panel h5{font-family:var(--mono); font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem; color:var(--accent);}
+  .step-panel .empty-note{color:var(--ink-dim); font-size:0.85rem; font-style:italic;}
+
+  .budget-mini{height:26px; background:var(--panel-2); border:1px solid var(--rule); border-radius:6px; overflow:hidden; display:flex; margin:0.6rem 0;}
+  .budget-mini-seg{height:100%; transition:width .5s ease;}
+  .budget-mini-seg.keep{background:var(--final-c);}
+  .budget-mini-seg.cut{background:repeating-linear-gradient(135deg, var(--bad-c), var(--bad-c) 5px, #1a0e0e 5px, #1a0e0e 10px);}
+
+  .final-prompt{font-family:var(--mono); font-size:0.78rem; white-space:pre-wrap; line-height:1.7; color:#cdd0d8;}
+  .final-prompt .blk{display:block; padding:0.5rem 0.7rem; margin:0.35rem 0; border-radius:6px;}
+  .final-prompt .blk.sys{border-left:3px solid var(--assemble-c); background:rgba(199,146,234,0.06);}
+  .final-prompt .blk.chunk{border-left:3px solid var(--retrieve-c); background:rgba(79,195,247,0.06);}
+  .final-prompt .blk.q{border-left:3px solid var(--final-c); background:rgba(127,216,160,0.06);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.final{border-left-color:var(--final-c); background:rgba(127,216,160,0.06);} .callout.final b{color:var(--final-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · PRACTICE — MINI CONTEXT-ASSEMBLY PIPELINE</div>
+  <h1>Everything from this week, run end to end on one real question.</h1>
+  <p class="lede">This is not new instructional content — it's a synthesis exercise tying together token budgeting, compression, and context assembly from this week's three labs into a single guided walkthrough. Given a small inline corpus, a sample conversation history, and a new user question, this lab steps through the four real stages a mini RAG pipeline actually runs: retrieve relevant chunks, check the token budget and compress/truncate if needed, assemble the final prompt, and inspect the result — with the intermediate state visible at every step.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">1 · Retrieve relevant chunks</div>
+    <div class="pipe-label b">2 · Check budget, compress/truncate</div>
+    <div class="pipe-label c">3 · Assemble the final prompt</div>
+    <div class="pipe-label d">4 · Inspect the result</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="setup">1 · The Sample Corpus, History &amp; Question</a>
+  <a data-target="pipeline">2 · Run the Pipeline, Step by Step</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SETUP ============ -->
+<section id="setup">
+  <div class="kicker">01 — What the pipeline has to work with, before touching any of it</div>
+  <h2>The sample corpus, conversation history, and new question</h2>
+
+  <p><strong>Do this before running the pipeline below.</strong> Read the three inputs first, and predict on paper: which of the four documents would retrieval most likely surface for the question below? Would the conversation history need compression at all, given its length? What would you expect the final assembled prompt's rough structure to look like? Then run the pipeline in section 2 and check your predictions against what actually happens at each stage.</p>
+
+  <h3>The corpus — 4 short internal documents</h3>
+  <div class="corpus-grid">
+    <div class="doc-card" id="doc-card-0"><h5>doc: shipping-times.md</h5><p>Standard shipping takes 5-7 business days from the ship date. Express shipping (additional fee) takes 1-2 business days.</p></div>
+    <div class="doc-card" id="doc-card-1"><h5>doc: damaged-item-policy.md</h5><p>Items arriving damaged are eligible for a full refund or free replacement within 30 days of delivery, no return shipping required — just provide photos of the damage.</p></div>
+    <div class="doc-card" id="doc-card-2"><h5>doc: account-settings.md</h5><p>Users can update their email, password, and notification preferences from the Account Settings page. Two-factor authentication is optional but recommended.</p></div>
+    <div class="doc-card" id="doc-card-3"><h5>doc: return-process.md</h5><p>To return a non-damaged item, initiate the return from your order history within 14 days. Refunds are issued to the original payment method within 5-7 business days of receiving the return.</p></div>
+  </div>
+
+  <h3>The conversation history — 5 prior turns</h3>
+  <div class="code">user: Hi, I ordered a desk lamp last week, order #55201.
+assistant: Thanks, I can see that order — it shows as delivered yesterday. How can I help?
+user: It arrived with a cracked base, unfortunately.
+assistant: I'm sorry to hear that. Do you have a photo of the damage you can share?
+user: Yes, I'll attach one now. My account email is on file if you need it.</div>
+
+  <h3>The new user question</h3>
+  <div class="code">What are my options for a lamp that arrived damaged, and how long will it take?</div>
+
+  <div class="callout">This setup deliberately includes a distractor: <code class="inline">account-settings.md</code> and the return-process document are both plausible-sounding but are NOT the best match for this specific question — retrieval (step 1 below) has to actually discriminate between "damaged item" and "ordinary return," not just match on the word "refund." Predict which document(s) you'd expect to win before running step 1.</div>
+</section>
+
+<!-- ============ SECTION 2: PIPELINE ============ -->
+<section id="pipeline">
+  <div class="kicker">02 — Four stages, in order, each building on the last</div>
+  <h2>Run the mini pipeline, step by step</h2>
+
+  <p><strong>Start here, before clicking.</strong> Each click below advances exactly one stage of the pipeline and reveals that stage's actual output — not a preview of what's coming. Compare each stage's real output against what you predicted in section 1 before moving to the next stage.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RUN PIPELINE — ONE STAGE AT A TIME</span>
+      <div><button class="btn secondary" id="pp-reset">Reset</button></div>
+    </div>
+    <div class="stage-tracker" id="stage-tracker">
+      <span class="stage-pill" id="pill-1">1 · Retrieve</span>
+      <span class="stage-pill" id="pill-2">2 · Budget check</span>
+      <span class="stage-pill" id="pill-3">3 · Assemble</span>
+      <span class="stage-pill" id="pill-4">4 · Result</span>
+    </div>
+    <button class="btn" id="pp-next">Run pipeline: next stage ▸</button>
+    <div class="step-panel" id="step-panel"><span class="empty-note">Click "Run pipeline: next stage" to start with retrieval.</span></div>
+  </div>
+
+  <div class="callout final"><b>Interview-ready definition:</b> a mini context-assembly pipeline runs exactly the four stages demonstrated above in strict sequence: retrieve the corpus's most relevant chunks for the current question (using a relevance/similarity score, discriminating between plausible-but-wrong distractors and the actual best match), check the assembled candidate content against the token budget and apply compression or truncation to anything over that budget (favoring recent/relevant content over older/less-relevant content, per the token_budget_management and prompt_compression labs), assemble the surviving pieces into one delimited prompt string in a deliberate order (per the context_assembly lab's recency-effect reasoning), and inspect the final result to confirm it actually contains what the question needs to be answerable. Each stage depends on the previous stage's output, exactly as in the full rag_qa_system_design pipeline this mini version mirrors at a much smaller scale.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">One level past the pipeline above</div>
+  <h2>Practice problems</h2>
+  <p>These ask you to reason across all three of this week's labs at once, not just recall one.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining why the distractor documents didn't win retrieval</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Both <code class="inline">return-process.md</code> and <code class="inline">damaged-item-policy.md</code> mention refunds and timeframes. Using the hybrid_search and re-ranking reasoning from earlier this month, explain why <code class="inline">damaged-item-policy.md</code> should score higher for this specific question, not just "because it's the right answer."</p>
+    <details><summary>Show solution</summary><div class="solution">The question is specifically "options for a lamp that arrived DAMAGED"
+-- the word "damaged" and the underlying concept it invokes (an item
+defective on arrival, not a voluntary return of an undamaged item) are
+the key discriminating signal. damaged-item-policy.md's content is
+built directly around that concept ("items arriving damaged," "photos
+of the damage," "no return shipping required"), giving it strong
+semantic and lexical overlap with the question on the SPECIFIC
+dimension that matters here.
+
+return-process.md, by contrast, describes the process for returning a
+"non-damaged item" -- it shares surface-level vocabulary with the
+question (refunds, timeframes, order history) but is actually
+describing the opposite scenario. A retrieval system relying purely on
+loose keyword overlap without discriminating on the actual distinguishing
+concept ("damaged" vs "non-damaged") could plausibly rank these two
+documents closer together than they should be -- this is exactly why
+this lab's setup calls return-process.md a "distractor": it's the kind
+of document a weaker retrieval/ranking approach might over-rank,
+while a good embedding model (capturing that "damaged" and
+"non-damaged" are meaningfully different states, not just similar
+words) or a re-ranking pass (directly comparing the query against each
+candidate) should correctly separate them.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Deciding what to compress if the conversation history were much longer</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose the conversation history in section 1 were 40 turns long instead of 5, with the damaged-lamp discussion only appearing in the LAST 5 turns (the first 35 turns were about a completely unrelated earlier order). Using the prompt_compression lab's reasoning, what should stage 2 of this pipeline do, and what's the risk if it compressed indiscriminately?</p>
+    <details><summary>Show solution</summary><div class="solution">Stage 2 should compress the first 35 (unrelated, older) turns into a
+short summary while keeping the last 5 turns -- the ones actually about
+the current damaged-lamp question -- verbatim. This is exactly the
+prompt_compression lab's core pattern: fold the OLDER, now-less-relevant
+portion into a gist-preserving summary, and keep the RECENT, clearly-
+still-relevant portion untouched, rather than treating the entire
+history as a single undifferentiated block to compress or keep as one
+unit.
+
+The risk of compressing indiscriminately (e.g. summarizing ALL 40 turns
+uniformly, including the most recent 5): the specific details from the
+CURRENT damaged-lamp conversation -- the order number, the fact photos
+were being attached, the specific question just asked -- could get
+flattened into the same lossy gist-level summary the prompt_compression
+lab warned about, exactly the "a specific number or exact phrasing
+becomes unrecoverable" failure mode from that lab, except now affecting
+the MOST relevant, most recently-discussed content rather than genuinely
+old material. This is precisely why compression needs to be applied
+selectively (older turns) rather than uniformly across the whole
+history -- uniform compression would treat "5 turns ago, still
+relevant" the same as "35 turns ago, no longer relevant," which the
+keep_recent parameter from the prompt_compression lab exists
+specifically to avoid.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Reordering the assembled prompt and predicting the effect</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Stage 3 assembles the prompt with retrieved context placed right before the question (context_assembly's recommended ordering). Suppose instead the pipeline placed retrieved context FIRST, before the conversation history and the question. Using the context_assembly lab's recency-effect reasoning, what's the concrete risk for THIS specific example?</p>
+    <details><summary>Show solution</summary><div class="solution">Per the context_assembly lab, content positioned closer to the end of
+the prompt (closer to where generation begins) tends to receive
+stronger attention from many models than content buried earlier. If
+the damaged-item-policy.md chunk were moved to the very front of the
+prompt -- ahead of the conversation history AND the question -- it
+would be sitting furthest from the position the model tends to weight
+most heavily, right as the model is about to generate its answer.
+
+The concrete risk for this example: the model might underweight the
+actual policy details (refund/replacement within 30 days, no return
+shipping required, photo requirement) relative to the conversation
+history and question that now sit closer to the generation point --
+increasing the chance of a vaguer, less policy-grounded answer (e.g.
+generically suggesting "please contact support" instead of citing the
+specific 30-day/no-return-shipping/photo-based policy the retrieved
+chunk actually contains), even though the correct chunk WAS technically
+included in the prompt. This mirrors the context_assembly lab's
+broader point directly: chunk SELECTION (having the right document in
+context at all) and chunk POSITIONING (where in the prompt it sits) are
+separate concerns, and getting selection right doesn't guarantee the
+model actually leans on it if positioning works against it.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Tracing what happens if retrieval's top document had a low similarity score</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose this corpus didn't actually contain any document about damaged items at all — the closest match, shipping-times.md, only scores 0.31 similarity against the question. Using the rag_qa_system_design lab's low-confidence-retrieval reasoning, what should stage 1 (or a check right after it) do differently in this version of the scenario?</p>
+    <details><summary>Show solution</summary><div class="solution">This is exactly the low-confidence-retrieval scenario from the
+rag_qa_system_design lab: even though retrieval always returns SOME
+top-scoring result (shipping-times.md at 0.31 here), a genuinely low
+top score is a real signal that nothing actually relevant exists in
+the corpus for this question, not evidence that shipping-times.md is
+actually a decent answer. If stage 1 simply proceeds to stages 2 and 3
+with this weak match, stage 3 would assemble a prompt built around a
+document that doesn't actually address the question at all, and stage 4
+generation would risk producing a plausible-sounding but ungrounded
+answer -- confidently discussing shipping timeframes as if they were
+relevant to a damage claim, when they aren't.
+
+The correct behavior, per the rag_qa_system_design lab: add an explicit
+similarity-score threshold check right after stage 1 -- if the top
+score (0.31) falls below a reasonable minimum threshold (e.g. 0.60,
+the value used in that lab's demo), skip stages 2 and 3's normal
+assembly-for-generation path entirely and instead surface an explicit
+"I don't have information covering that" response. This is a concrete
+illustration of why that threshold check belongs specifically at the
+retrieval stage of the pipeline, not somewhere later -- catching the
+problem here avoids ever handing the LLM a prompt built on a bad match
+in the first place, rather than hoping generation somehow "notices" the
+context doesn't really apply.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing the pipeline's stage order and identifying the one hard dependency</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Could stage 2 (budget check/compression) run BEFORE stage 1 (retrieval) instead of after? Explain the dependency using this lab's four stages, and name the one pair of stages that could, in principle, be reordered without breaking anything.</p>
+    <details><summary>Show solution</summary><div class="solution">No -- stage 2 cannot run before stage 1. Stage 2's entire job is
+checking whether the CANDIDATE CONTENT (the retrieved chunks plus
+history plus question) fits within budget, and deciding what to
+compress or truncate if it doesn't. Without stage 1 having already run,
+there IS no set of retrieved chunks yet to check the token cost of or
+potentially truncate -- stage 2 has nothing to operate on. This mirrors
+the rag_qa_system_design lab's point about the full pipeline being
+strictly sequential: each stage's output is a required input to the
+next, and stage 2 specifically requires stage 1's retrieved-chunks
+output as part of its own input.
+
+Similarly, stage 3 (assembly) requires stage 2's output (the
+budget-adjusted, possibly-compressed set of chunks and history) --
+assembling BEFORE checking the budget would risk assembling something
+already known to be over budget, defeating the point of checking at
+all. And stage 4 (inspecting the result) obviously requires stage 3's
+assembled prompt to exist first.
+
+The one pair that COULD, in principle, be reordered without breaking
+anything: the conversation-history compression check and the
+retrieved-chunk relevance filtering both ultimately feed into the same
+stage-2 budget check, and depending on implementation, deciding "does
+history need compressing" doesn't strictly require having already
+decided "which chunks did retrieval return" (and vice versa) -- these
+two sub-decisions, both happening logically WITHIN stage 2, are
+themselves independent of each other, even though stage 2 as a whole
+still has to happen after stage 1 and before stage 3. This is a useful
+distinction for a system-design conversation: the four NAMED stages
+have a strict, unavoidable order, but that doesn't mean every
+sub-decision inside a given stage is itself ordered relative to every
+other sub-decision in that same stage.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> without looking back, can you state what each of the 4 pipeline stages does in one sentence, and explain — using this specific damaged-lamp example — why the distractor document didn't win, why history would need selective (not uniform) compression at scale, and why chunk position in the final prompt matters independently of chunk selection? If any feels shaky, that's the part to revisit — and since this lab intentionally didn't teach anything new, a shaky spot means revisiting token_budget_management, prompt_compression, or context_assembly directly, not this one.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — context pipeline practice.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* PIPELINE STEPPER */
+(function(){
+  var nextBtn = document.getElementById("pp-next");
+  var resetBtn = document.getElementById("pp-reset");
+  var panel = document.getElementById("step-panel");
+  var pills = ["pill-1", "pill-2", "pill-3", "pill-4"];
+  var stage = 0;
+
+  function setPills(){
+    pills.forEach(function(id, i){
+      var el = document.getElementById(id);
+      el.classList.remove("active", "done");
+      if(i < stage) el.classList.add("done");
+      if(i === stage) el.classList.add("active");
+    });
+  }
+
+  function clearDocCards(){
+    for(var i = 0; i < 4; i++){
+      document.getElementById("doc-card-" + i).classList.remove("selected");
+    }
+  }
+
+  function stageRetrieve(){
+    clearDocCards();
+    document.getElementById("doc-card-1").classList.add("selected");
+    document.getElementById("doc-card-3").classList.add("selected");
+    panel.innerHTML =
+      "<h5>Stage 1 — Retrieve</h5>" +
+      '<p style="font-size:0.85rem; margin:0 0 0.6rem;">Question embedded, compared against all 4 corpus documents. Top 2 by similarity score:</p>' +
+      '<div class="code" style="margin:0.4rem 0 0;">1. damaged-item-policy.md — similarity 0.87\n2. return-process.md — similarity 0.62  (the distractor — plausible, but a weaker match)\n\n(not retrieved: shipping-times.md 0.29, account-settings.md 0.08)</div>' +
+      '<p style="font-size:0.82rem; margin-top:0.6rem;">Both cards above are now highlighted in the corpus grid in section 1 — scroll up to see which documents actually got selected.</p>';
+  }
+
+  function stageBudget(){
+    panel.innerHTML =
+      "<h5>Stage 2 — Budget check</h5>" +
+      '<p style="font-size:0.85rem; margin:0 0 0.6rem;">Budget for this demo: 600 tokens total for context + history. Candidate content:</p>' +
+      '<div class="code" style="margin:0.4rem 0 0.8rem;">2 retrieved chunks  ≈ 210 tokens\n5-turn history      ≈ 260 tokens\n-----------------------------------\nTotal               ≈ 470 tokens  (under the 600-token budget)</div>' +
+      '<div class="budget-mini"><div class="budget-mini-seg keep" style="width:0%"></div></div>' +
+      '<p style="font-size:0.82rem;">470 of 600 tokens used — <b style="color:var(--final-c);">everything fits, no compression or truncation needed</b> for this short a history. (If history were 40 turns instead of 5, per Practice Problem 2, the older 35 turns would need to be compressed into a summary here — this is the same threshold check from the token_budget_management lab\'s budget bar.)</p>';
+    setTimeout(function(){
+      var seg = panel.querySelector(".budget-mini-seg");
+      if(seg) seg.style.width = "78%";
+    }, 80);
+  }
+
+  function stageAssemble(){
+    panel.innerHTML =
+      "<h5>Stage 3 — Assemble</h5>" +
+      '<p style="font-size:0.85rem; margin:0 0 0.6rem;">System instructions, then history, then retrieved context (least-relevant chunk first, most relevant last), then the question — per the context_assembly lab\'s ordering.</p>' +
+      '<div class="final-prompt">' +
+        '<span class="blk sys">&lt;system&gt;\nYou are a support assistant. Answer using only the provided context.\n&lt;/system&gt;</span>' +
+        '<span class="blk chunk">&lt;history&gt;\n...5 turns re: order #55201, a lamp arriving with a cracked base...\n&lt;/history&gt;</span>' +
+        '<span class="blk chunk">&lt;context source="return-process.md"&gt;\nTo return a non-damaged item, initiate the return from order history within 14 days...\n&lt;/context&gt;</span>' +
+        '<span class="blk chunk">&lt;context source="damaged-item-policy.md"&gt;\nItems arriving damaged are eligible for a full refund or free replacement within 30 days, no return shipping required — just provide photos.\n&lt;/context&gt;</span>' +
+        '<span class="blk q">&lt;question&gt;\nWhat are my options for a lamp that arrived damaged, and how long will it take?\n&lt;/question&gt;</span>' +
+      '</div>';
+  }
+
+  function stageResult(){
+    panel.innerHTML =
+      "<h5>Stage 4 — Inspect the result</h5>" +
+      '<p style="font-size:0.85rem; margin:0 0 0.6rem;">The assembled prompt is checked before sending: does it actually contain what\'s needed to answer the question?</p>' +
+      '<div class="code" style="margin:0.4rem 0;">✓ Question is present, last in the prompt (recency-favored position)\n✓ The correct chunk (damaged-item-policy.md) is present and closest to the question\n✓ Order context (#55201, cracked base) is present via history\n✓ Total token count (≈470) is within budget — nothing was cut\n\nExpected answer shape: full refund OR free replacement, within 30 days,\nno return shipping required, just photos of the damage.</div>' +
+      '<p style="font-size:0.82rem;"><b style="color:var(--final-c);">Pipeline complete.</b> Compare this actual result against what you predicted in section 1 — did retrieval surface the document you expected, and did the ordering match your prediction?</p>';
+  }
+
+  var STAGE_FNS = [stageRetrieve, stageBudget, stageAssemble, stageResult];
+
+  nextBtn.addEventListener("click", function(){
+    if(stage >= STAGE_FNS.length){
+      return;
+    }
+    STAGE_FNS[stage]();
+    setPills();
+    stage++;
+    if(stage >= STAGE_FNS.length){
+      nextBtn.textContent = "Pipeline complete";
+      nextBtn.disabled = true;
+    } else {
+      nextBtn.textContent = "Run pipeline: next stage ▸";
+    }
+  });
+
+  resetBtn.addEventListener("click", function(){
+    stage = 0;
+    clearDocCards();
+    pills.forEach(function(id){
+      document.getElementById(id).classList.remove("active", "done");
+    });
+    panel.innerHTML = '<span class="empty-note">Click "Run pipeline: next stage" to start with retrieval.</span>';
+    nextBtn.disabled = false;
+    nextBtn.textContent = "Run pipeline: next stage ▸";
+  });
+})();
+</script>
+</body>
+</html>

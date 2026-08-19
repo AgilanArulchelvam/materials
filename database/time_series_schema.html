@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Time-Series Schema Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --narrow-c:#4fc3f7; --wide-c:#f2c14e; --raw-c:#7fd8a0; --coarse-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--narrow-c); color:var(--narrow-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--wide-c); color:var(--wide-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--coarse-c); color:var(--coarse-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* narrow vs wide table visualization */
+  .split-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.split-grid{grid-template-columns:1fr;}}
+  .split-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem; background:var(--panel-2); overflow-x:auto;}
+  .split-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.7rem;}
+  .split-col table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:0.7rem;}
+  .split-col th, .split-col td{border:1px solid var(--rule); padding:0.35rem 0.5rem; text-align:left; white-space:nowrap;}
+  .split-col th{background:#0b0d11; color:var(--ink-dim); font-weight:600;}
+  .split-col td{color:#cdd0d8;}
+  .split-col.narrow{border-color:var(--narrow-c);} .split-col.narrow h4{color:var(--narrow-c);}
+  .split-col.wide{border-color:var(--wide-c);} .split-col.wide h4{color:var(--wide-c);}
+  .split-col .newcol{background:rgba(255,107,107,0.12) !important;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--narrow-c);} .dc-col.a h4{color:var(--narrow-c);}
+  .dc-col.b{border-color:var(--wide-c);} .dc-col.b h4{color:var(--wide-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  /* retention/downsampling tiers */
+  .retention-track{display:flex; gap:0; margin:1.4rem 0; height:70px; border-radius:10px; overflow:hidden; border:1px solid var(--rule);}
+  .retention-seg{display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.7rem; text-align:center; padding:0.4rem; transition:width .5s ease;}
+  .retention-seg.raw{background:rgba(127,216,160,0.18); color:var(--raw-c); border-right:1px solid var(--rule);}
+  .retention-seg.min{background:rgba(242,193,78,0.14); color:var(--wide-c); border-right:1px solid var(--rule);}
+  .retention-seg.hour{background:rgba(199,146,234,0.14); color:var(--coarse-c);}
+  .retention-seg b{font-size:0.85rem; margin-bottom:0.15rem;}
+  .retention-legend{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.raw{border-left-color:var(--raw-c); background:rgba(127,216,160,0.06);} .callout.raw b{color:var(--raw-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · TIME-SERIES SCHEMA DESIGN</div>
+  <h1>Every row has a timestamp, almost nothing ever gets updated, and yesterday's precision isn't worth keeping forever.</h1>
+  <p class="lede">Time-series data — sensor readings, metrics, logs — has a write pattern that looks nothing like a typical transactional table: overwhelmingly append-only, rarely if ever updating an old row, queried mostly by time range. This lab animates the same sensor data laid out narrow (one row per metric reading) versus wide (one row per timestamp, a column per metric), builds a retention/downsampling pipeline that gets coarser the older data gets, and works through exactly why this access pattern demands a different schema shape than an OLTP table.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Narrow: one row per (ts, metric, value)</div>
+    <div class="pipe-label b">Wide: one row per ts, column per metric</div>
+    <div class="pipe-label c">Raw → per-minute → per-hour, aging out</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="narrowwide">1 · Narrow vs Wide Table Design</a>
+  <a data-target="retention">2 · Retention &amp; Downsampling Strategies</a>
+  <a data-target="differ">3 · Why Time-Series Differs From Transactional</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: NARROW VS WIDE ============ -->
+<section id="narrowwide">
+  <div class="kicker">01 — One row per fact, or one row per moment — the same data, laid out two ways</div>
+  <h2>Wide vs narrow table design for time-series data</h2>
+
+  <p><strong>Start here, before any schema.</strong> Imagine logging a room's conditions every minute: temperature, humidity, and CO2 level. You could keep a single notebook page per minute, with three columns filled in side by side — or you could keep one long list where every single reading gets its own line: "10:01, temperature, 21.3", "10:01, humidity, 44", "10:01, CO2, 512", "10:02, temperature, 21.4"... The second approach writes three times as many lines for the same information, but it never needs to change its page layout no matter how many new things you start measuring — a fourth sensor just adds more lines, not a redesigned notebook.</p>
+
+  <p>A <strong>narrow</strong> (also called "long" or "tall") time-series table stores one row per <code class="inline">(timestamp, metric_name, value)</code> triple — every individual reading of every individual metric is its own row. A <strong>wide</strong> table stores one row per timestamp, with a separate column for each metric being tracked (<code class="inline">temperature</code>, <code class="inline">humidity</code>, <code class="inline">co2</code>, each its own column). The exact same underlying data, laid out two structurally different ways.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>THE SAME SENSOR DATA, NARROW VS WIDE</span></div>
+    <div class="split-grid">
+      <div class="split-col narrow">
+        <h4>Narrow — one row per (ts, metric, value)</h4>
+        <table id="narrow-table"></table>
+      </div>
+      <div class="split-col wide">
+        <h4>Wide — one row per timestamp</h4>
+        <table id="wide-table"></table>
+      </div>
+    </div>
+    <div class="lookup-controls">
+      <button class="btn" id="add-metric-btn">Sensor adds a 4th metric (pressure) ▸</button>
+      <button class="btn secondary" id="narrow-wide-reset">Reset</button>
+    </div>
+    <div class="log" id="nw-log"><span class="line">Both tables show the same 3 timestamps × 3 metrics. Click "Sensor adds a 4th metric" to see what each layout actually requires when a new metric shows up.</span></div>
+  </div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Narrow</h4>
+      <p><strong>Flexible:</strong> adding a new metric is just more ROWS with a new metric_name value — no schema change required at all. <strong>Cost:</strong> far more total rows for the same data (N timestamps × M metrics = N×M rows), and querying "all metrics at one timestamp" requires filtering/grouping across many rows instead of reading one.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Wide</h4>
+      <p><strong>Compact:</strong> N timestamps = N rows regardless of metric count, and "all metrics at this timestamp" is a single-row read. <strong>Cost:</strong> adding a new metric requires an actual schema change (ALTER TABLE to add a column) — and existing rows get a NULL/default in that new column for all the timestamps before the metric existed.</p>
+    </div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a narrow (long) time-series schema stores one row per individual (timestamp, metric_name, value) reading, trading a much larger row count for complete schema flexibility — adding a new metric never requires a schema migration, just new rows. A wide schema stores one row per timestamp with a dedicated column per tracked metric, trading that flexibility for a far smaller row count and cheaper "give me every metric at this moment" queries — at the cost of requiring an actual ALTER TABLE (and backfilling NULLs into every prior row) whenever a genuinely new metric needs to be tracked. Neither is universally correct; the choice depends on how often the metric set actually changes and how queries are shaped.</div>
+</section>
+
+<!-- ============ SECTION 2: RETENTION & DOWNSAMPLING ============ -->
+<section id="retention">
+  <div class="kicker">02 — You cannot keep every raw data point forever, and mostly you don't need to</div>
+  <h2>Retention and downsampling strategies</h2>
+
+  <p><strong>Start here, before the tiers.</strong> Imagine a security camera that records in full HD forever — the storage cost grows without bound, but nobody actually needs frame-by-frame detail from footage recorded three years ago. A much more practical policy: keep full-resolution footage for a recent window (say, the last week), then keep only a lower-resolution highlight reel for the month after that, and just a daily summary snapshot for anything older still. You lose precision on old footage, but you were extremely unlikely to need frame-level detail from a year-old Tuesday afternoon anyway — and you never run out of storage.</p>
+
+  <p><strong>Downsampling</strong> applies this same idea to time-series data: keep raw, full-precision data points only for a short recent window, and progressively AGGREGATE (average, min/max, sum — whatever's appropriate for the metric) older data into coarser and coarser time buckets the further back it goes. A common concrete tiering: raw per-second (or per-reading) data for the last 24 hours, per-minute aggregates for the last month, per-hour aggregates beyond that. This keeps total storage roughly bounded even as the time series grows forever, because old data occupies dramatically fewer rows once it's been aggregated down.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RETENTION TIERS — RAW → PER-MINUTE → PER-HOUR</span></div>
+    <div class="retention-track" id="retention-track"></div>
+    <div class="retention-legend" id="retention-legend"></div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Tier</th><th>Resolution</th><th>Window</th><th>Row count for 1 metric</th></tr>
+    <tr><td>Raw</td><td>Per-second</td><td>Last 24 hours</td><td>86,400 rows</td></tr>
+    <tr><td>Downsampled — minute</td><td>Per-minute average/min/max</td><td>Last 30 days (beyond the raw window)</td><td>~43,200 rows</td></tr>
+    <tr><td>Downsampled — hour</td><td>Per-hour average/min/max</td><td>Beyond 30 days, kept indefinitely</td><td>24 rows/day — grows slowly forever</td></tr>
+  </table>
+
+  <p>Note the row-count difference: keeping a full YEAR of raw per-second data for one metric would be over 31 million rows; the same year, downsampled per this tiering (1 day raw + 29 days per-minute + the rest per-hour), is under 50,000 rows — several orders of magnitude smaller, while still preserving a genuinely useful (if coarser) picture of everything beyond the last day.</p>
+
+  <div class="callout warn"><b>What's lost, and why it's usually an acceptable trade:</b> downsampling is lossy — once raw per-second data has aged out and only the per-hour aggregate remains, a brief anomaly (a 3-second spike) that occurred 6 months ago and got averaged into an hour-long bucket is genuinely no longer recoverable at its original resolution. This is an acceptable trade specifically because time-series queries over OLD data overwhelmingly ask for trends and patterns over long ranges ("what did average CPU load look like across Q2"), not "the exact reading at 3:14:07am six months ago" — and for the rare case where forensic-level historical precision truly matters, some systems keep raw data in cold, cheap archival storage even after it's aged out of the queryable downsampled tiers, just at a cost and latency that make it unsuitable for routine queries.</div>
+
+  <div class="callout raw"><b>Interview-ready definition:</b> retention and downsampling is the practice of keeping full-precision raw time-series data only for a short recent window, then replacing older data with progressively coarser time-bucketed aggregates (e.g. raw per-second for the last day, per-minute for the last month, per-hour beyond that) rather than retaining every raw point forever. This keeps total storage bounded despite the time series growing without limit, trading fine-grained precision on old data (which is usually not needed — most queries over old data ask about trends across long ranges, not exact individual readings) for dramatically reduced row counts and storage cost.</div>
+</section>
+
+<!-- ============ SECTION 3: WHY TIME-SERIES DIFFERS ============ -->
+<section id="differ">
+  <div class="kicker">03 — Append-only and read-by-range vs update-heavy and read-by-key</div>
+  <h2>Why time-series schemas differ from transactional schemas</h2>
+
+  <p><strong>Start here, before the comparison.</strong> A typical OLTP (transactional) table — an e-commerce order, a user profile, a bank account balance — gets both read AND updated constantly: a customer's shipping address changes, an order's status field gets updated a dozen times as it moves through fulfillment, an account balance updates on every transaction. A time-series row, once written, essentially never changes again — a sensor reading from 10:03am is a historical fact about what the sensor reported at that instant, and there's no future event that would ever legitimately "correct" that row after the fact. This is a fundamentally different write pattern, and it changes what the schema and storage engine should actually be optimized for.</p>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Time-series schema</th><th>Typical OLTP (transactional) schema</th></tr>
+    <tr><td>Write pattern</td><td>Append-only — new rows constantly, old rows essentially never updated</td><td>Frequent updates to existing rows (status changes, balance updates, profile edits)</td></tr>
+    <tr><td>Query pattern</td><td>Mostly range scans over time ("last 24 hours," "this quarter") and aggregation</td><td>Mostly point lookups by primary/foreign key ("this specific order," "this user")</td></tr>
+    <tr><td>Row lifespan</td><td>A row is a historical fact — write once, read many times, essentially immutable</td><td>A row represents current state — actively mutated over its lifetime</td></tr>
+    <tr><td>Volume growth</td><td>Unbounded, constant — every second/minute produces more rows indefinitely</td><td>Grows with business activity (new users, new orders), typically much slower</td></tr>
+    <tr><td>What the engine optimizes for</td><td>Fast sequential/bulk writes, fast time-range scans, compression of similar consecutive values</td><td>Fast point lookups by key, fast in-place updates, strong single-row consistency guarantees</td></tr>
+  </table>
+
+  <p>This is exactly why specialized time-series databases exist as a distinct category (rather than everyone just using a general-purpose OLTP database for everything): a storage engine optimized for time-series workloads can exploit the append-only, rarely-updated, range-scanned access pattern in ways a general OLTP engine's B-tree-per-row design doesn't — for example, storing consecutive readings of the same metric physically together (favoring the time-range-scan access pattern) and applying aggressive compression on consecutive similar values (since sensor readings often change gradually, not randomly, between adjacent timestamps).</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> time-series schemas differ from transactional (OLTP) schemas because their access pattern is fundamentally different: time-series writes are overwhelmingly append-only with old rows essentially never updated after being written, and queries are dominated by time-range scans and aggregation rather than point lookups by key — versus OLTP's frequent in-place updates to individual rows and predominantly key-based point-lookup queries. This difference in access pattern is why time-series-optimized storage engines make different design trade-offs than general-purpose OLTP engines (favoring sequential write throughput, time-range scan speed, and compression of similar consecutive values, over the fast point-update and strong per-row consistency guarantees an OLTP engine prioritizes), and why treating a genuinely time-series workload as if it were a typical OLTP table often performs poorly at scale.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing narrow vs wide for a specific scenario</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A fleet-monitoring platform tracks a rapidly growing, frequently-changing set of metrics per vehicle (new sensor types get added to the fleet every few weeks as new hardware ships), and most queries ask for a single specific metric's trend over time, rarely "give me every metric for this vehicle at this instant." Which layout — narrow or wide — fits better, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Narrow is the better fit here, and the scenario is built around two
+details that both point that way. First, "new sensor types get added
+every few weeks" is exactly the case where wide's cost (requiring an
+actual ALTER TABLE plus NULL-backfilling existing rows every time a new
+metric appears, per section 1) becomes a recurring operational burden
+rather than a rare event -- narrow's flexibility (a new metric is just
+new rows, no schema change) directly avoids paying that cost on a
+biweekly cadence.
+
+Second, "most queries ask for a single specific metric's trend over
+time, rarely every metric at one instant" plays against wide's actual
+strength (a single-row read for "everything at this timestamp") and
+neutralizes what would otherwise be wide's main advantage -- if you're
+rarely doing the query wide is good at, and you're constantly paying
+the schema-change cost wide has, narrow's flexibility wins on both
+axes for this specific access pattern. Wide would be the better answer
+if the metric set were stable and "all metrics at once" queries were
+common -- neither of which describes this scenario.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Computing storage savings from a retention/downsampling policy</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Using section 2's tiering (raw per-second for 1 day, per-minute for the next 29 days, per-hour beyond that), compute the total row count for ONE metric over exactly 1 year (365 days), and compare it to keeping raw per-second data for the full year.</p>
+    <details><summary>Show solution</summary><div class="solution">Raw tier (last 1 day): 86,400 rows (1 reading/second x 86,400 seconds/
+day).
+
+Per-minute tier (next 29 days): 29 days x 1,440 minutes/day = 41,760
+rows.
+
+Per-hour tier (remaining 365 - 1 - 29 = 335 days): 335 days x 24 hours/
+day = 8,040 rows.
+
+Total under the tiered policy: 86,400 + 41,760 + 8,040 = 136,200 rows.
+
+Compare to keeping raw per-second data for the FULL year: 365 days x
+86,400 seconds/day = 31,536,000 rows.
+
+136,200 / 31,536,000 ≈ 0.43% -- the tiered retention policy uses well
+under 1% of the row count that full-year raw retention would require,
+roughly a 230x reduction, while still preserving a genuinely useful
+(if coarser) view of the full year via the per-hour tier. This
+concretely demonstrates section 2's claim that downsampling keeps
+storage bounded despite the underlying time series growing without
+limit -- the OLDEST data (365 - 30 = 335 days' worth) contributes only
+8,040 of the 136,200 total rows, i.e. it barely adds to storage at all
+despite being the largest TIME SPAN in the policy.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a wide-table design breaking under a metric-set change</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team built a wide time-series table with one column per metric. Six months in, a new hardware revision reports 12 new metrics the old hardware didn't have, and the team needs to backfill 6 months of history for devices that never reported these metrics at all. What does this require under a wide schema, and how would this same situation have played out under a narrow schema?</p>
+    <details><summary>Show solution</summary><div class="solution">Under the wide schema: this requires an ALTER TABLE to add 12 new
+columns, and -- critically -- every one of the millions of EXISTING
+rows across the prior 6 months now has NULL (or some sentinel) in all
+12 new columns, since those readings genuinely never happened for
+devices running the old hardware. This isn't a bug to fix; it's an
+accurate reflection of reality (those metrics didn't exist yet for
+those rows) -- but it does mean the table now has a large, genuinely
+sparse region (12 columns x 6 months of old-hardware rows, all NULL),
+which is exactly the kind of storage inefficiency wide tables are
+prone to when the metric set isn't stable, per section 1's trade-off
+description. The schema migration itself (adding 12 columns to a
+massive, actively-written table) can also be a nontrivial operational
+event depending on the database engine.
+
+Under the narrow schema: no schema change is needed at all -- the 12
+new metrics simply start appearing as new rows with new metric_name
+values once the new hardware starts reporting them, and there is no
+backfill problem for old rows, because narrow's structure was never
+committed to a fixed, enumerated set of metrics to begin with. Old
+devices simply never produce rows for those 12 metric_names, which
+requires no special representation (no NULL columns) -- their absence
+is just the absence of rows, not a NULL value sitting in a column that
+exists for every row regardless of relevance. This is the concrete,
+recurring cost section 1 warned about: a genuinely evolving metric set
+is one of the strongest arguments for narrow over wide, and this
+problem is that argument playing out at real scale.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Explaining why an OLTP-style index strategy underperforms on a time-series table</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team puts a time-series table on a general-purpose relational database and indexes it exactly the way they'd index an OLTP table — a B-tree primary key index on an auto-incrementing row ID. Query performance for "give me the last 24 hours of readings for sensor X" is poor. Using section 3's reasoning, explain why, and what indexing/storage approach would fit better.</p>
+    <details><summary>Show solution</summary><div class="solution">A B-tree index on an auto-incrementing row ID optimizes for exactly
+the access pattern section 3 describes as TYPICAL OLTP: fast POINT
+lookups by a specific key value. But the actual query here -- "the last
+24 hours of readings for sensor X" -- is a RANGE query over time,
+filtered by sensor, which is precisely the time-series access pattern
+section 3 contrasts against OLTP's point-lookup pattern. An
+auto-incrementing row ID has no relationship to either "this specific
+sensor" or "this specific time range" -- rows for sensor X's readings
+across a day are scattered arbitrarily throughout the table in
+insertion order interleaved with every OTHER sensor's readings, so
+answering the query requires scanning and filtering a large,
+non-contiguous swath of the table rather than reading one
+contiguous chunk.
+
+A better fit: index (or physically partition/cluster) the data by
+(sensor_id, timestamp) rather than by an arbitrary row ID -- this
+keeps one sensor's readings physically or logically contiguous and
+ordered by time, so "sensor X, last 24 hours" becomes a genuinely
+efficient contiguous range scan instead of a scattered filter over the
+whole table. This is exactly the kind of design choice section 3
+attributes to purpose-built time-series storage engines: optimizing
+physical layout and indexing around time-range-scan-by-series access,
+rather than around the point-lookup-by-arbitrary-key pattern a default
+OLTP indexing strategy assumes.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Reasoning about why time-series rows are treated as immutable</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A junior engineer proposes adding UPDATE support to "correct" old sensor readings retroactively when a calibration error is discovered — e.g. "every reading from sensor Y between March 1-15 was actually 2 degrees higher than recorded, update those rows." Using section 3's framing, is this a natural fit for a time-series schema's design, and what's a more idiomatic alternative?</p>
+    <details><summary>Show solution</summary><div class="solution">This is NOT a natural fit for a time-series schema's design, per
+section 3: time-series schemas and storage engines are built around
+the assumption that a row, once written, is essentially immutable --
+optimized for append-only writes and range-scan reads, not for
+in-place updates to arbitrary historical rows. Retroactively UPDATING
+a two-week window of historical rows fights directly against that
+design assumption -- it requires locating and modifying a large range
+of already-written, already-downsampled (per section 2) historical
+data, which may not even exist anymore at full raw resolution if
+enough time has passed for it to have been aggregated into coarser
+tiers -- you can't cleanly "correct" 2 degrees onto an already-averaged
+per-hour bucket that blended those readings with others.
+
+A more idiomatic alternative, consistent with time-series's
+append-only nature: write NEW rows recording the correction as its own
+event, rather than mutating the old ones -- e.g. a correction record
+noting "readings from sensor Y, March 1-15, should be adjusted +2
+degrees, applied [today's date]," and have queries/downstream
+aggregation account for that correction at READ time (or apply it
+during the next scheduled downsampling pass, while raw data for that
+window still exists). This preserves the append-only write pattern the
+whole schema and storage engine are optimized around, keeps a
+transparent history of WHEN and WHY a correction was made (which
+retroactively overwriting old rows would destroy), and avoids fighting
+the storage engine's fundamental design assumption that historical
+rows don't need to support efficient in-place mutation.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) the narrow vs wide trade-off and pick correctly given a described metric-change frequency and query pattern, (2) walk through a retention/downsampling tiering and compute the storage savings by hand, and (3) name the specific access-pattern differences (write pattern, query pattern, row lifespan) that separate time-series from OLTP schemas? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — time-series schema design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: NARROW VS WIDE TABLE BUILDER */
+(function(){
+  var narrowTable = document.getElementById("narrow-table");
+  var wideTable = document.getElementById("wide-table");
+  var addBtn = document.getElementById("add-metric-btn");
+  var resetBtn = document.getElementById("narrow-wide-reset");
+  var logEl = document.getElementById("nw-log");
+
+  var TIMESTAMPS = ["10:01", "10:02", "10:03"];
+  var BASE_METRICS = ["temperature", "humidity", "co2"];
+  var BASE_VALUES = {
+    "10:01": {temperature: 21.3, humidity: 44, co2: 512},
+    "10:02": {temperature: 21.4, humidity: 44, co2: 508},
+    "10:03": {temperature: 21.4, humidity: 43, co2: 515}
+  };
+  var metrics = BASE_METRICS.slice();
+  var values = JSON.parse(JSON.stringify(BASE_VALUES));
+  var metricAdded = false;
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderNarrow(){
+    var html = "<tr><th>timestamp</th><th>metric_name</th><th>value</th></tr>";
+    TIMESTAMPS.forEach(function(ts){
+      metrics.forEach(function(m){
+        var v = values[ts][m];
+        var isNew = metricAdded && m === "pressure";
+        html += "<tr" + (isNew ? ' class="newcol"' : "") + "><td>" + ts + "</td><td>" + m + "</td><td>" + (v === undefined ? "—" : v) + "</td></tr>";
+      });
+    });
+    narrowTable.innerHTML = html;
+  }
+
+  function renderWide(){
+    var html = "<tr><th>timestamp</th>" + metrics.map(function(m){ return "<th" + (metricAdded && m === "pressure" ? ' class="newcol"' : "") + ">" + m + "</th>"; }).join("") + "</tr>";
+    TIMESTAMPS.forEach(function(ts){
+      html += "<tr><td>" + ts + "</td>" + metrics.map(function(m){
+        var v = values[ts][m];
+        var isNew = metricAdded && m === "pressure";
+        return "<td" + (isNew ? ' class="newcol"' : "") + ">" + (v === undefined ? "NULL" : v) + "</td>";
+      }).join("") + "</tr>";
+    });
+    wideTable.innerHTML = html;
+  }
+
+  function renderAll(){ renderNarrow(); renderWide(); }
+
+  addBtn.addEventListener("click", function(){
+    if(metricAdded) return;
+    metricAdded = true;
+    metrics.push("pressure");
+    // pressure only exists starting at 10:03 (new sensor firmware)
+    values["10:03"].pressure = 1013.2;
+    renderAll();
+    logEl.innerHTML = "";
+    log('<b>Sensor firmware update adds a 4th metric: pressure</b> (first reported at 10:03).');
+    log('<b style="color:var(--narrow-c);">Narrow:</b> just 1 new row (10:03, pressure, 1013.2) — no schema change, no effect on any existing row.');
+    log('<b style="color:var(--wide-c);">Wide:</b> requires ALTER TABLE ADD COLUMN pressure — and every row before 10:03 (which never had a pressure reading) now shows NULL in that column, even though no sensor malfunction occurred, it just didn\'t exist yet.');
+  });
+
+  resetBtn.addEventListener("click", function(){
+    metricAdded = false;
+    metrics = BASE_METRICS.slice();
+    values = JSON.parse(JSON.stringify(BASE_VALUES));
+    renderAll();
+    logEl.innerHTML = '<span class="line">Both tables show the same 3 timestamps × 3 metrics. Click "Sensor adds a 4th metric" to see what each layout actually requires when a new metric shows up.</span>';
+  });
+
+  renderAll();
+})();
+
+/* SECTION 2: RETENTION TIERS */
+(function(){
+  var track = document.getElementById("retention-track");
+  var legend = document.getElementById("retention-legend");
+
+  var TIERS = [
+    {cls: "raw", label: "RAW", sub: "per-second · last 24h", pct: 20},
+    {cls: "min", label: "PER-MINUTE", sub: "avg/min/max · last 30 days", pct: 35},
+    {cls: "hour", label: "PER-HOUR", sub: "avg/min/max · beyond 30 days, forever", pct: 45}
+  ];
+
+  track.innerHTML = "";
+  TIERS.forEach(function(t){
+    var seg = document.createElement("div");
+    seg.className = "retention-seg " + t.cls;
+    seg.style.width = "0%";
+    seg.innerHTML = "<b>" + t.label + "</b><span>" + t.sub + "</span>";
+    track.appendChild(seg);
+    setTimeout(function(){ seg.style.width = t.pct + "%"; }, 60);
+  });
+
+  legend.textContent = "Older data occupies progressively less of the total row budget per unit of time — the per-hour tier covers the most TIME (everything beyond 30 days) while contributing the fewest rows per day.";
+})();
+</script>
+</body>
+</html>

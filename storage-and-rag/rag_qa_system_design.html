@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — RAG Q&amp;A System Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --embed-c:#4fc3f7; --search-c:#f2c14e; --assemble-c:#c792ea; --gen-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--embed-c); color:var(--embed-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--search-c); color:var(--search-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--gen-c); color:var(--gen-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+  .code .c-out{color:#9aa0ad; display:block; margin-top:0.4rem; padding-top:0.4rem; border-top:1px dashed var(--rule);}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* pipeline diagram */
+  .pipeline-diagram{display:flex; align-items:center; justify-content:space-between; gap:0.5rem; margin:1.4rem 0; flex-wrap:wrap;}
+  .pstage{font-family:var(--mono); font-size:0.72rem; padding:0.7rem 0.9rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); text-align:center; flex:1; min-width:110px; transition:all .3s ease;}
+  .pstage.active{box-shadow:0 0 14px currentColor; transform:translateY(-2px);}
+  .pstage.embed{border-color:var(--embed-c); color:var(--embed-c);}
+  .pstage.search{border-color:var(--search-c); color:var(--search-c);}
+  .pstage.assemble{border-color:var(--assemble-c); color:var(--assemble-c);}
+  .pstage.gen{border-color:var(--gen-c); color:var(--gen-c);}
+  .parrow{color:var(--ink-dim); font-size:1rem;}
+
+  /* similarity score bars */
+  .score-bars{display:flex; flex-direction:column; gap:0.6rem; margin:1.2rem 0;}
+  .score-row{display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.78rem;}
+  .score-label{min-width:180px; color:var(--ink-dim);}
+  .score-track{flex:1; height:20px; background:#0b0d11; border:1px solid var(--rule); border-radius:5px; overflow:hidden; position:relative;}
+  .score-fill{height:100%; transition:width .6s ease; background:var(--gen-c);}
+  .score-fill.low{background:var(--bad-c);}
+  .score-thresh{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--search-c); z-index:3;}
+  .score-val{font-family:var(--mono); font-size:0.75rem; min-width:44px; text-align:right;}
+
+  /* latency budget bar */
+  .latency-track{height:48px; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; overflow:hidden; display:flex; margin:1.2rem 0;}
+  .latency-seg{height:100%; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.68rem; color:#0e0f13; font-weight:700; transition:width .6s ease; overflow:hidden; white-space:nowrap;}
+  .latency-seg.embed{background:var(--embed-c);}
+  .latency-seg.search{background:var(--search-c);}
+  .latency-seg.assemble{background:var(--assemble-c);}
+  .latency-seg.gen{background:var(--gen-c);}
+  .latency-legend{display:flex; gap:1rem; flex-wrap:wrap; margin-top:0.8rem; font-family:var(--mono); font-size:0.75rem;}
+  .latency-legend span{display:flex; align-items:center; gap:0.4rem;}
+  .latency-legend .sw{width:11px; height:11px; border-radius:3px; display:inline-block;}
+  .latency-legend .sw.embed{background:var(--embed-c);} .latency-legend .sw.search{background:var(--search-c);}
+  .latency-legend .sw.assemble{background:var(--assemble-c);} .latency-legend .sw.gen{background:var(--gen-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--gen-c);} .dc-col.a h4{color:var(--gen-c);}
+  .dc-col.b{border-color:var(--bad-c);} .dc-col.b h4{color:var(--bad-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.gen{border-left-color:var(--gen-c); background:rgba(127,216,160,0.06);} .callout.gen b{color:var(--gen-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · SYSTEM DESIGN — RAG-BACKED Q&amp;A</div>
+  <h1>Four sequential stages, one dominant cost, and one place the system has to admit it doesn't know.</h1>
+  <p class="lede">A RAG-backed question-answering system is a real pipeline with real design decisions at every stage: embed the question, search a vector index for relevant chunks, assemble those chunks into a prompt (using exactly the mechanics from the context assembly lab), and generate an answer. This lab animates that full pipeline end to end on a sample question, shows the similarity-score threshold check that keeps the system from confidently hallucinating off irrelevant chunks, and breaks down where the pipeline's latency actually goes.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Embed → Search → Assemble → Generate</div>
+    <div class="pipe-label b">Low-confidence retrieval → admit uncertainty</div>
+    <div class="pipe-label c">Generation dominates the latency budget</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="pipeline">1 · The Retrieval + Generation Pipeline, Animated</a>
+  <a data-target="confidence">2 · Handling Low-Confidence Retrieval</a>
+  <a data-target="latency">3 · Latency Budget Across the Pipeline</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: PIPELINE ============ -->
+<section id="pipeline">
+  <div class="kicker">01 — Four stages, strictly sequential, each depending on the previous one's output</div>
+  <h2>The retrieval + generation pipeline, end to end</h2>
+
+  <p><strong>Start here, before the diagram.</strong> Imagine asking a research assistant a question they don't already know the answer to. They don't just start talking — they first figure out what to search for (turning your question into search terms), then go look through the library for the specific relevant sources (not the whole library, just what's actually relevant), then organize what they found into something they can reason from, and only THEN do they actually compose an answer, informed by what they found rather than pulled from memory alone. A RAG Q&amp;A system runs the exact same four-step shape, mechanically.</p>
+
+  <div class="pipeline-diagram" id="pipeline-diagram">
+    <div class="pstage embed" id="stage-embed">1 · Embed question</div>
+    <span class="parrow">→</span>
+    <div class="pstage search" id="stage-search">2 · Vector search</div>
+    <span class="parrow">→</span>
+    <div class="pstage assemble" id="stage-assemble">3 · Assemble context</div>
+    <span class="parrow">→</span>
+    <div class="pstage gen" id="stage-gen">4 · Generate answer</div>
+  </div>
+
+  <p>The four stages, concretely: <strong>(1) embed the question</strong> — the user's natural-language question is passed through the same embedding model used to embed the document chunks, producing a query vector in the same vector space. <strong>(2) vector search</strong> — that query vector is compared against the indexed chunk vectors (via the dense/HNSW/IVF/hybrid techniques from earlier this month) to retrieve the top-K most similar chunks, each with a similarity score. <strong>(3) assemble context</strong> — exactly the mechanics from the <code class="inline">context_assembly</code> lab: the retrieved chunks, system instructions, and the question get concatenated with clear delimiters into one final prompt string, ordered per that lab's recency-effect reasoning. <strong>(4) generate</strong> — the assembled prompt is sent to the LLM, which produces the final answer grounded in the retrieved context rather than purely from its own training-time knowledge.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH THE FULL PIPELINE RUN ON A SAMPLE QUESTION</span>
+      <div><button class="btn secondary" id="pipe-reset">Reset</button></div>
+    </div>
+    <button class="btn" id="pipe-run">Run pipeline: "What's our refund policy for damaged items?" ▸</button>
+    <div class="log" id="pipe-log"><span class="line">Click to run the full embed → search → assemble → generate pipeline on a sample question.</span></div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a retrieval-augmented generation Q&amp;A pipeline is a strictly sequential four-stage process: embedding the user's question into the same vector space as the indexed documents, searching that index for the top-K most similar chunks, assembling those chunks with instructions and the question into one delimited prompt string, and generating a final answer from that assembled prompt. Each stage's output is the next stage's required input — the pipeline cannot skip or reorder stages, which is precisely why its total latency (section 3) is the SUM of each stage's individual latency rather than something that can be collapsed by running stages concurrently.</div>
+</section>
+
+<!-- ============ SECTION 2: LOW-CONFIDENCE RETRIEVAL ============ -->
+<section id="confidence">
+  <div class="kicker">02 — "I don't have good information about this" beats a confident wrong answer</div>
+  <h2>Handling low-confidence retrieval</h2>
+
+  <p><strong>Start here, before the mechanism.</strong> Imagine asking that same research assistant a question completely outside their library's coverage — say, a question about a competitor's internal policies they have no documents on at all. A good research assistant tells you plainly "I don't have anything on that" rather than skimming the closest-sounding document they DO have and confidently answering as if it were relevant, just because it was the best match available among a bad set of options. The vector search stage always returns SOMETHING — even irrelevant chunks get some similarity score — so the pipeline needs an explicit check for whether what it found is actually good enough to answer from, not just whatever happened to score highest.</p>
+
+  <p>The mechanism is a <strong>similarity-score threshold check</strong>: after retrieval returns its top-K chunks with similarity scores, the system compares the TOP score against a minimum threshold. If even the best-matching chunk falls below that threshold, the system has good evidence that nothing genuinely relevant was found — retrieval finding "the least-bad option" is not the same as retrieval finding a genuinely relevant match. In that case, the correct behavior is to have the system explicitly say it doesn't have good information on this question, rather than assembling a prompt from weakly-related chunks and letting the LLM generate a confident-sounding answer anyway.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SIMILARITY-SCORE THRESHOLD CHECK — TWO QUERIES, ONE PASSES, ONE DOESN'T</span></div>
+    <div class="lookup-controls">
+      <button class="chip active" data-conf="good">Query: "refund policy for damaged items" (in-domain)</button>
+      <button class="chip" data-conf="bad">Query: "what's the CEO's favorite lunch spot" (out-of-domain)</button>
+    </div>
+    <div class="score-bars" id="conf-bars"></div>
+    <div class="log" id="conf-log"></div>
+  </div>
+
+  <div class="callout warn"><b>Why this matters more than it might seem:</b> without a threshold check, EVERY query gets an answer assembled from whatever chunks scored highest, even if none of them are actually relevant — the LLM, given weakly-related context and no signal that the context is weak, will often still generate something that reads as confident and specific, because generating fluent, plausible-sounding text is exactly what it's good at, independent of whether the underlying context actually supports the claim. This is a direct hallucination risk introduced at the RETRIEVAL layer, not the generation layer — the fix belongs in the pipeline's retrieval-confidence check, not in trying to prompt the LLM into being more careful after the fact.</div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Above threshold — proceed normally</h4>
+      <p>Top chunk's similarity score clears the minimum bar. The pipeline proceeds to context assembly and generation as normal, grounded in genuinely relevant retrieved material.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Below threshold — decline gracefully</h4>
+      <p>Even the best-matching chunk falls short of the threshold. The system skips generation-from-weak-context entirely and returns an explicit "I don't have good information about this" response instead, rather than gambling on a low-relevance chunk.</p>
+    </div>
+  </div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> handling low-confidence retrieval means explicitly checking the similarity score of the retrieval stage's best result against a minimum threshold before proceeding to generation — if even the top-ranked chunk falls below that threshold, the system has evidence that nothing genuinely relevant exists in the index for this query, and the correct behavior is to return an explicit "insufficient information" response rather than assembling a prompt from weakly-related chunks and risking a fluent, confident-sounding but ungrounded (hallucinated) answer. This check exists specifically because vector search always returns its top-K results regardless of whether any of them are actually good matches — a low top score is a real, available signal that the pipeline should not simply discard by proceeding as if retrieval had succeeded.</div>
+</section>
+
+<!-- ============ SECTION 3: LATENCY BUDGET ============ -->
+<section id="latency">
+  <div class="kicker">03 — Four sequential stages, one of them dominates the total</div>
+  <h2>Latency budget across the pipeline</h2>
+
+  <p><strong>Start here, before the numbers.</strong> If you time each of the four pipeline stages individually, one of them will almost always dwarf the other three combined — and knowing WHICH one, and why, changes where you'd actually spend engineering effort if this pipeline felt too slow. Optimizing a stage that's already a small fraction of total latency, even by a lot, barely moves the total; optimizing the dominant stage moves it a lot.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WHERE DOES THE TIME ACTUALLY GO?</span></div>
+    <div class="latency-track" id="latency-track"></div>
+    <div class="latency-legend">
+      <span><span class="sw embed"></span>Embed query</span>
+      <span><span class="sw search"></span>Vector search</span>
+      <span><span class="sw assemble"></span>Assemble context</span>
+      <span><span class="sw gen"></span>LLM generation</span>
+    </div>
+    <p style="font-size:0.85rem; margin-top:1rem;" id="latency-total"></p>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Stage</th><th>Typical latency</th><th>Why</th><th>Parallelizable?</th></tr>
+    <tr><td>Embed query</td><td>~20-40ms</td><td>One short text embedded through a (usually small) embedding model — a single forward pass</td><td>Sequential — search needs the query vector first</td></tr>
+    <tr><td>Vector search</td><td>~10-50ms</td><td>An approximate nearest-neighbor lookup (HNSW/IVF) over a pre-built index — sub-linear by design</td><td>Sequential — needs the query vector from stage 1</td></tr>
+    <tr><td>Assemble context</td><td>~5-15ms</td><td>Pure string concatenation and formatting — no model inference involved at all</td><td>Sequential — needs the retrieved chunks from stage 2</td></tr>
+    <tr><td>LLM generation</td><td>~800-3000ms+</td><td>Full autoregressive generation, token by token, of the entire answer — by far the most compute-intensive step</td><td>Sequential by nature (each token depends on the previous), and dominates the total regardless</td></tr>
+  </table>
+
+  <div class="callout"><b>What's actually parallelizable, and what isn't:</b> within a SINGLE query, these four stages are fundamentally sequential — each one's output is a required input to the next, so there's no way to run embedding and generation concurrently for the same request. What IS parallelizable: handling multiple DIFFERENT queries concurrently (the pipeline for query A and the pipeline for query B don't depend on each other at all), and, within stage 4 specifically, streaming the generated answer token-by-token back to the user as it's produced rather than waiting for the full response — this doesn't reduce total generation time, but it reduces PERCEIVED latency, since the user sees output starting almost immediately instead of waiting for the entire answer to finish generating first.</div>
+
+  <div class="callout gen"><b>Interview-ready definition:</b> a RAG pipeline's total latency is the sum of four sequential stages (embed, search, assemble, generate), each depending on the previous stage's output — but LLM generation typically dominates total latency by a wide margin (often 10-50x any other single stage), since it involves full autoregressive token-by-token generation from a large model, versus the comparatively cheap embedding lookup, index search, and string concatenation in the other three stages. Because the stages are strictly sequential within one request, latency optimization efforts are best directed at the dominant stage (e.g. streaming tokens to reduce perceived latency, or using a faster/smaller generation model) rather than the three earlier stages, whose combined latency is typically a small fraction of the total even before any optimization.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing why the pipeline can't reorder or skip stages</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes: "let's run vector search and context assembly at the same time to save latency, since they're both fast anyway." Explain specifically why this isn't possible, using section 1's pipeline structure.</p>
+    <details><summary>Show solution</summary><div class="solution">Context assembly's input is the SET OF RETRIEVED CHUNKS -- it literally
+cannot begin until vector search has finished and produced that
+output, since assembly's whole job (per the context_assembly lab) is
+concatenating those specific retrieved chunks, with their specific
+text and source labels, into the prompt string. There's nothing for
+assembly to assemble until search has returned results. This is a hard
+data dependency, not merely a convention -- it's not that running them
+concurrently is unsafe or discouraged, it's that assembly has no valid
+input to operate on until search completes.
+
+This is exactly section 1's point about the pipeline being strictly
+sequential: each stage's output is a REQUIRED input to the next stage,
+which is a fundamentally different situation from two independent tasks
+that merely happen to both be fast and could, in principle, run at the
+same time. The fact that both stages are individually fast (section 3's
+table: ~10-50ms for search, ~5-15ms for assembly) doesn't change this --
+speed and independence are separate properties, and only independence
+would make concurrent execution possible.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing a similarity threshold given a concrete score distribution</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team observes that for queries genuinely covered by their knowledge base, the top retrieved chunk's similarity score is almost always above 0.75. For queries clearly outside their knowledge base's coverage, the top score is almost always below 0.55. Where would you set the threshold, and what happens to queries that happen to score between 0.55 and 0.75?</p>
+    <details><summary>Show solution</summary><div class="solution">A reasonable threshold sits somewhere in the observed gap between the
+two clusters -- e.g. around 0.60-0.65 -- since that range separates the
+two observed populations (in-domain queries clustering above 0.75,
+out-of-domain queries clustering below 0.55) reasonably cleanly, with
+some margin on either side rather than setting the threshold exactly at
+either cluster's edge.
+
+Queries landing in the 0.55-0.75 gap are the genuinely ambiguous case --
+this is real, unavoidable uncertainty rather than a sign the threshold
+was chosen badly: a single scalar threshold can't perfectly separate
+"good match" from "bad match" for queries whose true relevance is
+itself somewhat ambiguous. Where exactly to draw the line WITHIN that
+gap is a real trade-off: a threshold near the low end of the gap (e.g.
+0.58) accepts more borderline queries as "confident enough to answer,"
+risking occasionally answering from a genuinely weak match (a false
+accept); a threshold near the high end (e.g. 0.72) rejects more
+borderline queries as "not confident enough," risking occasionally
+declining to answer a question the system actually had decent
+information for (a false reject). This is the same precision/recall-
+style trade-off that shows up whenever a single score threshold is used
+to make a binary decision -- there's no threshold value that eliminates
+both kinds of error simultaneously, only a choice of which kind of
+error to accept more of.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Calculating the effect of a latency optimization on each stage</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Given roughly: embed 30ms, search 30ms, assemble 10ms, generate 1800ms (total ≈1870ms). A team cuts vector search latency in HALF (to 15ms) via a better index. Separately, another team cuts generation latency by just 20% (to 1440ms) via a faster model. Compare the two teams' impact on TOTAL pipeline latency, and explain what this reveals about where optimization effort should go.</p>
+    <details><summary>Show solution</summary><div class="solution">Team 1 (search 30ms → 15ms, a 50% reduction on that stage): new total
+= 30 + 15 + 10 + 1800 = 1855ms. Reduction from original 1870ms: only
+15ms, about a 0.8% reduction in TOTAL latency, despite HALVING the
+search stage's own latency.
+
+Team 2 (generation 1800ms → 1440ms, just a 20% reduction on that
+stage): new total = 30 + 30 + 10 + 1440 = 1510ms. Reduction from
+original 1870ms: 360ms, about a 19.3% reduction in TOTAL latency, from
+a proportionally SMALLER percentage improvement to its own stage than
+Team 1 achieved.
+
+This directly demonstrates section 3's core point: because generation
+dominates total latency (1800 of 1870ms, ~96% of the total in this
+example), even a modest percentage improvement to generation swamps a
+much larger percentage improvement to any of the other three stages,
+purely because of how much of the total each stage represents to begin
+with. This is a concrete instance of Amdahl's-law-style reasoning:
+optimizing a component that's a small fraction of the total, no matter
+how effectively, bounds how much total improvement is even possible --
+the search stage's ENTIRE latency (30ms) is a hard ceiling on how much
+total time IT could ever save, regardless of optimization technique,
+while generation's dominant share means proportionally modest
+improvements there yield much larger total-latency wins.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a system that hallucinates despite having a threshold check</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team has a similarity-score threshold check per section 2, and it correctly rejects clearly out-of-domain queries. But it still occasionally produces confident, wrong answers for queries that ARE technically covered by the knowledge base, just poorly — the top chunk scores 0.68 (above their 0.60 threshold), but the chunk only tangentially relates to the actual question asked. What's the limitation of a single top-score threshold check being exposed here, and what would help?</p>
+    <details><summary>Show solution</summary><div class="solution">The limitation being exposed: a single top-score threshold only checks
+whether SOMETHING scored reasonably well -- it says nothing about
+whether that best-scoring chunk is actually a GOOD, on-target match for
+the SPECIFIC question, versus merely the best available option among a
+generally weak field of candidates. A chunk that's "tangentially
+related" can genuinely clear a 0.60 threshold (similarity scores are
+continuous, not binary "relevant vs irrelevant"), while still being a
+poor basis for a confident, specific answer to the particular question
+asked -- the threshold check (section 2) is a coarse, real, but
+incomplete signal, not a guarantee of true relevance.
+
+What would help: additional signals beyond just the raw top score --
+for example, checking the SCORE GAP between the top chunk and the
+next-best chunks (a lone chunk scoring 0.68 with everything else far
+below might indicate a narrow, possibly-coincidental match rather than
+strong topical coverage), using a re-ranking step (from earlier this
+month's re-ranking lab) to get a more precise relevance judgment via
+cross-encoder scoring rather than trusting the bi-encoder's retrieval
+score alone, or having the generation step itself be explicitly
+instructed and evaluated on whether it can ACTUALLY answer the specific
+question from the provided context versus only tangentially-related
+material -- essentially, pushing part of the "is this actually
+sufficient" judgment into a stage with more context than a single
+scalar similarity number can carry. The core lesson: a threshold check
+is a real, useful, cheap first filter, not a complete solution to
+low-confidence retrieval on its own.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Designing for 10x query volume</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">This pipeline needs to handle 10x its current query volume. Using section 1's sequential structure and section 3's latency breakdown, is the fix "make each of the four stages individually faster," or something else? What's the actual lever for handling more TOTAL volume versus making each individual request faster?</p>
+    <details><summary>Show solution</summary><div class="solution">These are two genuinely different problems, and the fix for 10x
+VOLUME is not the same as the fix for reducing any single request's
+LATENCY. Making each of the four stages individually faster (section 3's
+optimization discussion) reduces how long ONE request takes end to end
+-- it doesn't, by itself, change how many requests the system can
+handle concurrently.
+
+Handling 10x volume is primarily a horizontal-scaling and concurrency
+problem: since each individual query's pipeline (embed → search →
+assemble → generate) is independent of every OTHER query's pipeline
+(this lab's section 3 "what's parallelizable" callout notes exactly
+this -- different queries' pipelines don't depend on each other), the
+lever for volume is running many of these independent pipelines
+concurrently, across multiple embedding-model replicas, multiple
+generation-model replicas/instances, and a vector index that can serve
+concurrent read queries -- not making any single pipeline's four
+sequential stages individually faster. The generation stage
+specifically, being both the slowest AND the most compute-intensive
+(typically running on GPU infrastructure), is usually the first
+capacity bottleneck under increased volume -- meaning the 10x-volume
+question is substantially about "how many concurrent generation
+requests can the LLM serving infrastructure handle," which is a
+capacity/replica-count question, distinct from "how fast is any one
+generation call," which is the section 3 latency question. Both are
+real design considerations, but they point to different fixes: replica
+count and concurrency for volume, per-stage speed for individual-
+request latency.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) all four pipeline stages in order and why they must run sequentially, (2) exactly what a similarity-score threshold check does and why retrieval always returning something is the underlying problem it solves, and (3) which stage dominates latency and what that implies about where optimization effort belongs? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — RAG Q&amp;A system design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: PIPELINE ANIMATION */
+(function(){
+  var stages = ["stage-embed", "stage-search", "stage-assemble", "stage-gen"];
+  var runBtn = document.getElementById("pipe-run");
+  var resetBtn = document.getElementById("pipe-reset");
+  var logEl = document.getElementById("pipe-log");
+  var busy = false;
+
+  var STEPS = [
+    {stage: "stage-embed", msg: "<b>1 · Embed question:</b> \"What's our refund policy for damaged items?\" → a 768-dim query vector, via the same embedding model used to embed the document chunks."},
+    {stage: "stage-search", msg: '<b>2 · Vector search:</b> comparing the query vector against the indexed chunk vectors — top match: "damaged-item-refund-policy.md" (similarity 0.89), second: "general-returns-faq.md" (similarity 0.71).'},
+    {stage: "stage-assemble", msg: '<b>3 · Assemble context:</b> system instructions + the two retrieved chunks (delimited, most relevant last) + the question, concatenated into one prompt string — same mechanics as the context_assembly lab.'},
+    {stage: "stage-gen", msg: '<b>4 · Generate:</b> the LLM produces an answer grounded in the assembled context: "Damaged items are eligible for a full refund or replacement within 30 days, no questions asked — see the linked policy for photo documentation requirements."'}
+  ];
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  function clearActive(){
+    stages.forEach(function(id){ document.getElementById(id).classList.remove("active"); });
+  }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    logEl.innerHTML = "";
+    clearActive();
+
+    for(var i = 0; i < STEPS.length; i++){
+      clearActive();
+      document.getElementById(STEPS[i].stage).classList.add("active");
+      log(STEPS[i].msg);
+      await wait(750);
+    }
+    clearActive();
+    log('<b style="color:var(--gen-c);">Pipeline complete.</b> Total time was dominated by stage 4 — see section 3 for the actual latency breakdown.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    clearActive();
+    logEl.innerHTML = '<span class="line">Click to run the full embed → search → assemble → generate pipeline on a sample question.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+})();
+
+/* SECTION 2: CONFIDENCE THRESHOLD DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-conf]");
+  var barsEl = document.getElementById("conf-bars");
+  var logEl = document.getElementById("conf-log");
+  var THRESHOLD = 0.60;
+
+  var DATA = {
+    good: {
+      query: "refund policy for damaged items",
+      chunks: [
+        {label: "damaged-item-refund-policy.md", score: 0.89},
+        {label: "general-returns-faq.md", score: 0.71},
+        {label: "shipping-times.md", score: 0.34}
+      ]
+    },
+    bad: {
+      query: "what's the CEO's favorite lunch spot",
+      chunks: [
+        {label: "company-culture-blog.md", score: 0.41},
+        {label: "office-locations.md", score: 0.38},
+        {label: "employee-handbook.md", score: 0.29}
+      ]
+    }
+  };
+
+  function render(key){
+    var d = DATA[key];
+    barsEl.innerHTML = "";
+    d.chunks.forEach(function(c, i){
+      var row = document.createElement("div");
+      row.className = "score-row";
+      var pct = Math.round(c.score * 100);
+      var isLow = c.score < THRESHOLD;
+      row.innerHTML =
+        '<span class="score-label">' + c.label + '</span>' +
+        '<div class="score-track"><div class="score-fill' + (isLow ? " low" : "") + '" style="width:0%"></div><div class="score-thresh" style="left:' + (THRESHOLD * 100) + '%"></div></div>' +
+        '<span class="score-val">' + c.score.toFixed(2) + '</span>';
+      barsEl.appendChild(row);
+      setTimeout(function(){
+        row.querySelector(".score-fill").style.width = pct + "%";
+      }, 60 + i * 120);
+    });
+
+    var topScore = d.chunks[0].score;
+    var passes = topScore >= THRESHOLD;
+    logEl.innerHTML =
+      '<div class="line fadein"><b>Query:</b> "' + d.query + '"</div>' +
+      '<div class="line fadein">Top score: <b>' + topScore.toFixed(2) + '</b> vs threshold <b>' + THRESHOLD.toFixed(2) + '</b> (marked on each bar).</div>' +
+      '<div class="line fadein" style="color:' + (passes ? "var(--gen-c)" : "var(--bad-c)") + ';"><b>' + (passes ? "Passes the threshold" : "Fails the threshold") + '</b> — ' +
+        (passes
+          ? "the pipeline proceeds to context assembly and generation, grounded in the top-scoring chunk."
+          : "even the best match is weak. The system returns \"I don't have good information about this\" instead of generating from irrelevant chunks.") +
+      '</div>';
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.conf);
+    });
+  });
+
+  render("good");
+})();
+
+/* SECTION 3: LATENCY BUDGET BAR */
+(function(){
+  var track = document.getElementById("latency-track");
+  var totalEl = document.getElementById("latency-total");
+
+  var STAGES = [
+    {cls: "embed", label: "Embed 30ms", ms: 30},
+    {cls: "search", label: "Search 30ms", ms: 30},
+    {cls: "assemble", label: "Assemble 10ms", ms: 10},
+    {cls: "gen", label: "Generate 1800ms", ms: 1800}
+  ];
+  var total = STAGES.reduce(function(sum, s){ return sum + s.ms; }, 0);
+
+  STAGES.forEach(function(s){
+    var el = document.createElement("div");
+    el.className = "latency-seg " + s.cls;
+    el.style.width = "0%";
+    el.textContent = (s.ms / total) > 0.06 ? s.label : "";
+    track.appendChild(el);
+    setTimeout(function(){
+      el.style.width = ((s.ms / total) * 100) + "%";
+    }, 60);
+  });
+
+  var genPct = Math.round((1800 / total) * 100);
+  totalEl.innerHTML = 'Total ≈ <b>' + total + 'ms</b>. Generation alone accounts for <b>' + genPct + '%</b> of the total — the other three stages combined are ' + (total - 1800) + 'ms, about ' + (100 - genPct) + '% of the total.';
+})();
+</script>
+</body>
+</html>
