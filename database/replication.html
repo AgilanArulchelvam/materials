@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Replication</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --leader-c:#f2c14e; --follower-c:#4fc3f7; --lag-c:#ff6b6b; --quorum-c:#7fd8a0; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--leader-c); color:var(--leader-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--quorum-c); color:var(--quorum-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--lag-c); color:var(--lag-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* leader-follower propagation diagram */
+  .repl-stage{display:flex; flex-direction:column; gap:1rem; margin:1.2rem 0;}
+  .repl-row{display:flex; align-items:center; gap:1rem; flex-wrap:wrap;}
+  .repl-node{font-family:var(--mono); font-size:0.8rem; padding:0.7rem 1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); min-width:150px; text-align:center; transition:all .4s ease;}
+  .repl-node.leader{border-color:var(--leader-c); color:var(--leader-c);}
+  .repl-node.follower{border-color:var(--follower-c); color:var(--follower-c);}
+  .repl-node.updated{background:rgba(79,195,247,0.2); box-shadow:0 0 12px rgba(79,195,247,0.4);}
+  .repl-node.stale{border-color:var(--lag-c); color:var(--lag-c); background:rgba(255,107,107,0.08);}
+  .repl-node .val{font-size:1.1rem; font-weight:700; display:block; margin-top:0.3rem;}
+  .repl-arrow{font-family:var(--mono); font-size:0.9rem; color:var(--ink-dim); transition:color .3s;}
+  .repl-arrow.active{color:var(--follower-c);}
+
+  /* quorum diagram */
+  .quorum-stage{display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin:1.2rem 0;}
+  .quorum-node{font-family:var(--mono); font-size:0.8rem; padding:1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); width:110px; text-align:center; transition:all .3s ease;}
+  .quorum-node.acked{border-color:var(--quorum-c); background:rgba(127,216,160,0.15); box-shadow:0 0 10px rgba(127,216,160,0.3);}
+  .quorum-node.queried{border-color:var(--follower-c); background:rgba(79,195,247,0.15);}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--quorum-c);} .dc-col.a h4{color:var(--quorum-c);}
+  .dc-col.b{border-color:var(--lag-c);} .dc-col.b h4{color:var(--lag-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--lag-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--lag-c);}
+  .callout.quorum{border-left-color:var(--quorum-c); background:rgba(127,216,160,0.06);} .callout.quorum b{color:var(--quorum-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DATABASE FUNDAMENTALS LAB · REPLICATION</div>
+  <h1>One copy of the data is one machine away from gone. Replication buys you time — and a new set of problems.</h1>
+  <p class="lede">Replication keeps multiple copies of the same data on different machines, so losing one server doesn't mean losing the data. But copies take time to sync, which means a follower can be milliseconds — or seconds — behind the leader. This lab animates a write racing out to followers with a visible lag window, works through the W+R&gt;N quorum rule with real numbers, and walks through what a leader's death actually requires from the survivors.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Leader-follower &amp; lag</div>
+    <div class="pipe-label b">Quorum: W + R &gt; N</div>
+    <div class="pipe-label c">Failover &amp; split brain</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="leaderfollower">1 · Leader-Follower Replication &amp; Lag</a>
+  <a data-target="quorum">2 · Quorum-Based Replication &amp; Consistency</a>
+  <a data-target="failover">3 · Failover Mechanics</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: LEADER-FOLLOWER & LAG ============ -->
+<section id="leaderfollower">
+  <div class="kicker">01 — One machine writes, the others catch up asynchronously</div>
+  <h2>Leader-follower replication and lag</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a company with one headquarters that makes all official decisions, and several regional offices that each keep their own copy of the master files, updated by courier whenever headquarters makes a change. The courier takes some real time to travel — it's not instantaneous. If someone calls a regional office and asks "what's the latest decision?" moments after headquarters made one, that regional office might still be holding yesterday's version, simply because the courier carrying today's update hasn't arrived yet. The regional office isn't broken — it's just temporarily behind, through no fault of its own.</p>
+
+  <p><strong>Leader-follower replication</strong> designates one node (the <strong>leader</strong>, sometimes called primary or master) as the only node that accepts WRITES. Every write lands on the leader first, and the leader then propagates that change to one or more <strong>followers</strong> (replicas), which apply the same change to their own copy of the data. In the common <strong>asynchronous</strong> variant, the leader doesn't wait for followers to confirm they've applied a write before telling the original client "success" — it fires the write off to followers and moves on, which is fast, but creates a real window where the leader has newer data than some or all of its followers. That window is called <strong>replication lag</strong>, and a READ served from a lagging follower during that window can return <strong>stale data</strong> — an answer that was correct a moment ago, but isn't anymore.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>A WRITE PROPAGATING TO FOLLOWERS — WATCH THE LAG WINDOW</span>
+      <div><button class="btn secondary" id="lag-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">A write lands on the leader instantly. Followers apply it asynchronously, at different speeds. Try reading from Follower B while it's still stale.</p>
+    <div class="repl-stage" id="repl-stage"></div>
+    <button class="btn" id="lag-run">Write balance = $500 to the leader ▸</button>
+    <div class="log" id="lag-log"><span class="line">Click to write, then watch each follower catch up at a different pace — and try reading from a still-lagging follower.</span></div>
+  </div>
+
+  <div class="callout warn"><b>The concrete stale-read scenario:</b> a user updates their balance to $500. The write succeeds on the leader instantly. 40ms later — well within normal replication lag for many real systems — a read request happens to get routed to Follower B, which hasn't applied the update yet. That read returns the OLD balance, even though the write already "succeeded" from the client's point of view. This is not a bug; it's the direct, expected consequence of asynchronous replication's trade-off, and it's exactly why reading from a follower carries a real risk of staleness that reading from the leader does not.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> in leader-follower replication, one leader node accepts all writes and asynchronously propagates them to one or more follower nodes, which apply writes independently and at their own pace. Replication lag is the time window between a write completing on the leader and that same write being applied on a given follower; a read served from a follower during that window can return stale data — a value that was correct as of the leader's state at some earlier point, but not the leader's current state. This trade-off (fast writes, occasionally stale follower reads) is the direct cost of NOT waiting for follower acknowledgment before confirming a write, and it's why applications with strict "read your own write" requirements often route certain reads back to the leader instead of a follower.</div>
+</section>
+
+<!-- ============ SECTION 2: QUORUM ============ -->
+<section id="quorum">
+  <div class="kicker">02 — Trading pure speed for a tunable consistency guarantee</div>
+  <h2>Quorum-based replication and consistency</h2>
+
+  <p><strong>Start here, before the formula.</strong> Imagine a small committee of 3 people who must approve any decision before it's considered official, but instead of requiring ALL 3 to sign off (slow, and completely blocked if even one person is unreachable), the rule is "at least 2 out of 3 must approve." Now imagine that later, anyone checking whether a decision was actually made also has to ask at least 2 out of the 3 committee members — never just 1. Because both the approval group and the checking group must be at least 2 out of 3, and there are only 3 people total, those two groups of 2 are GUARANTEED to overlap by at least one person — meaning anyone checking will always find at least one person who knows about the most recent real decision.</p>
+
+  <p><strong>Quorum-based replication</strong> formalizes this. With <strong>N</strong> total replicas, a write is considered successful once it's been acknowledged by <strong>W</strong> of them (the write quorum), and a read queries <strong>R</strong> replicas (the read quorum) and uses the most recent value found among their responses. The key guarantee: if <strong>W + R &gt; N</strong>, then any read quorum and any write quorum are mathematically guaranteed to overlap in at least one replica — meaning every read is guaranteed to include at least one replica that has the most recent successful write, giving a strong consistency guarantee without requiring every single replica to participate in every operation.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>W + R &gt; N, WORKED WITH N=3, W=2, R=2</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">3 replicas total. A write needs 2 acks (W=2). A read queries 2 replicas (R=2). Watch why the read is guaranteed to see the write.</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-step="write">Step 1: Write acknowledged by 2/3 (W=2)</button>
+      <button class="chip" data-step="read">Step 2: Read queries 2/3 (R=2)</button>
+    </div>
+    <div class="quorum-stage" id="quorum-stage"></div>
+    <div class="log" id="quorum-log"></div>
+  </div>
+
+  <div class="callout quorum"><b>Worked example, explicitly:</b> N=3, W=2, R=2. W+R = 4 &gt; N (3) — the quorum condition holds. A write acknowledged by replicas {1, 2} and a later read querying replicas {2, 3} MUST share at least one replica (here, replica 2), because you cannot pick two different 2-out-of-3 subsets of a 3-element set that don't overlap — the pigeonhole principle guarantees it. That shared replica (2) is guaranteed to have the write, so the read is guaranteed to see it as the most recent value, even though neither the write nor the read touched ALL 3 replicas.</div>
+
+  <p>This is a genuine tunable trade-off, not a fixed rule: raising W (requiring more replicas to ack a write) makes writes slower but reads cheaper/faster (smaller R can still satisfy W+R&gt;N); raising R does the opposite. Setting W=N (every replica must ack every write) gives the strongest consistency but sacrifices availability entirely if even one replica is down. Setting W+R ≤ N sacrifices the overlap guarantee entirely — reads and writes CAN miss each other, trading strong consistency for lower latency and higher availability, which is a legitimate choice for workloads that can tolerate eventual consistency instead.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> in quorum-based replication with N total replicas, a write succeeds once acknowledged by W replicas and a read queries R replicas, returning the most recent value seen; when W + R &gt; N, every possible read quorum and write quorum are guaranteed to overlap in at least one replica, guaranteeing every read observes the most recent acknowledged write — a strong consistency guarantee achieved without requiring all N replicas to participate in every operation. W and R are independently tunable per-workload: increasing one lets the other decrease while preserving the guarantee, and choosing W + R ≤ N deliberately trades that guarantee away for lower latency and higher availability under partial failure.</div>
+</section>
+
+<!-- ============ SECTION 3: FAILOVER ============ -->
+<section id="failover">
+  <div class="kicker">03 — What happens when the one node everyone depended on disappears</div>
+  <h2>Failover mechanics, conceptually</h2>
+
+  <p><strong>Start here, before the mechanics.</strong> Back at the company with one headquarters: if headquarters suddenly goes dark — no phone, no response — the regional offices can't just sit paralyzed forever, but they also can't have two DIFFERENT regional offices independently decide "I'm in charge now" without talking to each other first, or the company ends up with two sets of leadership issuing conflicting official decisions simultaneously. The offices need some coordinated way to agree on exactly ONE new headquarters before resuming normal operation.</p>
+
+  <p>When a leader dies (crashes, becomes unreachable, or is deliberately taken offline for maintenance), the system needs <strong>failover</strong>: promoting one follower to become the new leader so writes can resume. At a conceptual level, this requires the surviving followers to coordinate — commonly via some form of leader election or consensus protocol — to agree on which single follower becomes the new leader, typically favoring whichever follower has the most up-to-date data (least replication lag behind the old leader) to minimize how much recent data might be lost or need reconciling. Once a new leader is chosen, other followers need to be reconfigured to replicate from it instead of the old leader, and clients/routing need to be updated to send writes to the new leader's address.</p>
+
+  <div class="callout warn"><b>The failure mode this coordination exists to prevent — split brain:</b> if the old leader isn't actually dead (e.g. it's just experiencing a temporary network partition, unreachable from the followers but still running and still believing it's the leader) and the followers independently promote a new leader without properly confirming the old one is truly gone, the system can end up with TWO nodes simultaneously believing they're the leader and accepting writes — this is split brain. Writes accepted by each "leader" during a split brain can diverge and conflict, and reconciling two independently-written histories after the fact can be genuinely difficult or lossy. This is precisely why failover requires real coordination (a majority/quorum-based election, not just "the first follower to notice silence promotes itself") rather than each follower unilaterally deciding to take over.</div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Coordinated failover (majority election)</h4>
+      <p>Followers require agreement from a majority before promoting a new leader — a minority partition (including a possibly-still-alive old leader cut off from the majority) cannot alone force a promotion, preventing two simultaneous leaders.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Uncoordinated failover (naive)</h4>
+      <p>Any follower that simply stops hearing from the leader promotes itself immediately. Fast, but genuinely unsafe — a temporary network blip can trigger a promotion while the old leader is still alive and still accepting writes elsewhere, producing split brain.</p>
+    </div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> failover is the process of promoting a follower to become the new leader after the previous leader becomes unavailable, so that writes can resume — conceptually requiring the surviving followers to coordinate (typically via a majority-based election or consensus mechanism) to agree on exactly one new leader, usually favoring the follower with the least replication lag to minimize data loss. This coordination exists specifically to prevent split brain — a state where two nodes simultaneously believe they are the leader and both accept writes, which can happen if a follower promotes itself unilaterally during what turns out to be only a temporary network partition rather than an actual leader failure, risking divergent, hard-to-reconcile write histories.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Diagnosing a stale-read bug from a specific routing decision</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user updates their profile photo, and the confirmation page (which reads the photo back to display it) sometimes still shows the OLD photo for a moment. The write itself is confirmed successful. What's the most likely explanation given this lab, and what's the most direct fix?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely explanation is exactly section 1's stale-read scenario:
+the write landed on the leader and was confirmed successful, but the
+confirmation page's immediately-following READ got routed to a follower
+that hadn't yet applied that write due to normal asynchronous
+replication lag -- the follower briefly still holds the old photo, so
+the read (correctly, from the follower's own point of view) returns
+what it currently has, which is stale relative to the leader.
+
+The most direct fix: route this specific "read immediately after my own
+write" case back to the LEADER rather than a follower (often called
+read-your-own-writes consistency), at least for a short window after the
+user's own write, rather than eagerly load-balancing every read
+(including this one) across followers by default. This targets the exact
+symptom without requiring a broader architectural change like switching
+to synchronous replication (which would slow down every write, not just
+fix this one read-after-write UX issue) or eliminating followers
+entirely (which would remove the whole benefit of distributing read
+load across replicas).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Verifying the quorum overlap guarantee with different numbers</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">With N=5 replicas, is W=2 and R=2 enough to guarantee every read sees every acknowledged write? What's the smallest W (with R=2) that DOES guarantee it, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">W=2, R=2 with N=5 is NOT enough: W+R = 4, which is NOT greater than N=5
+(4 is less than 5), so the quorum condition W+R>N fails. Concretely: a
+write could be acknowledged by replicas {1, 2}, and a read could query
+replicas {3, 4} -- these two sets of 2 don't have to overlap at all
+within a pool of 5, so the read can completely miss the write and return
+stale data. This is exactly the "W+R ≤ N sacrifices the guarantee"
+case described in section 2.
+
+The smallest W (holding R=2) that guarantees overlap: W=4, since W+R=6>5
+satisfies the condition (W=3 gives W+R=5, which is NOT strictly greater
+than N=5, so it still fails -- you need STRICT inequality). With W=4 and
+R=2 out of 5 total, any write-quorum of 4 and any read-quorum of 2 are
+mathematically guaranteed to share at least one replica, since two
+disjoint subsets of a 5-element set can have at most 5 elements combined
+(4+2=6 exceeds 5, forcing at least 1 element of overlap by the
+pigeonhole principle) -- the same reasoning as the N=3 worked example in
+section 2, just with different numbers. This also illustrates the real
+trade-off: guaranteeing consistency with a small R here requires a
+LARGE W, meaning writes need to wait for 4 out of 5 replicas to
+acknowledge, which is considerably slower than the W=2 case that fails
+the guarantee.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing W and R for two different workloads</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">System A is a write-heavy logging/telemetry pipeline where losing strict consistency (an occasional stale read) is acceptable, but ingest throughput matters enormously. System B is a financial ledger where every read must reflect every prior acknowledged write, no exceptions, and read/write volume is comparatively low. With N=5 available in both, how would you set W and R differently, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">System A (write-heavy, consistency-tolerant): favor a SMALL W (e.g.
+W=1 or W=2) to keep writes fast and cheap, accepting that W+R may not
+exceed N and that reads can occasionally be stale -- this is an
+explicit, deliberate trade toward eventual consistency and high write
+throughput, appropriate because the stated workload can tolerate
+occasional staleness in exchange for ingest speed being the dominant
+concern. R can also stay low for the same reason (read speed matters
+more than absolute correctness here too, typically).
+
+System B (financial ledger, consistency-critical): favor W and R that
+satisfy W+R>N strictly, e.g. W=3, R=3 with N=5 (W+R=6>5) or the
+asymmetric W=4, R=2 from Problem 2 -- the exact split can be tuned based
+on whether this workload is more read-heavy or write-heavy, but the
+NON-NEGOTIABLE requirement is that the quorum condition holds, since
+"every read must reflect every prior acknowledged write, no exceptions"
+is precisely the strong consistency guarantee W+R>N provides. Since
+System B's read/write volume is described as comparatively low, the
+added latency cost of requiring more replicas per operation (compared to
+System A's minimal quorums) is an acceptable trade for correctness here,
+in a way it would NOT be for System A's high-throughput requirement.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Explaining precisely why uncoordinated failover risks split brain</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A junior engineer proposes: "just have each follower promote itself to leader if it hasn't heard from the current leader in 5 seconds — simple and fast." Explain precisely, using a concrete scenario, why this specific proposal is unsafe.</p>
+    <details><summary>Show solution</summary><div class="solution">Concrete scenario: a brief network partition splits the cluster such
+that Follower A can no longer reach the leader (a network issue, not an
+actual leader crash), but the leader itself is still fully alive and
+still reachable by clients and by Follower B on the OTHER side of the
+partition. Under the proposed rule, Follower A independently notices 5
+seconds of silence from the leader and promotes ITSELF to leader --
+but the original leader never stopped believing it was the leader (it
+never crashed, it just can't currently reach Follower A), and it keeps
+accepting writes from whatever clients can still reach it.
+
+The result is exactly split brain (section 3's warning): two nodes (the
+original leader and newly-self-promoted Follower A) simultaneously
+believe they are the leader and can simultaneously accept writes from
+different clients, with no coordination between them -- their two
+independent write histories can diverge in ways that may be genuinely
+impossible to cleanly reconcile once the partition heals and both
+"leaders" become mutually visible again. The proposal is unsafe
+specifically because "hasn't heard from the leader" is not the same fact
+as "the leader is actually dead" -- a follower cannot distinguish
+between those two cases unilaterally, which is exactly why real failover
+requires MAJORITY agreement among the surviving nodes (so that at most
+one side of any partition can ever muster a majority and safely promote)
+rather than any single follower's independent, uncoordinated judgment.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Connecting replication lag to the failover promotion choice</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">During failover, why does section 3 specify favoring the follower with the LEAST replication lag as the new leader, rather than picking arbitrarily (e.g. whichever follower responds to the election first)? Tie your answer back to section 1's definition of replication lag.</p>
+    <details><summary>Show solution</summary><div class="solution">Replication lag (section 1) is the gap between what the old leader had
+applied and what a given follower has actually caught up to applying
+itself -- a follower with MORE lag is missing more of the old leader's
+most recent writes at the moment of failure, while a follower with LESS
+lag is missing fewer (or none). If failover promotes an arbitrarily
+chosen follower rather than the least-lagged one, the newly promoted
+leader may be missing writes that clients were already told succeeded
+(they got a success response from the OLD leader before it died, for
+writes that hadn't yet propagated to the newly-promoted follower) --
+those writes are now effectively lost from the new leader's
+perspective, since the new leader has no record of them and will start
+accepting new writes on top of its own, less-complete state.
+
+Favoring the least-lagged follower directly minimizes this data-loss
+window: the follower closest to the old leader's actual state at the
+moment of failure has the fewest "invisible" successful writes missing
+from what will become the new source of truth going forward. This isn't
+a complete fix (some data loss is still possible with purely
+asynchronous replication, since even the least-lagged follower can be
+missing the very last few writes made right before the leader died) --
+but it's a direct, mechanical way to minimize the size of that loss
+using information the lag metric already gives you, rather than treating
+follower choice as arbitrary.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely why asynchronous replication creates a stale-read window and how you'd mitigate it for a specific read, (2) why W+R&gt;N guarantees overlap using the pigeonhole reasoning, not just as a memorized formula, and (3) what specifically makes uncoordinated failover unsafe, with a concrete split-brain scenario? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — replication.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: LEADER-FOLLOWER LAG DEMO */
+(function(){
+  var stage = document.getElementById("repl-stage");
+  var runBtn = document.getElementById("lag-run");
+  var resetBtn = document.getElementById("lag-reset");
+  var logEl = document.getElementById("lag-log");
+  var busy = false;
+  var currentValue = "$300";
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function build(){
+    stage.innerHTML = "";
+    var row1 = document.createElement("div");
+    row1.className = "repl-row";
+    row1.innerHTML =
+      '<div class="repl-node leader" id="node-leader">LEADER<span class="val" id="val-leader">' + currentValue + '</span></div>' +
+      '<span class="repl-arrow" id="arrow-a">──▸</span>' +
+      '<div class="repl-node follower" id="node-a">FOLLOWER A (fast)<span class="val" id="val-a">' + currentValue + '</span></div>';
+    stage.appendChild(row1);
+
+    var row2 = document.createElement("div");
+    row2.className = "repl-row";
+    row2.innerHTML =
+      '<div class="repl-node leader" style="visibility:hidden;">LEADER<span class="val">-</span></div>' +
+      '<span class="repl-arrow" id="arrow-b">──▸</span>' +
+      '<div class="repl-node follower" id="node-b">FOLLOWER B (slow)<span class="val" id="val-b">' + currentValue + '</span> <button class="btn secondary" id="read-b" style="margin-top:0.5rem; font-size:0.65rem; padding:0.3rem 0.6rem;">Read from B now</button></div>';
+    stage.appendChild(row2);
+
+    document.getElementById("read-b").addEventListener("click", function(){
+      var el = document.getElementById("val-b");
+      var isStale = el.parentElement.classList.contains("stale");
+      log(isStale
+        ? '<b style="color:var(--lag-c);">Read from Follower B: ' + el.textContent + '</b> — STALE. Follower B has not yet applied the leader’s latest write.'
+        : 'Read from Follower B: ' + el.textContent + ' — up to date.');
+    });
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    var newValue = "$500";
+    logEl.innerHTML = "";
+
+    log('<b>Write: balance = ' + newValue + '</b> lands on the leader.');
+    document.getElementById("val-leader").textContent = newValue;
+    document.getElementById("node-leader").classList.add("updated");
+    await wait(300);
+
+    log("Leader confirms success to the client immediately — it does not wait for followers (asynchronous replication).");
+    document.getElementById("node-a").classList.add("stale");
+    document.getElementById("node-b").classList.add("stale");
+    await wait(500);
+
+    log("Propagating to Follower A (fast network path)...");
+    document.getElementById("arrow-a").classList.add("active");
+    await wait(600);
+    document.getElementById("val-a").textContent = newValue;
+    document.getElementById("node-a").classList.remove("stale");
+    document.getElementById("node-a").classList.add("updated");
+    log('<b style="color:var(--follower-c);">Follower A caught up.</b> Lag was ~600ms.');
+    await wait(400);
+
+    log('<b style="color:var(--lag-c);">Follower B is still catching up — try "Read from B now" while it lags.</b>');
+    document.getElementById("arrow-b").classList.add("active");
+    await wait(2200);
+
+    document.getElementById("val-b").textContent = newValue;
+    document.getElementById("node-b").classList.remove("stale");
+    document.getElementById("node-b").classList.add("updated");
+    log('<b style="color:var(--follower-c);">Follower B finally caught up.</b> Lag was ~2.5s — any read routed to B during that window could have returned the stale $300 value.');
+
+    currentValue = newValue;
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    currentValue = "$300";
+    build();
+    logEl.innerHTML = '<span class="line">Click to write, then watch each follower catch up at a different pace — and try reading from a still-lagging follower.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  build();
+})();
+
+/* SECTION 2: QUORUM DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-step]");
+  var stage = document.getElementById("quorum-stage");
+  var logEl = document.getElementById("quorum-log");
+
+  function log(msg){
+    logEl.innerHTML = '<span class="line fadein">' + msg + '</span>';
+  }
+
+  function render(step){
+    stage.innerHTML = "";
+    for(var i = 1; i <= 3; i++){
+      var node = document.createElement("div");
+      node.className = "quorum-node";
+      var label = "Replica " + i;
+      if(step === "write" && (i === 1 || i === 2)){
+        node.classList.add("acked");
+        label += "<br><span style=\"color:var(--quorum-c); font-size:0.68rem;\">ACKED write</span>";
+      } else if(step === "write"){
+        label += "<br><span style=\"color:var(--ink-dim); font-size:0.68rem;\">not asked (W=2 is enough)</span>";
+      }
+      if(step === "read" && (i === 2 || i === 3)){
+        node.classList.add("queried");
+        label += "<br><span style=\"color:var(--follower-c); font-size:0.68rem;\">queried by read</span>";
+        if(i === 2){
+          label += "<br><span style=\"color:var(--quorum-c); font-size:0.65rem;\">← has the write!</span>";
+        }
+      } else if(step === "read"){
+        label += "<br><span style=\"color:var(--ink-dim); font-size:0.68rem;\">not queried (R=2 is enough)</span>";
+      }
+      node.innerHTML = label;
+      stage.appendChild(node);
+    }
+    if(step === "write"){
+      log("Write quorum W=2: replicas {1, 2} acknowledge the write. Replica 3 doesn't need to — W=2 out of N=3 is already enough for the write to succeed.");
+    } else {
+      log('Read quorum R=2: this read happens to query replicas {2, 3}. Replica 2 was part of BOTH the write quorum {1,2} and this read quorum {2,3} — the overlap guaranteed by W+R>N (2+2=4>3) means this read is guaranteed to see the write, regardless of which 2 replicas happen to get queried.');
+    }
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.step);
+    });
+  });
+
+  render("write");
+})();
+</script>
+</body>
+</html>

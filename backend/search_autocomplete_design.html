@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Search Autocomplete Design</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --trie-c:#4fc3f7; --rank-c:#f2c14e; --fuzzy-c:#ff8a65; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:20ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:58ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:1rem; font-family:var(--mono); font-size:0.78rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.6rem 1rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--trie-c); color:var(--trie-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--rank-c); color:var(--rank-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--fuzzy-c); color:var(--fuzzy-c); background:rgba(255,138,101,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:250px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* trie visualization */
+  .trie-stage{position:relative; min-height:340px; background:#0b0d11; border:1px solid var(--rule); border-radius:12px; overflow:auto; padding:1rem;}
+  .trie-node{position:absolute; width:34px; height:34px; border-radius:50%; border:2px solid var(--trie-c); background:var(--panel-2); display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:0.85rem; color:var(--ink); transform:translate(-50%,-50%); transition:all .35s ease; z-index:2;}
+  .trie-node.root{border-color:var(--ink-dim); color:var(--ink-dim);}
+  .trie-node.visited{box-shadow:0 0 12px var(--trie-c); background:rgba(79,195,247,0.25);}
+  .trie-node.endword{border-color:var(--rank-c); box-shadow:0 0 10px var(--rank-c);}
+  .trie-node.collected{box-shadow:0 0 16px var(--accent); border-color:var(--accent); background:rgba(127,216,160,0.3);}
+  .trie-edge{position:absolute; height:2px; background:var(--rule); transform-origin:left center; z-index:1; opacity:0.5;}
+  .trie-edge.traversed{background:var(--trie-c); opacity:1; box-shadow:0 0 6px var(--trie-c);}
+
+  .type-input{font-family:var(--mono); font-size:1rem; background:#0b0d11; border:1.5px solid var(--rule); border-radius:8px; padding:0.6rem 0.9rem; color:var(--ink); width:100%; margin-bottom:0.8rem;}
+  .suggest-list{display:flex; flex-direction:column; gap:0.4rem; margin-top:0.6rem;}
+  .suggest-row{font-family:var(--mono); font-size:0.82rem; padding:0.5rem 0.8rem; border-radius:6px; background:var(--panel-2); border:1px solid var(--rule); display:flex; justify-content:space-between; opacity:0; transform:translateY(4px); transition:opacity .3s, transform .3s;}
+  .suggest-row.show{opacity:1; transform:translateY(0);}
+  .suggest-row .pop{color:var(--rank-c); font-size:0.72rem;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--rank-c);} .dc-col.a h4{color:var(--rank-c);}
+  .dc-col.b{border-color:var(--trie-c);} .dc-col.b h4{color:var(--trie-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* edit distance grid */
+  .ed-grid{display:inline-grid; gap:2px; font-family:var(--mono); font-size:0.78rem; margin:1rem 0; background:var(--rule);}
+  .ed-cell{background:#0b0d11; color:var(--ink-dim); width:34px; height:34px; display:flex; align-items:center; justify-content:center;}
+  .ed-cell.head{color:var(--ink); font-weight:600;}
+  .ed-cell.path{background:rgba(255,138,101,0.25); color:var(--ink); font-weight:700;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.rank{border-left-color:var(--rank-c); background:rgba(242,193,78,0.06);} .callout.rank b{color:var(--rank-c);}
+  .callout.fuzzy{border-left-color:var(--fuzzy-c); background:rgba(255,138,101,0.06);} .callout.fuzzy b{color:var(--fuzzy-c);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEM DESIGN LAB · SEARCH AUTOCOMPLETE DESIGN</div>
+  <h1>Every keystroke has a sub-100ms deadline — so you never search live at all.</h1>
+  <p class="lede">Autocomplete looks trivial until the latency budget shows up: every character typed needs a response before the next one lands, at massive query volume, with typo tolerance on top. This lab builds a trie by hand, descends it character by character to collect completions, works through why real systems precompute rankings instead of searching live, and shows edit distance catching a typo a literal prefix match never would.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Trie — prefix matching</div>
+    <div class="pipe-label b">Precomputed ranking</div>
+    <div class="pipe-label c">Edit distance — typo tolerance</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="trie">1 · Tries: Building &amp; Prefix Search, Live</a>
+  <a data-target="ranking">2 · Ranking &amp; Latency Constraints</a>
+  <a data-target="fuzzy">3 · Handling Typos &amp; Fuzzy Matches</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TRIE ============ -->
+<section id="trie">
+  <div class="kicker">01 — A tree shaped exactly like the words it stores</div>
+  <h2>Tries: building one, then searching it character by character</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine a dictionary organized not alphabetically on a shelf, but as a physical maze: you enter at the front door, and the FIRST letter of the word you're looking for is a hallway choice — go left for "c," go right for "d." Down the "c" hallway, the SECOND letter is another set of doors. Keep following letter by letter, and you end up in a room representing the complete word, with everything reachable from that room being every word that shares that same prefix. Someone looking for anything starting with "ca" just walks to the "ca" junction and explores everything past it — they never need to revisit the front door or any other hallway.</p>
+
+  <p>A <strong>trie</strong> (prefix tree) is exactly this maze, built as a tree structure: each node represents one character, and a path from the root down to some node spells out the prefix formed by the characters along that path. A node is marked as the END of a real word if some complete word ends exactly there. Building a trie means inserting each word one character at a time, following existing nodes where they already exist and creating new ones only where a path doesn't yet exist — words sharing a common prefix automatically share the same nodes for that prefix, which is the structural reason tries are so well suited to prefix search in the first place.</p>
+
+  <div class="code"><span class="c-cmt"># Roughly how a trie node and insertion work</span>
+<span class="c-kw">class</span> <span class="c-fn">TrieNode</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self):
+        self.children = {}       <span class="c-cmt"># char -> TrieNode</span>
+        self.is_word_end = <span class="c-kw">False</span>
+
+<span class="c-kw">def</span> <span class="c-fn">insert</span>(root, word):
+    node = root
+    <span class="c-kw">for</span> ch <span class="c-kw">in</span> word:
+        <span class="c-kw">if</span> ch <span class="c-kw">not in</span> node.children:
+            node.children[ch] = <span class="c-fn">TrieNode</span>()   <span class="c-cmt"># new hallway/door</span>
+        node = node.children[ch]
+    node.is_word_end = <span class="c-kw">True</span>            <span class="c-cmt"># mark the room as a complete word</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TRIE BUILD &amp; PREFIX SEARCH — "CA"</span>
+      <div><button class="btn secondary" id="trie-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Words inserted: cat, car, card, care, dog, do. Watch the trie get built, then descend character by character for the prefix "ca" and collect every completion beneath that node.</p>
+    <div class="trie-stage" id="trie-stage"></div>
+    <button class="btn" id="trie-run">Search prefix "ca": descend, then collect completions ▸</button>
+    <div class="log" id="trie-log"><span class="line">Click to run the prefix search and watch which subtree gets collected.</span></div>
+  </div>
+
+  <p>Notice exactly what happened: the search walked only 2 hops (c → a) to reach the node representing the prefix "ca," then explored ONLY the subtree hanging beneath that node — never touching "dog" or "do" at all, since those words don't share the "ca" prefix and therefore live in a completely different branch of the tree. This is the entire mechanism behind why prefix search on a trie is fast: cost scales with the LENGTH of the prefix typed plus the number of matching completions, not with the total number of words stored.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a trie (prefix tree) stores a set of strings as a tree where each root-to-node path spells out a prefix, and nodes marking the end of a real word are flagged explicitly — words sharing a prefix automatically share the nodes for that prefix. A prefix search descends the trie one character at a time following the query's characters, then performs a traversal (e.g. DFS) of the subtree rooted at the node where the prefix ends, collecting every word-ending node found — this makes prefix search's cost proportional to the prefix length plus the number of matches, not the total dictionary size.</div>
+</section>
+
+<!-- ============ SECTION 2: RANKING & LATENCY ============ -->
+<section id="ranking">
+  <div class="kicker">02 — Sub-100ms per keystroke, at massive scale, means you can't compute live</div>
+  <h2>Ranking suggestions and the latency budget</h2>
+
+  <p><strong>Start here, before the trade-offs.</strong> Imagine a restaurant host who, instead of memorizing which tables are typically requested most, had to re-survey every single table's status from scratch every time someone walked in and asked "table for two?" That would be accurate, but far too slow for a busy Friday night — a good host instead keeps a running mental model of what's popular and available, updated periodically, so they can answer instantly without re-deriving everything on the spot for every guest.</p>
+
+  <p>Autocomplete has a brutal latency constraint: a response needs to land well under 100ms per keystroke, or the UI feels laggy and defeats the entire point of "auto"-completing as someone types. At real product scale — potentially many millions of queries per second across all users combined, all typing different prefixes at different moments — traversing a live trie and re-ranking candidates on every single keystroke, for every user, is exactly the kind of repeated, predictable computation that's far cheaper to <strong>precompute and cache</strong> than to compute fresh on each request. A common real design: periodically (e.g. from a batch job processing recent query logs) compute and cache the TOP completions for every prefix that's actually been searched, so that a live request becomes a cheap cache lookup by prefix string rather than a live tree traversal plus a ranking computation.</p>
+
+  <div class="code"><span class="c-cmt"># Precomputed top-K completions per prefix, refreshed periodically
+# (e.g. hourly, from query-frequency logs) -- NOT computed per request</span>
+<span class="c-kw">def</span> <span class="c-fn">precompute_top_completions</span>(query_log, top_k=<span class="c-num">5</span>):
+    prefix_to_ranked = {}
+    <span class="c-kw">for</span> prefix <span class="c-kw">in</span> <span class="c-fn">all_prefixes_seen</span>(query_log):
+        candidates = <span class="c-fn">completions_for</span>(prefix)
+        ranked = <span class="c-fn">sorted</span>(candidates, key=<span class="c-kw">lambda</span> c: -c.historical_frequency)
+        prefix_to_ranked[prefix] = ranked[:top_k]
+    <span class="c-kw">return</span> prefix_to_ranked   <span class="c-cmt"># cached in a fast key-value store, e.g. Redis</span>
+
+<span class="c-kw">def</span> <span class="c-fn">handle_keystroke</span>(prefix, cache):
+    <span class="c-kw">return</span> cache.get(prefix, [])   <span class="c-cmt"># O(1) cache lookup, not a live trie search</span></div>
+
+  <div class="lab">
+    <div class="lab-title"><span>TYPE A PREFIX — SUGGESTIONS RANKED BY POPULARITY, NOT ALPHABET</span></div>
+    <input class="type-input" id="type-input" placeholder="Type a prefix, e.g. 'ca'..." autocomplete="off">
+    <div class="suggest-list" id="suggest-list"></div>
+  </div>
+
+  <p>Notice the ranking above isn't alphabetical — "care" outranks "card" and "cat" even though "car" comes first alphabetically among words sharing the "ca" prefix, because "care" has a higher historical popularity/frequency in the (simulated) query log. Ranking by <strong>historical popularity/frequency</strong> — how often each completion has actually been searched by real users in the past — is the standard approach, since it directly optimizes for "what is the user most likely to actually want," which alphabetical order has no relationship to at all.</p>
+
+  <div class="callout rank"><b>Interview-ready definition:</b> autocomplete's sub-100ms-per-keystroke latency requirement, combined with massive query volume, makes live per-request computation of ranked completions impractical at scale — the standard design instead precomputes and caches the top-K completions for each prefix (refreshed periodically from query-frequency logs, e.g. via a batch job), turning each live request into a fast cache lookup rather than a live trie traversal plus ranking pass. Suggestions are ranked by historical popularity/frequency (how often that completion has actually been searched before), not alphabetically, since frequency directly reflects what users are statistically most likely to want next.</div>
+</section>
+
+<!-- ============ SECTION 3: TYPOS & FUZZY MATCHING ============ -->
+<section id="fuzzy">
+  <div class="kicker">03 — What happens when the prefix itself has a typo in it</div>
+  <h2>Handling typos and fuzzy matches</h2>
+
+  <p><strong>Start here, before edit distance.</strong> A pure trie/prefix match has a hard requirement: every character typed must exactly match a real path in the tree. Type "resturant" instead of "restaurant" and a literal trie walk falls off the tree entirely at the missing "a" — no completions found, even though a human reading "resturant" instantly understands what was meant. Autocomplete needs some tolerance for this, since typos are extremely common, especially on mobile keyboards.</p>
+
+  <p>The standard mechanism for measuring "how close" two strings are is <strong>edit distance</strong> (specifically <strong>Levenshtein distance</strong>): the minimum number of single-character insertions, deletions, or substitutions needed to turn one string into the other. "resturant" and "restaurant" have an edit distance of 1 — inserting a single "a" turns one into the other. A fuzzy-tolerant autocomplete can allow candidates within a small edit distance (e.g. 1 or 2) of the typed prefix to still surface as suggestions, rather than requiring an exact prefix match.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>EDIT DISTANCE, CONCRETELY</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">"cat" vs "cot": one substitution (a → o) turns one into the other — edit distance 1. "kitten" vs "sitting": edit distance 3 (substitute k→s, substitute e→i, insert g).</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-pair="catcot">cat → cot</button>
+      <button class="chip" data-pair="kittensitting">kitten → sitting</button>
+    </div>
+    <div id="ed-display"></div>
+  </div>
+
+  <div class="callout fuzzy"><b>Interview-ready definition:</b> edit distance (Levenshtein distance) between two strings is the minimum number of single-character insertions, deletions, or substitutions required to transform one string into the other — it's the standard mechanism for measuring how "close" a typo'd input is to an intended word. Autocomplete systems use it to tolerate small typos by allowing candidates within a small edit-distance threshold of the typed input to still surface, rather than requiring a literal exact-prefix trie match, at the cost of needing to search a wider (fuzzy) candidate space than a pure exact-prefix trie walk would.</div>
+
+  <div class="callout warn"><b>The scale tension:</b> computing true edit distance between a query and every candidate word is more expensive than a plain trie walk (it's a small dynamic-programming computation per candidate pair, not a single character-by-character tree descent), so production autocomplete systems typically restrict fuzzy matching to a bounded neighborhood (e.g. only checking candidates within edit distance 1-2, or precomputing common typo variants alongside the correctly-spelled term) rather than fuzzy-matching the ENTIRE dictionary against every keystroke — this keeps typo tolerance from blowing the same sub-100ms latency budget that motivated precomputing rankings in section 2 in the first place.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing a trie build and search by hand</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Insert the words "app", "apple", "apply" into an empty trie, in that order. How many total nodes exist after all three insertions (excluding the root), and which nodes are marked as word-ends?</p>
+    <details><summary>Show solution</summary><div class="solution">"app" creates 3 nodes: a -> p -> p, with the second "p" node marked as a
+word-end (completing "app").
+
+"apple" shares the "app" prefix entirely (a, p, p already exist from the
+first insertion), so it only needs 2 NEW nodes: l -> e, with the "e" node
+marked as a word-end (completing "apple"). Total nodes so far: 5 (a, p,
+p, l, e).
+
+"apply" shares "appl" with the existing path (a, p, p, l all already
+exist -- the "l" node was created during "apple"'s insertion), so it only
+needs 1 NEW node: y, marked as a word-end (completing "apply"). Total
+nodes: 6 (a, p, p, l, e, y).
+
+Word-end nodes: the second "p" (app), the "e" under l (apple), and the
+"y" under l (apply) -- three word-end markers total. This demonstrates
+the trie's core space efficiency: three words sharing long common
+prefixes needed only 6 total character nodes, not 3+5+5=13 nodes a
+naive independent-storage approach would need, because "app" and "appl"
+were each built once and reused by every word sharing that prefix.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Explaining why precomputation is the right call, quantitatively</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A product serves 2 million autocomplete keystrokes per second at peak, and each live trie-walk-plus-ranking computation takes roughly 3ms of CPU time. Explain concretely why precomputing top completions per prefix (section 2) is close to mandatory here, not just a nice-to-have optimization.</p>
+    <details><summary>Show solution</summary><div class="solution">At 2 million keystrokes/second and 3ms of CPU time per live computation,
+the AGGREGATE CPU-time demand is 2,000,000 * 0.003 = 6,000 CPU-seconds
+of work needed EVERY SECOND just to serve live computation for this
+one feature -- meaning the system would need roughly 6,000 CPU cores
+running flat out, permanently, just for autocomplete ranking alone, even
+before accounting for network overhead, other backend work, or traffic
+spikes above the stated "peak" number. This is an enormous, likely
+cost-prohibitive amount of dedicated compute for a single feature,
+especially one where the underlying data (word/prefix popularity)
+doesn't meaningfully change millisecond to millisecond.
+
+Precomputing top completions per prefix converts this from "6,000 cores
+of live computation, every second, forever" into "an O(1) cache lookup
+per keystroke (sub-millisecond) plus a periodic batch job (e.g. hourly)
+that does the expensive ranking work ONCE per prefix, not once per
+individual keystroke that happens to hit that prefix." Since the same
+popular prefixes get typed by many different users constantly, the batch
+job's one-time cost is amortized across an enormous number of live
+requests that each just read the cached, already-computed answer --
+this is precisely the scale of savings that makes precomputation
+close to mandatory rather than a nice-to-have here.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Diagnosing a staleness problem from precomputed rankings</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team precomputes top completions per prefix once per day. A completely new, suddenly-trending search term starts getting typed heavily mid-day but doesn't appear in autocomplete suggestions until the next day's batch run. Is this a bug? What's the actual trade-off being made, and how would you address it without abandoning precomputation entirely?</p>
+    <details><summary>Show solution</summary><div class="solution">This isn't a bug -- it's the direct, expected consequence of the
+precompute-and-cache design described in section 2: cached rankings are
+only as fresh as the last batch run that computed them, so anything that
+becomes popular AFTER that run genuinely won't be reflected until the
+NEXT run, by design. This is the real trade-off precomputation makes:
+trading some ranking freshness/recency for a massive reduction in live
+per-request compute cost (Problem 2) -- there's no way to get both
+perfectly live rankings AND the compute savings of precomputation
+simultaneously; some staleness window is inherent to the approach.
+
+Addressing it without abandoning precomputation: shorten the batch
+refresh interval for prefixes with unusually high recent query velocity
+(refresh trending prefixes more often, e.g. every few minutes, while
+leaving stable/rarely-changing prefixes on the daily cycle) -- this
+targets the actual pain point (fast-moving trends) without paying the
+full live-computation cost for the entire dictionary. Another common
+approach: maintain a small, fast "trending now" overlay computed on a
+much shorter cycle (or even a lightweight streaming counter) that gets
+blended with the daily-batch base ranking at serve time, giving new
+trends a path to surface quickly without re-architecting the whole
+precomputation pipeline.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing an edit-distance threshold under a latency constraint</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team is deciding whether to allow fuzzy matches within edit distance 1, or edit distance 3, of the typed prefix. What does raising the threshold from 1 to 3 cost, concretely, and why does section 3's "scale tension" callout matter here?</p>
+    <details><summary>Show solution</summary><div class="solution">Raising the allowed edit distance from 1 to 3 dramatically increases the
+number of dictionary candidates that fall within the fuzzy-match
+neighborhood of any given typed prefix -- edit distance 1 only catches
+single-character typos (one wrong/missing/extra letter), while edit
+distance 3 catches far more garbled inputs, which means far MORE
+candidate words need to be checked (or precomputed as typo variants) for
+every possible prefix, since the "close enough" neighborhood around any
+given string grows sharply as the allowed distance increases (roughly
+exponentially with the alphabet size and distance, in the worst case for
+brute-force checking).
+
+This directly matters for section 3's scale tension: computing true edit
+distance is more expensive per comparison than a trie walk, so checking
+against a much larger candidate set (because the threshold is looser) at
+the same per-keystroke latency budget is a real cost increase, risking
+blowing the sub-100ms budget the whole system is built around. In
+practice this pushes toward a threshold like 1-2 (catching the large
+majority of realistic single-typo mistakes) rather than something as
+loose as 3, and toward precomputing common typo variants for popular
+terms specifically, rather than fuzzy-matching the live query against
+the full dictionary at request time regardless of threshold.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Combining all three mechanisms into one design decision</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A user types "aple" (missing a "p", intending "apple"). Walk through, mechanism by mechanism, why a well-designed autocomplete system still surfaces "apple" as a suggestion despite the typo, tying together the trie, ranking, and edit-distance concepts from this lab.</p>
+    <details><summary>Show solution</summary><div class="solution">A pure literal trie walk on "aple" fails structurally partway through:
+following a -> p -> l finds no "l" child under the second "p" node in a
+trie that only contains "apple" (a -> p -> p -> l -> e) unless "aple"
+happens to also be a stored word -- the walk falls off the tree with no
+completions found via exact prefix matching alone, exactly as section 3
+describes.
+
+This is where edit distance comes in: "aple" is edit distance 1 from
+"apple" (one character, a "p", was deleted) -- well within a typical
+fuzzy-match threshold like 1-2. A well-designed system, upon failing (or
+in parallel with) the exact trie walk, checks nearby fuzzy-match
+candidates within that edit-distance threshold and finds "apple" as a
+strong candidate despite the missing letter.
+
+Once "apple" (and any other typo-tolerant candidates) are identified,
+RANKING still applies exactly as in section 2 -- if multiple fuzzy
+candidates are found near "aple" (say, "apple" and some rarer word also
+within edit distance 1), they get ordered by historical
+popularity/frequency, not alphabetically or by edit distance alone, so
+the far more commonly searched "apple" would be ranked above an obscure
+edit-distance-1 alternative. And for latency, this fuzzy-lookup path
+itself benefits from precomputation too: common typo variants of popular
+terms (like "aple" -> "apple") are often precomputed and cached directly,
+the same way exact-prefix completions are, rather than computing live
+edit distance against the whole dictionary on every fuzzy-triggering
+keystroke.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why words sharing a prefix share trie nodes and what that buys structurally, (2) why live per-keystroke computation doesn't scale and what precomputation trades away to fix it, and (3) what edit distance actually counts and why a looser threshold has a real latency cost? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — search autocomplete design.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: TRIE BUILD + SEARCH */
+(function(){
+  var stage = document.getElementById("trie-stage");
+  var runBtn = document.getElementById("trie-run");
+  var resetBtn = document.getElementById("trie-reset");
+  var logEl = document.getElementById("trie-log");
+  var busy = false;
+
+  // trie structure, manually laid out with x/y positions for a clean diagram
+  // root -> c -> a -> t (end:cat)
+  //                -> r (end:car) -> d (end:card)
+  //                              -> e (end:care)
+  //       -> d -> o (end:do) -> g (end:dog)
+  var NODES = {
+    root: {x: 400, y: 20, label: "•", parent: null},
+    c:    {x: 260, y: 80, label: "c", parent: "root"},
+    ca:   {x: 260, y: 140, label: "a", parent: "c"},
+    cat:  {x: 180, y: 200, label: "t", parent: "ca", end: true},
+    car:  {x: 320, y: 200, label: "r", parent: "ca", end: true},
+    card: {x: 280, y: 260, label: "d", parent: "car", end: true},
+    care: {x: 360, y: 260, label: "e", parent: "car", end: true},
+    d:    {x: 560, y: 80, label: "d", parent: "root"},
+    do_:  {x: 560, y: 140, label: "o", parent: "d", end: true},
+    dog:  {x: 560, y: 200, label: "g", parent: "do_", end: true}
+  };
+
+  function build(){
+    stage.innerHTML = "";
+    stage.style.minHeight = "320px";
+    // edges first
+    Object.keys(NODES).forEach(function(key){
+      var n = NODES[key];
+      if(n.parent){
+        var p = NODES[n.parent];
+        var dx = n.x - p.x, dy = n.y - p.y;
+        var len = Math.sqrt(dx*dx + dy*dy);
+        var angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        var edge = document.createElement("div");
+        edge.className = "trie-edge";
+        edge.id = "edge-" + key;
+        edge.style.left = p.x + "px";
+        edge.style.top = p.y + "px";
+        edge.style.width = len + "px";
+        edge.style.transform = "rotate(" + angle + "deg)";
+        stage.appendChild(edge);
+      }
+    });
+    // nodes
+    Object.keys(NODES).forEach(function(key){
+      var n = NODES[key];
+      var el = document.createElement("div");
+      el.className = "trie-node" + (key === "root" ? " root" : "") + (n.end ? " endword" : "");
+      el.id = "node-" + key;
+      el.style.left = n.x + "px";
+      el.style.top = n.y + "px";
+      el.textContent = n.label;
+      stage.appendChild(el);
+    });
+  }
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    build();
+    logEl.innerHTML = "";
+
+    log('<b>Descending for prefix "ca":</b> root → c → a');
+    var path = ["root", "c", "ca"];
+    for(var i = 0; i < path.length; i++){
+      document.getElementById("node-" + path[i]).classList.add("visited");
+      if(i > 0){
+        document.getElementById("edge-" + path[i]).classList.add("traversed");
+      }
+      await wait(450);
+    }
+
+    log('<b>Reached the "ca" node.</b> Now collecting every word-end in its subtree: cat, car, card, care.');
+    await wait(400);
+
+    var subtree = ["cat", "car", "card", "care"];
+    for(var j = 0; j < subtree.length; j++){
+      var key = subtree[j];
+      document.getElementById("node-" + key).classList.add("collected");
+      document.getElementById("edge-" + key).classList.add("traversed");
+      log("Collected: " + key);
+      await wait(350);
+    }
+
+    log('<b style="color:var(--accent);">Search complete.</b> 4 completions found for "ca" — "dog" and "do" were never touched at all, since they live in a completely separate branch off the root.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    build();
+    logEl.innerHTML = '<span class="line">Click to run the prefix search and watch which subtree gets collected.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  build();
+})();
+
+/* SECTION 2: TYPE-TO-SEARCH RANKED SUGGESTIONS */
+(function(){
+  var input = document.getElementById("type-input");
+  var listEl = document.getElementById("suggest-list");
+
+  // simulated popularity-ranked completions, keyed by prefix
+  var DICTIONARY = [
+    {word: "cat", pop: 320},
+    {word: "car", pop: 810},
+    {word: "card", pop: 640},
+    {word: "care", pop: 1250},
+    {word: "careful", pop: 410},
+    {word: "career", pop: 980},
+    {word: "dog", pop: 700},
+    {word: "do", pop: 150}
+  ];
+
+  function render(prefix){
+    listEl.innerHTML = "";
+    if(!prefix){ return; }
+    var matches = DICTIONARY.filter(function(d){ return d.word.indexOf(prefix.toLowerCase()) === 0; })
+      .sort(function(a,b){ return b.pop - a.pop; })
+      .slice(0, 5);
+    matches.forEach(function(m, i){
+      var row = document.createElement("div");
+      row.className = "suggest-row";
+      row.innerHTML = "<span>" + m.word + "</span><span class=\"pop\">popularity " + m.pop + "</span>";
+      listEl.appendChild(row);
+      setTimeout(function(){ row.classList.add("show"); }, 30 + i * 60);
+    });
+    if(matches.length === 0){
+      var row = document.createElement("div");
+      row.className = "suggest-row show";
+      row.innerHTML = "<span>No cached completions for this prefix.</span>";
+      listEl.appendChild(row);
+    }
+  }
+
+  input.addEventListener("input", function(){
+    render(input.value.trim());
+  });
+})();
+
+/* SECTION 3: EDIT DISTANCE GRID */
+(function(){
+  var chips = document.querySelectorAll("[data-pair]");
+  var display = document.getElementById("ed-display");
+
+  var PAIRS = {
+    catcot: {a: "cat", b: "cot"},
+    kittensitting: {a: "kitten", b: "sitting"}
+  };
+
+  function levenshteinGrid(a, b){
+    var m = a.length, n = b.length;
+    var dp = [];
+    for(var i = 0; i <= m; i++){
+      dp.push(new Array(n+1).fill(0));
+      dp[i][0] = i;
+    }
+    for(var j = 0; j <= n; j++){ dp[0][j] = j; }
+    for(i = 1; i <= m; i++){
+      for(j = 1; j <= n; j++){
+        if(a[i-1] === b[j-1]){
+          dp[i][j] = dp[i-1][j-1];
+        } else {
+          dp[i][j] = 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+        }
+      }
+    }
+    return dp;
+  }
+
+  function tracePath(dp, a, b){
+    var i = a.length, j = b.length;
+    var path = [[i,j]];
+    while(i > 0 || j > 0){
+      if(i > 0 && j > 0 && a[i-1] === b[j-1] && dp[i][j] === dp[i-1][j-1]){
+        i--; j--;
+      } else {
+        var diag = i > 0 && j > 0 ? dp[i-1][j-1] : Infinity;
+        var up = i > 0 ? dp[i-1][j] : Infinity;
+        var left = j > 0 ? dp[i][j-1] : Infinity;
+        var min = Math.min(diag, up, left);
+        if(min === diag){ i--; j--; }
+        else if(min === up){ i--; }
+        else { j--; }
+      }
+      path.push([i,j]);
+    }
+    return path;
+  }
+
+  function render(key){
+    var pair = PAIRS[key];
+    var dp = levenshteinGrid(pair.a, pair.b);
+    var path = tracePath(dp, pair.a, pair.b);
+    var pathSet = {};
+    path.forEach(function(p){ pathSet[p[0] + "," + p[1]] = true; });
+
+    var cols = pair.b.length + 2;
+    var html = '<div class="ed-grid" style="grid-template-columns:repeat(' + cols + ', 34px);">';
+    // header row
+    html += '<div class="ed-cell head"></div>';
+    html += '<div class="ed-cell head"></div>';
+    for(var j = 0; j < pair.b.length; j++){
+      html += '<div class="ed-cell head">' + pair.b[j] + '</div>';
+    }
+    for(var i = 0; i <= pair.a.length; i++){
+      html += '<div class="ed-cell head">' + (i === 0 ? "" : pair.a[i-1]) + '</div>';
+      for(var jj = 0; jj <= pair.b.length; jj++){
+        var onPath = pathSet[i + "," + jj];
+        html += '<div class="ed-cell' + (onPath ? ' path' : '') + '">' + dp[i][jj] + '</div>';
+      }
+    }
+    html += '</div>';
+    html += '<p style="font-size:0.85rem; margin-top:0.8rem;"><strong>Edit distance: ' + dp[pair.a.length][pair.b.length] + '</strong> — the bottom-right cell of the grid, reached by the highlighted path, which marks the minimum number of insertions/deletions/substitutions needed to turn "' + pair.a + '" into "' + pair.b + '".</p>';
+    display.innerHTML = html;
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      render(c.dataset.pair);
+    });
+  });
+
+  render("catcot");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Re-ranking</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --bi-c:#4fc3f7; --cross-c:#ff8a65; --final-c:#7fd8a0; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(255,138,101,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--bi-c); color:var(--bi-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--cross-c); color:var(--cross-c); background:rgba(255,138,101,0.08);}
+  .pipe-label.c{border-color:var(--final-c); color:var(--final-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* two-stage pipeline funnel */
+  .pipeline-stage{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.4rem; margin:1.2rem 0;}
+  .funnel-row{display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:0.8rem;}
+  .funnel-label{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); min-width:130px;}
+  .candidate-pool{display:flex; gap:5px; flex-wrap:wrap; flex:1;}
+  .cand-chip{width:22px; height:22px; border-radius:5px; background:var(--bi-c); opacity:0.3; transition:all .35s ease;}
+  .cand-chip.survives{opacity:1; box-shadow:0 0 8px var(--bi-c);}
+  .cand-chip.reranked{background:var(--cross-c); opacity:1; box-shadow:0 0 10px var(--cross-c);}
+  .cand-chip.final{background:var(--final-c); opacity:1; box-shadow:0 0 12px var(--final-c); transform:scale(1.15);}
+
+  /* encoder architecture diagrams */
+  .arch-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.arch-compare{grid-template-columns:1fr;}}
+  .arch-box{border:1.5px solid var(--rule); border-radius:12px; padding:1.2rem; background:var(--panel-2);}
+  .arch-box.bi{border-color:var(--bi-c);}
+  .arch-box.cross{border-color:var(--cross-c);}
+  .arch-box h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.8rem;}
+  .arch-box.bi h4{color:var(--bi-c);}
+  .arch-box.cross h4{color:var(--cross-c);}
+  .arch-diagram{display:flex; flex-direction:column; align-items:center; gap:0.4rem; font-family:var(--mono); font-size:0.72rem; margin:0.8rem 0;}
+  .arch-item{padding:0.4rem 0.8rem; border-radius:6px; border:1px solid var(--rule); background:#0b0d11; width:100%; text-align:center;}
+  .arch-item.encoder{color:var(--ink);}
+  .arch-item.together{border-color:var(--cross-c); color:var(--cross-c);}
+  .arch-arrow{color:var(--ink-dim); font-size:0.9rem;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--bi-c);} .dc-col.a h4{color:var(--bi-c);}
+  .dc-col.b{border-color:var(--cross-c);} .dc-col.b h4{color:var(--cross-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  /* reorder list */
+  .rank-list{display:flex; flex-direction:column; gap:0.4rem; margin:1rem 0;}
+  .rank-row{font-family:var(--mono); font-size:0.8rem; padding:0.5rem 0.8rem; border-radius:6px; background:var(--panel-2); border:1px solid var(--rule); display:flex; justify-content:space-between; gap:0.6rem; transition:all .5s ease;}
+  .rank-row .rscore{color:var(--ink-dim); font-size:0.72rem;}
+  .rank-row.promoted{border-color:var(--final-c);}
+  .rank-row.promoted .rscore{color:var(--final-c);}
+  .rank-row.demoted{opacity:0.6;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.cross{border-left-color:var(--cross-c); background:rgba(255,138,101,0.06);} .callout.cross b{color:var(--cross-c);}
+  .callout.final{border-left-color:var(--final-c); background:rgba(127,216,160,0.06);} .callout.final b{color:var(--final-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CHUNKING &amp; HYBRID SEARCH</div>
+  <h1>Retrieval finds a big pile of plausible answers fast. Re-ranking looks closer, at only a few.</h1>
+  <p class="lede">Fast retrieval (dense, BM25, or hybrid) is deliberately approximate — it has to scan a huge index quickly, so it can't afford to look too closely at any one candidate. Re-ranking is the second pass: a slower, more accurate model that looks at the query and each candidate TOGETHER, but only across the small shortlist retrieval already narrowed things down to. This lab animates the funnel — many candidates in, a small precise top-K out — and works through exactly why the re-ranker has to be a different kind of model.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Bi-encoder — fast, precomputable</div>
+    <div class="pipe-label b">Cross-encoder — accurate, query-time only</div>
+    <div class="pipe-label c">Two-stage pipeline</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="pipeline">1 · The Two-Stage Pipeline</a>
+  <a data-target="architecture">2 · Bi-Encoder vs Cross-Encoder</a>
+  <a data-target="animation">3 · Watch Re-ranking Narrow the Field</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TWO-STAGE PIPELINE ============ -->
+<section id="pipeline">
+  <div class="kicker">01 — Cheap and broad first, expensive and narrow second</div>
+  <h2>Re-ranking as a second-pass refinement step</h2>
+
+  <p><strong>Start here, before any architecture.</strong> Imagine hiring for a role with 2,000 applicants. Nobody conducts a full, careful, in-depth interview with all 2,000 people — that would take forever. Instead, a fast first pass (scanning resumes for basic keyword/qualification matches) narrows 2,000 down to maybe 20 plausible candidates quickly and cheaply. THEN, and only then, a much more careful, more expensive process — an actual interview, where the interviewer looks closely at each specific candidate's answers in context — gets applied, but only to those 20, not all 2,000. The expensive step is affordable specifically because it only ever runs on the small shortlist the cheap step already produced.</p>
+
+  <p><strong>Re-ranking</strong> applies exactly this two-stage structure to search. The first stage — retrieval (dense embedding search, BM25, or the hybrid combination of both from earlier this week) — scans the FULL index and returns a larger candidate set (e.g. the top 50-100) cheaply and quickly, prioritizing speed and scale over precision. The second stage — re-ranking — takes ONLY that smaller candidate set and runs a more expensive, more accurate scoring pass over it, reordering (and often further truncating) it down to a small, precise top-K (e.g. the top 5-10) that actually gets used — sent to the LLM, or shown to the user. The re-ranker never touches the full index; it only ever operates on the shortlist retrieval already produced.</p>
+
+  <div class="code"><span class="c-cmt"># The two-stage shape, end to end</span>
+<span class="c-kw">def</span> <span class="c-fn">search_with_reranking</span>(query, full_index, final_k=<span class="c-num">5</span>):
+    <span class="c-cmt"># stage 1: fast, broad retrieval over the FULL index</span>
+    candidates = retrieve(query, full_index, top_n=<span class="c-num">50</span>)   <span class="c-cmt"># cheap, approximate</span>
+
+    <span class="c-cmt"># stage 2: slow, precise re-ranking over ONLY those 50 candidates</span>
+    rescored = [(doc, <span class="c-fn">cross_encoder_score</span>(query, doc)) <span class="c-kw">for</span> doc <span class="c-kw">in</span> candidates]
+    rescored.sort(key=<span class="c-kw">lambda</span> pair: -pair[<span class="c-num">1</span>])
+
+    <span class="c-kw">return</span> rescored[:final_k]   <span class="c-cmt"># the small, precise top-K that actually gets used</span></div>
+
+  <div class="callout"><b>Interview-ready definition:</b> re-ranking is a second-pass refinement step in a retrieval pipeline: an initial retrieval stage (dense, sparse, or hybrid) cheaply scans the full index and returns a larger candidate set, and a re-ranking stage then applies a more expensive, more accurate scoring model to ONLY that smaller candidate set to reorder (and typically truncate) it into a small, precise final result. This staged structure exists because the more accurate scoring approach is too expensive to run against the entire index directly — it's only affordable when applied to the much smaller shortlist the first stage already narrowed things down to.</div>
+</section>
+
+<!-- ============ SECTION 2: ARCHITECTURE ============ -->
+<section id="architecture">
+  <div class="kicker">02 — Why the re-ranker can't just be "the same model, but better"</div>
+  <h2>Bi-encoder vs cross-encoder: why re-ranking needs a different architecture</h2>
+
+  <p><strong>Start here, before the diagrams.</strong> Imagine two ways to judge how well a job candidate matches a role. Method one: separately summarize the candidate into a short profile, and separately summarize the role into a short profile, then compare the two summaries — fast, and you can pre-write a candidate's profile once and reuse it against many different roles. Method two: sit the candidate down WITH the actual role's hiring manager and have a real conversation where each side responds to the specific details of the other — much more accurate, since it can catch subtle fit signals the two independent summaries would flatten away, but it's expensive and has to happen fresh, in real time, for every single candidate-role pairing — you can't "pre-compute" a real conversation in advance.</p>
+
+  <div class="arch-compare">
+    <div class="arch-box bi">
+      <h4>Bi-encoder (used in initial retrieval)</h4>
+      <div class="arch-diagram">
+        <div class="arch-item encoder">Query → Encoder → query vector</div>
+        <div class="arch-arrow">↓ compared via cosine similarity ↓</div>
+        <div class="arch-item encoder">Document → Encoder → doc vector</div>
+      </div>
+      <p style="font-size:0.85rem; margin:0;">Query and document are embedded <strong>separately</strong>, by the same encoder, with no interaction between them. Document embeddings can be computed once, offline, and reused for every future query — this is exactly what makes large-scale fast retrieval possible.</p>
+    </div>
+    <div class="arch-box cross">
+      <h4>Cross-encoder (used in re-ranking)</h4>
+      <div class="arch-diagram">
+        <div class="arch-item together">[Query + Document] fed in TOGETHER → Encoder → relevance score</div>
+      </div>
+      <p style="font-size:0.85rem; margin:0;">Query and document are concatenated and processed <strong>together</strong>, in one pass, so the model can directly attend to how specific words/phrases in each relate to the other. This produces a more accurate relevance judgment, but the score is meaningless until you already know the SPECIFIC query — it cannot be precomputed for a document in isolation.</p>
+    </div>
+  </div>
+
+  <p>This architectural difference is exactly why re-ranking has to be a two-stage pipeline rather than "just use the cross-encoder for everything." A <strong>bi-encoder</strong> embeds the query and each document independently — critically, this means every document's embedding can be computed ONCE, offline, ahead of any query, and stored in an index; at query time, only the QUERY needs to be embedded fresh, and it's compared against millions of precomputed document vectors via fast similarity search. A <strong>cross-encoder</strong> needs both the query AND the specific document present simultaneously to produce a score — there's no way to precompute "how relevant is this document" without already knowing what it's being compared against, since the model's entire mechanism is built around directly attending across the two inputs together. Running a cross-encoder against every document in a million-document index, for every query, would require millions of full model inferences per query — computationally infeasible at that scale, which is exactly why it's only ever applied to retrieval's small shortlist.</p>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Bi-encoder (retrieval)</th><th>Cross-encoder (re-ranking)</th></tr>
+    <tr><td>Query/document interaction</td><td>None — embedded fully independently</td><td>Full — processed together in one pass</td></tr>
+    <tr><td>Precomputable?</td><td>Yes — document embeddings computed once, offline</td><td>No — needs the specific query at inference time</td></tr>
+    <tr><td>Cost per query</td><td>Cheap — one query embedding + fast vector search</td><td>Expensive — one full model pass per candidate document</td></tr>
+    <tr><td>Where it's used</td><td>Initial retrieval, across the full index</td><td>Re-ranking, across only the small candidate shortlist</td></tr>
+    <tr><td>Accuracy</td><td>Good, but limited by comparing independent summaries</td><td>Higher — can catch fine-grained query-document interactions</td></tr>
+  </table>
+
+  <div class="callout cross"><b>Interview-ready definition:</b> a bi-encoder embeds the query and each document independently into a shared vector space, with no interaction between them at encoding time — this independence is precisely what allows document embeddings to be precomputed once and reused across every future query, making bi-encoders the right architecture for fast retrieval over large indexes. A cross-encoder instead processes the query and a specific document TOGETHER in a single forward pass, allowing it to directly attend to fine-grained interactions between them for a more accurate relevance score — but this score cannot be precomputed, since it requires the specific query at inference time, which makes cross-encoders computationally affordable only on a small candidate set rather than an entire index, and is the direct architectural reason re-ranking must be a second stage applied after retrieval, not a replacement for it.</div>
+</section>
+
+<!-- ============ SECTION 3: ANIMATION ============ -->
+<section id="animation">
+  <div class="kicker">03 — Watch the funnel narrow, and the order actually change</div>
+  <h2>The two-stage pipeline, animated</h2>
+
+  <p><strong>Start here, before the demo.</strong> The most important thing to watch for below isn't just that the candidate set shrinks — it's that the RE-RANKED order can genuinely differ from retrieval's original order. A document that retrieval ranked, say, 8th out of 50 (a reasonable but not top bi-encoder similarity score) can end up re-ranked into the top 3 once the cross-encoder actually looks closely at how well it answers the specific query — and a document retrieval ranked highly can drop, if the closer cross-encoder look reveals it's a weaker match than the independent embeddings suggested.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>RETRIEVE 12 CANDIDATES → RE-RANK DOWN TO TOP 4</span>
+      <div><button class="btn secondary" id="rr-reset">Reset</button></div>
+    </div>
+    <div class="pipeline-stage">
+      <div class="funnel-row">
+        <span class="funnel-label">Stage 1 — retrieval</span>
+        <div class="candidate-pool" id="pool-retrieval"></div>
+      </div>
+      <div class="funnel-row">
+        <span class="funnel-label">Stage 2 — re-ranking</span>
+        <div class="candidate-pool" id="pool-rerank"></div>
+      </div>
+      <div class="funnel-row">
+        <span class="funnel-label">Final top-K</span>
+        <div class="candidate-pool" id="pool-final"></div>
+      </div>
+    </div>
+    <button class="btn" id="rr-run">Run the pipeline ▸</button>
+    <div class="rank-list" id="rank-list"></div>
+    <div class="log" id="rr-log"><span class="line">Click to run retrieval (fast, broad), then re-ranking (slow, precise) over just its output.</span></div>
+  </div>
+
+  <div class="callout final"><b>Interview-ready definition:</b> the two-stage retrieval-then-rerank pipeline narrows a large candidate pool (e.g. 50 documents from bi-encoder retrieval) down to a small, precise final result (e.g. the top 5, chosen by cross-encoder re-ranking) — and critically, the re-ranked order frequently differs from the retrieval order, since the cross-encoder's direct query-document attention can surface relevance signals the bi-encoder's independent embeddings missed. This is the concrete payoff of paying the cross-encoder's higher per-document cost: it's applied only where it's affordable (a small shortlist), but produces a final ranking noticeably more accurate than retrieval's ranking alone would have been.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Explaining precisely why cross-encoder scores can't be precomputed</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone suggests: "just precompute cross-encoder relevance scores for every document against a large set of common queries, and cache them, the same way bi-encoder document embeddings are precomputed." Explain specifically what breaks about this compared to bi-encoder precomputation.</p>
+    <details><summary>Show solution</summary><div class="solution">Bi-encoder precomputation works because a document's EMBEDDING is a
+property of the document alone -- it doesn't depend on any particular
+query, so it's computed once and reused against every future query via a
+separate, fast similarity comparison at query time. A cross-encoder
+score, by contrast, is not a property of the document alone at all --
+it's a joint function of the SPECIFIC query-document PAIR, produced by
+feeding both into the model together in one pass. There is no
+"cross-encoder embedding of just the document" to precompute, because
+the model's entire mechanism (attending across query and document
+together) requires both inputs simultaneously to produce any score at
+all.
+
+Precomputing scores against a "large set of common queries" doesn't
+actually solve this -- it only covers the specific finite set of queries
+chosen in advance, and real user queries are effectively unbounded and
+frequently novel (a query nobody typed before, phrased in a way not in
+the precomputed set, gets no cached score at all). This differs
+fundamentally from bi-encoder document embeddings, which are useful
+against EVERY possible future query without needing to know any of them
+in advance, precisely because the document embedding step never involved
+a query to begin with. This is the structural reason cross-encoders stay
+confined to a small, query-time-only shortlist rather than being
+precomputed like bi-encoder embeddings.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing what a re-ranker can catch that retrieval missed</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A query is "database with strong consistency guarantees, not eventual." A retrieved document (ranked 15th by the bi-encoder) discusses "a database offering configurable consistency, including strict linearizability for critical operations." Explain, using section 2's architecture difference, why a cross-encoder might rank this document much higher than the bi-encoder did.</p>
+    <details><summary>Show solution</summary><div class="solution">The bi-encoder embeds the query and this document completely
+independently, with no direct interaction between them at embedding
+time -- its similarity score reflects how close their two INDEPENDENT
+vector summaries land in the embedding space overall, which can be
+diluted by everything else in the document unrelated to consistency, and
+by the fact that "strong consistency, not eventual" (query) and "strict
+linearizability" (document) are related concepts but not phrased with
+obvious surface-level similarity that an independent summary
+necessarily preserves strongly.
+
+A cross-encoder processes the query and this specific document TOGETHER
+in one pass, allowing it to directly attend to the fact that "strict
+linearizability" is a specific, strong technical instantiation of "strong
+consistency guarantees, not eventual" -- a fine-grained semantic
+connection that requires directly relating specific phrases in the query
+to specific phrases in the document, exactly the kind of interaction a
+bi-encoder's separate-embedding-then-compare approach is structurally
+less able to capture as precisely. This is a concrete instance of
+section 2's core claim: the cross-encoder's joint processing can surface
+relevance signals that got diluted or missed when the query and document
+were only ever compared as two independently-computed summaries.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing retrieval and re-ranking candidate-set sizes under a latency budget</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A cross-encoder pass takes roughly 8ms per query-document pair, and the total pipeline (retrieval + re-ranking) has a 150ms latency budget, of which retrieval itself reliably takes about 20ms. What's the maximum number of candidates retrieval can hand to the re-ranker without blowing the budget, and what does this reveal about why retrieval can't just return everything?</p>
+    <details><summary>Show solution</summary><div class="solution">Remaining budget for re-ranking: 150ms - 20ms (retrieval) = 130ms.
+At 8ms per candidate (assuming candidates are scored sequentially, a
+reasonable simplifying assumption for this estimate), 130ms / 8ms ≈ 16
+candidates is roughly the maximum the re-ranker can process within
+budget. (In practice, cross-encoder scoring is often batched/parallelized
+to some degree, which would raise this number somewhat, but the
+underlying cost-per-candidate constraint still directly caps how large a
+candidate set is affordable — batching doesn't make the cost
+disappear, just amortizes it.)
+
+This reveals exactly why retrieval can't simply return "everything
+plausibly relevant" or the entire index: the re-ranker's per-candidate
+cost is the binding constraint on candidate-set size under any real
+latency budget, and that cost is fixed by the cross-encoder's
+architecture (section 2) — it can't be avoided by better engineering,
+only worked around by giving the re-ranker fewer candidates to score.
+This is precisely why retrieval's job is to be a cheap, imperfect FILTER
+down to a size the re-ranker can actually afford (here, roughly 16), not
+to independently guarantee finding every possible good answer on its
+own — the re-ranker's job is to add precision within that constrained
+candidate budget, not to fix a retrieval stage that returned too little
+or too much.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a re-ranking pipeline that isn't improving results</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team adds a cross-encoder re-ranking stage to their pipeline, but measured result quality barely improves. On investigation, retrieval's top-50 candidates for a large fraction of queries don't actually contain the truly best-matching document at all — it's sitting at rank 80+ in retrieval's own ranking, well outside what gets passed to the re-ranker. Is this a re-ranking bug? What's actually wrong, and what does it reveal about the pipeline's overall dependency structure?</p>
+    <details><summary>Show solution</summary><div class="solution">This is not a re-ranking bug -- the re-ranker is doing exactly what it's
+designed to do (accurately reordering whatever candidate set it's given),
+but it can only reorder documents that were HANDED to it in the first
+place. If the truly best-matching document never makes it into
+retrieval's top-50 (it's sitting at rank 80+, outside the shortlist the
+re-ranker ever sees), no amount of re-ranking accuracy can recover it --
+the re-ranker has no visibility into candidates it was never given, the
+same structural limitation an RRF fusion step has with respect to its
+own inputs.
+
+What's actually wrong is upstream, in retrieval's RECALL: retrieval
+itself is failing to surface the best document within its own top-50 for
+a meaningful fraction of queries, likely due to retrieval-stage issues
+(bi-encoder embedding quality, chunking choices, or too small a top_n
+cutoff at the retrieval stage) rather than anything about re-ranking.
+
+This reveals the pipeline's overall dependency structure precisely:
+retrieval's job is to guarantee (with high probability) that the truly
+best documents are SOMEWHERE within the candidate set it hands off;
+re-ranking's job is to accurately ORDER whatever it's handed. The two
+stages have genuinely different failure modes and different fixes --
+improving re-ranking accuracy cannot compensate for a retrieval recall
+problem, and the fix here is investigating and improving retrieval's
+top_n cutoff and/or embedding quality, not tuning the re-ranker further.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining why bi-encoder retrieval is still necessary even with a great cross-encoder</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If cross-encoders produce more accurate relevance scores than bi-encoders, why not skip bi-encoder retrieval entirely and just run the cross-encoder against every document in the index directly? Give the specific reason, not just "it would be slow."</p>
+    <details><summary>Show solution</summary><div class="solution">The specific reason ties directly back to section 2's architecture
+difference: a cross-encoder score requires the query and a SPECIFIC
+document to be processed together in a single model pass, which means
+running it against every document in the index would require one full
+model inference PER DOCUMENT, PER QUERY -- for a million-document index,
+that's a million full model forward passes for every single query,
+with none of that work reusable across different queries (since nothing
+about a cross-encoder's computation can be precomputed independently of
+the query, per section 2). This isn't just "slow" in a vague sense --
+it's a fundamentally different computational shape than bi-encoder
+retrieval, which does ONE query-side computation plus a fast vector
+similarity search against ALREADY-precomputed document embeddings,
+letting it scale to large indexes because the expensive per-document
+work (embedding) was already done once, offline, before any query ever
+arrived.
+
+Bi-encoder retrieval remains necessary specifically to convert "score
+every document against this query" (computationally infeasible for a
+cross-encoder at index scale) into "score only these ~50 documents
+against this query" (computationally very feasible for a cross-encoder)
+-- it's not that bi-encoders are simply "good enough" on their own, it's
+that they perform the specific structural job (cheap, precomputable,
+scale-to-the-full-index filtering) that a cross-encoder architecturally
+cannot perform at all, regardless of how much compute you're willing to
+spend on it, since its accuracy comes precisely from the per-pair joint
+processing that also makes it impossible to precompute or scale to
+millions of documents per query.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) why the re-ranker only ever operates on retrieval's shortlist and never the full index, (2) the precise architectural difference between a bi-encoder and a cross-encoder and why only one of them is precomputable, and (3) why a retrieval recall problem can't be fixed by improving re-ranking? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — re-ranking.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* PIPELINE ANIMATION */
+(function(){
+  var poolRetrieval = document.getElementById("pool-retrieval");
+  var poolRerank = document.getElementById("pool-rerank");
+  var poolFinal = document.getElementById("pool-final");
+  var rankListEl = document.getElementById("rank-list");
+  var runBtn = document.getElementById("rr-run");
+  var resetBtn = document.getElementById("rr-reset");
+  var logEl = document.getElementById("rr-log");
+  var busy = false;
+
+  var TOTAL = 12;
+  var SHORTLIST = 8;
+  var FINAL_K = 4;
+
+  // simulated retrieval order (bi-encoder rank) vs cross-encoder final rank
+  // doc ids 0..7 make the shortlist; final winners are a DIFFERENT order
+  var DOCS = [
+    {id: 0, name: "Doc A", biRank: 1, crossScore: 0.62},
+    {id: 1, name: "Doc B", biRank: 2, crossScore: 0.58},
+    {id: 2, name: "Doc C", biRank: 3, crossScore: 0.95},
+    {id: 3, name: "Doc D", biRank: 4, crossScore: 0.41},
+    {id: 4, name: "Doc E", biRank: 5, crossScore: 0.88},
+    {id: 5, name: "Doc F", biRank: 6, crossScore: 0.35},
+    {id: 6, name: "Doc G", biRank: 7, crossScore: 0.91},
+    {id: 7, name: "Doc H", biRank: 8, crossScore: 0.30}
+  ];
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function build(){
+    poolRetrieval.innerHTML = "";
+    poolRerank.innerHTML = "";
+    poolFinal.innerHTML = "";
+    rankListEl.innerHTML = "";
+    for(var i = 0; i < TOTAL; i++){
+      var c = document.createElement("div");
+      c.className = "cand-chip";
+      c.id = "chip-retrieval-" + i;
+      poolRetrieval.appendChild(c);
+    }
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    build();
+    logEl.innerHTML = "";
+
+    log('<b>Stage 1 — retrieval:</b> scanning the full index, returning the top ' + TOTAL + ' candidates by bi-encoder similarity.');
+    for(var i = 0; i < TOTAL; i++){
+      document.getElementById("chip-retrieval-" + i).classList.add("survives");
+      await wait(50);
+    }
+    await wait(400);
+
+    log('<b>Narrowing to the top ' + SHORTLIST + '</b> candidates that retrieval ranked highest — these get handed to the re-ranker.');
+    for(var j = 0; j < SHORTLIST; j++){
+      var c = document.createElement("div");
+      c.className = "cand-chip";
+      c.id = "chip-rerank-" + j;
+      poolRerank.appendChild(c);
+      await wait(60);
+      c.classList.add("reranked");
+    }
+    await wait(500);
+
+    log('<b>Stage 2 — re-ranking:</b> cross-encoder scores each of the ' + SHORTLIST + ' candidates against the query, together, one at a time (this is the expensive step — only affordable because it\'s just ' + SHORTLIST + ' candidates, not the full index).');
+    await wait(600);
+
+    var sorted = DOCS.slice().sort(function(a,b){ return b.crossScore - a.crossScore; });
+    var finalTop = sorted.slice(0, FINAL_K);
+
+    finalTop.forEach(function(d, idx){
+      setTimeout(function(){
+        var c = document.createElement("div");
+        c.className = "cand-chip final";
+        poolFinal.appendChild(c);
+      }, idx * 150);
+    });
+    await wait(FINAL_K * 150 + 300);
+
+    log('<b style="color:var(--final-c);">Final top-' + FINAL_K + ', re-ranked:</b> notice the order changed from retrieval\'s original ranking below.');
+
+    // render before/after comparison
+    var beforeOrder = DOCS.slice().sort(function(a,b){ return a.biRank - b.biRank; }).slice(0, SHORTLIST);
+    beforeOrder.forEach(function(d){
+      var row = document.createElement("div");
+      var isFinal = finalTop.indexOf(d) > -1;
+      var wasTopByBi = d.biRank <= FINAL_K;
+      var cls = "rank-row";
+      if(isFinal && !wasTopByBi) cls += " promoted";
+      if(!isFinal && wasTopByBi) cls += " demoted";
+      row.className = cls;
+      row.innerHTML = "<span>" + d.name + " — retrieval rank #" + d.biRank + "</span><span class=\"rscore\">cross-encoder score " + d.crossScore.toFixed(2) + (isFinal ? " → FINAL TOP-" + FINAL_K : "") + "</span>";
+      rankListEl.appendChild(row);
+    });
+
+    await wait(200);
+    var promotedCount = finalTop.filter(function(d){ return d.biRank > FINAL_K; }).length;
+    log(promotedCount + " of the final top-" + FINAL_K + " were NOT in retrieval's own top-" + FINAL_K + " — the cross-encoder's closer look genuinely changed the outcome, not just the labels.");
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    build();
+    logEl.innerHTML = '<span class="line">Click to run retrieval (fast, broad), then re-ranking (slow, precise) over just its output.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>

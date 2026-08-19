@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Hybrid Search</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dense-c:#4fc3f7; --sparse-c:#f2c14e; --fusion-c:#7fd8a0; --bad-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dense-c); color:var(--dense-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--sparse-c); color:var(--sparse-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--fusion-c); color:var(--fusion-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* results columns for the two failure-mode demo */
+  .results-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.results-grid{grid-template-columns:1fr;}}
+  .results-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem 1.1rem; background:var(--panel-2);}
+  .results-col h4{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.7rem;}
+  .results-col.dense h4{color:var(--dense-c);}
+  .results-col.sparse h4{color:var(--sparse-c);}
+  .result-row{font-family:var(--mono); font-size:0.78rem; padding:0.45rem 0.6rem; border-radius:6px; margin-bottom:0.4rem; display:flex; justify-content:space-between; gap:0.6rem; background:#0b0d11; border:1px solid var(--rule); opacity:0; transform:translateX(-6px); transition:opacity .4s, transform .4s;}
+  .result-row.show{opacity:1; transform:translateX(0);}
+  .result-row.miss{border-color:var(--bad-c); color:var(--bad-c); font-style:italic;}
+  .result-row .rscore{color:var(--ink-dim); font-size:0.72rem;}
+
+  /* RRF fusion visualization */
+  .fusion-stage{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.2rem; margin:1.2rem 0;}
+  .fusion-row{display:grid; grid-template-columns:1.6fr 0.9fr 0.9fr 1fr; gap:0.6rem; align-items:center; font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.3rem; border-bottom:1px solid var(--rule);}
+  .fusion-row.head{color:var(--ink-dim); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1.5px solid var(--rule);}
+  .fusion-row:last-child{border-bottom:none;}
+  .fusion-rank{color:var(--dense-c);}
+  .fusion-rank.na{color:var(--ink-dim); opacity:0.5;}
+  .fusion-rank2{color:var(--sparse-c);}
+  .fusion-rank2.na{color:var(--ink-dim); opacity:0.5;}
+  .fusion-score{color:var(--fusion-c); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--dense-c);} .dc-col.a h4{color:var(--dense-c);}
+  .dc-col.b{border-color:var(--sparse-c);} .dc-col.b h4{color:var(--sparse-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.fusion{border-left-color:var(--fusion-c); background:rgba(127,216,160,0.06);} .callout.fusion b{color:var(--fusion-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CHUNKING &amp; HYBRID SEARCH</div>
+  <h1>Meaning search misses exact codes. Keyword search misses paraphrases. Run both.</h1>
+  <p class="lede">Dense embedding search finds conceptually related text even with zero shared words — and completely whiffs on an exact product ID or error code that just needs a literal match. Sparse BM25 nails exact keyword matches — and completely misses a semantically related passage that never uses the query's actual words. Hybrid search runs both and fuses their rankings, catching what either one alone would miss.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Dense — semantic similarity</div>
+    <div class="pipe-label b">Sparse (BM25) — keyword match</div>
+    <div class="pipe-label c">Fused via reciprocal rank fusion</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="dense-vs-sparse">1 · Dense vs Sparse (BM25)</a>
+  <a data-target="failures">2 · Two Failure Modes, Live</a>
+  <a data-target="fusion">3 · Combining Both via Reciprocal Rank Fusion</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: DENSE VS SPARSE ============ -->
+<section id="dense-vs-sparse">
+  <div class="kicker">01 — Two fundamentally different ways to decide "relevant"</div>
+  <h2>Dense embedding search vs sparse BM25</h2>
+
+  <p><strong>Start here, before any formulas.</strong> Imagine two different librarians helping you find a book. The first librarian has read every book and understands what each one is ABOUT — ask for "something about overcoming adversity" and they'll point you to a book that never uses those exact words but is clearly about that theme. The second librarian hasn't read the books, but has a perfect index of every word that appears in every book and how often — ask for a book containing the exact phrase "ISBN 978-0-13-468599-1" and they'll find it instantly, something the first librarian's thematic understanding is no help with at all.</p>
+
+  <p><strong>Dense embedding search</strong> represents each document (or chunk) as a dense vector — a fixed-length list of numbers capturing its semantic meaning, produced by an embedding model. A query is embedded the same way, and documents are ranked by embedding similarity (typically cosine similarity) to the query. Because the comparison happens in a learned semantic space, dense search finds conceptually related results even with little or no literal word overlap — the "first librarian." <strong>Sparse search</strong>, and specifically <strong>BM25</strong> (the standard modern implementation of classic TF-IDF-style scoring), represents documents and queries as sparse vectors over the vocabulary — mostly zeros, with a nonzero weight for each term that actually appears. BM25 scores a document highly when it contains the query's exact terms, weighted by how rare those terms are across the whole collection (a rare term matching is a stronger signal than a common one) and how densely they appear in that document relative to its length — the "second librarian."</p>
+
+  <div class="code"><span class="c-cmt"># BM25, conceptually: score a document by summing a per-term contribution
+# for every query term the document actually contains</span>
+<span class="c-kw">def</span> <span class="c-fn">bm25_score</span>(query_terms, doc, corpus_stats):
+    score = <span class="c-num">0</span>
+    <span class="c-kw">for</span> term <span class="c-kw">in</span> query_terms:
+        <span class="c-kw">if</span> term <span class="c-kw">not in</span> doc.terms:
+            <span class="c-kw">continue</span>  <span class="c-cmt"># BM25 contributes NOTHING for a term that's simply absent</span>
+        idf = <span class="c-fn">inverse_document_frequency</span>(term, corpus_stats)  <span class="c-cmt"># rarer term = higher weight</span>
+        tf = <span class="c-fn">term_frequency</span>(term, doc)                        <span class="c-cmt"># how often it appears here</span>
+        score += idf * <span class="c-fn">saturate</span>(tf, doc.length)  <span class="c-cmt"># diminishing returns per repeat</span>
+    <span class="c-kw">return</span> score</div>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Dense embedding search</h4>
+      <p>Good at: conceptual/semantic similarity, paraphrases, synonyms, "meant the same thing but said it differently." Weak at: exact identifiers, rare technical terms, codes/IDs that carry no semantic meaning of their own.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Sparse search (BM25)</h4>
+      <p>Good at: exact keyword/term matches, codes, product IDs, rare or technical vocabulary. Weak at: matching a relevant passage that expresses the same idea with completely different words.</p>
+    </div>
+  </div>
+
+  <div class="callout"><b>Interview-ready definition:</b> dense embedding search ranks documents by semantic similarity between learned dense vector representations of the query and each document, making it strong at conceptual/paraphrase matches but weak at exact literal matches on terms with little semantic content (IDs, codes, rare tokens). BM25 (sparse search) ranks documents by a term-frequency-based scoring function over the literal vocabulary, weighting rarer terms more heavily and applying diminishing returns to repeated terms — making it strong at exact keyword matches but blind to relevant content that shares no vocabulary with the query at all.</div>
+</section>
+
+<!-- ============ SECTION 2: TWO FAILURE MODES ============ -->
+<section id="failures">
+  <div class="kicker">02 — Each one has a query that breaks it, and the other one catches it</div>
+  <h2>Two concrete failure modes, side by side</h2>
+
+  <p><strong>Start here, before the demo.</strong> The best way to see why hybrid search exists is to watch each method fail on a query specifically designed to expose its blind spot.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>WATCH EACH METHOD MISS SOMETHING THE OTHER CATCHES</span>
+      <div><button class="btn secondary" id="fail-reset">Reset</button></div>
+    </div>
+    <div class="lookup-controls">
+      <button class="chip active" data-q="idcode">Query: "error code E4471-B retry"</button>
+      <button class="chip" data-q="paraphrase">Query: "why does my payment keep failing"</button>
+    </div>
+    <button class="btn" id="fail-run">Run both searches on this query ▸</button>
+    <div class="results-grid">
+      <div class="results-col dense">
+        <h4>Dense (semantic) results</h4>
+        <div id="dense-results"></div>
+      </div>
+      <div class="results-col sparse">
+        <h4>Sparse (BM25) results</h4>
+        <div id="sparse-results"></div>
+      </div>
+    </div>
+    <div class="log" id="fail-log"><span class="line">Pick a query and run both searches to compare what each one surfaces.</span></div>
+  </div>
+
+  <div class="callout warn"><b>Failure mode 1 — dense misses the exact code:</b> the query "error code E4471-B retry" contains a specific alphanumeric code. A dense embedding model has likely never seen "E4471-B" in training in any meaningful semantic context — it has no learned meaning, so the embedding for a document containing it looks about as similar to the query as any other vaguely error-related document. BM25, however, treats "E4471-B" as a rare, highly-weighted term (inverse document frequency is high for a code that appears in very few documents) and finds the one document containing it almost instantly, ranking it far above semantically-similar-but-code-lacking documents.</div>
+
+  <div class="callout warn"><b>Failure mode 2 — BM25 misses the paraphrase:</b> the query "why does my payment keep failing" shares almost no vocabulary with a document titled "Troubleshooting recurring transaction declines," even though they're clearly about the same underlying issue. BM25 scores near zero — there's no term overlap for it to score against. Dense search, however, embeds both the query and that document into the same conceptual neighborhood (payment failure / transaction decline are semantically close), and ranks that document highly despite the near-total absence of shared words.</div>
+
+  <div class="callout fusion"><b>Interview-ready definition:</b> dense search and BM25 fail in structurally opposite, complementary ways: dense search's semantic embedding has no special mechanism for surfacing rare literal tokens with little inherent meaning (codes, IDs), so exact-match queries can rank the correct document low or miss it; BM25's term-overlap scoring has no mechanism for recognizing that two different vocabularies describe the same concept, so paraphrased or synonym-heavy queries can score the correct document near zero. Because the two failure modes are largely independent — a query that breaks one often doesn't break the other — combining their rankings recovers cases that either method alone would miss.</div>
+</section>
+
+<!-- ============ SECTION 3: RECIPROCAL RANK FUSION ============ -->
+<section id="fusion">
+  <div class="kicker">03 — Combining two rankings into one, without needing comparable scores</div>
+  <h2>Combining both via reciprocal rank fusion (RRF)</h2>
+
+  <p><strong>Start here, before the formula.</strong> Imagine two judges scoring a competition on totally different scales — one judge scores out of 10, the other scores out of 100 — and you need one final ranking. Averaging their raw scores would be misleading (a 7/10 and a 70/100 look identical numerically but came from different scales entirely). A more robust approach: ignore the raw scores completely and just look at each judge's RANKING — who they placed 1st, 2nd, 3rd — then combine the rankings themselves, rewarding whoever consistently ranked well across both judges.</p>
+
+  <p><strong>Reciprocal rank fusion</strong> does exactly this for combining dense and BM25 results, which is important because their raw scores are NOT directly comparable — dense similarity scores and BM25 scores live on completely different, incompatible numeric scales, so simply adding them together would be meaningless. RRF instead uses each result's RANK (1st, 2nd, 3rd...) in each ranked list, converting it to a score via <code class="inline">1 / (k + rank)</code> (with a small constant <code class="inline">k</code>, commonly 60, that dampens the impact of very high ranks) and summing that reciprocal-rank score across all the lists a document appears in. A document that ranks well in EITHER list gets a meaningful boost; a document that ranks well in BOTH gets boosted twice, landing near the top of the fused result.</p>
+
+  <div class="code"><span class="c-cmt"># Reciprocal Rank Fusion, k=60 (a common default)</span>
+<span class="c-kw">def</span> <span class="c-fn">reciprocal_rank_fusion</span>(dense_ranked, sparse_ranked, k=<span class="c-num">60</span>):
+    scores = {}
+    <span class="c-kw">for</span> rank, doc_id <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(dense_ranked, start=<span class="c-num">1</span>):
+        scores[doc_id] = scores.get(doc_id, <span class="c-num">0</span>) + <span class="c-num">1</span> / (k + rank)
+    <span class="c-kw">for</span> rank, doc_id <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(sparse_ranked, start=<span class="c-num">1</span>):
+        scores[doc_id] = scores.get(doc_id, <span class="c-num">0</span>) + <span class="c-num">1</span> / (k + rank)
+    <span class="c-cmt"># a doc in BOTH lists accumulates score from both terms -- doesn't
+    # need a comparable raw score from either search, only its RANK</span>
+    <span class="c-kw">return</span> <span class="c-fn">sorted</span>(scores.items(), key=<span class="c-kw">lambda</span> x: -x[<span class="c-num">1</span>])</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>RRF FUSION — SEE BOTH FAILURE-MODE DOCUMENTS RECOVERED</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">A query where dense search ranks doc E4471 low (no semantic signal for the code) but BM25 ranks it 1st, while another doc ranks well in dense but not sparse. Watch the fused ranking recover both.</p>
+    <div class="fusion-stage" id="fusion-stage"></div>
+  </div>
+
+  <div class="callout fusion"><b>Interview-ready definition:</b> reciprocal rank fusion combines multiple ranked result lists (e.g. dense and BM25) into one fused ranking by summing each document's reciprocal-rank contribution (<code class="inline">1/(k+rank)</code>) across every list it appears in, rather than combining raw scores directly — this sidesteps the problem that dense similarity scores and BM25 scores are on incomparable scales, since rank position is a scale-independent signal both methods produce. A document that ranks well in only one list still gets meaningfully boosted, which is exactly the mechanism by which hybrid search recovers both failure modes from section 2: the exact-match document BM25 alone would rank first stays highly ranked in the fusion even though dense search barely noticed it, and vice versa for the paraphrase-matched document.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Predicting BM25's score for a term that never appears</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Looking at section 1's bm25_score pseudocode, what does BM25 contribute to a document's score for a query term that appears ZERO times in that document? What does this reveal about BM25's fundamental limitation?</p>
+    <details><summary>Show solution</summary><div class="solution">Exactly zero -- the code explicitly checks `if term not in doc.terms:
+continue`, skipping that term's contribution entirely rather than
+assigning any partial credit. BM25 has no notion of "this document is
+somewhat related to this term even though the term itself never
+appears" -- its entire scoring mechanism is built around literal term
+presence, so a term's absence contributes nothing, positive or negative,
+beyond simply not adding to the score.
+
+This reveals BM25's fundamental limitation directly: it has no mechanism
+for recognizing conceptual relatedness in the absence of shared
+vocabulary. A document that is a near-perfect semantic match for the
+query but happens to use zero of the query's literal terms scores
+identically (near zero) to a document that has nothing at all to do with
+the query -- BM25 cannot distinguish between "irrelevant" and "relevant
+but phrased completely differently," which is exactly the paraphrase
+failure mode demonstrated in section 2.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Tracing RRF by hand on a small example</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Dense ranking: [DocA, DocB, DocC]. Sparse ranking: [DocC, DocA, DocD]. Using RRF with k=60, compute each document's fused score (1/(k+rank) summed across lists it appears in) and determine the final fused order.</p>
+    <details><summary>Show solution</summary><div class="solution">DocA: rank 1 in dense (1/61 ≈ 0.01639), rank 2 in sparse (1/62 ≈
+0.01613). Total ≈ 0.03252.
+
+DocB: rank 2 in dense (1/62 ≈ 0.01613), absent from sparse (contributes
+0). Total ≈ 0.01613.
+
+DocC: rank 3 in dense (1/63 ≈ 0.01587), rank 1 in sparse (1/61 ≈
+0.01639). Total ≈ 0.03226.
+
+DocD: absent from dense (0), rank 3 in sparse (1/63 ≈ 0.01587). Total ≈
+0.01587.
+
+Final fused order (highest score first): DocA (≈0.03252), DocC
+(≈0.03226), DocB (≈0.01613), DocD (≈0.01587). DocA and DocC are nearly
+tied and both clearly ahead of DocB and DocD -- this makes intuitive
+sense, since DocA and DocC each ranked well (1st or 2nd) in BOTH lists,
+while DocB and DocD each only appeared in ONE list at all, capping how
+much fused score they could possibly accumulate regardless of how high
+they ranked in their one list.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Explaining why raw scores aren't just averaged instead</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes simplifying hybrid search by just averaging the raw dense cosine-similarity score and the raw BM25 score for each document, instead of using RRF. What specifically goes wrong with this approach?</p>
+    <details><summary>Show solution</summary><div class="solution">Dense cosine similarity and BM25 scores live on fundamentally different,
+incompatible numeric scales -- cosine similarity is typically bounded
+between -1 and 1 (often clustering in a narrow band like 0.7-0.95 for
+"relevant" results in practice), while BM25 scores are unbounded and can
+range anywhere from 0 to double digits or higher depending on term
+rarity, document length, and the specific corpus statistics. Averaging
+two numbers from different scales directly means whichever score happens
+to have the larger typical MAGNITUDE (often BM25's, since it's
+unbounded) will dominate the average almost regardless of the other
+score's actual relative meaning within its own scale -- a mediocre BM25
+score of 8 could easily outweigh a near-perfect dense similarity of 0.95,
+not because it's actually more relevant, but purely because of a scale
+mismatch that has nothing to do with relevance.
+
+This is exactly the problem RRF sidesteps by discarding raw scores
+entirely and working only with RANK POSITION within each list --
+rank 1 means the same thing (the single best result according to that
+method) regardless of what raw score produced it, making ranks directly
+combinable across methods in a way raw scores from different scoring
+functions never are without careful, corpus-specific normalization that
+RRF avoids needing at all.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Choosing when hybrid search is worth the extra infrastructure</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A product's search queries are almost entirely natural-language questions from end users ("how do I reset my password"), with essentially no exact codes, IDs, or technical jargon ever appearing in real queries. Is hybrid search still clearly worth the added infrastructure (maintaining both a dense index and a BM25 index, plus fusion) over dense search alone?</p>
+    <details><summary>Show solution</summary><div class="solution">The case for hybrid search is meaningfully weaker here, though not
+necessarily zero. Hybrid search's core value proposition (section 2) is
+recovering BM25's exact-match strength for queries dense search would
+otherwise miss -- codes, IDs, rare technical terms. If real user queries
+are overwhelmingly natural-language and essentially never contain exact
+identifiers, the specific failure mode BM25 exists to catch (dense
+missing an exact code match) may simply not occur often in this
+product's actual query distribution, meaning the added cost of
+maintaining a second index and a fusion step may not be earning its
+keep proportional to its operational cost.
+
+That said, "essentially no exact codes" is a claim worth verifying with
+real query logs rather than assuming -- and BM25 also helps with rare
+but non-code technical vocabulary (a specific error message string, a
+specific setting name) that a dense model may not have learned a
+distinct embedding for if it was underrepresented in training data. A
+reasonable answer weighs this against the product's actual measured
+query patterns rather than deciding purely from the stated
+assumption -- and notes that if the answer is "probably not worth it
+right now," it's a decision worth revisiting if the query distribution
+changes (e.g. the product adds a technical support surface where users
+paste in error codes).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Diagnosing why hybrid search still missed a relevant result</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team ships hybrid search with RRF, but a specific query still fails to surface a genuinely relevant document. On investigation, that document didn't appear in EITHER the dense top-50 or the sparse top-50 candidate lists that were fused. Is this an RRF fusion bug? What's actually going on, and what does it reveal about RRF's dependency on its inputs?</p>
+    <details><summary>Show solution</summary><div class="solution">This is not an RRF fusion bug -- RRF can only combine and re-rank
+documents that appear in at least one of the input ranked lists it's
+given. If a document never made it into EITHER the dense top-50 or the
+sparse top-50 candidate set to begin with, RRF has no rank information
+for it at all and therefore cannot include it in the fused output,
+regardless of how relevant that document actually is. RRF's job is
+combining rankings, not independently discovering documents neither
+underlying search method surfaced.
+
+This reveals that RRF's output quality is fundamentally bounded by the
+RECALL of its inputs -- if both the dense and sparse retrieval steps
+individually fail to surface a genuinely relevant document within
+their own top-k candidate sets (perhaps k=50 is too small, or both
+methods happen to score this specific document poorly for method-
+specific reasons unrelated to each other), fusion cannot rescue it,
+since there's nothing to fuse. The fix here isn't touching the RRF logic
+itself -- it's investigating why NEITHER underlying retrieval method
+surfaced the document within its candidate window (too small a k for
+each method's initial retrieval, or a chunking/embedding issue specific
+to that document), since RRF's entire premise depends on at least one of
+the two methods finding the right answer somewhere within the list it
+hands to fusion.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely why BM25 contributes zero score for an absent term rather than some partial credit, (2) trace RRF's score computation by hand on a small example, and (3) explain why raw dense and BM25 scores can't just be averaged together directly? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — hybrid search.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 2: FAILURE MODE DEMO */
+(function(){
+  var chips = document.querySelectorAll("[data-q]");
+  var runBtn = document.getElementById("fail-run");
+  var resetBtn = document.getElementById("fail-reset");
+  var denseEl = document.getElementById("dense-results");
+  var sparseEl = document.getElementById("sparse-results");
+  var logEl = document.getElementById("fail-log");
+  var mode = "idcode";
+
+  var DATA = {
+    idcode: {
+      query: 'error code E4471-B retry',
+      dense: [
+        {text: "General guide: handling transient network failures", score: "0.71", show: true},
+        {text: "Understanding retry strategies in distributed systems", score: "0.68", show: true},
+        {text: "Doc containing 'E4471-B': the exact match", score: "0.44", show: true, miss: true}
+      ],
+      sparse: [
+        {text: "Doc containing 'E4471-B': the exact match", score: "9.82", show: true},
+        {text: "Error code reference table (unrelated codes)", score: "2.10", show: true},
+        {text: "General retry strategies guide", score: "0.00", show: true}
+      ],
+      note: "Dense search buries the one document that actually contains \"E4471-B\" — the code carries no learned semantic meaning, so semantically-similar-but-code-lacking docs outrank it. BM25 finds it instantly and ranks it 1st, since the exact rare term match dominates its score."
+    },
+    paraphrase: {
+      query: 'why does my payment keep failing',
+      dense: [
+        {text: "Troubleshooting recurring transaction declines", score: "0.89", show: true},
+        {text: "Payment method verification failures explained", score: "0.84", show: true},
+        {text: "Billing FAQ: subscription charge issues", score: "0.79", show: true}
+      ],
+      sparse: [
+        {text: "Payment method verification failures explained", score: "3.20", show: true},
+        {text: "Billing FAQ: subscription charge issues", score: "1.05", show: true},
+        {text: "Troubleshooting recurring transaction declines", score: "0.00", show: true, miss: true}
+      ],
+      note: "The most relevant document (\"Troubleshooting recurring transaction declines\") shares almost no literal words with the query — BM25 scores it near zero and it drops out of the sparse ranking entirely. Dense search recognizes the semantic connection between \"payment keep failing\" and \"transaction declines\" and ranks it 1st."
+    }
+  };
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function renderCol(el, items){
+    el.innerHTML = "";
+    items.forEach(function(item, i){
+      var row = document.createElement("div");
+      row.className = "result-row" + (item.miss ? " miss" : "");
+      row.innerHTML = "<span>" + (i+1) + ". " + item.text + "</span><span class=\"rscore\">" + item.score + "</span>";
+      el.appendChild(row);
+      setTimeout(function(){ row.classList.add("show"); }, 80 + i * 140);
+    });
+  }
+
+  function run(){
+    var d = DATA[mode];
+    logEl.innerHTML = "";
+    log('<b>Query:</b> "' + d.query + '"');
+    renderCol(denseEl, d.dense);
+    renderCol(sparseEl, d.sparse);
+    setTimeout(function(){ log(d.note); }, 700);
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      mode = c.dataset.q;
+      denseEl.innerHTML = ""; sparseEl.innerHTML = "";
+      logEl.innerHTML = '<span class="line">Click "Run both searches" to compare results for this query.</span>';
+    });
+  });
+
+  runBtn.addEventListener("click", run);
+  resetBtn.addEventListener("click", function(){
+    denseEl.innerHTML = ""; sparseEl.innerHTML = "";
+    logEl.innerHTML = '<span class="line">Pick a query and run both searches to compare what each one surfaces.</span>';
+  });
+})();
+
+/* SECTION 3: RRF FUSION TABLE */
+(function(){
+  var stage = document.getElementById("fusion-stage");
+  var K = 60;
+
+  // doc, dense rank (or null), sparse rank (or null)
+  var DOCS = [
+    {name: "Doc: E4471-B exact match", denseRank: 5, sparseRank: 1},
+    {name: "Doc: payment paraphrase match", denseRank: 1, sparseRank: null},
+    {name: "General retry strategies guide", denseRank: 2, sparseRank: 3},
+    {name: "Unrelated error code table", denseRank: null, sparseRank: 2}
+  ];
+
+  function rrfScore(rank){
+    if(rank === null) return 0;
+    return 1 / (K + rank);
+  }
+
+  var scored = DOCS.map(function(d){
+    var s = rrfScore(d.denseRank) + rrfScore(d.sparseRank);
+    return Object.assign({}, d, {score: s});
+  }).sort(function(a,b){ return b.score - a.score; });
+
+  var html = '<div class="fusion-row head"><span>Document</span><span>Dense rank</span><span>Sparse rank</span><span>Fused RRF score</span></div>';
+  scored.forEach(function(d){
+    html += '<div class="fusion-row">' +
+      '<span>' + d.name + '</span>' +
+      '<span class="fusion-rank' + (d.denseRank === null ? ' na' : '') + '">' + (d.denseRank === null ? "—" : "#" + d.denseRank) + '</span>' +
+      '<span class="fusion-rank2' + (d.sparseRank === null ? ' na' : '') + '">' + (d.sparseRank === null ? "—" : "#" + d.sparseRank) + '</span>' +
+      '<span class="fusion-score">' + d.score.toFixed(4) + '</span>' +
+      '</div>';
+  });
+  stage.innerHTML = html;
+})();
+</script>
+</body>
+</html>

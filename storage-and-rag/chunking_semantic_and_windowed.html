@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Chunking: Semantic &amp; Windowed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --chunk-c:#4fc3f7; --overlap-c:#f2c14e; --sem-c:#7fd8a0; --bad-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--chunk-c); color:var(--chunk-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--overlap-c); color:var(--overlap-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sem-c); color:var(--sem-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* windowed chunk visualization */
+  .doc-strip{font-family:var(--mono); font-size:0.82rem; line-height:2.2; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1rem 1.2rem; margin:1rem 0; word-spacing:0.15em;}
+  .doc-strip .word{padding:0.1em 0.05em; border-radius:3px; transition:background .3s, color .3s;}
+  .doc-strip .word.inchunk{background:rgba(79,195,247,0.28); color:#fff;}
+  .doc-strip .word.inoverlap{background:rgba(242,193,78,0.4); color:#fff; box-shadow:0 0 0 1px var(--overlap-c) inset;}
+  .doc-strip .word.split{color:var(--bad-c); text-decoration:underline wavy var(--bad-c);}
+  .chunk-cards{display:flex; gap:0.8rem; flex-wrap:wrap; margin:1rem 0;}
+  .chunk-card{flex:1; min-width:200px; background:var(--panel-2); border:1.5px solid var(--chunk-c); border-radius:10px; padding:0.8rem 1rem; font-family:var(--mono); font-size:0.76rem; color:#cdd0d8;}
+  .chunk-card .clabel{color:var(--chunk-c); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.4rem; display:block;}
+  .chunk-card mark{background:rgba(242,193,78,0.35); color:var(--ink); padding:0 0.1em; border-radius:2px;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--chunk-c);} .dc-col.a h4{color:var(--chunk-c);}
+  .dc-col.b{border-color:var(--sem-c);} .dc-col.b h4{color:var(--sem-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  /* semantic similarity chart */
+  .sim-chart{display:flex; align-items:flex-end; gap:6px; height:120px; margin:1.2rem 0; padding:0 0.4rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding-top:1rem;}
+  .sim-bar-wrap{flex:1; display:flex; flex-direction:column; align-items:center; gap:0.3rem;}
+  .sim-bar{width:100%; background:var(--sem-c); border-radius:4px 4px 0 0; transition:height .5s ease, background .3s; min-height:3px;}
+  .sim-bar.dropped{background:var(--bad-c);}
+  .sim-idx{font-family:var(--mono); font-size:0.6rem; color:var(--ink-dim);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.sem{border-left-color:var(--sem-c); background:rgba(127,216,160,0.06);} .callout.sem b{color:var(--sem-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CHUNKING &amp; HYBRID SEARCH</div>
+  <h1>Cut a document in the wrong place and you cut a sentence's meaning in half too.</h1>
+  <p class="lede">Every RAG pipeline starts by breaking documents into chunks small enough to embed and search. Fixed-size chunking is fast and simple, but it cuts wherever the character count runs out — including mid-sentence — which is exactly why overlap exists. Semantic chunking instead cuts where the MEANING actually shifts. This lab animates a sliding overlap window saving a split sentence, then chunks the same document both ways so you can see the coherence difference directly.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Fixed-size chunks</div>
+    <div class="pipe-label b">Overlap window</div>
+    <div class="pipe-label c">Semantic boundaries</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="windowed">1 · Fixed-Size Chunking &amp; Why Overlap Matters</a>
+  <a data-target="semantic">2 · Semantic Chunking</a>
+  <a data-target="compare">3 · Same Document, Both Ways</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WINDOWED ============ -->
+<section id="windowed">
+  <div class="kicker">01 — The simplest possible chunking strategy, and its obvious flaw</div>
+  <h2>Fixed-size / windowed chunking, and why overlap matters</h2>
+
+  <p><strong>Start here, before any code.</strong> Imagine photographing a long mural by taking a series of photos, each covering exactly 2 meters of wall, moving the camera exactly 2 meters between shots. If a single painted figure happens to straddle the exact 2-meter mark, one photo shows their left half and the next photo shows their right half — neither photo, on its own, shows the whole figure. Now imagine instead moving the camera only 1.5 meters between shots, so each photo overlaps the previous one by half a meter. Now that same straddling figure is guaranteed to appear whole in at least one of the two overlapping photos, even though you didn't know in advance exactly where any figure would land.</p>
+
+  <p><strong>Fixed-size (windowed) chunking</strong> splits a document into chunks of a fixed length — say, 200 tokens — moving through the text in fixed-size steps. It's fast, predictable, and needs no understanding of the text's content at all: just count characters or tokens and cut. The problem is exactly the mural problem: a sentence (or any unit of meaning) that happens to straddle a chunk boundary gets split across two chunks, and neither chunk alone contains the complete thought. If a retriever later matches on that sentence's meaning, it gets back a chunk with only HALF the sentence — missing the context needed to understand it, or even to know it was ever a complete idea.</p>
+
+  <p><strong>Overlap</strong> is the fix: instead of moving the window forward by the FULL chunk size each step, move it forward by less than the chunk size (e.g. a 200-token chunk with a 50-token overlap, so consecutive chunks share their last/first 50 tokens). Now a sentence sitting near a boundary has a real chance of appearing complete in at least one of the two overlapping chunks, because the "cut point" isn't the same for both chunks — one chunk's cut point may split the sentence, but the overlapping region gives the NEXT chunk a chance to start earlier and capture it whole.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>SLIDING WINDOW — WATCH OVERLAP SAVE A SPLIT SENTENCE</span>
+      <div><button class="btn secondary" id="win-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">A short passage, chunked with a sliding window. Toggle overlap on/off and watch whether the sentence sitting right at the boundary survives intact in at least one chunk.</p>
+    <div class="lookup-controls">
+      <button class="chip active" data-mode="nooverlap">No overlap (chunk size = step size)</button>
+      <button class="chip" data-mode="overlap">With overlap (step &lt; chunk size)</button>
+    </div>
+    <div class="doc-strip" id="doc-strip"></div>
+    <button class="btn" id="win-run">Run chunking ▸</button>
+    <div class="chunk-cards" id="chunk-cards"></div>
+    <div class="log" id="win-log"><span class="line">Pick a mode and run chunking to see whether the boundary sentence survives whole.</span></div>
+  </div>
+
+  <div class="callout warn"><b>The concrete failure, without overlap:</b> the sentence "The server retries the request after a short backoff." sits exactly across the chunk-1/chunk-2 boundary. Chunk 1 ends with "...retries the request after a" and chunk 2 begins with "short backoff. Then it logs..." — a retriever matching on "backoff strategy" gets chunk 2, which never explains WHAT is backing off or WHY, because "the server retries the request" was left behind in chunk 1.</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> fixed-size (windowed) chunking splits a document into equal-length chunks by advancing a fixed-size window through the text, without regard for sentence or semantic boundaries — simple and fast, but any unit of meaning straddling a cut point gets split across two chunks, neither of which contains it whole. Overlap mitigates this by advancing the window by less than the full chunk size (so consecutive chunks share a trailing/leading span of content), increasing the odds that a boundary-straddling sentence appears complete in at least one chunk, at the direct cost of storing and indexing some duplicated content across chunks.</div>
+</section>
+
+<!-- ============ SECTION 2: SEMANTIC CHUNKING ============ -->
+<section id="semantic">
+  <div class="kicker">02 — Cutting where the meaning actually changes, not where the character count runs out</div>
+  <h2>Semantic chunking: splitting on meaning boundaries</h2>
+
+  <p><strong>Start here, before the mechanism.</strong> Imagine editing a long interview transcript into clips, but instead of cutting every exactly 60 seconds regardless of what's being said, you cut wherever the conversation visibly shifts topic — the interviewer asks a new question, or the speaker's train of thought clearly moves on. The clips end up different lengths, but each one is a complete, coherent unit of conversation — nobody watching a single clip wonders "wait, what were they talking about at the start of this."</p>
+
+  <p><strong>Semantic chunking</strong> applies the same idea to documents: instead of cutting at a fixed character/token count, it cuts at points where the MEANING shifts. A common concrete mechanism: split the document into individual sentences, embed each sentence (or a short sliding group of sentences), then measure the embedding similarity between each pair of ADJACENT sentences. Where that similarity stays high, adjacent sentences are talking about the same thing and belong in the same chunk. Where that similarity suddenly DROPS, it signals a topic shift — a natural place to cut, since the sentences on either side of that drop are no longer semantically continuous. Paragraph breaks are a simpler, cheaper proxy for the same idea — a human author already marked likely topic boundaries by starting a new paragraph.</p>
+
+  <div class="code"><span class="c-cmt"># Roughly how similarity-drop-based semantic chunking works</span>
+<span class="c-kw">def</span> <span class="c-fn">semantic_chunk</span>(sentences, embed_fn, drop_threshold=<span class="c-num">0.35</span>):
+    embeddings = [embed_fn(s) <span class="c-kw">for</span> s <span class="c-kw">in</span> sentences]
+    chunks, current = [], [sentences[<span class="c-num">0</span>]]
+    <span class="c-kw">for</span> i <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">1</span>, <span class="c-fn">len</span>(sentences)):
+        sim = <span class="c-fn">cosine_similarity</span>(embeddings[i-<span class="c-num">1</span>], embeddings[i])
+        <span class="c-kw">if</span> sim &lt; drop_threshold:
+            <span class="c-cmt"># similarity to the PREVIOUS sentence just dropped sharply --
+            # this is a topic shift, so close out the current chunk here</span>
+            chunks.append(<span class="c-str">" "</span>.join(current))
+            current = []
+        current.append(sentences[i])
+    chunks.append(<span class="c-str">" "</span>.join(current))
+    <span class="c-kw">return</span> chunks</div>
+
+  <div class="lab">
+    <div class="lab-title"><span>ADJACENT-SENTENCE SIMILARITY — WHERE DOES IT DROP?</span></div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">Embedding similarity between each sentence and the one before it, across an 8-sentence passage. The two sharp drops mark genuine topic shifts — exactly where semantic chunking would cut.</p>
+    <div class="sim-chart" id="sim-chart"></div>
+    <div class="log" id="sim-log"></div>
+  </div>
+
+  <div class="callout sem"><b>Interview-ready definition:</b> semantic chunking splits a document at points where adjacent-sentence (or adjacent-paragraph) embedding similarity drops sharply, rather than at a fixed character/token count — the drop signals a topic shift, so the resulting chunks are bounded by actual shifts in meaning rather than an arbitrary length. This produces variable-length but more internally coherent chunks, at the cost of an upfront embedding pass over every sentence during chunking itself (fixed-size chunking needs no such pass) and a threshold parameter that, like nprobe or ef_search elsewhere in this series, trades chunk granularity against how many topic shifts get detected.</div>
+</section>
+
+<!-- ============ SECTION 3: COMPARE ============ -->
+<section id="compare">
+  <div class="kicker">03 — The same document, chunked two different ways</div>
+  <h2>Fixed-size vs semantic chunking, side by side</h2>
+
+  <p><strong>Start here, before the comparison.</strong> Neither strategy is universally correct — they trade simplicity for coherence in opposite directions. Fixed-size chunking never has to understand the text at all, which makes it cheap, deterministic, and trivial to reproduce; its cost is that chunk boundaries are semantically arbitrary, occasionally slicing a coherent idea in half (mitigated, not eliminated, by overlap). Semantic chunking costs an upfront embedding pass to detect boundaries, and its chunk sizes are unpredictable (a topic that runs long produces one large chunk; a topic covered in one sentence produces a tiny one) — but the chunks it produces are far more likely to be self-contained, coherent units of meaning.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Fixed-size / windowed</h4>
+      <p>Cut at a fixed token/character count, with optional overlap. Cheap, deterministic, no understanding of content required. Risk: boundaries land mid-sentence or mid-idea; overlap reduces but doesn't eliminate this.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Semantic</h4>
+      <p>Cut where adjacent-sentence similarity drops (topic shift) or at paragraph breaks. More coherent, self-contained chunks. Cost: an embedding pass to detect boundaries, and unpredictable chunk sizes that need a min/max clamp in practice.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Dimension</th><th>Fixed-size / windowed</th><th>Semantic</th></tr>
+    <tr><td>Cut decision</td><td>Fixed token/character count reached</td><td>Adjacent-unit similarity drops below a threshold</td></tr>
+    <tr><td>Chunk size</td><td>Uniform (by design)</td><td>Variable — follows the content's actual structure</td></tr>
+    <tr><td>Upfront cost</td><td>None — pure counting</td><td>An embedding pass over sentences/paragraphs before chunking</td></tr>
+    <tr><td>Coherence</td><td>Can split a sentence or idea; overlap mitigates it</td><td>Chunks tend to be self-contained units of meaning</td></tr>
+    <tr><td>Best fit</td><td>Large-scale, cost-sensitive pipelines; uniform document structure</td><td>Long-form or loosely-structured documents where coherence drives retrieval quality</td></tr>
+  </table>
+
+  <p>In practice, many production pipelines use semantic (or paragraph-based) chunking as the primary cut strategy, but STILL clamp chunk size with a fixed-size fallback — if a "semantic" chunk runs too long (a rambling section with no strong similarity drop) it gets force-split at a fallback token limit, and if it runs too short, it may get merged with a neighbor. The two strategies aren't strictly competing; a real pipeline often combines them, using semantic boundaries as the preference and fixed-size limits as the safety net.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> fixed-size chunking and semantic chunking represent two different philosophies for the same problem — where to cut a document into retrievable pieces. Fixed-size chunking optimizes for simplicity and cost (no content understanding required, cheap and deterministic) at the risk of severing meaning at arbitrary boundaries, an effect overlap partially mitigates. Semantic chunking optimizes for chunk coherence by detecting actual topic shifts via adjacent-unit embedding similarity, at the cost of an upfront embedding pass and unpredictable chunk sizes. Production systems frequently combine both: semantic boundaries as the primary signal, with a fixed-size fallback to bound worst-case chunk length.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing why overlap doesn't fully eliminate the split-sentence problem</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A pipeline uses 200-token chunks with a 50-token overlap. Explain a scenario where a sentence STILL gets split across both resulting chunks despite the overlap, and what that reveals about overlap as a fix.</p>
+    <details><summary>Show solution</summary><div class="solution">If a single sentence is itself longer than the overlap region (say, a
+80-token sentence, longer than the 50-token overlap) and it straddles the
+boundary such that it starts before the overlap region even begins, it
+can still end up split: the portion before the overlap window is only in
+chunk 1, and the portion after the window's start is in both, but if the
+sentence's START point falls entirely outside the 50-token overlap
+region, chunk 2 (which begins at the overlap's start) still won't contain
+the sentence's opening words -- it will start mid-sentence.
+
+This reveals that overlap is a probabilistic mitigation, not a guarantee
+-- it increases the CHANCE that a boundary-straddling unit of meaning
+appears whole in at least one chunk, proportional to how large the
+overlap is relative to typical sentence length, but it doesn't
+structurally guarantee it for every possible sentence length and boundary
+position. A larger overlap reduces this risk further but costs more
+duplicated content across chunks (and therefore more storage and more
+redundant embeddings) -- there's no overlap size that provides an
+absolute guarantee without also changing the chunking unit to be
+sentence-aware in the first place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing threshold sensitivity for semantic chunking</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's semantic chunking code uses a similarity drop_threshold. If that threshold is set very LOW (chunking only triggers on an extremely sharp similarity drop), what happens to chunk size and coherence? What if it's set very HIGH (triggers on almost any dip)?</p>
+    <details><summary>Show solution</summary><div class="solution">A very LOW threshold means the drop in similarity has to be extremely
+sharp before a cut is triggered -- most ordinary sentence-to-sentence
+similarity fluctuations (which are normal even within one coherent topic)
+won't cross that bar, so chunks end up rare and LARGE, potentially
+spanning multiple genuine topics that just didn't produce a
+threshold-crossing drop between them. This trades away some of semantic
+chunking's core benefit -- larger chunks are more likely to contain
+multiple ideas mixed together, similar to (though not identical to) the
+coherence problem fixed-size chunking has.
+
+A very HIGH threshold means even small, normal similarity dips trigger a
+cut, producing many small chunks -- some legitimately marking real topic
+shifts, but many likely being false positives from ordinary sentence-
+level variation within a single coherent topic. This produces
+over-fragmented chunks that may each be too small to carry enough
+standalone context to be useful to a retriever or an LLM reading just
+that chunk, mirroring the "chunks too small to be useful alone" problem
+that the next lab (parent-child chunking) is specifically designed to
+address. The threshold is therefore a real tuning knob trading chunk
+count/size against how conservatively "topic shift" is defined, with no
+universally correct setting independent of the document type.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing a strategy for two different document types</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Document set A is thousands of structurally identical, short customer support tickets (2-3 sentences each, uniform format). Document set B is a handful of long, discursive research reports covering multiple sub-topics per document. Which chunking strategy fits each better, and why?</p>
+    <details><summary>Show solution</summary><div class="solution">Document set A (short, structurally uniform tickets) fits FIXED-SIZE
+chunking well, and arguably doesn't need chunking at all if each ticket
+already fits within one chunk -- the documents are short and uniform
+enough that there's little topic-shift structure for semantic chunking
+to meaningfully detect, and the upfront embedding-pass cost of semantic
+chunking would be paying for a capability (finding topic shifts within a
+document) that barely applies when each individual document rarely
+contains more than one topic in the first place. Fixed-size chunking's
+simplicity and speed are the better trade here, especially at "thousands
+of documents" scale where the cheap-and-deterministic property compounds
+in value.
+
+Document set B (long, multi-topic reports) fits SEMANTIC chunking well
+specifically because the core premise the strategy addresses -- distinct
+topic sections within one document -- is exactly what these reports have.
+A fixed-size cut through a discursive report is very likely to slice
+through the middle of a sub-topic's discussion, since there's no reason a
+sub-topic's actual length would align with any fixed token count; a
+retriever matching against one such badly-cut chunk risks getting a
+fragment that doesn't represent the actual idea being discussed. The
+extra upfront embedding cost is easily justified here since there are
+only "a handful" of these documents (per the prompt), not thousands, so
+the per-document processing cost stays low in aggregate.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a retrieval bug from chunk boundaries</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team's fixed-size (no-overlap) chunking pipeline is returning chunks that "seem to reference something not explained in the chunk itself" for a noticeable fraction of queries. What's the most likely root cause given what this lab covers, and what's the most direct fix that doesn't require switching chunking strategies entirely?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely root cause is exactly section 1's failure mode: sentences
+or ideas that straddle a fixed-size chunk boundary are getting split, so
+the RETURNED chunk contains only the back half of an idea (a pronoun
+referring to something introduced in the PREVIOUS chunk, a conclusion
+whose setup was left behind, etc.) -- "references something not explained
+in the chunk itself" is precisely what a boundary-split chunk looks like
+from the LLM's point of view, since it never sees the chunk that came
+before or after.
+
+The most direct fix without switching chunking strategies entirely:
+introduce overlap (or increase existing overlap if it's already present
+but too small) between consecutive fixed-size chunks, per section 1 --
+this directly increases the odds that whatever idea was getting split now
+appears whole in at least one of the two overlapping chunks. This is a
+much smaller change than switching to semantic chunking (which would
+require an embedding pass and different tuning), and directly targets the
+observed symptom rather than changing the whole chunking philosophy for a
+problem overlap alone may already sufficiently address.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining why overlap has a real storage/compute cost</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A document is 10,000 tokens long. Compare the number of chunks (and total tokens across all chunks, counting duplicates) produced with 500-token chunks and (a) 0 overlap vs (b) 100-token overlap. What does this reveal about overlap as a trade-off, not a free improvement?</p>
+    <details><summary>Show solution</summary><div class="solution">(a) 0 overlap, 500-token chunks, 10,000-token document: step size = chunk
+size = 500, so 10,000 / 500 = 20 chunks total, covering exactly 10,000
+tokens with zero duplication -- every token appears in exactly one chunk.
+
+(b) 100-token overlap, 500-token chunks: step size = 500 - 100 = 400
+tokens per step. Roughly 10,000 / 400 = 25 chunks needed to cover the same
+document (a few more than (a)), and since each chunk is still 500 tokens
+long, total tokens across all chunks = 25 * 500 = 12,500 -- meaning 2,500
+tokens' worth of content is now duplicated across chunk boundaries,
+about 25% more total tokens stored and embedded than the overlap-free
+version, for the exact same underlying 10,000-token document.
+
+This reveals overlap is a genuine trade-off, not a free improvement:
+it directly increases the number of chunks, the total storage footprint,
+the number of embeddings that must be computed and indexed, and
+therefore the compute cost of both chunking and retrieval -- all in
+exchange for reduced (not eliminated, per Problem 1) risk of a
+boundary-split idea. Choosing an overlap size is a real cost/coherence
+trade-off that needs to be sized deliberately (as a fraction of chunk
+size and typical sentence length), not maximized blindly.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) precisely why overlap increases but doesn't guarantee that a boundary-straddling sentence appears whole in some chunk, (2) the mechanism semantic chunking uses to decide where to cut, and (3) name a concrete document type where each strategy is clearly the better choice, with the reasoning? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — chunking: semantic &amp; windowed.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* SECTION 1: WINDOWED CHUNKING DEMO */
+(function(){
+  var PASSAGE = "The API gateway receives every incoming request first. It forwards each one to the correct backend service. The server retries the request after a short backoff. Then it logs the outcome for observability. Most requests succeed on the first attempt without any retry at all.";
+  var words = PASSAGE.split(" ");
+
+  var stripEl = document.getElementById("doc-strip");
+  var cardsEl = document.getElementById("chunk-cards");
+  var logEl = document.getElementById("win-log");
+  var runBtn = document.getElementById("win-run");
+  var resetBtn = document.getElementById("win-reset");
+  var chips = document.querySelectorAll("[data-mode]");
+  var mode = "nooverlap";
+
+  var CHUNK_SIZE = 14; // words per chunk
+  var STEP_NOOVERLAP = 14;
+  var STEP_OVERLAP = 9; // 5-word overlap
+
+  function renderStrip(){
+    stripEl.innerHTML = words.map(function(w, i){
+      return '<span class="word" id="w-' + i + '">' + w + " " + "</span>";
+    }).join("");
+  }
+  renderStrip();
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function clearHighlights(){
+    document.querySelectorAll(".word").forEach(function(w){
+      w.classList.remove("inchunk", "inoverlap", "split");
+    });
+  }
+
+  function buildChunks(step){
+    var chunks = [];
+    var start = 0;
+    while(start < words.length){
+      var end = Math.min(start + CHUNK_SIZE, words.length);
+      chunks.push({start: start, end: end});
+      if(end >= words.length) break;
+      start += step;
+    }
+    return chunks;
+  }
+
+  function run(){
+    clearHighlights();
+    cardsEl.innerHTML = "";
+    logEl.innerHTML = "";
+    var step = mode === "overlap" ? STEP_OVERLAP : STEP_NOOVERLAP;
+    var chunks = buildChunks(step);
+
+    log("<b>Mode: " + (mode === "overlap" ? "with overlap (step " + STEP_OVERLAP + " words, chunk " + CHUNK_SIZE + " words)" : "no overlap (step = chunk size = " + CHUNK_SIZE + " words)") + ".</b>");
+
+    // key sentence: "The server retries the request after a short backoff." -- find its word range
+    var sentenceStart = words.indexOf("The", words.indexOf("Then") > -1 ? 0 : 0);
+    // locate precisely: find index of "server" preceded by "The" and followed by "retries"
+    var keyStart = -1, keyEnd = -1;
+    for(var i = 0; i < words.length; i++){
+      if(words[i] === "The" && words[i+1] === "server" && words[i+2] === "retries"){
+        keyStart = i;
+      }
+      if(words[i].indexOf("backoff") > -1){
+        keyEnd = i;
+      }
+    }
+
+    chunks.forEach(function(c, idx){
+      for(var w = c.start; w < c.end; w++){
+        var el = document.getElementById("w-" + w);
+        if(el) el.classList.add(idx % 2 === 0 ? "inchunk" : "inoverlap");
+      }
+    });
+
+    var wholeSentenceFound = chunks.some(function(c){
+      return c.start <= keyStart && c.end > keyEnd;
+    });
+
+    chunks.forEach(function(c, idx){
+      var text = words.slice(c.start, c.end).join(" ");
+      var containsWhole = c.start <= keyStart && c.end > keyEnd;
+      var containsPartial = !containsWhole && ((keyStart >= c.start && keyStart < c.end) || (keyEnd >= c.start && keyEnd < c.end));
+      var displayText = text;
+      if(containsWhole){
+        displayText = text.replace("The server retries the request after a short backoff.", "<mark>The server retries the request after a short backoff.</mark>");
+      }
+      var card = document.createElement("div");
+      card.className = "chunk-card";
+      card.innerHTML = '<span class="clabel">Chunk ' + (idx+1) + (containsWhole ? " — contains full key sentence" : containsPartial ? " — key sentence cut off" : "") + '</span>' + displayText;
+      cardsEl.appendChild(card);
+    });
+
+    if(wholeSentenceFound){
+      log('<b style="color:var(--sem-c);">The key sentence ("The server retries...backoff.") appears WHOLE in at least one chunk.</b> A retriever matching on it returns a chunk containing the complete idea.');
+    } else {
+      log('<b style="color:var(--bad-c);">The key sentence is split across two chunks.</b> Neither chunk alone explains what is retrying or why — a retriever matching on "backoff" may get a chunk missing the subject of the sentence entirely.');
+    }
+  }
+
+  chips.forEach(function(c){
+    c.addEventListener("click", function(){
+      chips.forEach(function(x){ x.classList.remove("active"); });
+      c.classList.add("active");
+      mode = c.dataset.mode;
+      clearHighlights();
+      cardsEl.innerHTML = "";
+      logEl.innerHTML = '<span class="line">Click "Run chunking" to see the result for this mode.</span>';
+    });
+  });
+
+  runBtn.addEventListener("click", run);
+  resetBtn.addEventListener("click", function(){
+    clearHighlights();
+    cardsEl.innerHTML = "";
+    logEl.innerHTML = '<span class="line">Pick a mode and run chunking to see whether the boundary sentence survives whole.</span>';
+  });
+})();
+
+/* SECTION 2: SEMANTIC SIMILARITY CHART */
+(function(){
+  var chartEl = document.getElementById("sim-chart");
+  var logEl = document.getElementById("sim-log");
+
+  // similarity of sentence i to sentence i-1, across 8 sentences (index 0 has no "previous", shown as baseline)
+  var SIMS = [1.0, 0.82, 0.78, 0.31, 0.85, 0.80, 0.28, 0.83];
+  var LABELS = ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8"];
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p);
+  }
+
+  chartEl.innerHTML = "";
+  SIMS.forEach(function(sim, i){
+    var wrap = document.createElement("div");
+    wrap.className = "sim-bar-wrap";
+    var bar = document.createElement("div");
+    var dropped = sim < 0.35;
+    bar.className = "sim-bar" + (dropped ? " dropped" : "");
+    var h = 0;
+    wrap.appendChild(bar);
+    var idxLabel = document.createElement("div");
+    idxLabel.className = "sim-idx";
+    idxLabel.textContent = LABELS[i];
+    wrap.appendChild(idxLabel);
+    chartEl.appendChild(wrap);
+    setTimeout(function(){ bar.style.height = (sim * 100) + "px"; }, 40 + i * 80);
+  });
+
+  log("Sentences 3→4 and 6→7 show sharp similarity drops (below the 0.35 threshold, shown in red) — semantic chunking cuts right before S4 and right before S7, producing 3 chunks: [S1-S3], [S4-S6], [S7-S8]. Every other adjacent pair stays above the threshold, meaning those sentences are treated as continuing the same topic and kept in the same chunk.");
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Chunking: Parent-Child</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --child-c:#4fc3f7; --parent-c:#7fd8a0; --query-c:#ff6b6b; --accent:#f2c14e;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:22ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:60ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--child-c); color:var(--child-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--parent-c); color:var(--parent-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.c{border-color:var(--query-c); color:var(--query-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(242,193,78,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* parent-child tree stage */
+  .pc-stage{position:relative; background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.6rem; margin:1.2rem 0;}
+  .pc-parent{border:1.5px solid var(--parent-c); border-radius:10px; padding:0.9rem 1.1rem; margin-bottom:1rem; background:rgba(127,216,160,0.05); transition:all .4s ease;}
+  .pc-parent.matched{background:rgba(127,216,160,0.22); box-shadow:0 0 18px rgba(127,216,160,0.35);}
+  .pc-parent .plabel{font-family:var(--mono); font-size:0.68rem; color:var(--parent-c); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.5rem; display:block;}
+  .pc-parent .ptext{font-size:0.85rem; color:#cdd0d8;}
+  .pc-children{display:flex; gap:0.7rem; flex-wrap:wrap; margin-top:0.8rem;}
+  .pc-child{flex:1; min-width:140px; border:1.5px solid var(--child-c); border-radius:8px; padding:0.6rem 0.8rem; background:var(--panel-2); font-family:var(--mono); font-size:0.75rem; color:#cdd0d8; transition:all .4s ease; position:relative;}
+  .pc-child.matched{background:rgba(79,195,247,0.28); box-shadow:0 0 14px rgba(79,195,247,0.4); color:#fff;}
+  .pc-child .clabel{font-size:0.62rem; color:var(--child-c); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.3rem;}
+
+  .zoom-arrow{text-align:center; font-family:var(--mono); font-size:0.8rem; color:var(--accent); margin:0.6rem 0; opacity:0; transition:opacity .5s;}
+  .zoom-arrow.show{opacity:1;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--child-c);} .dc-col.a h4{color:var(--child-c);}
+  .dc-col.b{border-color:var(--parent-c);} .dc-col.b h4{color:var(--parent-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(242,193,78,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.parent{border-left-color:var(--parent-c); background:rgba(127,216,160,0.06);} .callout.parent b{color:var(--parent-c);}
+  .callout.warn{border-left-color:var(--query-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--query-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CHUNKING &amp; HYBRID SEARCH</div>
+  <h1>Search on the small piece. Hand the LLM the whole neighborhood.</h1>
+  <p class="lede">Small chunks make retrieval precise — a tight, specific span of text matches a specific query well. But that same small chunk often lacks the surrounding context an LLM needs to actually use it. Parent-child chunking resolves the tension by searching on small child chunks, then returning their larger parent chunk instead. This lab animates that exact "zoom out" — a query matches a small child, then the system swaps in its parent before the LLM ever sees it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Small child chunks — for matching</div>
+    <div class="pipe-label b">Larger parent chunk — for context</div>
+    <div class="pipe-label c">Query matches child, returns parent</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="idea">1 · The Core Idea</a>
+  <a data-target="animation">2 · Match Small, Return Large — Live</a>
+  <a data-target="when">3 · When Parent-Child Beats Flat Chunking</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: CORE IDEA ============ -->
+<section id="idea">
+  <div class="kicker">01 — Two different chunk sizes, doing two different jobs</div>
+  <h2>Small chunks for retrieval, larger chunks for context</h2>
+
+  <p><strong>Start here, before any diagrams.</strong> Imagine a library's card catalog. Each index card is short — a title, an author, maybe one line of subject description — deliberately terse so you can flip through hundreds of them fast and find the exact card that matches what you're looking for. But nobody hands you the index card and calls it done — once you've found the RIGHT card, you walk over and pull the entire BOOK it points to, because the index card alone was never meant to contain enough to actually read and understand the subject. The card's job is precise matching; the book's job is providing enough context to actually be useful.</p>
+
+  <p><strong>Parent-child chunking</strong> applies this same split to document retrieval. A document is chunked twice, at two different sizes: <strong>child chunks</strong> are small (a sentence or two, or a small paragraph) and exist specifically to be embedded and searched — their small size makes them precise, closely matching a narrow query without a lot of unrelated surrounding text diluting the embedding. <strong>Parent chunks</strong> are larger (a full section, or several child chunks' worth of surrounding text) and exist specifically to be RETURNED to the LLM once a search finds a relevant child — the parent gives the LLM the fuller context the tiny child chunk alone never had room for. Critically, only the CHILD chunks get embedded and searched; the parent is retrieved by reference (via a parent ID stored alongside each child), not by a separate similarity search of its own.</p>
+
+  <div class="code"><span class="c-cmt"># Roughly how a parent-child index is built and queried</span>
+<span class="c-kw">def</span> <span class="c-fn">build_index</span>(document):
+    parents = <span class="c-fn">chunk</span>(document, size=<span class="c-num">1000</span>)  <span class="c-cmt"># large, for context</span>
+    index = []
+    <span class="c-kw">for</span> parent_id, parent_text <span class="c-kw">in</span> <span class="c-fn">enumerate</span>(parents):
+        children = <span class="c-fn">chunk</span>(parent_text, size=<span class="c-num">150</span>)  <span class="c-cmt"># small, for matching</span>
+        <span class="c-kw">for</span> child_text <span class="c-kw">in</span> children:
+            index.append({
+                <span class="c-str">"embedding"</span>: <span class="c-fn">embed</span>(child_text),   <span class="c-cmt"># only the CHILD is embedded</span>
+                <span class="c-str">"child_text"</span>: child_text,
+                <span class="c-str">"parent_id"</span>: parent_id,        <span class="c-cmt"># pointer back to the larger parent</span>
+            })
+    <span class="c-kw">return</span> index, parents
+
+<span class="c-kw">def</span> <span class="c-fn">query</span>(q, index, parents):
+    best = <span class="c-fn">max</span>(index, key=<span class="c-kw">lambda</span> c: <span class="c-fn">cosine_similarity</span>(<span class="c-fn">embed</span>(q), c[<span class="c-str">"embedding"</span>]))
+    <span class="c-cmt"># the match happened on the small child -- but we RETURN the parent</span>
+    <span class="c-kw">return</span> parents[best[<span class="c-str">"parent_id"</span>]]</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> parent-child chunking indexes and embeds small "child" chunks for precise retrieval matching, while storing a pointer from each child to a larger "parent" chunk (or the full section/document it belongs to) that is returned to the LLM instead of the child once a match is found. The search step operates entirely on the small, precise child embeddings; the context-delivery step swaps in the larger parent by reference, without a second similarity search — decoupling "what gets matched" from "what gets returned" lets each be sized for the job it's actually doing.</div>
+</section>
+
+<!-- ============ SECTION 2: ANIMATION ============ -->
+<section id="animation">
+  <div class="kicker">02 — Watch the zoom-out happen</div>
+  <h2>A query matches a small child, then the system returns its parent</h2>
+
+  <p><strong>Start here, before the demo.</strong> Back at the card catalog: you search the terse index cards for "climate impact of the 1991 Pinatubo eruption," find the one card that matches precisely, and that card's job is done — it told you WHERE to look. What actually leaves the library with you is the full book, not the card. The animation below does the same thing: the query embeds and matches against small child chunks (precise, narrow), and the moment a match is found, the system looks up that child's parent and swaps it in before anything reaches the LLM.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>PARENT-CHILD RETRIEVAL — MATCH SMALL, RETURN LARGE</span>
+      <div><button class="btn secondary" id="pc-reset">Reset</button></div>
+    </div>
+    <p style="font-size:0.85rem; margin:0 0 0.8rem;">A document section (parent) split into 3 small child chunks. Run a query and watch which child matches, then watch the system zoom out to the parent.</p>
+    <div class="pc-stage" id="pc-stage"></div>
+    <button class="btn" id="pc-run">Run query: "how does the retry backoff work?" ▸</button>
+    <div class="log" id="pc-log"><span class="line">Click to run the query and watch the child-match-then-parent-zoom-out flow.</span></div>
+  </div>
+
+  <p>Notice what got RETURNED to the LLM: not the matched child ("It waits using exponential backoff before retrying.") on its own — which, read in isolation, doesn't even say what "it" refers to — but the full parent chunk, which includes the sentences before and after that explain the request-handling flow the retry logic sits inside. The child did its job (finding the right spot precisely); the parent did its job (giving the LLM enough surrounding text to actually explain the mechanism coherently).</p>
+
+  <div class="callout parent"><b>Interview-ready definition:</b> the parent-child retrieval flow performs similarity search exclusively against child chunk embeddings, then — once the best-matching child is identified — resolves that child's stored parent_id and returns the parent chunk's full text to the generation step instead of the child. This means retrieval precision is governed entirely by the small child chunks (which is why they're kept small and specific), while the answer quality the LLM can produce is governed by the larger parent chunk's context (which is why it's kept large enough to be self-sufficient) — the two chunk sizes are tuned independently for these two different jobs.</div>
+</section>
+
+<!-- ============ SECTION 3: WHEN IT BEATS FLAT CHUNKING ============ -->
+<section id="when">
+  <div class="kicker">03 — Why not just pick one chunk size?</div>
+  <h2>When parent-child beats flat (single-size) chunking</h2>
+
+  <p><strong>Start here, before the trade-off.</strong> The obvious question: why not just use one chunk size everywhere? Because a single chunk size is forced to be good at both matching AND context-sufficiency at once, and those two goals pull in opposite directions. Small chunks are great at precise matching but often too thin on context for the LLM to use well. Large chunks give the LLM plenty of context but dilute the embedding with lots of surrounding, possibly irrelevant text, making retrieval LESS precise — a large chunk's embedding is an average-ish summary of everything in it, which can drown out the one sentence that actually matched the query.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Flat chunking, small chunks everywhere</h4>
+      <p>Great retrieval precision — each chunk's embedding closely reflects one specific idea. But each returned chunk, alone, often lacks enough surrounding context for the LLM to use it well — pronouns with no antecedent, conclusions with no stated setup.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Flat chunking, large chunks everywhere</h4>
+      <p>Plenty of context in every returned chunk. But retrieval precision suffers — a large chunk's embedding blends multiple ideas together, so a narrow query may fail to surface the chunk containing its actual answer, or surface it ranked lower than it should.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Approach</th><th>Retrieval precision</th><th>Context sufficiency</th></tr>
+    <tr><td>Flat, small chunks</td><td>High — narrow, specific embeddings</td><td>Low — matched chunk often lacks context</td></tr>
+    <tr><td>Flat, large chunks</td><td>Low — diluted, blended embeddings</td><td>High — plenty of surrounding text</td></tr>
+    <tr><td>Parent-child</td><td>High — search operates on small children</td><td>High — LLM receives the larger parent</td></tr>
+  </table>
+
+  <p>Parent-child chunking is the right call specifically when this tension is real for a given document type: technical documentation, legal text, or narrative content where a small span often can't stand alone but a whole document is too much to embed precisely. It's LESS necessary when documents are already short enough that a single chunk covers them fully (no parent/child split needed — one chunk IS both), or when chunks are naturally self-contained regardless of size (e.g. structured FAQ entries, where each entry is already a complete question-answer unit at almost any reasonable chunk size).</p>
+
+  <div class="callout warn"><b>The real cost:</b> parent-child chunking isn't free — it requires storing and maintaining two chunking granularities per document (more preprocessing, more storage for the parent text even though only children are embedded), and the parent-lookup step adds a small amount of retrieval-path complexity compared to "just return what matched." This is worth it exactly when the precision-vs-context tension described above is real for the document type; for already-short, already-coherent documents, the added complexity buys little.</div>
+
+  <div class="callout parent"><b>Interview-ready definition:</b> parent-child chunking beats flat (single-size) chunking whenever small standalone chunks lack sufficient context for an LLM to use well, but chunks large enough to provide that context would dilute retrieval precision if embedded directly — by decoupling the searched unit (small child) from the returned unit (larger parent), it achieves both high retrieval precision and high context sufficiency simultaneously, at the cost of maintaining two chunking granularities and an extra parent-lookup step in the retrieval path.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now work through it yourself</div>
+  <h2>Practice problems</h2>
+  <p>Work each one out before expanding the solution.</p>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Tracing exactly what gets embedded vs what gets returned</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">In section 1's build_index/query code, is the parent chunk's text ever passed to an embedding function? Walk through exactly what gets embedded and what gets returned, and explain why this matters for retrieval precision.</p>
+    <details><summary>Show solution</summary><div class="solution">No -- the parent chunk's text is never embedded. Looking at build_index,
+the embed() call happens only on child_text inside the inner loop; parent
+chunks are stored in the `parents` list purely as retrievable text,
+referenced later by parent_id, with no embedding computed for them at
+all. The similarity search in query() only ever compares the query's
+embedding against child embeddings (`c["embedding"]`, which was always
+computed from a child chunk) -- the parent is looked up ONLY after the
+best-matching child has already been identified, via a plain list index
+into `parents`, not a second similarity search.
+
+This matters for retrieval precision because it means the entire
+matching process operates exclusively on small, focused child chunks --
+the parent's larger, more diluted content never has a chance to
+out-compete or under-compete anything in the similarity ranking, since it
+was never a candidate in that ranking to begin with. This is exactly what
+keeps parent-child chunking's retrieval precision as good as flat small
+chunking's (section 3's table) while still returning large-chunk context.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Predicting what happens if two children under different parents both match well</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A query's top-3 matching child chunks belong to 3 DIFFERENT parents (not 2 children under the same parent). What does the system return, and what does this reveal about how parent-child interacts with "return top-k results"?</p>
+    <details><summary>Show solution</summary><div class="solution">The system returns 3 separate parent chunks -- one per matched child,
+since each child's parent_id points to a different parent. This is a
+direct, correct extension of the single-match case described in section
+2: retrieving top-k results under parent-child chunking means resolving
+EACH of the k matched children to ITS OWN parent independently, not
+picking one "best" parent overall. If two of the top-k matched children
+had instead belonged to the SAME parent, a well-implemented system would
+typically deduplicate and return that parent only once (there's no value
+in handing the LLM the same parent text twice), but with 3 genuinely
+different parents, the correct behavior is 3 distinct parent chunks
+handed to the LLM.
+
+This reveals that parent-child chunking composes normally with top-k
+retrieval -- it doesn't collapse multiple independent good matches into
+one, it just changes what "a match" resolves to (a parent instead of a
+child) after the ranking step has already run on children. The one added
+consideration a real implementation needs is de-duplicating parents when
+multiple top-k children happen to share one, so the LLM's context isn't
+padded with redundant repeated text.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Choosing parent-child vs flat chunking for a stated document type</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A company's internal wiki has two very different document types: (a) a 40-page technical architecture doc with dense, interdependent sections, and (b) a simple FAQ page where each entry is a self-contained question and 2-sentence answer. Would you apply parent-child chunking to both, one, or neither? Justify per document type.</p>
+    <details><summary>Show solution</summary><div class="solution">Apply parent-child chunking to (a), the 40-page architecture doc, but
+NOT to (b), the FAQ page -- these two document types sit on opposite
+sides of exactly the tension section 3 describes.
+
+For (a): dense, interdependent technical sections are precisely the case
+where a small chunk (a sentence or two about "the retry mechanism")
+likely depends on surrounding context (what system is being described,
+what triggers the retry, what happens after) to be usable by an LLM at
+all -- but embedding a whole large section directly would dilute the
+embedding across many sub-topics within that section, hurting retrieval
+precision for narrow queries. Parent-child directly resolves this: small
+children for precise matching, the full section as parent for context.
+
+For (b): each FAQ entry is already a small, SELF-CONTAINED unit -- the
+question and its 2-sentence answer together already form a complete,
+coherent idea with no dependency on surrounding entries. There's no
+context-insufficiency problem to solve (an FAQ answer doesn't need
+"parent" context beyond itself), so introducing a parent-child split here
+would add real complexity (two chunking passes, parent storage, a
+lookup step) for essentially no benefit -- flat, single-size chunking
+(one chunk per FAQ entry) is already both precise AND self-sufficient.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 4 · Diagnosing a parent-child system returning too little useful text</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A team implements parent-child chunking, but users still report that answers feel like they're missing context. On investigation, parent chunks are only slightly larger than child chunks (children: 100 tokens, parents: 150 tokens). What's the likely issue, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">The likely issue is that the parent chunk size wasn't set large enough
+to meaningfully solve the context problem parent-child chunking exists
+to address -- a parent only 50 tokens larger than its child barely
+qualifies as "zooming out" at all; it's still close to the same
+narrow span of text, just marginally padded. Section 1's whole premise is
+that the parent should be sized to actually contain the surrounding
+context the LLM needs (a full section, or several children's worth of
+text) -- a parent that's only 1.5x the child size doesn't meaningfully
+deliver on that promise, so users experiencing the same "missing context"
+symptom flat small chunking would produce isn't surprising.
+
+The fix: meaningfully widen the gap between child and parent size --
+e.g. children around 100-150 tokens (kept small and precise for
+matching) but parents sized to a full logical section, often several
+hundred to over a thousand tokens, enough to contain the setup, the
+detail, and any immediately relevant surrounding explanation a reader
+would need. The exact right parent size is document-dependent (tied to
+how documents are naturally structured into sections), but "only
+slightly bigger than the child" defeats the purpose of having two
+separate sizes in the first place.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 5 · Explaining why parent-child doesn't need a second similarity search</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Someone proposes: "after finding the best-matching child, why not ALSO run a similarity search over just the candidate parent chunks, to double-check the parent is actually relevant?" Explain why this extra step is typically unnecessary, tying your answer back to how parent_id linking works.</p>
+    <details><summary>Show solution</summary><div class="solution">It's typically unnecessary because the parent's relevance is already
+established INDIRECTLY and reliably through the child: since the parent
+is defined as the larger section the matched child was chunked FROM (the
+parent_id link in section 1's code is set at chunking time, not at query
+time), the parent chunk by construction CONTAINS the very text that
+matched the query well enough to win the similarity search. There's no
+scenario where a child scores as the best match but its parent is
+somehow irrelevant to the query -- the parent's relevance is inherited
+directly from containing the specific span that already proved itself
+relevant.
+
+Running a second similarity search over parent embeddings would also
+reintroduce exactly the precision problem parent-child chunking was
+built to avoid (section 3): a large parent's embedding is diluted across
+its full content, so directly comparing the query against parent
+embeddings could rank a genuinely relevant parent LOWER than its
+own precise child ranked it, undermining the whole point of matching on
+children in the first place. The parent_id lookup being a simple,
+deterministic pointer resolution (not a second search) is precisely what
+keeps the precision benefit of child-based matching intact all the way
+through to what gets returned.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before moving on:</b> can you explain (1) exactly what gets embedded versus what gets returned in a parent-child system, (2) why a single chunk size can't simultaneously optimize retrieval precision and context sufficiency, and (3) name a concrete document type where parent-child chunking adds real value and one where it doesn't? If any feels shaky, revisit that section's lab.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — chunking: parent-child.</footer>
+
+<script>
+/* NAV */
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* PARENT-CHILD DEMO */
+(function(){
+  var stage = document.getElementById("pc-stage");
+  var runBtn = document.getElementById("pc-run");
+  var resetBtn = document.getElementById("pc-reset");
+  var logEl = document.getElementById("pc-log");
+  var busy = false;
+
+  var PARENT_TEXT = "When a downstream call fails, the request-handling layer does not give up immediately. It waits using exponential backoff before retrying, doubling the delay after each failed attempt up to a maximum of 5 attempts. Once retries are exhausted, the request is marked failed and logged for the on-call engineer to review.";
+
+  var CHILDREN = [
+    "When a downstream call fails, the request-handling layer does not give up immediately.",
+    "It waits using exponential backoff before retrying, doubling the delay after each failed attempt up to a maximum of 5 attempts.",
+    "Once retries are exhausted, the request is marked failed and logged for the on-call engineer to review."
+  ];
+
+  var MATCH_IDX = 1; // the middle child is the best match for "how does the retry backoff work?"
+
+  function log(msg){
+    var p = document.createElement("div"); p.className = "line fadein";
+    p.innerHTML = msg;
+    logEl.appendChild(p); logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function build(){
+    stage.innerHTML = "";
+    var parentEl = document.createElement("div");
+    parentEl.className = "pc-parent";
+    parentEl.id = "pc-parent-el";
+    parentEl.innerHTML = '<span class="plabel">PARENT CHUNK (not searched directly — returned by reference)</span><span class="ptext" id="pc-parent-text">' + PARENT_TEXT + '</span>';
+    stage.appendChild(parentEl);
+
+    var zoomEl = document.createElement("div");
+    zoomEl.className = "zoom-arrow";
+    zoomEl.id = "pc-zoom";
+    zoomEl.textContent = "▲ zooming out to parent ▲";
+    stage.appendChild(zoomEl);
+
+    var childrenWrap = document.createElement("div");
+    childrenWrap.className = "pc-children";
+    CHILDREN.forEach(function(text, i){
+      var c = document.createElement("div");
+      c.className = "pc-child";
+      c.id = "pc-child-" + i;
+      c.innerHTML = '<span class="clabel">Child ' + (i+1) + ' (embedded &amp; searched)</span>' + text;
+      childrenWrap.appendChild(c);
+    });
+    stage.appendChild(childrenWrap);
+  }
+
+  function wait(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  runBtn.addEventListener("click", async function(){
+    if(busy) return;
+    busy = true;
+    runBtn.disabled = true;
+    build();
+    logEl.innerHTML = "";
+
+    log('<b>Query:</b> "how does the retry backoff work?" — embedding the query and comparing against all 3 child embeddings...');
+    await wait(500);
+
+    for(var i = 0; i < CHILDREN.length; i++){
+      var score = i === MATCH_IDX ? 0.91 : (i === 0 ? 0.44 : 0.38);
+      log('Child ' + (i+1) + ' similarity: ' + score.toFixed(2));
+      await wait(350);
+    }
+
+    var matchedEl = document.getElementById("pc-child-" + MATCH_IDX);
+    matchedEl.classList.add("matched");
+    log('<b style="color:var(--child-c);">Best match: Child ' + (MATCH_IDX+1) + '</b> ("It waits using exponential backoff...") — the search stops here. But notice: read alone, this sentence never says WHAT is retrying or in what system.');
+    await wait(700);
+
+    document.getElementById("pc-zoom").classList.add("show");
+    await wait(500);
+
+    var parentEl = document.getElementById("pc-parent-el");
+    parentEl.classList.add("matched");
+    log('<b style="color:var(--parent-c);">Zooming out.</b> Child ' + (MATCH_IDX+1) + '\'s parent_id resolves to this parent chunk — retrieved by reference, no second search. The parent is what actually gets sent to the LLM.');
+    await wait(400);
+    log('<b>Returned to the LLM:</b> the full parent chunk, which explains the downstream failure, the retry mechanism, AND what happens after retries are exhausted — far more than the matched child alone contained.');
+
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  resetBtn.addEventListener("click", function(){
+    build();
+    logEl.innerHTML = '<span class="line">Click to run the query and watch the child-match-then-parent-zoom-out flow.</span>';
+    busy = false;
+    runBtn.disabled = false;
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>
