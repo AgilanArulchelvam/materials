@@ -73,6 +73,7 @@
   .card .status{font-family:var(--mono); font-size:0.62rem; letter-spacing:0.08em; text-transform:uppercase; padding:0.2rem 0.55rem; border-radius:20px; border:1px solid var(--rule); color:var(--ink-dim); position:absolute; top:1.4rem; right:1.5rem;}
   .card .status.active{color:var(--road-c); border-color:var(--road-c); background:rgba(232,163,85,0.08);}
   .card .status.upcoming{opacity:0.7;}
+  .card .status.complete{color:#5fc9b0; border-color:#5fc9b0; background:rgba(95,201,176,0.08);}
 
   footer{max-width:1100px; margin:5rem auto 0; padding:2rem 0 0; border-top:1px solid var(--rule); font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim); text-align:center;}
 </style>
@@ -86,6 +87,57 @@
 </div>
 
 <main>
+
+  <section class="group">
+    <div class="group-head">
+      <h2>Roadmap</h2>
+      <span class="count">6 months</span>
+    </div>
+    <div class="cards">
+      <a class="card roadmap" href="roadmap/month-1-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 1</span>
+        <h3>Python Foundations &amp; Data Structures</h3>
+        <p>Syntax internals, OOP, generators, context managers, async, CPython internals — plus weekly system design and DB design tracks.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-2-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 2</span>
+        <h3>Backend API Design &amp; Protocols</h3>
+        <p>REST, gRPC, auth, and the protocol-level decisions behind real backend services.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-3-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 3</span>
+        <h3>Storage Engines &amp; RAG</h3>
+        <p>How storage engines actually work under the hood, plus retrieval-augmented generation.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-4-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 4</span>
+        <h3>MCP &amp; Agentic Frameworks</h3>
+        <p>Model Context Protocol and the architecture behind agentic systems.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-5-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 5</span>
+        <h3>Evals, Observability &amp; Infra</h3>
+        <p>Evaluating model behavior, observability practices, and the infrastructure that supports both.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+      <a class="card roadmap" href="roadmap/month-6-checklist.html">
+        <span class="status complete">Complete</span>
+        <span class="tag">Month 6</span>
+        <h3>Capstone &amp; Interview Execution</h3>
+        <p>Bringing everything together into a capstone project and interview-ready execution.</p>
+        <span class="arrow">Open checklist →</span>
+      </a>
+    </div>
+  </section>
 
   <section class="group">
     <div class="group-head">
@@ -1053,56 +1105,6 @@
     </div>
   </section>
 
-  <section class="group">
-    <div class="group-head">
-      <h2>Roadmap</h2>
-      <span class="count">6 months</span>
-    </div>
-    <div class="cards">
-      <a class="card roadmap" href="roadmap/month-1-checklist.html">
-        <span class="status active">In progress</span>
-        <span class="tag">Month 1</span>
-        <h3>Python Foundations &amp; Data Structures</h3>
-        <p>Syntax internals, OOP, generators, context managers, async, CPython internals — plus weekly system design and DB design tracks.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-      <a class="card roadmap" href="roadmap/month-2-checklist.html">
-        <span class="status upcoming">Upcoming</span>
-        <span class="tag">Month 2</span>
-        <h3>Backend API Design &amp; Protocols</h3>
-        <p>REST, gRPC, auth, and the protocol-level decisions behind real backend services.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-      <a class="card roadmap" href="roadmap/month-3-checklist.html">
-        <span class="status upcoming">Upcoming</span>
-        <span class="tag">Month 3</span>
-        <h3>Storage Engines &amp; RAG</h3>
-        <p>How storage engines actually work under the hood, plus retrieval-augmented generation.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-      <a class="card roadmap" href="roadmap/month-4-checklist.html">
-        <span class="status upcoming">Upcoming</span>
-        <span class="tag">Month 4</span>
-        <h3>MCP &amp; Agentic Frameworks</h3>
-        <p>Model Context Protocol and the architecture behind agentic systems.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-      <a class="card roadmap" href="roadmap/month-5-checklist.html">
-        <span class="status upcoming">Upcoming</span>
-        <span class="tag">Month 5</span>
-        <h3>Evals, Observability &amp; Infra</h3>
-        <p>Evaluating model behavior, observability practices, and the infrastructure that supports both.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-      <a class="card roadmap" href="roadmap/month-6-checklist.html">
-        <span class="status upcoming">Upcoming</span>
-        <span class="tag">Month 6</span>
-        <h3>Capstone &amp; Interview Execution</h3>
-        <p>Bringing everything together into a capstone project and interview-ready execution.</p>
-        <span class="arrow">Open checklist →</span>
-      </a>
-    </div>
-  </section>
 
 </main>
 
