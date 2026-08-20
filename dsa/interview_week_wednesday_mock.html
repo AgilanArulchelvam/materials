@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Interview Week: Wednesday Mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --py-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:26ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--py-c); color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.py{color:var(--py-c); border-color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.py{border-left-color:var(--py-c); background:rgba(199,146,234,0.06);} .callout.py b{color:var(--py-c);}
+
+  .weeknav{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.6rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .weeknav a{color:var(--ink-dim); text-decoration:none; border:1px solid var(--rule); padding:0.5rem 0.9rem; border-radius:8px; transition:all .2s;}
+  .weeknav a:hover{color:var(--ink); border-color:var(--accent);}
+  .weeknav .day-tally{color:var(--ink-dim);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> INTERVIEW WEEK · DAY 3 OF 6 · WEDNESDAY MOCK</div>
+  <h1>Halfway through the ramp. The clock is now the harder part.</h1>
+  <p class="lede">Two days of format calibration are behind you. Today's problems step up again in real difficulty — not just tighter clocks — and every budget drops further. This is the day the difference between "I understand this" and "I can produce this cleanly, fast, out loud" starts to show up honestly, if it hasn't already.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">DSA — shortest path with weighted edges — 12:00</div>
+    <div class="pipe-label b">Schema — event sourcing vs. CRUD decision — 10:00</div>
+    <div class="pipe-label c">System design — CDN + caching for the capstone's docs — 15:00</div>
+    <div class="pipe-label d">Python — context managers, cold — 6:00</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="dsa">1 · DSA</a>
+  <a data-target="schema">2 · Schema Design</a>
+  <a data-target="sys">3 · System Design</a>
+  <a data-target="py">4 · Python Fundamentals</a>
+  <a data-target="practice">Wrap-Up &amp; Log</a>
+</nav>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="dsa">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 12:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">12:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The orchestrator can route a request through multiple tool chains, each with a different estimated latency cost. Given a directed weighted graph of tool-to-tool transitions (edge weight = expected latency in ms), find the CHEAPEST total-latency path from a start tool to a goal tool. All weights are non-negative. State your algorithm, its complexity, and what would break if a weight could be negative.</p>
+    <p style="font-size:0.88rem;">Builds on <code class="inline">dsa/graphs_bfs_dfs.html</code>'s traversal foundation, now with weighted edges — the standard shortest-path-with-non-negative-weights problem, applied to routing cost instead of an abstract graph.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Names Dijkstra's algorithm specifically, not BFS (which only works for unweighted or uniform-weight graphs) and not a brute-force path enumeration</li>
+            <li>Describes the mechanism correctly: a min-priority-queue keyed by current best-known distance, greedily finalizing the closest unvisited node each step</li>
+            <li>States complexity correctly with a binary heap: O((V + E) log V)</li>
+            <li>States unprompted why Dijkstra breaks with negative weights (a node can be "finalized" too early, before a cheaper path through a later negative edge is discovered) and names Bellman-Ford as the correct alternative</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Proposes plain BFS, which only finds the fewest-EDGES path, not the cheapest-WEIGHT path</li>
+            <li>Can't state the priority-queue mechanism precisely, or forgets nodes should only be finalized once</li>
+            <li>Gets the complexity wrong or can't justify it</li>
+            <li>Doesn't know why negative weights break Dijkstra, or names no alternative algorithm</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Dijkstra's algorithm is the correct tool here, not BFS -- BFS finds
+the path with the FEWEST EDGES, which is only equivalent to
+cheapest-weight when every edge has equal weight. With genuinely
+different latency costs per edge, BFS can return a path that's
+"shortest" in hop count but far from cheapest in total latency.
+
+Mechanism: maintain a min-priority-queue of (distance, node) pairs,
+seeded with (0, start). Repeatedly pop the node with the smallest
+current known distance, and if not already finalized, finalize it
+and relax all its outgoing edges -- for each neighbor, if
+distance[current] + edge_weight is less than the neighbor's
+currently known distance, update it and push the improved (distance,
+neighbor) pair onto the queue. Stop when the goal node is popped and
+finalized (or the queue empties). Each node is finalized exactly
+once, and the greedy choice (always expanding the currently-cheapest
+frontier node next) is provably correct precisely BECAUSE all
+weights are non-negative -- a node's distance can never improve after
+being finalized, since any alternative path would have to go through
+an already-more-expensive node first.
+
+Complexity: with a binary heap for the priority queue, O((V + E) log
+V) -- each edge can trigger one push/relax (E log V total) and each
+node is popped and finalized once (V log V total).
+
+Why negative weights break it, the key unprompted insight: Dijkstra's
+correctness relies on finalizing a node the FIRST time it's popped
+with the current minimum distance, on the assumption no cheaper path
+could appear later. A negative-weight edge violates this -- a path
+through a later negative edge could make an already-finalized node's
+true shortest distance LOWER than what was locked in, but Dijkstra
+has no mechanism to revisit a finalized node. Bellman-Ford is the
+correct algorithm for graphs with negative weights (as long as there's
+no negative CYCLE): it relaxes every edge V-1 times, tolerating the
+possibility that a shorter path is discovered late, at the cost of
+worse complexity, O(V * E) instead of O((V + E) log V).</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="schema">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 10:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">10:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone's <code class="inline">agent_run</code> status field (pending → running → complete/failed) currently uses plain CRUD — one mutable row updated in place as status changes. An interviewer asks you to argue FOR or AGAINST switching this to event sourcing (an append-only log of every status transition, with current state derived by replaying events). Take a position and defend it.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/event_sourcing_vs_crud.html</code>'s territory — this is a genuine trade-off question, not a "correct answer" lookup. Argue a specific side with specific reasoning.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Takes an explicit position rather than listing pros/cons with no conclusion</li>
+            <li>Names the real cost of event sourcing here: replaying events to get current state adds read-path complexity and latency versus a single mutable-row read</li>
+            <li>Names the real benefit: a full audit trail of every transition for free, which the CURRENT schema's audit_trail_schema.html pattern already provides SEPARATELY without needing event sourcing for the whole entity</li>
+            <li>Concludes with a scoped recommendation (e.g. "CRUD for current state, a separate append-only transition log alongside it" — recognizing these aren't mutually exclusive) rather than an all-or-nothing switch</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Lists generic pros/cons of event sourcing with no connection to this specific schema's actual access patterns</li>
+            <li>Doesn't mention the read-path cost of replaying events</li>
+            <li>Treats event sourcing and CRUD as mutually exclusive with no "both, scoped differently" option considered</li>
+            <li>No final position taken — just describes the trade-off without deciding</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">A strong position: AGAINST a full switch to event sourcing for
+agent_run's status field specifically, in favor of a scoped hybrid --
+keep the mutable current-state row (CRUD) for fast reads, and ADD a
+separate append-only status_transition log alongside it (exactly this
+week's own audit-trail pattern from Tuesday) rather than replacing
+CRUD entirely.
+
+The cost of full event sourcing here: every read of "what's this
+run's current status" would require replaying all prior events for
+that run_id to derive current state (or maintaining a materialized
+snapshot that's kept in sync, which reintroduces a mutable row
+anyway) -- for a field checked FREQUENTLY (dashboard polling, the
+orchestrator's own state machine), this is real added latency and
+complexity for no benefit, since the current status is exactly the
+kind of simple, frequently-read field CRUD is well suited for.
+
+The genuine benefit event sourcing offers -- a complete history of
+every transition, useful for debugging "why did this run fail" post
+hoc -- is achievable WITHOUT paying event sourcing's read-path cost
+for the whole entity: a separate, append-only status_transition_log
+table (run_id, old_status, new_status, transitioned_at), written
+alongside every CRUD update to agent_run.status, gives the same
+audit value as full event sourcing while keeping current-state reads
+cheap and simple.
+
+The scoped conclusion, which is what separates a strong answer from
+a merely correct one: event sourcing and CRUD aren't a strict
+either/or for a whole entity -- the right question is WHICH FIELDS OR
+CONCERNS actually benefit from an event log (here: the transition
+history, for debugging) versus which benefit from simple mutable
+state (here: current status, for fast frequent reads), and applying
+each pattern where it fits rather than picking one architecture for
+the entire schema.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="sys">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 15:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">15:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone's architecture documentation (<code class="inline">backend/capstone_architecture_documentation.html</code>) is served as static HTML to engineers worldwide, several times a day, rarely changing. Design how you'd serve this efficiently at global scale — where does a CDN fit, what gets cached at the edge versus origin, and how do you handle a documentation update propagating to viewers without a long stale-content window?</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">systems/cdns.html</code>'s territory. Name the specific caching and invalidation mechanism, not just "put it behind a CDN."</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Recognizes this content is an ideal CDN candidate: static, globally distributed readers, infrequent writes — exactly the read-heavy/write-rare profile a CDN edge cache is built for</li>
+            <li>Names a concrete cache-control strategy: long TTL at the edge (since content changes rarely) paired with an explicit invalidation trigger on publish, not just waiting out the TTL</li>
+            <li>Distinguishes edge cache invalidation (a push, on-demand purge of the specific changed asset) from a naive short-TTL-everywhere approach, which would sacrifice cache hit rate for freshness it doesn't usually need</li>
+            <li>Names origin's role explicitly: source of truth, only hit on a cache miss or post-purge, not on every request</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "put it behind a CDN" with no cache-control specifics</li>
+            <li>Proposes a short TTL everywhere to stay safe, without recognizing the hit-rate cost for content that changes rarely</li>
+            <li>No invalidation mechanism named for handling an actual content update</li>
+            <li>Doesn't distinguish edge cache from origin at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">This content is close to an ideal CDN use case: static (no
+per-request computation needed), read by a globally distributed
+audience, changes infrequently -- exactly the profile cdns.html
+identifies as the strongest fit for edge caching, versus dynamic,
+personalized, or frequently-changing content that benefits far less.
+
+Cache-control strategy: a LONG TTL at the edge (hours to a day,
+since documentation updates are infrequent and don't need
+second-level freshness) rather than a short TTL that would force
+frequent origin re-fetches for content that rarely changes -- a
+short TTL here would sacrifice cache hit rate (more origin trips,
+more latency for readers far from origin) for a freshness guarantee
+nobody actually needs at that granularity.
+
+The invalidation mechanism that makes a long TTL safe: an explicit
+PURGE triggered on publish -- when the documentation is updated, the
+publish pipeline issues a cache invalidation request to the CDN for
+that specific asset's path, forcing the next request to bypass the
+stale edge copy and re-fetch from origin, rather than waiting out
+the long TTL. This is the standard "long TTL + active purge on
+write" pattern that gets both high cache hit rate (99%+ of the time,
+nothing changed, so serve from edge) AND fast propagation on the
+rare occasions something does change, without the two goals fighting
+each other the way a short-TTL-only strategy would.
+
+Origin's role, stated explicitly: origin is hit only on an edge
+cache MISS (first request after a purge, or a request from a region
+with no warm edge cache yet) -- it is the source of truth but not on
+the hot path for the vast majority of requests, exactly the "origin
+serves cache misses, not every request" principle systems/cdns.html
+establishes and this week's earlier Postgres-vs-cache stations have
+reinforced in different contexts.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: PYTHON FUNDAMENTALS ============ -->
+<section id="py">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag py">STATION 4 — PYTHON FUNDAMENTALS · 6:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">6:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone's database layer wraps every transaction in a context manager for automatic commit/rollback. Explain exactly what Python calls on a context manager object, in what order, including what happens on the happy path versus when an exception is raised inside the <code class="inline">with</code> block.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">python/context_managers.html</code>'s territory. Cold — name the actual dunder methods and their exact contract, not just "with handles cleanup."</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Names <code class="inline">__enter__</code> and <code class="inline">__exit__</code> specifically, and states <code class="inline">__enter__</code>'s return value is what gets bound to the <code class="inline">as</code> variable</li>
+            <li>States <code class="inline">__exit__</code>'s exact signature: it receives exception type, value, and traceback (all <code class="inline">None</code> on the happy path)</li>
+            <li>States the return-value contract precisely: if <code class="inline">__exit__</code> returns a truthy value, the exception is SUPPRESSED; if falsy (including implicit <code class="inline">None</code>), the exception propagates normally after <code class="inline">__exit__</code> runs</li>
+            <li>Applies this to the transaction case: <code class="inline">__exit__</code> commits on the happy path (exc_type is None) and rolls back when an exception occurred, then typically returns falsy so the original error still propagates to the caller</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "with calls enter and exit" without naming the actual dunder methods or their signatures</li>
+            <li>Doesn't know __exit__ receives exception info, or can't state what happens if no exception occurred</li>
+            <li>Doesn't know the return-value-suppresses-exception contract, or gets it backwards</li>
+            <li>Can't connect the mechanism to the concrete commit/rollback behavior asked about</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">A context manager implements two dunder methods: __enter__(self) and
+__exit__(self, exc_type, exc_value, traceback).
+
+On entering a `with obj() as x:` block, Python calls obj.__enter__(),
+and whatever it RETURNS is bound to `x` -- __enter__'s return value
+is what the `as` clause captures, not the context manager object
+itself (though they're often the same object, by convention).
+
+On leaving the block -- whether normally or via an exception --
+Python calls obj.__exit__(exc_type, exc_value, traceback). On the
+HAPPY PATH (no exception raised inside the block), all three
+arguments are None. If an exception WAS raised inside the block,
+those three arguments carry the actual exception's type, instance,
+and traceback, giving __exit__ full visibility into what went wrong
+before deciding what to do about it.
+
+The return-value contract, precisely: if __exit__ returns a truthy
+value, Python treats the exception as HANDLED and SUPPRESSES it --
+execution continues after the with block as if nothing happened. If
+__exit__ returns a falsy value (including the implicit None from a
+function with no explicit return), the original exception
+PROPAGATES normally after __exit__ finishes running. This is a
+commonly missed detail: forgetting to explicitly return False (or
+nothing) in a custom __exit__ is fine, but explicitly and
+accidentally returning True would silently swallow every exception
+raised inside the block, which is almost never the intended
+behavior for cleanup code.
+
+Applied to the transaction case asked about: __enter__ starts the
+transaction (e.g. BEGIN) and typically returns the connection or
+cursor. __exit__ checks exc_type -- if it's None (happy path), issue
+COMMIT; if it's not None (an exception occurred inside the block),
+issue ROLLBACK instead. Critically, __exit__ then returns falsy (or
+nothing), so the ORIGINAL exception still propagates to the caller
+after rollback completes -- the context manager cleans up the
+transaction state but does not swallow the actual error, which the
+caller still needs to see and handle.</div></details>
+  </div>
+</section>
+
+<!-- ============ WRAP-UP ============ -->
+<section id="practice">
+  <div class="kicker">Before closing today's mock</div>
+  <h2>Wrap-up: three days in, halfway to Saturday</h2>
+
+  <p><strong>Start here, before moving on.</strong> Three data points (Monday, Tuesday, today) is enough to see a real trend, not just noise. Compare all three days' grades per station — if one station has been sliding for three straight days, that's the clearest possible signal about where to focus before Thursday.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">All four stations run today at today's tighter budgets</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Each station self-graded against its rubric BEFORE reading the reference approach</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">Three days of grades (Mon/Tue/Wed) compared side by side, per station</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">Any station showing a three-day downward trend named explicitly, with a plan for tonight's review</label></li>
+    </ul>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Reading a three-day trend correctly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If your schema-design station has gone strong → mixed → mixed across Monday, Tuesday, Wednesday, while your Python station has gone mixed → strong → strong, what does each trend suggest, and should you respond to them the same way?</p>
+    <details><summary>Show solution</summary><div class="solution">No, these are two different signals and deserve two different
+responses. Schema design going strong -> mixed -> mixed is a
+STABILIZING pattern at a lower tier -- the drop from Monday happened
+once and then held steady rather than continuing to worsen, which
+suggests the clock tightening (not eroding knowledge) explains the
+drop, and it's now consistently landing at "mixed" under
+increasingly tight budgets. Worth watching, but not yet an emergency
+-- if it holds at "mixed" through Thursday and Friday too, THEN it's
+worth a dedicated review session, since a stable plateau under
+increasing difficulty is actually a reasonably good sign relative to
+a station that keeps getting worse.
+
+Python going mixed -> strong -> strong is an IMPROVING pattern --
+whatever felt shaky Monday (a new station this week, first time
+combined with the other three areas under one clock) has clearly
+consolidated by Wednesday. This doesn't need intervention at all;
+if anything it's evidence the drilling itself is working for that
+area.
+
+The general rule for reading a three-point trend: a single early dip
+followed by stability is very different from a continuing decline,
+and an early dip followed by RECOVERY is different again from either.
+Only a continuing decline across all three points is unambiguous
+signal that something needs active attention before Thursday --
+noise in one direction for one day, especially early in the week
+before the clock has fully bitten, is not yet cause for a full
+review pass.</div></details>
+  </div>
+
+  <div class="callout sys">
+    <b>Self-check before Thursday:</b> could you, without notes, (1) name each of the three days' grades for all four stations from memory, (2) identify whether any station shows a genuine continuing decline versus a one-time dip, and (3) name the one thing you'll do differently tonight if a real decline shows up? Thursday tightens every clock again with four new problems.
+  </div>
+
+  <div class="weeknav">
+    <a href="dsa/interview_week_tuesday_mock.html">← Back: Tuesday Mock</a>
+    <span class="day-tally">Day 3 of 6 — Interview Week</span>
+    <a href="dsa/interview_week_thursday_mock.html">Next: Thursday Mock →</a>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — interview week, day 3 of 6: Wednesday mock.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 12 * 60 },
+    { n: 2, seconds: 10 * 60 },
+    { n: 3, seconds: 15 * 60 },
+    { n: 4, seconds: 6 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns. Worth reviewing the dedicated lab tonight."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

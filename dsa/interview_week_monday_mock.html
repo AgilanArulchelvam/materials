@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Interview Week: Monday Mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --py-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:26ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--py-c); color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.py{color:var(--py-c); border-color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.py{border-left-color:var(--py-c); background:rgba(199,146,234,0.06);} .callout.py b{color:var(--py-c);}
+
+  .weeknav{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.6rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .weeknav a{color:var(--ink-dim); text-decoration:none; border:1px solid var(--rule); padding:0.5rem 0.9rem; border-radius:8px; transition:all .2s;}
+  .weeknav a:hover{color:var(--ink); border-color:var(--accent);}
+  .weeknav .day-tally{color:var(--ink-dim);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> INTERVIEW WEEK · DAY 1 OF 6 · MONDAY MOCK</div>
+  <h1>Four areas, one clock each. This is the format for the whole week.</h1>
+  <p class="lede">Month 6 Week 4 is the roadmap's final item: "daily combined mocks, Monday through Saturday — DSA + schema design + system design + Python fundamentals, timed, increasing difficulty each day." Every prior mock in this repo tested EITHER stamina across full-length rounds (<code class="inline">capstone_combined_mock_full_loop.html</code>) OR fast context-switching across short stations (<code class="inline">combined_timed_mock_dsa_schema_system_design.html</code>). This week does both, once a day, six days, getting harder each time — and adds a fourth area neither prior mock included: Python fundamentals, drawn fresh from Month 1's internals labs. Today is the warm-up: generous budgets, moderate problems, and the template every later day repeats.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">DSA — two-sum family, hash map — 15:00</div>
+    <div class="pipe-label b">Schema — conversation history table — 12:00</div>
+    <div class="pipe-label c">System design — sketch a caching layer — 18:00</div>
+    <div class="pipe-label d">Python — the GIL, cold — 8:00</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="how">How This Week Works</a>
+  <a data-target="dsa">1 · DSA</a>
+  <a data-target="schema">2 · Schema Design</a>
+  <a data-target="sys">3 · System Design</a>
+  <a data-target="py">4 · Python Fundamentals</a>
+  <a data-target="practice">Wrap-Up &amp; Log</a>
+</nav>
+
+<!-- ============ HOW THIS WEEK WORKS ============ -->
+<section id="how">
+  <div class="kicker">Read this once, today — it applies to all six days</div>
+  <h2>How this week works, and why today is generous</h2>
+
+  <p><strong>Start here, before starting any timer.</strong> Think about how a training block builds toward a peak, rather than hitting peak effort on day one — a runner doesn't run their fastest mile in week one of marathon training, they build volume and form first, then tighten the pace as race day approaches. This week is that taper, reversed: six days, same four areas every day (DSA, schema design, system design, Python fundamentals), each day's problems and time budgets a notch harder than the last, ending Saturday at a full dress rehearsal for the actual final checkpoint of the entire six-month program.</p>
+
+  <p>Today, Monday, is deliberately the easiest tier — not because the material is unfamiliar (every technique below has its own dedicated lab elsewhere in this repo) but because the FORMAT itself needs one clean run before the clock starts tightening. Notice the shape: four stations, each with its own timer, its own prompt, its own self-grading rubric, and a hidden reference answer in a <code class="inline">&lt;details&gt;</code> element you should not open until your own timer ends and you've graded yourself. That exact shape repeats Tuesday through Saturday with new problems and shorter clocks — today is where you calibrate what "strong," "mixed," and "weak" actually feel like for you, honestly, before the difficulty ramps.</p>
+
+  <table class="cmp">
+    <tr><th>Day</th><th>Tier</th><th>DSA budget</th><th>Schema budget</th><th>System design budget</th><th>Python budget</th></tr>
+    <tr><td>Mon (today)</td><td>Warm-up</td><td>15:00</td><td>12:00</td><td>18:00</td><td>8:00</td></tr>
+    <tr><td>Tue</td><td>Moderate</td><td>13:00</td><td>11:00</td><td>16:00</td><td>7:00</td></tr>
+    <tr><td>Wed</td><td>Harder</td><td>12:00</td><td>10:00</td><td>15:00</td><td>6:00</td></tr>
+    <tr><td>Thu</td><td>Harder still</td><td>11:00</td><td>9:00</td><td>14:00</td><td>6:00</td></tr>
+    <tr><td>Fri</td><td>Near-peak</td><td>10:00</td><td>8:00</td><td>13:00</td><td>5:00</td></tr>
+    <tr><td>Sat</td><td>Peak — final lab of the program</td><td>9:00</td><td>7:00</td><td>12:00</td><td>5:00</td></tr>
+  </table>
+
+  <div class="callout dsa"><b>How to actually use this lab, every day this week:</b> work each station for real, on paper or out loud, using its timer as a hard stop. Self-grade against the rubric BEFORE opening the reference answer — the whole value of a mock collapses if you peek first. Run all four stations back to back, in order, same-day, the way a real loop would sequence them — not spread across a week, which is a different (and easier) skill than what this drill trains.</div>
+</section>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="dsa">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 15:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">15:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The eval dashboard needs to flag pairs of tool calls whose combined latency exceeds a per-run budget. Given an array of tool-call latencies (in ms) for one run and a target budget, determine whether ANY two distinct calls sum to exactly the budget — and if the interviewer pushes further, return the actual pair. Then generalize: what changes if you need ALL such pairs, not just one?</p>
+    <p style="font-size:0.88rem;">This is the classic two-sum shape, applied to a run-latency-budget framing instead of an abstract array. State the brute-force approach first, then the hash-map optimization, with complexity for both.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States the brute-force O(n²) approach briefly, then moves to the O(n) hash-map approach without being prompted to optimize</li>
+            <li>Correctly handles the single-pass hash-map trick: check for <code class="inline">budget - current</code> in the map BEFORE inserting <code class="inline">current</code>, avoiding using the same element twice</li>
+            <li>Extends cleanly to "all pairs" and states the complexity change (still O(n) with a multi-value map, or O(n log n) if pairs must be returned in sorted order)</li>
+            <li>Names the edge case of duplicate latencies explicitly (two calls with the identical latency value summing to the budget)</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Only produces the O(n²) nested-loop approach and doesn't reach for a hash map unprompted</li>
+            <li>Inserts into the map before checking, risking counting one element against itself</li>
+            <li>Can't articulate the change needed to return ALL pairs, not just one</li>
+            <li>Never mentions the duplicate-value edge case</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Brute force: for every pair (i, j) with i &lt; j, check whether
+latencies[i] + latencies[j] == budget -- O(n^2) time, O(1) space. Fine
+to state first as a baseline, but should not be the final answer.
+
+Hash-map approach, O(n) time, O(n) space: iterate once, maintaining a
+set of latencies seen so far. At each element x, check whether
+(budget - x) is already in the set -- if so, that's a valid pair,
+found in O(1) average lookup. Only AFTER checking, insert x into the
+set. Checking before inserting is what prevents a single element from
+being paired with itself when budget happens to equal 2x for some x
+in the array.
+
+Generalizing to ALL pairs: instead of a set, use a dict from latency
+value -> count of occurrences seen so far. At each x, if (budget - x)
+is in the dict, emit count[(budget - x)] pairs ending at this index,
+then increment count[x]. Still O(n) time overall (each element
+processed once), O(n) space for the dict. If pairs must be returned
+in a specific SORTED order, an O(n log n) sort of the final pair list
+is a small additional cost layered on top, not a change to the core
+algorithm.
+
+Duplicate-value edge case: if two DIFFERENT calls both have latency
+250ms and budget is 500ms, they form a valid pair -- the count-based
+dict approach above handles this correctly (each occurrence is
+tracked separately), whereas a plain set-based existence check for
+the "all pairs" variant would silently under-count or mishandle
+this case, which is exactly why the strong answer upgrades from a
+set to a count map once the problem generalizes past "any one
+pair."</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="schema">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 12:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">12:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Model a schema for storing multi-turn conversation history for the capstone's agent: each conversation has an ordered sequence of messages, each message has a role (user/assistant/tool), content, and a timestamp, and you need to efficiently answer "give me the full ordered message history for conversation X" and "how many conversations has this user had in the last 7 days." Sketch tables, keys, and the normal form you're targeting.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/conversation_history_schema.html</code>'s territory — the point today is producing the standard shape cleanly and explaining your indexing choices, not inventing something novel.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Two tables: <code class="inline">conversations</code> (conversation_id PK, user_id FK, started_at) and <code class="inline">messages</code> (message_id PK, conversation_id FK, sequence_number or created_at, role, content)</li>
+            <li>Names the index that makes "full ordered history for conversation X" a cheap indexed range scan: composite on (conversation_id, sequence_number)</li>
+            <li>Names a second index or query plan for "conversations per user in last 7 days": composite on (user_id, started_at)</li>
+            <li>States 3NF explicitly and explains why role/content live on the message row, not a separate lookup table (no redundancy to normalize away)</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Puts all messages in one JSON blob column on the conversation row, making per-message queries impossible without full deserialization</li>
+            <li>No explicit ordering column, relying on insertion order or timestamp granularity that could collide</li>
+            <li>Never proposes an index for either stated query</li>
+            <li>Can't state which normal form the design targets or why</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Two tables, 3NF: `conversations` (conversation_id PK, user_id FK,
+started_at, status) and `messages` (message_id PK, conversation_id
+FK, sequence_number, role, content, created_at). An explicit
+sequence_number column beats relying on created_at alone, since two
+messages could share a timestamp at millisecond granularity under
+load -- exactly conversation_history_schema.html's own reasoning for
+an explicit ordering column over implicit insertion order.
+
+Query 1 ("full ordered history for conversation X") wants a
+composite index on (conversation_id, sequence_number) -- equality
+filter on conversation_id, range/order on sequence_number, giving a
+single indexed range scan instead of a full table scan plus sort.
+
+Query 2 ("conversations per user in last 7 days") wants a composite
+index on (user_id, started_at) on the conversations table --
+equality on user_id, range on started_at, the same
+"equality-column-first, range-column-second" composite-index
+ordering rule this repo's indexing labs establish repeatedly.
+
+Why 3NF here: role and content are attributes of the MESSAGE itself,
+not of some separable entity referenced by multiple messages --
+there's no redundancy to normalize away by pulling them into a
+lookup table, unlike, say, a `tool_name` that genuinely repeats
+across many rows and might warrant its own table if it grows
+attributes of its own (description, owner). Correctly recognizing
+when NOT to over-normalize is as much the skill as recognizing when
+to normalize.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="sys">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 18:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">18:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Sketch, at a high level, how you'd add a caching layer in front of the capstone's eval/tracing dashboard so repeated dashboard loads for the same time window don't re-run expensive aggregation queries against Postgres every time. Cover what gets cached, the cache key shape, invalidation strategy, and where the cache physically lives.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">systems/caching_layer_design.html</code> and <code class="inline">database/read_replicas_and_dashboard_caching.html</code>'s territory. Name the 3-4 right components and their responsibilities — full capacity estimation isn't the point today.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States the cache key precisely (e.g. hash of query params: time window, filters, aggregation type) rather than "cache the response"</li>
+            <li>Picks a cache location (Redis, in-process LRU, or a CDN edge cache) and justifies it against the read pattern (many readers, one underlying query)</li>
+            <li>Names a concrete invalidation strategy: TTL-based expiry for a rolling time window is a legitimate default, explicitly justified rather than assumed</li>
+            <li>Identifies the staleness trade-off explicitly: dashboard data can tolerate being slightly stale (unlike, say, an account balance), which is WHY caching is acceptable here</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "add a cache" with no key shape, no location, no invalidation policy</li>
+            <li>Picks a cache location with no justification tied to the actual read/write pattern</li>
+            <li>No invalidation strategy stated, or an obviously wrong one (never expires, requiring manual clearing)</li>
+            <li>Doesn't address staleness at all — treats caching as risk-free</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Cache key: a deterministic hash of the query's actual parameters --
+time window (bucketed to, say, the nearest minute so nearby requests
+share a key), filter set (agent_id, tool_name, etc.), and aggregation
+type (p50/p95 latency, failure rate). Bucketing the time window is
+what turns "everyone hitting the dashboard right now" into a small
+number of shared cache keys instead of one unique key per request.
+
+Cache location: Redis, sitting between the dashboard API and
+Postgres -- read_replicas_and_dashboard_caching.html's own
+reasoning: the underlying aggregation query is expensive and the
+same window gets requested by many concurrent dashboard viewers, so
+a shared, centralized cache serves all of them from one computed
+result rather than recomputing per viewer. An in-process LRU would
+only help a single server instance, not a horizontally scaled
+dashboard API with multiple replicas behind a load balancer.
+
+Invalidation: TTL-based expiry (e.g. 60 seconds) rather than
+event-driven invalidation, because dashboard data is explicitly
+NOT required to be real-time-accurate to the second -- a short TTL
+naturally refreshes the aggregate periodically without needing to
+track every underlying write that could affect it, which would be
+substantial added complexity for a dashboard, not an account
+balance.
+
+The staleness trade-off, stated explicitly: caching is safe and
+appropriate here specifically BECAUSE a dashboard viewer seeing
+data that's 30-60 seconds stale is an acceptable cost -- this is
+the same class of decision as read_replicas_and_dashboard_caching
+.html's read-replica-lag discussion, and naming why staleness is
+tolerable HERE (versus a system where it wouldn't be, like a
+payment balance) is what separates a considered answer from
+"caching is always good."</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: PYTHON FUNDAMENTALS ============ -->
+<section id="py">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag py">STATION 4 — PYTHON FUNDAMENTALS · 8:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">8:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Explain the GIL: what it actually protects, why a CPU-bound multi-threaded Python program doesn't get faster on more cores, and why an I/O-bound one often does benefit from threading anyway. Then answer: would you use threads, processes, or asyncio for the capstone's tool-call dispatch layer, and why?</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">python/the_gil.html</code>'s territory. This is a cold, verbal-style question — no code required, just a precise explanation under a short clock.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States precisely what the GIL protects: only one thread executes Python bytecode at a time within one process, preventing races on CPython's own reference-counting internals</li>
+            <li>Explains why CPU-bound threaded code doesn't parallelize: threads still take turns holding the GIL, so compute-heavy work serializes regardless of thread count</li>
+            <li>Explains why I/O-bound code benefits: the GIL is released during blocking I/O calls, letting other threads run while one waits on the network or disk</li>
+            <li>Gives a clear, justified recommendation for the tool-call dispatch layer (asyncio or threads for I/O-bound tool calls; multiprocessing only if a tool itself does CPU-bound work)</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "Python can't do multithreading" without the more precise "can't parallelize CPU-bound Python bytecode" distinction</li>
+            <li>Can't explain WHY I/O-bound code still benefits from threads despite the GIL</li>
+            <li>Recommends multiprocessing for an I/O-bound dispatch layer without recognizing the unnecessary overhead of separate processes for I/O-wait-dominated work</li>
+            <li>No mention of asyncio as an alternative to threads for I/O concurrency</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">What the GIL protects: CPython's own internal reference-counting
+scheme, used for memory management, is not thread-safe by itself --
+the GIL is a single lock that ensures only ONE thread executes
+Python bytecode at any instant, which incidentally also serializes
+all Python-level computation across threads within one process.
+
+Why CPU-bound threaded code doesn't get faster: since only one
+thread can be running Python bytecode at a time regardless of core
+count, four threads doing pure computation on a 4-core machine still
+take turns through the GIL -- there's no wall-clock speedup, and
+often a slight SLOWDOWN from the overhead of the GIL being
+repeatedly acquired and released as threads switch.
+
+Why I/O-bound code benefits anyway: CPython releases the GIL around
+blocking C-level I/O calls (socket reads, file reads, time.sleep)
+specifically so other threads can run Python code WHILE one thread
+is blocked waiting on the OS. A thread waiting on a network response
+isn't holding the GIL during that wait, so other threads make real
+progress -- this is why a thread pool genuinely speeds up an
+I/O-bound workload despite the GIL, and why "the GIL means Python
+threading is useless" is an overstatement that misses this
+distinction entirely.
+
+For the capstone's tool-call dispatch layer specifically: tool calls
+are dominated by I/O wait (network calls to external APIs, database
+queries) rather than CPU-bound computation, so asyncio (or a thread
+pool, if the underlying client libraries aren't async-native) is the
+right choice -- it gets the I/O-bound concurrency benefit without
+the memory and startup overhead of separate OS processes.
+Multiprocessing would only be justified if a specific TOOL itself
+does heavy CPU-bound work (e.g. local embedding computation) that
+needs to bypass the GIL entirely to use multiple cores -- a
+genuinely different bottleneck than dispatch concurrency.</div></details>
+  </div>
+</section>
+
+<!-- ============ WRAP-UP ============ -->
+<section id="practice">
+  <div class="kicker">Before closing today's mock</div>
+  <h2>Wrap-up: log today's grades before Tuesday</h2>
+
+  <p><strong>Start here, before moving on.</strong> The value of running this same format six days in a row only shows up if each day's grades are actually compared against the last, not just felt. Write down today's four grades (strong/mixed/weak per station) somewhere you'll actually look at tomorrow — a sticky note, a notes file, anywhere durable enough to survive until Tuesday.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">All four stations run today, in order, each timer actually started and run to completion or a genuine stopping point</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Each station self-graded against its rubric BEFORE reading the reference approach</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">Today's four grades written down somewhere durable, to compare against Tuesday's</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">One honest note on which station felt weakest today — that's the one to watch as budgets tighten this week</label></li>
+    </ul>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Naming your own baseline before difficulty increases</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Of today's four stations, which one took the largest fraction of its (generous) time budget? Why does that matter more this week than it would in an isolated single-topic lab?</p>
+    <details><summary>Show solution</summary><div class="solution">No single correct answer -- the value is honest self-diagnosis. But
+the general pattern worth checking: whichever station consumed the
+largest fraction of ITS OWN (already generous) budget today is the
+one most likely to run out of time first as budgets tighten Tuesday
+through Saturday, since tightening a budget by roughly 15-20% per
+day compounds fast across six days -- a station that used 90% of a
+generous 18-minute budget today has very little slack left once that
+same station's budget drops to 12 minutes by Saturday.
+
+This matters more this week specifically because the four stations
+aren't independent single-topic drills -- they're sequenced back to
+back under a shared day, so a station that runs over its intended
+time steals attention and energy from whatever comes after it, the
+same fatigue-and-context-switch dynamic capstone_combined_mock_full_
+loop.html and combined_timed_mock_dsa_schema_system_design.html both
+established separately. Week 4 combines both pressures at once: full
+four-area coverage AND increasing time pressure, so identifying the
+weak link NOW, on the easiest day, is the highest-leverage single
+thing to fix before Saturday's peak difficulty.</div></details>
+  </div>
+
+  <div class="callout sys">
+    <b>Self-check before Tuesday:</b> could you, without notes, (1) name which of today's four stations you'd want to redo if given the choice, (2) state the one reference-answer insight that surprised you most, and (3) commit to running Tuesday's mock at its tighter budgets rather than quietly giving yourself extra time? Tuesday tightens every clock and swaps in four new problems.
+  </div>
+
+  <div class="weeknav">
+    <span class="day-tally">Day 1 of 6 — Interview Week</span>
+    <a href="dsa/interview_week_tuesday_mock.html">Next: Tuesday Mock →</a>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — interview week, day 1 of 6: Monday mock.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 15 * 60 },
+    { n: 2, seconds: 12 * 60 },
+    { n: 3, seconds: 18 * 60 },
+    { n: 4, seconds: 8 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns. Worth revisiting before Tuesday."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

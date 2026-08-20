@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Interview Week: Saturday Mock (Final Lab)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --py-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.10), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:26ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--py-c); color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.py{color:var(--py-c); border-color:var(--py-c); background:rgba(199,146,234,0.08);}
+  .station-tag.checkpoint{color:var(--obs, var(--sys-c)); border-color:var(--sys-c); background:rgba(127,216,160,0.14);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.py{border-left-color:var(--py-c); background:rgba(199,146,234,0.06);} .callout.py b{color:var(--py-c);}
+  .callout.checkpoint{border-left-color:var(--sys-c); background:rgba(127,216,160,0.1); font-size:0.98rem;} .callout.checkpoint b{color:var(--sys-c);}
+
+  .checkpoint-quote{font-family:var(--display); font-style:italic; font-size:1.3rem; line-height:1.5; color:var(--ink); background:var(--panel); border:1.5px solid var(--sys-c); border-radius:14px; padding:1.8rem 2rem; margin:1.6rem 0; position:relative;}
+  .checkpoint-quote:before{content:"“"; font-family:var(--display); font-size:3rem; color:var(--sys-c); position:absolute; top:0.2rem; left:1rem; opacity:0.35;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .narrative-stage{display:flex; flex-direction:column; gap:0.6rem; margin:1.2rem 0;}
+  .stage-box{font-family:var(--mono); font-size:0.82rem; padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; transition:all .3s;}
+  .stage-box .st-name{font-weight:600; color:var(--ink);}
+  .stage-box .st-budget{font-size:0.72rem; color:var(--accent);}
+  .stage-box.active{border-color:var(--accent); background:rgba(255,138,101,0.08); box-shadow:0 0 12px rgba(255,138,101,0.25);}
+  .stage-box.done{border-color:var(--sys-c);}
+
+  .closing{background:linear-gradient(160deg, rgba(127,216,160,0.08), rgba(255,138,101,0.05)); border:1.5px solid var(--sys-c); border-radius:16px; padding:2rem 2.2rem; margin:1.8rem 0;}
+  .closing p{color:var(--ink); font-size:1.02rem; max-width:70ch;}
+
+  .weeknav{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.6rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .weeknav a{color:var(--ink-dim); text-decoration:none; border:1px solid var(--rule); padding:0.5rem 0.9rem; border-radius:8px; transition:all .2s;}
+  .weeknav a:hover{color:var(--ink); border-color:var(--accent);}
+  .weeknav .day-tally{color:var(--ink-dim);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> INTERVIEW WEEK · DAY 6 OF 6 · SATURDAY MOCK · FINAL LAB OF THE PROGRAM</div>
+  <h1>Peak difficulty, tightest clocks, and the checkpoint that closes six months.</h1>
+  <p class="lede">This is the last lab of the entire six-month roadmap. Four stations at this week's hardest tier and tightest budgets — same shape as every day this week, one more time, as hard as it gets. Then the actual final checkpoint of the whole program: a cold, unaided, ten-minute walkthrough of the capstone's schema and architecture, timed live, right here.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">DSA — hardest combined problem of the week — 9:00</div>
+    <div class="pipe-label b">Schema — defend a decision under live pushback — 7:00</div>
+    <div class="pipe-label c">System design — capstone at 10x scale — 12:00</div>
+    <div class="pipe-label d">Python — memory model &amp; GC, cold — 5:00</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="dsa">1 · DSA</a>
+  <a data-target="schema">2 · Schema Design</a>
+  <a data-target="sys">3 · System Design</a>
+  <a data-target="py">4 · Python Fundamentals</a>
+  <a data-target="checkpoint">5 · The Final Checkpoint</a>
+  <a data-target="closing">Closing Note</a>
+</nav>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="dsa">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 9:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">9:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The orchestrator needs to detect, in a live stream of <code class="inline">(tool_a, tool_b, timestamp)</code> call-adjacency events, the first moment a genuine dependency CYCLE appears among tools that have ever been chained together — without ever re-scanning the full history from scratch on each new event. Design an online (incremental) cycle-detection algorithm: what state do you maintain, what happens on each new edge, and what's the amortized cost per event?</p>
+    <p style="font-size:0.88rem;">This combines Monday's graph-cycle-detection territory with a genuinely harder constraint: INCREMENTAL detection under a live stream, not a one-shot check on a static graph. The naive answer (re-run full cycle detection after every edge) is O(V+E) per event — the strong answer needs to beat that.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Names the naive approach (full DFS/Kahn's cycle check after every new edge) and explicitly states its cost, O(V+E) per event, as the baseline to beat</li>
+            <li>Proposes a Union-Find (disjoint set) based incremental approach for the common case, and correctly identifies its real limitation for DIRECTED graphs (Union-Find naturally detects cycles in undirected graphs; a directed cycle needs a different check)</li>
+            <li>Proposes the correct directed-graph approach: maintain reachability incrementally, and a new edge (u → v) creates a cycle if and only if v can already reach u — checkable via a bounded traversal from v, or via incrementally maintained reachability sets/a topological order that gets locally repaired</li>
+            <li>States the honest complexity trade-off: incremental cycle detection in general directed graphs doesn't have a simple O(1) amortized answer like Union-Find gives for undirected graphs — a real strong answer says so explicitly rather than overclaiming a clean bound</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Proposes only the naive full-rescan approach with no attempt at an incremental improvement</li>
+            <li>Applies Union-Find directly to the directed case without noticing it doesn't correctly detect directed cycles</li>
+            <li>Claims an incorrect O(1) amortized bound for the general directed case without justification</li>
+            <li>Doesn't distinguish the directed-cycle detection problem from the undirected one at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Baseline to beat: re-running a full DFS or Kahn's-algorithm cycle
+check from scratch after every new edge costs O(V + E) per event --
+for a live stream, that's the naive answer, correct but not
+incremental.
+
+Why Union-Find alone doesn't solve this: Union-Find (disjoint set
+with path compression and union by rank) gives near-O(1) amortized
+cycle detection, but ONLY for UNDIRECTED graphs -- adding edge (u, v)
+creates a cycle iff find(u) == find(v) already. For a DIRECTED graph
+(tool A must run before tool B is directional), two nodes being in
+the same undirected-connected-component does NOT mean a directed
+cycle exists -- this is the key distinction a strong answer must
+name explicitly, since applying Union-Find naively to a directed
+adjacency stream gives WRONG answers (false positives on cycles that
+aren't actually directed cycles).
+
+Correct approach for the directed case: a new edge (u -> v) creates a
+cycle if and only if v can ALREADY reach u through existing edges --
+if v could already reach u, then adding u -> v closes a loop: u -> v
+-> ... -> u. So on each new edge, the check reduces to "is there
+already a path from v to u?" -- a single BFS/DFS from v, bounded by
+the CURRENT graph's size, not the full historical edge count. This
+correctly detects the cycle at the moment it's created, but its cost
+per event is O(V + E) in the worst case too, UNLESS reachability is
+maintained incrementally (e.g. a reachability matrix updated
+incrementally, which trades O(V^2) space and update cost for O(1)
+per-query reachability checks -- a real engineering trade-off, not a
+free win).
+
+The honest complexity statement, which is what actually separates a
+strong answer here: incremental cycle detection in general directed
+graphs does NOT have a simple, universally-cheap amortized bound the
+way undirected Union-Find does -- the best practical approaches
+(incremental topological-order maintenance, or bounded reachability
+checks) have real costs that depend on graph structure and how
+frequently cycles must be detected versus how large the graph grows.
+A strong answer states this honestly -- "the naive per-event
+reachability check beats full re-scan by bounding the search to the
+CURRENT graph rather than re-deriving order from nothing, but I
+would NOT claim O(1) amortized here without qualification, unlike
+the undirected Union-Find case" -- rather than confidently overclaiming
+a bound that doesn't actually hold for the general directed
+problem. Recognizing the limits of your own claimed complexity is
+itself a signal a real interviewer is listening for, especially at
+this difficulty tier.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="schema">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 7:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">7:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> You've defended the capstone's finalized schema all week. Now the interviewer pushes back hard on ONE specific decision: "why did you normalize tool_call into its own table instead of just storing an array of tool calls as a JSON column on agent_run? JSON would mean fewer joins and simpler queries." Defend the normalized design under direct, skeptical challenge — in under 7 minutes, no notes.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/capstone_schema_cold_defense.html</code>'s territory — this is a live-defense format, not a fresh design prompt. The hardest schema station of the week because there's nothing new to design, only an existing decision to defend precisely under real pushback.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Concedes the true part of the challenge honestly (JSON genuinely does mean fewer joins for reading one full run) rather than dismissing it — a strong defense engages the real trade-off, doesn't strawman it</li>
+            <li>Names the concrete query the normalized design serves that JSON can't serve efficiently: "failure rate for tool X across ALL runs" requires scanning and filtering INSIDE every JSON blob (no usable index) versus a simple indexed query on a proper tool_calls table</li>
+            <li>Names the write-side cost of JSON explicitly: updating one tool call's status mid-run means rewriting the entire JSON blob, versus a single-row UPDATE in the normalized design</li>
+            <li>Closes with the actual decision criterion, not just a list of pros/cons: "the normalized design costs one extra join for the single-run read case, in exchange for indexed cross-run queries and cheap partial updates — and cross-run tool analytics is a real, frequent access pattern for this system, so the join cost is worth paying"</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Dismisses the JSON alternative without acknowledging its genuine advantage for the single-run read case</li>
+            <li>Can't name a SPECIFIC query that breaks down under the JSON design, stays abstract ("normalization is just better")</li>
+            <li>Doesn't mention the write-amplification cost of updating a JSON blob</li>
+            <li>No clear final decision criterion — just restates "normalization has trade-offs" without landing on why THIS system favors it</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Concede the true part first, because a defense that pretends the
+challenge has no merit is less credible, not more: yes, a JSON array
+of tool calls on agent_run genuinely does mean fewer joins for
+reading ONE full run's tool call sequence in a single row fetch --
+that's a real, honest advantage of the JSON approach, worth naming
+before defending against it.
+
+The query that breaks down under JSON, stated concretely: "failure
+rate for tool X across ALL runs in the last 24 hours" -- with tool
+calls normalized into their own table, this is a simple indexed
+query: WHERE tool_name = X AND called_at > now() - interval, using
+the (tool_name, called_at) composite index this week has built
+repeatedly. With tool calls buried inside a JSON array on
+agent_run, this same query requires scanning EVERY agent_run row,
+parsing its JSON, and filtering entries inside each blob -- no
+standard B-tree index can serve "find all JSON array entries across
+all rows matching tool_name = X" efficiently, since the index would
+need to be on the ARRAY CONTENTS, not the row itself. This is exactly
+the cross-run analytics query the eval dashboard needs constantly
+(this week's own Thursday sharding station discussed exactly this
+query), and it's precisely the kind of query normalization exists to
+make cheap.
+
+The write-side cost, equally concrete: updating a single tool call's
+status from "running" to "complete" mid-run, with the normalized
+design, is a single indexed UPDATE on one tool_calls row. With the
+JSON design, it requires reading the ENTIRE agent_run.tool_calls
+array, finding and modifying the one relevant entry in application
+code, and rewriting the WHOLE JSON blob back -- for a run with many
+tool calls, this is real, avoidable write amplification on every
+single status update, of which there are many per run.
+
+The closing decision criterion, which is what a strong answer must
+land on explicitly rather than trailing off: the normalized design
+costs exactly one extra JOIN for the single-run read case, which is
+a small, bounded, indexed cost -- in exchange for making cross-run
+analytical queries (this system's actual, frequent access pattern,
+not a hypothetical one) efficient AND making individual tool-call
+updates cheap instead of write-amplified. Given that this system
+genuinely needs both of those things regularly, the one-join cost is
+the correct trade to accept -- which is a fundamentally different,
+more defensible answer than "normalization is always better,"
+because it's grounded in THIS system's actual query mix rather than
+a general rule.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="sys">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 12:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">12:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone currently handles a modest load comfortably. The interviewer asks: "you're at 10x scale overnight — same feature set, ten times the traffic and ten times the data. Walk me through what breaks FIRST, in what order, and what you'd change." You have 12 minutes to name the failure sequence and the redesign for each, not just the first bottleneck.</p>
+    <p style="font-size:0.88rem;">This is deliberately the hardest system-design station of the week — it requires synthesizing <code class="inline">systems/capstone_load_testing.html</code>'s findings, this week's own sharding/replication/caching stations, and genuine judgment about ORDERING failures, not just naming them.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Names a SEQUENCE of failures, in a justified order, not a flat list — explains WHY one thing breaks before another (e.g. the cheapest-to-fix bottleneck fails first because it had the least headroom, or the component with no horizontal scaling path fails first because it's the true hard ceiling)</li>
+            <li>Ties each failure back to a SPECIFIC finding or design decision from this week or the capstone build weeks (the Redis lock from load_testing.html, the search index I/O ceiling, Postgres write throughput) rather than generic "the database would get slow"</li>
+            <li>Proposes a genuinely different fix for each failure in the sequence, not one generic "add more servers" answer repeated</li>
+            <li>Explicitly distinguishes fixes that buy TIME (a bigger cache, a bigger instance) from fixes that change the ARCHITECTURE (sharding, moving state out of a single Redis instance) — and states which failures in the sequence need which kind</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Names bottlenecks in no particular order, or claims everything breaks "at the same time" with no differentiation</li>
+            <li>Generic bottleneck descriptions with no tie back to specific, real findings from this week or the capstone's own load testing</li>
+            <li>One repeated fix ("scale horizontally") applied to every failure regardless of whether that fix actually addresses that specific bottleneck</li>
+            <li>No distinction between a temporary mitigation and a real architectural change</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">A strong sequence, in order, with reasoning for the ordering:
+
+1. FIRST to break: the orchestrator's Redis lock around run state,
+per capstone_load_testing.html's own finding that this becomes the
+binding constraint above roughly 140 concurrent users -- at 10x
+traffic this is almost certainly the first wall hit, because it was
+ALREADY the closest to its ceiling at current scale, with the least
+headroom of any component measured. Fix: the atomic-operation
+restructuring (RPUSH instead of load-modify-save) discussed in
+capstone_orchestrator_integration.html -- a genuine architectural
+change to the access pattern, not just adding Redis capacity, since
+the problem is lock contention, not raw throughput.
+
+2. SECOND: the hybrid search index's I/O ceiling as corpus size grows
+10x alongside traffic -- per Round 2's own load-testing deep-dive,
+diagnosable by disk I/O wait rising with query volume. Fix: moving
+from an embedded, in-process index to a separate, horizontally
+scalable search service -- trading a network hop for genuine
+horizontal scalability, an architectural change, not a bigger single
+machine.
+
+3. THIRD: Postgres write throughput on agent_run/tool_call inserts,
+once the first two bottlenecks are addressed and traffic is actually
+reaching the database layer at 10x volume -- this arrives LATER in
+the sequence specifically because the first two bottlenecks would
+have been throttling effective throughput before write volume alone
+became the binding constraint. Fix: this is where Thursday's
+sharding-by-run_id decision actually pays off at real scale -- a
+single-primary Postgres instance genuinely cannot absorb 10x write
+volume, and horizontal sharding (accepting the cross-shard aggregate
+query cost, mitigated by the rollup table already designed) becomes
+necessary rather than optional.
+
+4. LAST, and importantly, EASIEST: the dashboard's read load, since
+Monday's caching layer and Thursday's read replicas already exist
+specifically to absorb read scaling -- at 10x scale this mostly means
+adding more replicas and possibly a longer cache TTL, a scale-UP of
+an already-correct architecture, not a redesign. Naming this as the
+EASIEST failure in the sequence, requiring no architectural change,
+is itself a sign of genuine judgment -- not everything in the system
+needs to be redesigned at 10x, and saying so explicitly is more
+credible than treating every component as equally at risk.
+
+The distinction a strong answer draws throughout: failures 1-3
+require real ARCHITECTURAL changes (different access patterns,
+different storage topology) because the current design has a hard
+structural ceiling; failure 4 only requires scaling UP existing,
+already-correct infrastructure, because it was designed with
+headroom from the start. Naming which is which, for every item in
+the sequence, is the actual skill this station is built to test.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: PYTHON FUNDAMENTALS ============ -->
+<section id="py">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag py">STATION 4 — PYTHON FUNDAMENTALS · 5:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">5:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The orchestrator holds a long-lived Python process handling many runs over hours. Explain CPython's memory model precisely: reference counting versus the generational garbage collector, why BOTH exist rather than just one, and what specifically a reference CYCLE is and why refcounting alone can't reclaim it.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">python/cpython_internals.html</code> and <code class="inline">python/memory_and_scoping.html</code>'s territory. Five minutes, cold — the hardest and final Python station of the week.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States reference counting precisely: every object has a count of references to it; the count increments on assignment/passing, decrements when a reference goes out of scope or is reassigned; the object is freed IMMEDIATELY when the count hits zero</li>
+            <li>Explains precisely why refcounting alone is insufficient: a reference CYCLE (object A references B, B references A, and nothing outside the cycle references either) means neither object's count ever reaches zero, even though both are genuinely unreachable garbage from the program's perspective</li>
+            <li>States what the generational garbage collector does: periodically scans for groups of objects that reference each other but are unreachable from any root (a variable, the stack, a global), and reclaims cycles that pure refcounting misses</li>
+            <li>Explains the "generational" part specifically: objects are grouped by age (generations 0, 1, 2), young objects are collected far more frequently than old ones, based on the empirical observation that most objects die young — this is a real performance optimization, not an arbitrary detail</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "Python has garbage collection" without describing refcounting as the PRIMARY mechanism at all</li>
+            <li>Can't explain what a reference cycle actually is or why it specifically defeats refcounting</li>
+            <li>Doesn't know the GC exists specifically to catch what refcounting misses — treats it as a redundant or unrelated second system</li>
+            <li>No mention of generations, or can't explain why age-based collection frequency makes sense</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Reference counting, CPython's PRIMARY memory reclamation mechanism:
+every object carries an integer count of how many references point
+to it. Assigning a reference, passing an object to a function, or
+storing it in a container increments the count; a reference going
+out of scope, being reassigned, or explicitly deleted decrements it.
+The moment an object's refcount hits zero, CPython frees it
+IMMEDIATELY -- not on some later sweep, but synchronously at the
+point the count reaches zero. This is why refcounting gives Python
+its characteristic immediate, deterministic cleanup for the vast
+majority of objects (e.g. a local variable's object is freed the
+instant the function returns and nothing else references it).
+
+Why refcounting alone is insufficient -- the reference cycle problem,
+stated precisely: consider object A with an attribute referencing
+object B, and B with an attribute referencing back to A. If nothing
+OUTSIDE this pair references either A or B, both are genuinely
+unreachable garbage -- the program can never reach them again through
+any variable, the stack, or a global. But each one still has a
+refcount of at least 1 (A is referenced by B, B is referenced by A),
+so neither count EVER reaches zero through refcounting alone -- the
+memory leaks, permanently, unless something else intervenes.
+
+What the generational garbage collector does: periodically, it scans
+for groups of objects that reference each other in a way that makes
+them collectively unreachable from any ROOT (a local variable, the
+call stack, module globals) -- essentially, it can detect cycles
+where the total refcount within the group only comes from OTHER
+members of the same group, none from outside it. When it finds such
+a cycle, it reclaims the whole group, which refcounting structurally
+cannot do on its own.
+
+Why "generational" specifically, the mechanism-level detail that
+separates a strong answer from a merely correct one: CPython buckets
+objects into generations (0 = youngest, up to 2 = oldest) based on
+how many collection cycles they've survived. Generation 0 is
+collected far more often than generation 1, which is collected far
+more often than generation 2. This is a deliberate performance
+optimization based on the empirical "generational hypothesis" --
+most objects that become garbage do so shortly after creation (a
+temporary list, a short-lived loop variable), so scanning young
+objects frequently catches most garbage cheaply, while objects that
+have survived several collections are statistically likely to live
+much longer, so scanning them as often would be wasted work. For a
+long-lived orchestrator process specifically, this matters
+concretely: long-lived state (connection pools, caches) should
+settle into an older generation and get scanned rarely, while
+short-lived per-request objects get reclaimed quickly in generation
+0 -- exactly the profile a long-running server process should
+expect and benefit from.</div></details>
+  </div>
+</section>
+
+<!-- ============ THE FINAL CHECKPOINT ============ -->
+<section id="checkpoint">
+  <div class="kicker">The final checkpoint of the entire six-month program</div>
+  <h2>The checkpoint: walk the whole system, cold, in ten minutes</h2>
+
+  <p><strong>Start here, before pressing start below.</strong> Everything this week — everything this entire program — has been building toward one thing: can you hold the whole system in your head and narrate it, cleanly, under real pressure, without notes. This is that moment. The roadmap states it as the final checkpoint of Month 6 Week 4, verbatim:</p>
+
+  <div class="checkpoint-quote">Walk someone through the capstone's schema and architecture, cold, in under 10 minutes — including what breaks first at 10x scale and how you'd redesign the schema for it.</div>
+
+  <p>This is not a new skill to learn today — it's the direct target of <code class="inline">backend/capstone_walkthrough_recording_guide.html</code>'s five-beat narrative structure (problem, architecture, key decisions, trade-offs, at-scale) and its own 10-minute practice timer, and it's exactly what Station 3 above just rehearsed at the schema-and-architecture layer specifically. If you haven't run that lab's recording-and-critique process at least once, this is the moment it pays off — and if you have, this is the real, graded attempt the whole week has been pointing at.</p>
+
+  <table class="cmp">
+    <tr><th>Beat</th><th>What to cover</th><th>Target time</th></tr>
+    <tr><td>1. Problem</td><td>What the capstone is for, in a sentence or two</td><td>~1:00</td></tr>
+    <tr><td>2. Architecture</td><td>Components and request flow, narrated in order</td><td>~3:00</td></tr>
+    <tr><td>3. Schema decisions</td><td>One or two decisions you'd defend, with the rejected alternative named (Station 2's territory, now inside the full walkthrough)</td><td>~3:00</td></tr>
+    <tr><td>4. What breaks at 10x</td><td>The failure sequence, in order, with fixes (Station 3's territory, compressed)</td><td>~2:00</td></tr>
+    <tr><td>5. Schema redesign for 10x</td><td>Specifically how the SCHEMA changes at that scale — sharding key, denormalization, or a new rollup — not just the architecture around it</td><td>~1:00</td></tr>
+  </table>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>The checkpoint timer — 10:00, live, one continuous take</span>
+      <div class="timer-box">
+        <span class="timer-display" id="wt-time">10:00</span>
+        <button class="btn" id="wt-start">Start</button>
+        <button class="btn secondary" id="wt-reset">Reset</button>
+      </div>
+    </div>
+    <div class="narrative-stage" id="wt-stages"></div>
+  </div>
+
+  <div class="callout checkpoint"><b>How to actually run this:</b> press start, and talk through the whole capstone's schema and architecture out loud, in one continuous take, exactly as <code class="inline">capstone_walkthrough_recording_guide.html</code> recommends — no pausing, no notes, no restarting because beat 2 felt clumsy. If a beat runs over its stage's rough budget, keep going into the next one anyway; the point is completing all five beats inside ten minutes total, not hitting each sub-budget exactly. Record it if you can. This is the checkpoint — treat it like the real thing, because for the purposes of this program, it is.</div>
+</section>
+
+<!-- ============ CLOSING NOTE ============ -->
+<section id="closing">
+  <div class="kicker">Six months, one program, done</div>
+  <h2>Closing note</h2>
+
+  <div class="closing">
+    <p>This is the last lab of the program. Six months ago this started with Big-O by hand and linked lists; it ends here, with a capstone you built, load-tested, debugged, and can now defend cold under ten minutes of real pressure. The labs stop, but the capstone and the six months of deliberate, timed, self-graded practice that built it don't — that's what's actually being carried out of this repo, not a lab count.</p>
+  </div>
+
+  <div class="weeknav">
+    <a href="dsa/interview_week_friday_mock.html">← Back: Friday Mock</a>
+    <span class="day-tally">Day 6 of 6 — Interview Week — Final Lab</span>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — interview week, day 6 of 6: Saturday mock. Final lab of the six-month program.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 9 * 60 },
+    { n: 2, seconds: 7 * 60 },
+    { n: 3, seconds: 12 * 60 },
+    { n: 4, seconds: 5 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* CHECKPOINT WALKTHROUGH TIMER — five beats over 10:00, adapted from
+   backend/capstone_walkthrough_recording_guide.html's practice tool */
+(function(){
+  var TOTAL_SECONDS = 10 * 60;
+  var STAGES = [
+    {name: "1. Problem", seconds: 60, detail: "What the capstone is for, in a sentence or two"},
+    {name: "2. Architecture", seconds: 180, detail: "Components and request flow, narrated in order"},
+    {name: "3. Schema decisions", seconds: 180, detail: "One or two decisions, with the rejected alternative named"},
+    {name: "4. What breaks at 10x", seconds: 120, detail: "The failure sequence, in order, with fixes"},
+    {name: "5. Schema redesign for 10x", seconds: 60, detail: "How the schema itself changes at that scale"}
+  ];
+
+  var stagesWrap = document.getElementById("wt-stages");
+  var timeEl = document.getElementById("wt-time");
+  var startBtn = document.getElementById("wt-start");
+  var resetBtn = document.getElementById("wt-reset");
+
+  var elapsed = 0;
+  var intervalId = null;
+  var stageBoxes = [];
+
+  function formatTime(s){
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function buildStages(){
+    stagesWrap.innerHTML = "";
+    stageBoxes = [];
+    STAGES.forEach(function(s){
+      var el = document.createElement("div");
+      el.className = "stage-box";
+      el.innerHTML = "<span><span class=\"st-name\">" + s.name + "</span> — " + s.detail + "</span><span class=\"st-budget\">budget " + formatTime(s.seconds) + "</span>";
+      stagesWrap.appendChild(el);
+      stageBoxes.push(el);
+    });
+  }
+
+  function currentStageIndex(){
+    var acc = 0;
+    for (var i = 0; i < STAGES.length; i++){
+      acc += STAGES[i].seconds;
+      if (elapsed < acc) return i;
+    }
+    return STAGES.length - 1;
+  }
+
+  function render(){
+    var remaining = Math.max(0, TOTAL_SECONDS - elapsed);
+    timeEl.textContent = formatTime(remaining);
+    timeEl.classList.toggle("warn", remaining <= 60);
+
+    var idx = currentStageIndex();
+    stageBoxes.forEach(function(box, i){
+      box.classList.remove("active", "done");
+      if (elapsed >= TOTAL_SECONDS){
+        box.classList.add("done");
+      } else if (i < idx){
+        box.classList.add("done");
+      } else if (i === idx){
+        box.classList.add("active");
+      }
+    });
+  }
+
+  function tick(){
+    elapsed += 1;
+    if (elapsed >= TOTAL_SECONDS){
+      elapsed = TOTAL_SECONDS;
+      render();
+      clearInterval(intervalId);
+      intervalId = null;
+      startBtn.textContent = "Time's up";
+      startBtn.disabled = true;
+      return;
+    }
+    render();
+  }
+
+  startBtn.addEventListener("click", function(){
+    if (intervalId) return;
+    startBtn.textContent = "Running…";
+    startBtn.disabled = true;
+    intervalId = setInterval(tick, 1000);
+  });
+
+  resetBtn.addEventListener("click", function(){
+    if (intervalId){ clearInterval(intervalId); intervalId = null; }
+    elapsed = 0;
+    startBtn.textContent = "Start";
+    startBtn.disabled = false;
+    render();
+  });
+
+  buildStages();
+  render();
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

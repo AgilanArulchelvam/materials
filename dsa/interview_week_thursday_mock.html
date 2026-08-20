@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Interview Week: Thursday Mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --py-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:26ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--py-c); color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.py{color:var(--py-c); border-color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.py{border-left-color:var(--py-c); background:rgba(199,146,234,0.06);} .callout.py b{color:var(--py-c);}
+
+  .weeknav{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.6rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .weeknav a{color:var(--ink-dim); text-decoration:none; border:1px solid var(--rule); padding:0.5rem 0.9rem; border-radius:8px; transition:all .2s;}
+  .weeknav a:hover{color:var(--ink); border-color:var(--accent);}
+  .weeknav .day-tally{color:var(--ink-dim);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> INTERVIEW WEEK · DAY 4 OF 6 · THURSDAY MOCK</div>
+  <h1>Two days left after today. The clock stops feeling generous anywhere.</h1>
+  <p class="lede">By now the format is automatic — the only thing changing is the actual difficulty and the shrinking margin for a slow start. Today's four problems reuse another notch of the repo's depth: a streaming top-k heap problem, a sharding decision, a replication design, and decorators under a genuinely short clock.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">DSA — top-k slowest tool calls, streaming — 11:00</div>
+    <div class="pipe-label b">Schema — sharding the eval_result table — 9:00</div>
+    <div class="pipe-label c">System design — read replicas for the dashboard — 14:00</div>
+    <div class="pipe-label d">Python — decorators, cold — 6:00</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="dsa">1 · DSA</a>
+  <a data-target="schema">2 · Schema Design</a>
+  <a data-target="sys">3 · System Design</a>
+  <a data-target="py">4 · Python Fundamentals</a>
+  <a data-target="practice">Wrap-Up &amp; Log</a>
+</nav>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="dsa">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 11:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">11:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The eval dashboard needs to continuously track the K slowest tool calls seen so far, as a live stream of <code class="inline">(tool_name, latency_ms)</code> pairs arrives (potentially millions of calls, K is small, e.g. 20). Design a data structure and algorithm that maintains this top-K set with O(log K) insertion per new call, without ever storing all seen calls.</p>
+    <p style="font-size:0.88rem;">This is <code class="inline">dsa/heaps_from_scratch.html</code>'s territory, applied to a streaming top-K problem — a heap of BOUNDED size, not the unbounded heap the dedicated lab builds from scratch. State which heap type (min or max) and why.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Picks a MIN-heap of bounded size K, not a max-heap — and can explain precisely why (the min-heap's root is the SMALLEST of the current top-K, making it the correct comparison point to decide whether a new element belongs)</li>
+            <li>States the algorithm: if the heap has fewer than K elements, push the new call. Otherwise, compare the new call's latency to the heap's root (current minimum of the top-K); if larger, pop the root and push the new call</li>
+            <li>States complexity precisely: O(log K) per call (bounded by K, not by total stream size N), O(K) space total — never O(N) for either</li>
+            <li>Names the follow-up unprompted: retrieving the current top-K in SORTED order requires draining/sorting the heap, O(K log K), a separate cost from maintaining it</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Picks a max-heap, or can't clearly justify the min-heap choice</li>
+            <li>Proposes storing all N calls and sorting/selecting the top-K at the end, which violates the "never store all seen calls" constraint</li>
+            <li>States complexity in terms of N (total stream size) instead of K (the bounded heap size)</li>
+            <li>Doesn't distinguish "maintaining the top-K set" from "retrieving it in sorted order" as separate costs</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">A MIN-heap bounded to size K is the correct structure -- the
+counterintuitive part worth stating explicitly: to track the K
+SLOWEST (largest latency) calls, you use a MIN-heap, not a max-heap,
+because the heap's ROOT needs to be the smallest value currently in
+your top-K set, so you can cheaply compare each new arrival against
+"the weakest member of the current top-K" and decide whether it
+displaces it. A max-heap's root would be the LARGEST of the top-K,
+which tells you nothing useful about whether a new, smaller-than-max
+call still belongs in the set.
+
+Algorithm: for each incoming (tool_name, latency_ms), if the heap
+has fewer than K elements, push it unconditionally (still building
+up to K). Once the heap has exactly K elements, compare the new
+call's latency to the heap's root (the current minimum of the
+top-K): if the new latency is LARGER than the root, pop the root and
+push the new call (it displaces the current weakest member of the
+top-K); if smaller or equal, discard the new call without touching
+the heap at all -- it doesn't belong in the top-K.
+
+Complexity: each push or pop on a heap of size K costs O(log K) --
+critically, this is bounded by K, the small constant, NOT by N, the
+total stream length, which is exactly what makes this approach
+scale to a "potentially millions of calls" stream: total space used
+is O(K) at all times, regardless of how many calls have streamed
+through, and per-call cost never grows as the stream grows.
+
+The unprompted follow-up, worth naming: the heap itself is NOT
+sorted internally (only the root is guaranteed to be the minimum) --
+retrieving the current top-K AS A SORTED LIST requires either
+draining the heap via repeated pop (destroying it, O(K log K)) or
+copying and sorting a snapshot (also O(K log K)), which is a
+separate, occasional cost distinct from the O(log K) per-call
+maintenance cost, and shouldn't be conflated with it when stating
+overall complexity.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="schema">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 9:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">9:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The <code class="inline">eval_result</code> table has grown past what a single Postgres instance comfortably serves. Propose a sharding key for horizontally partitioning this table, and defend your choice against the two most common queries: "get all results for run X" and "get the average score for tool Y over the last week across all runs."</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/sharding_and_partitioning.html</code>'s territory. A sharding key that serves one query well can make another expensive — name that trade-off explicitly.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Proposes sharding by run_id (or a hash of it) and explains it keeps "all results for run X" a SINGLE-SHARD query — the common, hot-path case</li>
+            <li>Explicitly names the cost: "average score for tool Y over the last week across ALL runs" now becomes a SCATTER-GATHER query across every shard, since results for tool Y are spread across many different run_ids</li>
+            <li>Proposes a mitigation for the scatter-gather cost: a separate, periodically-refreshed rollup/aggregate table (not sharded the same way, or replicated) that pre-computes per-tool aggregates, so the expensive cross-shard query becomes rare rather than eliminated entirely</li>
+            <li>States why sharding by tool_name instead would be worse: it would make "all results for run X" (a run touches MANY tools) the expensive scatter-gather query instead, and that query is likely far more frequent (looked up per run, constantly) than the aggregate one</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Picks a sharding key with no analysis of which query it helps or hurts</li>
+            <li>Doesn't recognize that ANY sharding key makes at least one access pattern cross-shard</li>
+            <li>No mitigation proposed for the query that becomes expensive under the chosen key</li>
+            <li>Doesn't compare the chosen key against the alternative to justify why it's the better trade-off</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Shard by run_id (or a hash of run_id for even distribution across
+shards) -- this is the right default because "get all results for
+run X" is almost certainly the HOTTER, more frequent query (checked
+every time a run's results are viewed, likely on the orchestrator's
+own hot path per this week's earlier stations) and sharding by
+run_id makes it a single-shard lookup: every eval_result row for a
+given run lives on exactly one shard, determined by hashing run_id.
+
+The explicit cost: "average score for tool Y over the last week
+across ALL runs" now touches every shard, since results for tool Y
+are scattered across however many different run_ids happened to
+produce them, hashed to different shards essentially at random. This
+becomes a SCATTER-GATHER query -- fan out to every shard, run a
+partial aggregate on each, then combine the partial results -- which
+is materially more expensive and more operationally complex than a
+single-shard query, exactly sharding_and_partitioning.html's own
+warning that a sharding key is a trade-off, not a free win.
+
+Mitigation: rather than accepting scatter-gather on every dashboard
+load for per-tool aggregates, maintain a separate, periodically
+refreshed rollup table (tool_name, week_bucket, avg_score,
+call_count) computed by a background job that DOES do the
+scatter-gather, but only once per refresh interval rather than once
+per dashboard view -- the same "precompute the expensive aggregate,
+don't recompute it live on every read" instinct Monday's caching
+station already established, now applied at the sharding layer
+instead of the caching layer.
+
+Why sharding by tool_name would be the worse choice: it would flip
+which query is cheap and which is expensive. "All results for run
+X" would become the scatter-gather query, since a single run
+typically invokes MANY different tools, each potentially on a
+different shard -- and that query is checked far more often (per
+run view) than the per-tool aggregate is (per dashboard summary
+load), making tool_name a worse sharding key for this specific
+access-pattern mix even though it might look equally reasonable in
+the abstract.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="sys">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 14:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">14:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The eval/tracing dashboard's read load has grown to the point where dashboard queries are competing with the orchestrator's own writes on the primary Postgres instance. Design a read-replica setup to relieve this: what replicates, how does replication lag affect dashboard correctness, and how would you detect a replica falling dangerously far behind?</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">systems/replication.html</code> and <code class="inline">database/read_replicas_and_dashboard_caching.html</code>'s territory. Name the specific lag-detection mechanism, not just "add replicas."</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Proposes async streaming replication: primary handles all writes, one or more replicas continuously apply the write-ahead log and serve dashboard reads</li>
+            <li>Names the correctness implication explicitly: replicas are EVENTUALLY consistent, not immediately — a dashboard read right after a write could miss that write if it lands on a lagging replica, and this is acceptable ONLY because dashboard reads already tolerate staleness (tied back to Monday's caching discussion)</li>
+            <li>Proposes a concrete lag-detection mechanism: comparing replica's replayed WAL position (or a last-applied-timestamp) against the primary's current position, alerting when the gap exceeds a threshold</li>
+            <li>States what to do about a badly lagging replica: route reads away from it (remove from the read pool) rather than serving increasingly stale data silently</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "add read replicas" with no mechanism for how replication actually works</li>
+            <li>Doesn't mention eventual consistency or any correctness implication of replica lag at all</li>
+            <li>No concrete lag-detection method proposed</li>
+            <li>No response defined for what happens when a replica IS found to be lagging badly</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Async streaming replication is the standard fit: the primary handles
+every write (orchestrator inserts, updates) and continuously streams
+its write-ahead log to one or more replicas, which replay it to stay
+in sync. The dashboard's read queries get routed to a replica
+instead of the primary, freeing the primary to focus on write
+throughput -- exactly read_replicas_and_dashboard_caching.html's own
+architecture.
+
+The correctness implication, stated explicitly because it's the part
+most often glossed over: async replication means replicas are
+EVENTUALLY consistent, not synchronously consistent with the primary
+-- there's a real window (typically milliseconds, but unbounded in
+the worst case under load) where a write has committed on the
+primary but hasn't yet been replayed on a given replica. A dashboard
+read hitting that replica immediately after the write could miss it
+entirely. This is acceptable specifically because dashboard reads
+were already established (Monday's caching station) to tolerate
+staleness -- the same underlying trade-off, now showing up at the
+replication layer instead of the cache layer.
+
+Lag detection, concretely: Postgres exposes each replica's replay
+position (how far it's gotten through the WAL) which can be compared
+against the primary's current WAL position -- the difference,
+typically reported as either a byte offset or converted to a time
+estimate, IS the replication lag. A monitoring job periodically
+checks this gap against a threshold (e.g. 5 seconds of lag) and
+alerts when exceeded, the same threshold-and-alert pattern this
+week's earlier system-design stations (Monday's caching TTL,
+Tuesday's least-connections) keep reusing in different contexts.
+
+Response to a badly lagging replica: remove it from the active read
+pool (stop routing dashboard queries to it) until it catches up,
+rather than silently continuing to serve increasingly stale data --
+serving SOME requests from the primary temporarily (accepting the
+extra write-contention cost) is a better trade than serving
+dashboard users data that's, say, ten minutes stale without any
+indication of it.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: PYTHON FUNDAMENTALS ============ -->
+<section id="py">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag py">STATION 4 — PYTHON FUNDAMENTALS · 6:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">6:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone wraps every tool-call function with a <code class="inline">@retry_on_timeout</code> decorator. Explain exactly what happens, mechanically, when Python parses and executes a decorated function definition — including why a decorator that forgets <code class="inline">functools.wraps</code> silently breaks introspection.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">python/decorators.html</code>'s territory. Cold — trace the actual mechanism, not just "decorators wrap functions."</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States the desugaring precisely: <code class="inline">@decorator def f(): ...</code> is exactly equivalent to defining <code class="inline">f</code> normally, then rebinding the name <code class="inline">f</code> to <code class="inline">decorator(f)</code> — the decorator runs at DEFINITION time, not call time</li>
+            <li>Explains that the decorator typically returns a new wrapper function that closes over the original, and it's THAT wrapper which the name <code class="inline">f</code> now refers to everywhere</li>
+            <li>States precisely what breaks without <code class="inline">functools.wraps</code>: the wrapper function has its OWN <code class="inline">__name__</code>, <code class="inline">__doc__</code>, and signature, distinct from the original — introspection tools, debuggers, and <code class="inline">help()</code> now see the wrapper's generic identity instead of the original function's</li>
+            <li><code class="inline">functools.wraps</code>'s actual mechanism: it copies the original function's metadata (<code class="inline">__name__</code>, <code class="inline">__doc__</code>, <code class="inline">__module__</code>, etc.) onto the wrapper, so introspection sees through the wrapping</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "a decorator wraps a function" without the precise definition-time rebinding mechanism</li>
+            <li>Doesn't know decorators run at DEFINITION time, not call time</li>
+            <li>Can't explain specifically what functools.wraps fixes, or what breaks without it</li>
+            <li>No mention of __name__/__doc__ or introspection at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">The exact desugaring: writing
+
+    @retry_on_timeout
+    def call_tool(): ...
+
+is precisely equivalent to:
+
+    def call_tool(): ...
+    call_tool = retry_on_timeout(call_tool)
+
+This runs at MODULE IMPORT / DEFINITION time, not when call_tool is
+later invoked -- the decorator function (retry_on_timeout) is called
+exactly once, immediately after the original function object is
+created, and whatever it RETURNS is what the name `call_tool` gets
+rebound to from that point forward. Every subsequent call to
+call_tool() is actually calling whatever retry_on_timeout returned,
+not the original function body directly (unless the decorator
+happens to return the original unchanged, which a retry decorator
+would not -- it needs to return a wrapper that adds retry logic
+around the original call).
+
+Concretely, retry_on_timeout typically looks like:
+
+    def retry_on_timeout(fn):
+        def wrapper(*args, **kwargs):
+            # retry logic, then eventually:
+            return fn(*args, **kwargs)
+        return wrapper
+
+The returned `wrapper` closes over the original `fn` via a closure,
+and it's THIS wrapper function object that `call_tool` now refers to
+everywhere in the codebase.
+
+What breaks without functools.wraps: `wrapper` is a genuinely
+different function object from the original -- it has its OWN
+__name__ (literally the string "wrapper"), its own __doc__ (None,
+since wrapper has no docstring), and its own signature. Anything
+that introspects call_tool after decoration -- help(call_tool),
+call_tool.__name__, a debugger showing the function's identity, or
+automatic API documentation generation -- now sees "wrapper" instead
+of "call_tool", which is confusing and can break tooling that
+relies on accurate function metadata (e.g. a framework that
+registers routes or tools by inspecting __name__).
+
+functools.wraps(fn) applied inside the decorator (as
+@functools.wraps(fn) on the wrapper definition) copies fn's
+__name__, __doc__, __module__, and a few other metadata attributes
+onto wrapper after it's defined, so introspection sees through the
+wrapping and reports the ORIGINAL function's identity, even though
+the actual object being called is still the wrapper with its added
+retry logic.</div></details>
+  </div>
+</section>
+
+<!-- ============ WRAP-UP ============ -->
+<section id="practice">
+  <div class="kicker">Before closing today's mock</div>
+  <h2>Wrap-up: two days left, budgets nearly at their floor</h2>
+
+  <p><strong>Start here, before moving on.</strong> Friday and Saturday's budgets are close to what a real interview loop actually gives you — today is the last day with any real cushion. Use tonight specifically to shore up whichever station has been weakest across the week so far, not to cram new material.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">All four stations run today at today's tighter budgets</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Each station self-graded against its rubric BEFORE reading the reference approach</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">Four days of grades (Mon–Thu) compared side by side, per station</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">One specific, concrete review action chosen for tonight, targeting the weakest station across the whole week so far</label></li>
+    </ul>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Choosing tonight's review with two days left</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">With only Friday and Saturday remaining, and limited review time tonight, how should you decide between reviewing your weakest station's dedicated lab versus just running more timed reps of that station?</p>
+    <details><summary>Show solution</summary><div class="solution">This is the same pacing-vs-content distinction Wednesday's wrap-up
+introduced, now under real time pressure with only two days left --
+apply it directly rather than defaulting to "more reps" out of
+momentum. If the weak station's failures have consistently been
+CONTENT gaps (wrong or missing technical answers, not just running
+out of time), more timed reps under Friday and Saturday's even
+tighter clocks will mostly just reproduce the same gap faster --
+review the dedicated lab tonight instead, specifically re-reading
+the sections that map to what tripped you up this week, not the
+whole lab end to end.
+
+If the failures have been PACING (correct content, arriving too
+late), a short, focused timed rep tonight -- just that one station,
+alone, without the other three around it -- is more useful than lab
+review, since the content is already there and what's missing is
+speed under exactly this format's pressure.
+
+The two-day-remaining constraint changes the calculus versus
+Wednesday: there's no more room for a broad, unfocused review pass.
+Pick ONE station, diagnose it honestly using the pacing-vs-content
+test, and spend tonight's limited time on exactly that gap -- Friday
+and Saturday's tightened clocks will not be forgiving of an
+unaddressed weak spot, and spreading tonight's effort across all four
+areas thinly is worse than fixing the one real gap properly.</div></details>
+  </div>
+
+  <div class="callout sys">
+    <b>Self-check before Friday:</b> could you, without notes, (1) name your single weakest station across all four days so far, (2) correctly classify it as a pacing gap or a content gap using the test above, and (3) commit to the one specific review action that follows from that classification? Friday's budgets are near-peak, with four new problems.
+  </div>
+
+  <div class="weeknav">
+    <a href="dsa/interview_week_wednesday_mock.html">← Back: Wednesday Mock</a>
+    <span class="day-tally">Day 4 of 6 — Interview Week</span>
+    <a href="dsa/interview_week_friday_mock.html">Next: Friday Mock →</a>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — interview week, day 4 of 6: Thursday mock.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 11 * 60 },
+    { n: 2, seconds: 9 * 60 },
+    { n: 3, seconds: 14 * 60 },
+    { n: 4, seconds: 6 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns. Worth reviewing the dedicated lab tonight."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Interview Week: Tuesday Mock</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --py-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:26ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--py-c); color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.py{color:var(--py-c); border-color:var(--py-c); background:rgba(199,146,234,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.py{border-left-color:var(--py-c); background:rgba(199,146,234,0.06);} .callout.py b{color:var(--py-c);}
+
+  .weeknav{display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-top:1.6rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem;}
+  .weeknav a{color:var(--ink-dim); text-decoration:none; border:1px solid var(--rule); padding:0.5rem 0.9rem; border-radius:8px; transition:all .2s;}
+  .weeknav a:hover{color:var(--ink); border-color:var(--accent);}
+  .weeknav .day-tally{color:var(--ink-dim);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> INTERVIEW WEEK · DAY 2 OF 6 · TUESDAY MOCK</div>
+  <h1>Same four stations. New problems. Every clock is a little tighter.</h1>
+  <p class="lede">Monday established the format: DSA, schema design, system design, Python fundamentals, each on its own timer, each self-graded before the reference answer is revealed. Today keeps the shape and turns the dial — every budget drops roughly 10-15%, and every problem is a genuinely different one than Monday's, in the same four areas. If Monday's grades are written down somewhere, this is the day to check whether yesterday's weak station holds up under a shorter clock.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">DSA — validate a BST — 13:00</div>
+    <div class="pipe-label b">Schema — audit trail for schema changes — 11:00</div>
+    <div class="pipe-label c">System design — pick a load balancing strategy — 16:00</div>
+    <div class="pipe-label d">Python — iterators &amp; generators, cold — 7:00</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="dsa">1 · DSA</a>
+  <a data-target="schema">2 · Schema Design</a>
+  <a data-target="sys">3 · System Design</a>
+  <a data-target="py">4 · Python Fundamentals</a>
+  <a data-target="practice">Wrap-Up &amp; Log</a>
+</nav>
+
+<!-- ============ STATION 1: DSA ============ -->
+<section id="dsa">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">STATION 1 — DSA · 13:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">13:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone's schema-cold-defense tool represents index ranges as a binary search tree for fast lookup. Given the root of a binary tree, determine whether it's a VALID binary search tree — every node's value must be strictly greater than all values in its left subtree and strictly less than all values in its right subtree, not just greater/less than its immediate children.</p>
+    <p style="font-size:0.88rem;">This is <code class="inline">dsa/bst_mechanics.html</code>'s core invariant, tested as a validation problem instead of an insert/delete walkthrough. State the naive wrong approach first (checking only immediate children), then the correct one, with complexity.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Explicitly names the common wrong approach (checking only left.val &lt; node.val &lt; right.val locally) and why it fails on a deeper counterexample</li>
+            <li>Proposes the correct approach: recursive validation carrying a (low, high) valid-range bound down the tree, tightening it at each step</li>
+            <li>States the complexity correctly: O(n) time (visits each node once), O(h) space for recursion stack where h is tree height</li>
+            <li>Handles the edge case of duplicate values explicitly (does the BST definition being used allow equal values, and on which side)</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Only checks immediate parent-child relationships, missing violations from a non-adjacent ancestor</li>
+            <li>Can't produce a concrete counterexample showing why the local-only check is wrong</li>
+            <li>Never states space complexity or forgets the recursion stack contributes to it</li>
+            <li>Doesn't address how duplicates should be handled</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">The wrong approach, worth naming explicitly: checking only that
+node.left.val &lt; node.val &lt; node.right.val at every node LOCALLY
+misses violations from non-adjacent ancestors. Counterexample: a
+root of 10, with a left child of 5, and that left child has a RIGHT
+child of 15 -- locally, 5 &lt; 10 checks out and 5 &lt; 15 checks out,
+but 15 is in the root's LEFT subtree and must be less than 10, which
+it isn't. A purely local check misses this entirely.
+
+Correct approach: recursive validation carrying a (low, high) bound
+that TIGHTENS as you descend. Start with (-infinity, +infinity) at
+the root. At each node, check low &lt; node.val &lt; high; recurse left
+with (low, node.val) as the new bound, and recurse right with
+(node.val, high). This correctly propagates every ancestor's
+constraint down the tree, not just the immediate parent's.
+
+Complexity: O(n) time -- each node visited exactly once. O(h) space
+for the recursion call stack, where h is tree height -- O(log n) for
+a balanced tree, O(n) worst case for a completely unbalanced one
+(exactly the imbalance tree_rotations_and_balancing.html's rotation
+logic exists to prevent).
+
+Duplicate handling: the STRICT inequality (low &lt; node.val &lt; high,
+not &lt;=) is the standard BST convention this repo's own bst_mechanics
+.html uses -- equal values are typically disallowed or, if allowed,
+consistently routed to one side (e.g. duplicates go right) and the
+bound check adjusted accordingly (low &lt;= node.val &lt; high or similar,
+stated explicitly rather than left ambiguous). A strong answer states
+which convention it's assuming rather than leaving it implicit.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 2: SCHEMA DESIGN ============ -->
+<section id="schema">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">STATION 2 — SCHEMA DESIGN · 11:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">11:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone needs an audit trail: every time an admin changes a client's rate-limit setting, record who changed it, the old value, the new value, and when. Design the schema so this history is queryable ("show me every change to client X's rate limit, in order") without ever mutating or deleting a historical record.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">database/audit_trail_schema.html</code>'s territory — an append-only pattern, distinct from the mutable-row pattern most CRUD tables use.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Proposes a dedicated, append-only <code class="inline">rate_limit_audit</code> table — never UPDATE or DELETE, only INSERT</li>
+            <li>Records old_value, new_value, changed_by, changed_at, and client_id explicitly, not a single opaque "diff" blob</li>
+            <li>Names the index that serves "changes for client X, in order": composite on (client_id, changed_at)</li>
+            <li>Explicitly distinguishes this from the mutable <code class="inline">clients</code> table itself, which holds only the CURRENT rate limit — the audit table is a separate, additive log, not a replacement for current state</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Proposes storing history by adding versioned columns directly on the clients table (rate_limit_v1, rate_limit_v2...), which doesn't scale</li>
+            <li>Allows UPDATE on audit rows, defeating the purpose of an audit trail</li>
+            <li>No explicit old/new value columns — just says "log the change" without a concrete shape</li>
+            <li>Never proposes an index for the stated query</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">A dedicated `rate_limit_audit` table, append-only by convention (no
+application code path ever issues UPDATE or DELETE against it, and
+ideally enforced at the database permission level too): audit_id PK,
+client_id FK, old_value, new_value, changed_by (admin user id),
+changed_at. Every change to a client's rate limit produces exactly
+one new row here -- the table only ever grows.
+
+The `clients` table itself keeps a single mutable `rate_limit`
+column holding the CURRENT value -- this is intentional and correct,
+not a design flaw: current-state lookups (the hot path, checked on
+every request per Monday's rate-limiting discussion elsewhere in
+this repo) stay a simple single-row read, while historical
+"who-changed-what-when" queries go to the separate audit table,
+which is a much colder, less frequent access pattern. Conflating the
+two into one mutable table with embedded history (versioned columns,
+or a JSON array of past values) breaks both: current-state lookups
+get slower as history grows, and structured historical queries
+(filter by admin, by date range) become painful string/JSON parsing
+instead of simple indexed columns.
+
+The query ("changes for client X, in order") wants a composite index
+on (client_id, changed_at) -- equality filter on client_id, range/
+order on changed_at, the same composite-index-ordering pattern this
+week's other schema stations keep reusing because it recurs
+constantly in real systems: audit_trail_schema.html's own worked
+example follows exactly this shape.
+
+What makes this genuinely audit-grade rather than just a change log:
+never allowing UPDATE or DELETE on existing rows is the actual
+guarantee an audit trail exists to provide -- a "history" table that
+can be silently edited after the fact isn't a trustworthy audit
+trail at all, regardless of what columns it has.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 3: SYSTEM DESIGN ============ -->
+<section id="sys">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">STATION 3 — SYSTEM DESIGN · 16:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">16:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone's FastAPI app is being scaled to three replicas behind a load balancer. Pick a load balancing strategy (round robin, least connections, or consistent hashing) and justify it, given that most requests are stateless tool-call dispatches but a small fraction are long-lived streaming responses. Then explain what changes if a future version needs sticky sessions.</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">systems/load_balancers.html</code>'s territory. Name the trade-off between strategies explicitly, not just a single pick with no reasoning.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Recognizes round robin is fine for the stateless majority but can imbalance load when a minority of requests (streaming) hold connections much longer than average</li>
+            <li>Proposes least-connections as a better default given the mixed request-duration profile, and explains WHY (accounts for actual in-flight load, not just request count)</li>
+            <li>Explicitly separates "load balancing strategy" from "session affinity" — sticky sessions are an orthogonal concern layered on top, not a replacement for the LB algorithm</li>
+            <li>States what sticky sessions would require concretely: a consistent hash on client/session id, or a shared session store so any replica can serve any client without needing affinity at all</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Picks round robin with no justification, or without noticing the streaming-request imbalance risk</li>
+            <li>Conflates load balancing strategy with session stickiness as though they're the same decision</li>
+            <li>No concrete mechanism proposed for how sticky sessions would actually work</li>
+            <li>Doesn't mention the shared-session-store alternative to stickiness at all</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Round robin distributes requests evenly by COUNT, blind to how long
+each request actually holds a connection -- fine when every request
+takes roughly the same time, but this workload explicitly isn't
+uniform: most requests are short stateless dispatches, a minority
+are long-lived streaming responses that occupy a connection (and a
+worker) far longer. Round robin can send a disproportionate share of
+those long-lived streams to the same replica by chance, leaving it
+doing more actual work than its "equal share" of request COUNT would
+suggest -- a real imbalance round robin's algorithm has no visibility
+into.
+
+Least-connections is the better default here specifically because it
+tracks ACTUAL in-flight load per replica and routes new requests to
+whichever replica currently has the fewest open connections --
+naturally self-correcting for the mixed-duration profile, since a
+replica holding several long streaming connections will show a
+higher active-connection count and receive fewer NEW requests until
+those streams complete. This is load_balancers.html's own stated
+trade-off: round robin is simpler and stateless for the LB itself,
+least-connections requires the LB to track connection state per
+backend but handles uneven request durations correctly.
+
+Sticky sessions, kept explicitly separate: session affinity (routing
+the SAME client to the SAME replica across requests) is a different
+axis entirely from load distribution strategy -- you can run
+least-connections AND sticky sessions together. The concrete
+mechanism: either a consistent hash on a client/session identifier
+(so the same client consistently maps to the same replica without a
+central lookup), or -- the architecturally cleaner alternative --
+moving session state OUT of the replica entirely into a shared store
+(Redis, echoing this week's earlier orchestrator-state discussion),
+so ANY replica can serve ANY client's request without needing
+affinity in the first place. A strong answer names the shared-store
+option as the preferred long-term fix, since sticky sessions
+reintroduce a single point of failure per client (if that one
+replica goes down, the client's session is disrupted) that a shared
+store avoids entirely.</div></details>
+  </div>
+</section>
+
+<!-- ============ STATION 4: PYTHON FUNDAMENTALS ============ -->
+<section id="py">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag py">STATION 4 — PYTHON FUNDAMENTALS · 7:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">7:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Explain the difference between an iterator and a generator in Python, and why a generator is memory-efficient for streaming the capstone's eval-trace records from a large export file. Then: what does <code class="inline">yield</code> actually do to a function's execution model that a normal <code class="inline">return</code> doesn't?</p>
+    <p style="font-size:0.88rem;">Directly reuses <code class="inline">python/iterators_and_generators.html</code>'s territory. Cold, verbal-style — precise mechanism, not just "generators are lazy."</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States the iterator protocol precisely: an object implementing <code class="inline">__iter__</code> and <code class="inline">__next__</code>, raising <code class="inline">StopIteration</code> when exhausted</li>
+            <li>States that a generator IS an iterator, but one created via a function containing <code class="inline">yield</code> (or a generator expression) rather than a hand-written class</li>
+            <li>Explains the memory win precisely: a generator produces one value at a time on demand, never materializing the full sequence in memory, versus reading the whole export file into a list first</li>
+            <li>Explains <code class="inline">yield</code>'s actual mechanism: it suspends the function's execution and local state (a real, resumable stack frame), returning control to the caller, and resumes exactly where it left off on the next <code class="inline">next()</code> call — a normal <code class="inline">return</code> destroys the frame permanently</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Says "generators are lazy" or "iterators are things you can loop over" without the precise protocol</li>
+            <li>Doesn't state that generators ARE iterators (a specific implementation of the protocol), treating them as an unrelated concept</li>
+            <li>Memory-efficiency explanation is vague ("uses less memory") without contrasting against materializing a full list</li>
+            <li>Can't explain what happens to the function's execution state between yields — treats <code class="inline">yield</code> as "like return but multiple times" with no mention of frame suspension</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">The iterator protocol: any object implementing __iter__ (returning
+the iterator itself) and __next__ (returning the next value or
+raising StopIteration when exhausted) is an iterator -- this is the
+mechanism every `for` loop in Python is built on under the hood.
+
+A generator is an iterator, specifically one produced by a function
+containing at least one `yield` statement (or a generator
+expression, `(x for x in ...)`). Calling a generator function
+doesn't run its body immediately -- it returns a generator OBJECT
+that already satisfies the iterator protocol, and the body only
+executes incrementally as `next()` is called on it.
+
+Memory efficiency, precisely: reading a large export file into a
+list first (`records = [parse(line) for line in file]`) materializes
+EVERY record in memory simultaneously before processing begins. A
+generator (`for line in file: yield parse(line)`) produces exactly
+ONE parsed record at a time, on demand -- memory usage stays
+constant regardless of file size, versus scaling linearly with
+record count for the list version. This is the exact trade-off worth
+naming for a large eval-trace export: the generator version can
+stream an arbitrarily large file with flat memory usage.
+
+What `yield` actually does to execution, the mechanism a strong
+answer states explicitly: unlike `return`, which destroys the
+function's stack frame permanently and hands a single value back to
+the caller, `yield` SUSPENDS the function's execution mid-body --
+its entire local variable state, its current position in the code,
+and its call stack frame are preserved, paused, exactly where the
+yield statement fired. Control returns to the caller with the
+yielded value. The NEXT call to `next()` on that generator resumes
+execution from that exact paused point, with all local state intact,
+continuing until the next yield or the function actually returns
+(which raises StopIteration). This resumable-frame mechanism is
+what makes a generator fundamentally different from a function that
+just returns a list -- it isn't "returning multiple times," it's a
+genuinely different execution model where the function's state
+persists across calls.</div></details>
+  </div>
+</section>
+
+<!-- ============ WRAP-UP ============ -->
+<section id="practice">
+  <div class="kicker">Before closing today's mock</div>
+  <h2>Wrap-up: log today's grades against Monday's</h2>
+
+  <p><strong>Start here, before moving on.</strong> Line up today's four grades next to Monday's four grades, station by station. A station that dropped from strong to mixed under a tighter clock is real signal — not necessarily a knowledge gap, but a sign that station needs more reps before Wednesday tightens the clock again.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">All four stations run today, in order, at today's tighter budgets — no quietly giving yourself Monday's extra time</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Each station self-graded against its rubric BEFORE reading the reference approach</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">Today's four grades compared directly against Monday's four grades, station by station</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">Any station that dropped a grade tier from Monday named explicitly, not brushed off as "just an off day"</label></li>
+    </ul>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Distinguishing a real gap from clock pressure</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">If a station's grade dropped from Monday to today, what's the fastest honest way to tell whether that's because the clock tightened or because the underlying knowledge is genuinely shakier than Monday suggested?</p>
+    <details><summary>Show solution</summary><div class="solution">Re-read your own answer from today against the rubric's specific
+bullet points, not the holistic grade. If the CONTENT of your answer
+was correct but incomplete purely because you ran out of time before
+finishing (e.g. you named the right approach but never got to state
+its complexity, or never reached the edge case), that's a clock
+problem -- the knowledge is there, the pacing needs work, and running
+the same station again with a stopwatch on your OWN sub-steps
+(how long to state the approach vs. how long to reach the edge case)
+is the fix.
+
+If instead the content itself was wrong or missing regardless of how
+much time was left -- you genuinely didn't know the correct approach,
+not just ran out of time reaching it -- that's a real knowledge gap,
+and the fix is going back to that area's dedicated lab
+(bst_mechanics.html, audit_trail_schema.html, load_balancers.html, or
+iterators_and_generators.html) for a real review pass, not just
+running more timed mocks against a gap timed mocks can't fill.
+
+The distinguishing test: could you have finished the SAME answer
+correctly given unlimited time? If yes, it's pacing. If you'd have
+produced the same incomplete or wrong answer even untimed, it's
+content -- and content gaps need dedicated review, not more clock
+pressure, which only makes a content gap more visible, not smaller.</div></details>
+  </div>
+
+  <div class="callout sys">
+    <b>Self-check before Wednesday:</b> could you, without notes, (1) name today's weakest station honestly, (2) state whether that weakness is a pacing problem or a content gap using the test above, and (3) commit to reviewing the relevant dedicated lab tonight if it's a content gap? Wednesday tightens every clock again and swaps in four new problems.
+  </div>
+
+  <div class="weeknav">
+    <a href="dsa/interview_week_monday_mock.html">← Back: Monday Mock</a>
+    <span class="day-tally">Day 2 of 6 — Interview Week</span>
+    <a href="dsa/interview_week_wednesday_mock.html">Next: Wednesday Mock →</a>
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — interview week, day 2 of 6: Tuesday mock.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER STATIONS */
+(function(){
+  var stations = [
+    { n: 1, seconds: 13 * 60 },
+    { n: 2, seconds: 11 * 60 },
+    { n: 3, seconds: 16 * 60 },
+    { n: 4, seconds: 7 * 60 }
+  ];
+
+  stations.forEach(function(st){
+    var totalSeconds = st.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + st.n);
+    var fillEl = document.getElementById("fill-" + st.n);
+    var startBtn = document.getElementById("start-" + st.n);
+    var resetBtn = document.getElementById("reset-" + st.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 60;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns. Worth reviewing the dedicated lab tonight."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>
