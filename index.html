@@ -81,7 +81,7 @@
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> THE NAMESPACE LAB · INTERACTIVE CONCEPT LABS</div>
-  <h1>One hundred and thirty-one labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
+  <h1>One hundred and thirty-seven labs. Each one takes a <em>foggy idea</em> and makes it click.</h1>
   <p class="lede">Self-contained, single-file walkthroughs covering Python internals, data structures &amp; algorithms, systems fundamentals, relational databases, backend API design, storage engines &amp; RAG, MCP &amp; agentic systems, and AI evals &amp; observability — built week by week alongside the study roadmap below. Pick one below — no setup required, just open and read.</p>
 </div>
 
@@ -177,7 +177,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Data Structures &amp; Algorithms</h2>
-      <span class="count">9 labs</span>
+      <span class="count">10 labs</span>
     </div>
     <div class="cards">
       <a class="card dsa" href="dsa/big_o_and_linked_lists.html">
@@ -232,6 +232,12 @@
         <span class="tag">Timed Mock — Context-Switching Across Four Stations</span>
         <h3>Combined Mock: DSA + Schema + System Design</h3>
         <p>Four live-timer stations back to back — a graph problem, a schema question, a system design sketch, then a DSA follow-up — training the mode-switch itself, not depth in any one area.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
+      <a class="card dsa" href="dsa/capstone_combined_mock_full_loop.html">
+        <span class="tag">Capstone — Four Full-Length Rounds, Back to Back</span>
+        <h3>Capstone Combined Mock: Full Loop</h3>
+        <p>The next tier after the warm-up: a full DSA round, schema round, system design round, and behavioral capstone walkthrough at realistic time budgets, with rubric self-grading and a stamina reflection across the whole loop.</p>
         <span class="arrow">Open lab →</span>
       </a>
     </div>
@@ -315,7 +321,7 @@
   <section class="group">
     <div class="group-head">
       <h2>Database Fundamentals</h2>
-      <span class="count">20 labs</span>
+      <span class="count">21 labs</span>
     </div>
     <div class="cards">
       <a class="card database" href="database/tables_and_keys.html">
@@ -438,13 +444,19 @@
         <p>The general five-step estimation method, applied to the capstone's own agent-run/tool-call/span/eval schema — with a live calculator you can drag DAU, fan-out, and retention on and watch storage and QPS move.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card database" href="database/capstone_schema_finalization_and_indexes.html">
+        <span class="tag">Capstone — Indexed &amp; Migrated Schema, Verified</span>
+        <h3>Capstone Schema Finalization &amp; Indexes</h3>
+        <p>The complete four-table capstone schema, every CREATE INDEX tied to a named query pattern, a real additive migration script, and how to confirm an index is actually used via an EXPLAIN plan — plus a query-to-index matcher.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Backend &amp; APIs</h2>
-      <span class="count">26 labs</span>
+      <span class="count">27 labs</span>
     </div>
     <div class="cards">
       <a class="card backend" href="backend/fastapi_routing_and_pydantic.html">
@@ -603,13 +615,19 @@
         <p>The literal starting skeleton: liveness vs readiness endpoints, an MCP server mounted over SSE, named empty slots for the orchestrator and eval/tracing hooks, and a checklist to verify it actually runs before Week 2.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card backend" href="backend/capstone_integration_testing.html">
+        <span class="tag">Capstone — End-to-End Testing of the Wired-Together System</span>
+        <h3>Capstone Integration Testing</h3>
+        <p>Real async FastAPI test fixtures, a per-dependency mock-vs-real decision table, one full request/response/side-effect scenario, and a fast pre-deploy smoke test that catches a broken build a response-only assertion would miss.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Storage &amp; RAG</h2>
-      <span class="count">19 labs</span>
+      <span class="count">20 labs</span>
     </div>
     <div class="cards">
       <a class="card storage" href="storage-and-rag/btree_vs_columnar.html">
@@ -726,13 +744,19 @@
         <p>Serving low-latency queries over a corpus that updates continuously: incremental HNSW inserts instead of periodic rebuilds, the bounded "not yet indexed" window made concrete, and an 800ms query budget broken down stage by stage.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card storage" href="storage-and-rag/capstone_hybrid_search_integration.html">
+        <span class="tag">Capstone — Hybrid Search as a Callable MCP Tool</span>
+        <h3>Capstone Hybrid Search Integration</h3>
+        <p>Wiring hybrid search into the capstone as a real MCP tool with a bounded schema, embedded-vs-separate-service indexing weighed for this deployment, and a live RRF fusion demo feeding a token-budgeted context window.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>MCP &amp; Agents</h2>
-      <span class="count">17 labs</span>
+      <span class="count">18 labs</span>
     </div>
     <div class="cards">
       <a class="card mcp" href="mcp-and-agents/mcp_fundamentals_jsonrpc.html">
@@ -837,13 +861,19 @@
         <p>The whole month tied together on one real task — MCP tool discovery, a multi-step plan, a deliberately injected tool failure recovered gracefully, and a final structured JSON answer — plus the Month 4 checkpoint.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card mcp" href="mcp-and-agents/capstone_orchestrator_integration.html">
+        <span class="tag">Capstone — Stateful Orchestrator Wired Into the Scaffold</span>
+        <h3>Capstone Orchestrator Integration</h3>
+        <p>Filling the scaffold's empty orchestrator slot for real: where run state lives once multiple workers exist, a thin FastAPI route calling into it, and an animated trace of one request moving through route → dispatch → compose → persisted.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
   <section class="group">
     <div class="group-head">
       <h2>Evals &amp; Observability</h2>
-      <span class="count">16 labs</span>
+      <span class="count">17 labs</span>
     </div>
     <div class="cards">
       <a class="card eval" href="evals-and-observability/deterministic_evals.html">
@@ -942,6 +972,12 @@
         <p>A fourth eval-gate pipeline stage built on cicd_pipeline_basics.html, gating on tool-selection accuracy, hallucination rate, and p95 latency — configure real thresholds and watch a bad candidate deploy actually get blocked.</p>
         <span class="arrow">Open lab →</span>
       </a>
+      <a class="card eval" href="evals-and-observability/capstone_dashboard_integration.html">
+        <span class="tag">Capstone — Every Run Traced &amp; Scored Automatically</span>
+        <h3>Capstone Dashboard Integration</h3>
+        <p>Middleware for the outer span, explicit calls for every agent turn, an eval score recorded unconditionally per run, and a live dashboard mockup populating as simulated capstone traffic executes — all writing into one schema, not a second store.</p>
+        <span class="arrow">Open lab →</span>
+      </a>
     </div>
   </section>
 
@@ -998,7 +1034,7 @@
 
 </main>
 
-<footer>materials/ · one hundred and thirty-one standalone HTML labs + a 6-month roadmap, no build step</footer>
+<footer>materials/ · one hundred and thirty-seven standalone HTML labs + a 6-month roadmap, no build step</footer>
 
 </body>
 </html>

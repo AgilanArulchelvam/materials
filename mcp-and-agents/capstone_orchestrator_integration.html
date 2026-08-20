@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Orchestrator Integration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --coord-c:#f2c14e; --sub1-c:#4fc3f7; --sub2-c:#c792ea; --ok-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(242,193,78,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--coord-c); color:var(--coord-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.b{border-color:var(--sub1-c); color:var(--sub1-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.c{border-color:var(--sub2-c); color:var(--sub2-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .tree{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0; line-height:1.7; color:#cdd0d8; white-space:pre;}
+  .tree .dir{color:var(--coord-c);}
+  .tree .file{color:var(--sub1-c);}
+  .tree .cmt{color:#5f6675;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.3rem 0; padding:0.4rem 0.6rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.coord{border-left-color:var(--coord-c); background:rgba(242,193,78,0.06);}
+  .log .line.sub1{border-left-color:var(--sub1-c); background:rgba(79,195,247,0.06);}
+  .log .line.sub2{border-left-color:var(--sub2-c); background:rgba(199,146,234,0.06);}
+  .log .line.ok{border-left-color:var(--ok-c); background:rgba(127,216,160,0.06);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* state machine trace diagram */
+  .trace-wrap{display:flex; flex-direction:column; gap:0.7rem; margin:1.4rem 0;}
+  .trace-state{font-family:var(--mono); font-size:0.8rem; padding:0.85rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); transition:all .3s ease; display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;}
+  .trace-state .st-name{font-weight:600;}
+  .trace-state .st-detail{color:var(--ink-dim); font-size:0.72rem;}
+  .trace-state.active{border-color:var(--coord-c); color:var(--ink); background:rgba(242,193,78,0.1); box-shadow:0 0 14px rgba(242,193,78,0.35);}
+  .trace-state.active .st-name{color:var(--coord-c);}
+  .trace-state.done{border-color:var(--ok-c);}
+  .trace-state.done .st-name{color:var(--ok-c);}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .dc-compare{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0; align-items:start;}
+  @media(max-width:760px){.dc-compare{grid-template-columns:1fr;}}
+  .dc-col{border:1.5px solid var(--rule); border-radius:12px; padding:1.1rem;}
+  .dc-col.a{border-color:var(--sub1-c);} .dc-col.a h4{color:var(--sub1-c);}
+  .dc-col.b{border-color:var(--sub2-c);} .dc-col.b h4{color:var(--sub2-c);}
+  .dc-col h4{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.08em; margin:0 0 0.6rem;}
+  .dc-col p{font-size:0.85rem; margin:0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--ok-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.coord{border-left-color:var(--coord-c); background:rgba(242,193,78,0.06);} .callout.coord b{color:var(--coord-c);}
+  .callout.ok{border-left-color:var(--ok-c); background:rgba(127,216,160,0.06);} .callout.ok b{color:var(--ok-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> MCP &amp; AGENTS LAB · CAPSTONE ORCHESTRATOR INTEGRATION</div>
+  <h1>The empty <code class="inline" style="font-size:0.6em;">app/orchestrator/</code> slot, filled in for real.</h1>
+  <p class="lede"><code class="inline">backend/capstone_scaffold_fastapi_mcp.html</code> named this slot and left it empty on purpose. This lab fills it: a stateful multi-agent orchestrator — built on <code class="inline">stateful_graphs.html</code>'s explicit state machine and <code class="inline">multi_agent_delegation.html</code>'s coordinator/sub-agent split — wired into the scaffold's FastAPI app, dispatching to the MCP tools already mounted at <code class="inline">/mcp/sse</code>. Where the state lives, how a request becomes a full run, and a real chat route calling into it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Orchestrator state — in-process dict vs external store</div>
+    <div class="pipe-label b">Coordinator dispatches to MCP tools already mounted</div>
+    <div class="pipe-label c">One request → one full orchestrated run, traced</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="where">1 · Where State Lives</a>
+  <a data-target="wiring">2 · Wiring the Route to the Orchestrator</a>
+  <a data-target="dispatch">3 · Orchestrator → MCP Tool Dispatch</a>
+  <a data-target="trace">4 · A Request, Traced End to End</a>
+  <a data-target="checklist">5 · Verify It's Wired</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHERE STATE LIVES ============ -->
+<section id="where">
+  <div class="kicker">01 — The decision that breaks or survives multiple workers</div>
+  <h2>Where orchestrator state lives</h2>
+
+  <p><strong>Start here, before writing a line of orchestrator code.</strong> Think about a hotel concierge taking a multi-step request — "book me a table, then a car, then text me the confirmation" — versus a sticky note the concierge keeps at their OWN desk to track progress. If there's only ever one concierge on shift, the sticky note works fine. But the moment the hotel adds a second concierge desk to handle more guests at once, a request that started with concierge A but gets checked on by concierge B is a problem — B has no sticky note, no memory of where A left off. This is exactly the question a stateful orchestrator has to answer before anything else: when <code class="inline">uvicorn_gunicorn_workers.html</code>'s worker-count heuristics say "run N workers, not one," where does an in-progress multi-turn run's state live so ANY worker can pick up the next step?</p>
+
+  <p>The scaffold's <code class="inline">app/orchestrator/</code> package is a Python module inside a FastAPI process — and FastAPI, run under <code class="inline">uvicorn main:app --workers 4</code> (or Gunicorn managing multiple Uvicorn workers, per <code class="inline">backend/uvicorn_gunicorn_workers.html</code>), means FOUR separate OS processes, each with its own memory space. An in-process Python dict keyed by <code class="inline">run_id</code> works perfectly in local dev (one worker, one process) and breaks silently the moment a second worker exists: request 1 of a multi-turn run lands on worker A, request 2 (same <code class="inline">run_id</code>, continuing the same conversation) lands on worker B via round-robin load balancing, and worker B has never heard of that run.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>In-process state (dict, per-worker)</h4>
+      <p>Zero network hops per state read/write — fastest possible. Correct ONLY if the deployment guarantees exactly one worker, ever (true for local dev, false for almost any real deployment scaled past a single process). Breaks silently, not loudly: no error, just a "run not found" or a fresh, wrong state, on whichever worker didn't handle the previous turn.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>External store (Redis / Postgres, shared)</h4>
+      <p>Every worker reads/writes the same state, so which worker handles which request stops mattering — a real precondition for horizontal scaling. Costs a network round trip per state access, and adds a dependency the scaffold's <code class="inline">/readyz</code> check now has to verify (same pattern as the MCP server dependency check in <code class="inline">capstone_scaffold_fastapi_mcp.html</code> section 2).</p>
+    </div>
+  </div>
+
+  <div class="code"><span class="c-cmt"># app/orchestrator/state.py
+# Redis-backed run state -- any worker can read/write any run_id.
+# Redis is the right default here specifically because orchestrator
+# state is short-lived, high-write, and doesn't need SQL's durability
+# guarantees the way finalized traces/evals do (that's Postgres's job,
+# per database/eval_trace_schema_finalization.html) -- see problem 1.</span>
+<span class="c-kw">import</span> json
+<span class="c-kw">from</span> redis.asyncio <span class="c-kw">import</span> Redis
+<span class="c-kw">from</span> app.config <span class="c-kw">import</span> get_settings
+
+<span class="c-kw">class</span> <span class="c-fn">RunStateStore</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, redis: Redis):
+        self.redis = redis
+
+    <span class="c-kw">async def</span> <span class="c-fn">load</span>(self, run_id: <span class="c-fn">str</span>) -> <span class="c-fn">dict</span> | <span class="c-kw">None</span>:
+        raw = <span class="c-kw">await</span> self.redis.get(<span class="c-fn">f"run:{run_id}"</span>)
+        <span class="c-kw">return</span> json.loads(raw) <span class="c-kw">if</span> raw <span class="c-kw">else</span> <span class="c-kw">None</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">save</span>(self, run_id: <span class="c-fn">str</span>, state: <span class="c-fn">dict</span>) -> <span class="c-kw">None</span>:
+        <span class="c-cmt"># TTL matters: an abandoned run's state shouldn't live forever</span>
+        <span class="c-kw">await</span> self.redis.set(<span class="c-fn">f"run:{run_id}"</span>, json.dumps(state), ex=<span class="c-num">3600</span>)
+
+<span class="c-kw">def</span> <span class="c-fn">get_run_state_store</span>() -> RunStateStore:
+    settings = get_settings()
+    redis = Redis.from_url(settings.redis_url)
+    <span class="c-kw">return</span> RunStateStore(redis)</div>
+
+  <div class="callout coord"><b>Interview-ready definition:</b> a stateless orchestrator PROCESS with all mutable run state externalized (Redis, or Postgres for anything that must survive a Redis restart) is what makes horizontal scaling of the orchestrator itself possible — any worker, any request, same answer — at the cost of a network round trip per state access; an in-process store is a correctness bug waiting for a second worker, not a valid optimization, unless the deployment topology genuinely guarantees a single process forever.</div>
+</section>
+
+<!-- ============ SECTION 2: WIRING THE ROUTE ============ -->
+<section id="wiring">
+  <div class="kicker">02 — The thin layer between HTTP and the orchestrator</div>
+  <h2>Wiring the FastAPI route to the orchestrator</h2>
+
+  <p><strong>Start here, before touching the orchestrator's internals.</strong> Think about a restaurant's host stand versus the kitchen. The host takes your name, seats you, and hands your order to the kitchen — the host does NOT cook. Section 4 of <code class="inline">capstone_scaffold_fastapi_mcp.html</code> already named this exact split for a hypothetical <code class="inline">chat.py</code> router: a thin layer that calls into <code class="inline">app/orchestrator/</code>, per <code class="inline">fastapi_routing_and_pydantic.html</code>'s routing patterns. This section writes that router for real.</p>
+
+  <div class="code"><span class="c-cmt"># app/routers/chat.py -- new router, registered in create_app()
+# right after health.router and mount_mcp(app), per the scaffold's
+# ordering rule (register health first, everything else after)</span>
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> APIRouter, Depends, HTTPException
+<span class="c-kw">from</span> pydantic <span class="c-kw">import</span> BaseModel
+<span class="c-kw">from</span> app.orchestrator.run <span class="c-kw">import</span> Orchestrator, get_orchestrator
+
+router = APIRouter(prefix=<span class="c-str">"/chat"</span>, tags=[<span class="c-str">"chat"</span>])
+
+<span class="c-kw">class</span> <span class="c-fn">ChatRequest</span>(BaseModel):
+    run_id: <span class="c-fn">str</span> | <span class="c-kw">None</span> = <span class="c-kw">None</span>   <span class="c-cmt"># None => start a new run</span>
+    message: <span class="c-fn">str</span>
+
+<span class="c-kw">class</span> <span class="c-fn">ChatResponse</span>(BaseModel):
+    run_id: <span class="c-fn">str</span>
+    reply: <span class="c-fn">str</span>
+    done: <span class="c-fn">bool</span>
+
+<span class="c-fn">@router.post</span>(<span class="c-str">""</span>, response_model=ChatResponse)
+<span class="c-kw">async def</span> <span class="c-fn">chat</span>(
+    req: ChatRequest,
+    orchestrator: Orchestrator = Depends(get_orchestrator),
+):
+    <span class="c-cmt"># the ENTIRE job of this handler: translate HTTP in, call the
+    # orchestrator, translate its result back to HTTP out -- no
+    # agent logic, no tool-calling logic, lives here</span>
+    <span class="c-kw">try</span>:
+        result = <span class="c-kw">await</span> orchestrator.step(run_id=req.run_id, user_message=req.message)
+    <span class="c-kw">except</span> orchestrator.errors.RunNotFound:
+        <span class="c-kw">raise</span> HTTPException(status_code=<span class="c-num">404</span>, detail=<span class="c-str">"run_id not found or expired"</span>)
+
+    <span class="c-kw">return</span> ChatResponse(run_id=result.run_id, reply=result.reply, done=result.done)</div>
+
+  <p>Notice what is deliberately absent from this handler: no loop, no MCP client calls, no knowledge of which agent handles what. Every one of those decisions belongs to the orchestrator, reached through exactly one call — <code class="inline">orchestrator.step(...)</code> — mirroring the same separation <code class="inline">dependency_injection.html</code> draws between route handlers and business logic, and the same reasoning <code class="inline">capstone_scaffold_fastapi_mcp.html</code>'s practice problem 2 used to keep LLM-calling logic out of the MCP tool handler.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> a route that "wires in" an orchestrator should be translatable in one sentence — "accept a request shape, call one orchestrator method, return its result shape" — with zero orchestration logic inlined; if a router function needs its own loop or its own branching on agent type, the orchestration logic has leaked into the wrong layer.</div>
+</section>
+
+<!-- ============ SECTION 3: DISPATCH TO MCP TOOLS ============ -->
+<section id="dispatch">
+  <div class="kicker">03 — The orchestrator is an MCP client, not a re-implementation of one</div>
+  <h2>How the orchestrator dispatches to MCP tools</h2>
+
+  <p><strong>Start here, before writing the dispatch logic.</strong> Think about a project manager who delegates specific tasks to specialists rather than doing every task themselves — the PM's job is deciding WHO does WHAT and WHEN, not replicating each specialist's skill. <code class="inline">multi_agent_delegation.html</code>'s coordinator does exactly this across sub-agents; this orchestrator does the same thing one layer down, delegating individual actions to MCP tools already registered in the scaffold's <code class="inline">app/mcp_servers/</code> (the <code class="inline">ping</code> tool from section 3 of the scaffold, plus whatever real tools — including lab 2's hybrid search tool — get added there).</p>
+
+  <div class="code"><span class="c-cmt"># app/orchestrator/run.py</span>
+<span class="c-kw">from</span> dataclasses <span class="c-kw">import</span> dataclass
+<span class="c-kw">from</span> uuid <span class="c-kw">import</span> uuid4
+<span class="c-kw">from</span> mcp <span class="c-kw">import</span> ClientSession
+<span class="c-kw">from</span> app.orchestrator.state <span class="c-kw">import</span> RunStateStore, get_run_state_store
+<span class="c-kw">from</span> app.orchestrator.mcp_client <span class="c-kw">import</span> get_mcp_session  <span class="c-cmt"># thin wrapper around ClientSession</span>
+
+<span class="c-kw">@dataclass</span>
+<span class="c-kw">class</span> <span class="c-fn">StepResult</span>:
+    run_id: <span class="c-fn">str</span>
+    reply: <span class="c-fn">str</span>
+    done: <span class="c-fn">bool</span>
+
+<span class="c-kw">class</span> <span class="c-fn">Orchestrator</span>:
+    <span class="c-kw">def</span> <span class="c-fn">__init__</span>(self, store: RunStateStore, mcp: ClientSession):
+        self.store = store
+        self.mcp = mcp   <span class="c-cmt"># connects to THIS SAME FastAPI process's
+                          # /mcp/sse endpoint -- section 3 of the scaffold</span>
+
+    <span class="c-kw">async def</span> <span class="c-fn">step</span>(self, run_id: <span class="c-fn">str</span> | <span class="c-kw">None</span>, user_message: <span class="c-fn">str</span>) -> StepResult:
+        is_new = run_id <span class="c-kw">is</span> <span class="c-kw">None</span>
+        run_id = run_id <span class="c-kw">or</span> <span class="c-fn">str</span>(uuid4())
+        state = {<span class="c-str">"turns"</span>: [], <span class="c-str">"status"</span>: <span class="c-str">"running"</span>} <span class="c-kw">if</span> is_new <span class="c-kw">else</span> (
+            <span class="c-kw">await</span> self.store.load(run_id) <span class="c-kw">or</span> self.errors.RunNotFound()
+        )
+
+        <span class="c-cmt"># 1. the orchestrator DECIDES which tool this turn needs --
+        #    real routing logic (classification, a planning agent,
+        #    a fixed graph edge per stateful_graphs.html) goes here</span>
+        tool_name, tool_args = self._route(user_message, state)
+
+        <span class="c-cmt"># 2. dispatch through the MCP protocol -- the SAME tools/call
+        #    JSON-RPC shape mcp_fundamentals_jsonrpc.html teaches,
+        #    NOT a direct Python function call into the tool's code</span>
+        tool_result = <span class="c-kw">await</span> self.mcp.call_tool(tool_name, tool_args)
+
+        <span class="c-cmt"># 3. fold the result back into state and decide if the run is done</span>
+        state[<span class="c-str">"turns"</span>].append({<span class="c-str">"user"</span>: user_message, <span class="c-str">"tool"</span>: tool_name, <span class="c-str">"result"</span>: tool_result})
+        done = self._is_terminal(state)
+        state[<span class="c-str">"status"</span>] = <span class="c-str">"done"</span> <span class="c-kw">if</span> done <span class="c-kw">else</span> <span class="c-str">"running"</span>
+
+        <span class="c-kw">await</span> self.store.save(run_id, state)
+        <span class="c-kw">return</span> StepResult(run_id=run_id, reply=self._render_reply(tool_result), done=done)</div>
+
+  <p>The critical design choice here: the orchestrator calls <code class="inline">self.mcp.call_tool(...)</code> — going THROUGH the MCP protocol, exactly as an external MCP client would, even though the MCP server it's calling is mounted in the same process (per the scaffold's SSE-mounting choice). This looks like unnecessary overhead until you consider why: it keeps every tool invocation, whether from this orchestrator or from a future external agent, going through the SAME validated, schema-checked, loggable path — which is exactly what lab 3's instrumentation hooks into in section 2, rather than needing two different instrumentation strategies for "internal" and "external" tool calls.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> an orchestrator dispatches to tools by acting as an MCP CLIENT against the MCP server(s) it has access to — including one mounted in its own process — never by importing and calling a tool handler's Python function directly, because doing so bypasses the protocol's schema validation and, downstream, any instrumentation attached to the MCP layer specifically.</div>
+</section>
+
+<!-- ============ SECTION 4: A REQUEST, TRACED ============ -->
+<section id="trace">
+  <div class="kicker">04 — Watch the state machine, not just read about it</div>
+  <h2>A single request, traced through the whole orchestrated run</h2>
+
+  <p><strong>Start here, before running this yourself.</strong> A single <code class="inline">POST /chat</code> is not one hop — it's a sequence of state transitions inside the orchestrator, each one a discrete, inspectable step, exactly the way <code class="inline">stateful_graphs.html</code> modeled an agent's control flow as nodes and conditional edges rather than one opaque function call. Press play below to animate one real request — "summarize the Q3 report and check its numbers against the DB" — moving through <code class="inline">received</code> → <code class="inline">route</code> → <code class="inline">dispatch: search tool</code> → <code class="inline">dispatch: db tool</code> → <code class="inline">compose reply</code> → <code class="inline">persisted</code>.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>Orchestrator request trace — one run_id, multiple turns</span>
+      <div><button class="btn" id="trace-play">Run this request ▸</button> <button class="btn secondary" id="trace-reset">Reset</button></div>
+    </div>
+    <div class="trace-wrap" id="trace-states"></div>
+    <div class="log" id="trace-log"></div>
+  </div>
+
+  <div class="callout coord"><b>What to notice:</b> the orchestrator's own state (<code class="inline">state["turns"]</code>, <code class="inline">state["status"]</code>) persists to the external store BETWEEN dispatch steps, not just at the very end — so if the process crashed mid-run after the search tool call but before the DB tool call, a resumed run (on any worker, per section 1) would see <code class="inline">turns: [search_result]</code> already saved and wouldn't have to redo it. This is the practical payoff of externalizing state: partial progress survives a crash, not just a graceful completion.</div>
+</section>
+
+<!-- ============ SECTION 5: CHECKLIST ============ -->
+<section id="checklist">
+  <div class="kicker">05 — Confirm the wiring, don't assume it</div>
+  <h2>Verify the orchestrator is actually wired in</h2>
+
+  <p><strong>Start here, before calling this integration done.</strong> Exactly like the scaffold lab's own closing checklist, "the code looks right" is not the bar — run these checks against a real process.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1"><code class="inline">app/orchestrator/</code> is no longer an empty package — <code class="inline">state.py</code>, <code class="inline">run.py</code>, and <code class="inline">mcp_client.py</code> exist and import cleanly</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Redis (or the chosen external store) is reachable from the FastAPI process, and <code class="inline">/readyz</code> has been extended to check it — same 503-on-failure pattern as the scaffold's MCP readiness check</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3"><code class="inline">POST /chat</code> with no <code class="inline">run_id</code> creates a new run, returns a <code class="inline">run_id</code>, and a SECOND <code class="inline">POST /chat</code> with that same <code class="inline">run_id</code> continues the same run (state actually persisted, not reset)</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">Killing and restarting the FastAPI process mid-run (or, more realistically, sending the second request to a DIFFERENT worker if running with <code class="inline">--workers 2+</code>) still finds the run — confirms state is genuinely external, not accidentally still in-process</label></li>
+      <li><input type="checkbox" id="chk5"><label for="chk5">The orchestrator's tool calls are visible going through <code class="inline">/mcp/sse</code> (not a direct import) — confirmable by temporarily logging inside the MCP server's <code class="inline">call_tool</code> handler and seeing it fire</label></li>
+      <li><input type="checkbox" id="chk6"><label for="chk6">A request that should terminate in one turn returns <code class="inline">done: true</code>, and one requiring multiple tool calls correctly returns <code class="inline">done: false</code> until the terminal condition is met</label></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the wiring yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Redis vs Postgres for run state</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1 chose Redis for in-flight orchestrator state, while <code class="inline">database/eval_trace_schema_finalization.html</code> uses Postgres for finalized traces and eval results. Why is this split correct rather than arbitrary — why not put run state in Postgres too, or traces in Redis?</p>
+    <details><summary>Show solution</summary><div class="solution">The split tracks a real difference in access pattern and durability
+requirement, not just habit. In-flight run state is: written on every
+single turn (high write rate), read almost immediately after (low
+latency need), and DISPOSABLE once the run finishes or times out (a
+1-hour TTL is fine, per section 1's state.py). Redis is built exactly
+for that shape -- an in-memory store with cheap writes and a built-in
+expiry mechanism, at the cost of weaker durability guarantees (a Redis
+restart without persistence configured can lose recent writes).
+
+Finalized traces and eval results are the opposite shape: written once
+per completed run (much lower write rate), read later and often in
+aggregate (dashboard queries scanning thousands of rows, per lab 3),
+and must NOT be lost -- they're the historical record this capstone's
+eval/tracing dashboard is built on. Postgres's durability (WAL, ACID
+transactions) and query capability (joins, aggregates, the indexes
+built in lab 5) are what that access pattern actually needs, and its
+higher per-write cost doesn't matter at a much lower write rate.
+
+Putting run state in Postgres would work but add unnecessary write
+latency and lock contention to every single orchestrator turn for a
+durability guarantee that state doesn't need. Putting finalized traces
+in Redis would work until the eval/tracing dashboard needed to run a
+real aggregate query (e.g. "p95 latency across last 1000 runs") that
+Redis has no native way to do efficiently, and until a Redis restart
+silently erased data the capstone is supposed to keep.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Two requests, same run_id, arriving concurrently</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose a flaky client retries a request, so two <code class="inline">POST /chat</code> calls with the SAME <code class="inline">run_id</code> land on two different workers within milliseconds of each other. Walk through what section 1's Redis-backed <code class="inline">RunStateStore</code>, as written, does in this case — and whether it's actually safe.</p>
+    <details><summary>Show solution</summary><div class="solution">As written, it is NOT safe -- this is a classic read-modify-write race.
+Both workers call store.load(run_id) and get the SAME state (say,
+turns: [A]). Both independently compute their own next turn, append
+to their own in-memory copy of turns, and both call store.save(run_id,
+state) -- whichever save() call happens to run last simply OVERWRITES
+the other's result. The run ends up with only one of the two turns
+recorded, and worse, the orchestrator that "lost" may have already
+returned a reply to its caller claiming success.
+
+Two real fixes, both worth knowing: (1) a distributed lock around the
+load-modify-save sequence, acquired via Redis itself (SET run_id:lock
+NX with a short expiry, a real, common pattern for exactly this
+problem) so the second request blocks or fails fast instead of racing;
+or (2) making the save() step a Redis-native atomic operation --
+e.g. representing turns as a Redis LIST and using RPUSH instead of
+load-full-state/mutate/save-full-state, so there's no window where two
+workers can both hold a stale copy. Locking is simpler to reason about
+and works for arbitrary state shapes; the atomic-operation approach is
+faster and avoids lock contention entirely but requires the state
+shape to map cleanly onto a Redis primitive, which isn't always true
+for a state dict with several loosely related fields.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · A tool call that never returns</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3's <code class="inline">await self.mcp.call_tool(tool_name, tool_args)</code> has no timeout. What specifically goes wrong for the orchestrated run — and for the FastAPI worker serving it — if the underlying MCP tool hangs indefinitely, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">Without a timeout, the awaiting coroutine simply never resumes -- the
+orchestrator's step() call blocks forever, which means the FastAPI
+request handler that awaited orchestrator.step() also never returns,
+which means the client's HTTP connection hangs until ITS OWN timeout
+(or forever, for a client with none configured). Because this is
+async code, the WORKER PROCESS itself isn't blocked -- other requests
+on other connections keep being served by the same event loop -- but
+that one request, and whatever run_id it was progressing, is stuck:
+its Redis lock (if problem 2's fix is in place) is never released
+either, meaning a SECOND request against the same run_id would then
+also hang waiting for that lock.
+
+The fix is wrapping the call in asyncio.wait_for() with an explicit
+timeout, exactly the pattern capstone_scaffold_fastapi_mcp.html's own
+practice problem 1 used for the readiness check's MCP call:
+
+    try:
+        tool_result = await asyncio.wait_for(
+            self.mcp.call_tool(tool_name, tool_args), timeout=10.0
+        )
+    except asyncio.TimeoutError:
+        tool_result = {"error": "tool_timeout", "tool": tool_name}
+        # still persist state and return a real (if degraded) reply --
+        # never leave the run silently stuck
+
+Critically, a timeout still needs the orchestrator to decide what
+happens NEXT -- fail the run cleanly, retry once, or fall back to a
+different tool -- rather than just converting an infinite hang into an
+exception that crashes the request. The state store's TTL (section 1)
+is the last line of defense: even a run that gets fully abandoned
+without a graceful timeout still expires out of Redis eventually
+rather than leaking memory forever.</div></details>
+  </div>
+
+  <div class="callout ok">
+    <b>Self-check before lab 2:</b> could you, without notes, (1) explain why in-process orchestrator state breaks under multiple workers and name the fix, (2) trace a single request through <code class="inline">received → route → dispatch → compose → persisted</code> the way the animation above did, and (3) explain why the orchestrator calls tools through the MCP protocol layer even when the tool is in the same process? Lab 2 wires hybrid search in as exactly the kind of MCP tool this orchestrator dispatches to.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone orchestrator integration, MCP &amp; agents.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var STATES = [
+    {name:"received", detail:"POST /chat, run_id=null, message=\"summarize Q3 report and check numbers\"", cls:"coord"},
+    {name:"route", detail:"orchestrator decides: this needs the hybrid_search tool first", cls:"coord"},
+    {name:"dispatch: search tool", detail:"await self.mcp.call_tool(\"hybrid_search\", {...}) over /mcp/sse", cls:"sub1"},
+    {name:"state saved (turn 1)", detail:"RunStateStore.save() -- survives a crash right here", cls:"ok"},
+    {name:"route", detail:"search result mentions Q3 revenue figures -- next: verify against DB", cls:"coord"},
+    {name:"dispatch: db tool", detail:"await self.mcp.call_tool(\"query_financials\", {...})", cls:"sub2"},
+    {name:"compose reply", detail:"fold both tool results into one final natural-language answer", cls:"coord"},
+    {name:"state saved (turn 2), done=true", detail:"RunStateStore.save() -- run marked complete", cls:"ok"}
+  ];
+
+  var wrap = document.getElementById("trace-states");
+  var logEl = document.getElementById("trace-log");
+  var playBtn = document.getElementById("trace-play");
+  var resetBtn = document.getElementById("trace-reset");
+  var idx = 0;
+  var timer = null;
+
+  function build(){
+    wrap.innerHTML = "";
+    STATES.forEach(function(s, i){
+      var el = document.createElement("div");
+      el.className = "trace-state";
+      el.id = "ts-" + i;
+      el.innerHTML = '<span class="st-name">' + s.name + '</span><span class="st-detail">' + s.detail + '</span>';
+      wrap.appendChild(el);
+    });
+  }
+
+  function log(text, cls){
+    var p = document.createElement("div");
+    p.className = "line fadein " + cls;
+    p.innerHTML = text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function step(){
+    if(idx > 0){
+      var prev = document.getElementById("ts-" + (idx - 1));
+      if(prev){ prev.classList.remove("active"); prev.classList.add("done"); }
+    }
+    if(idx >= STATES.length){
+      clearInterval(timer);
+      timer = null;
+      playBtn.textContent = "Run this request ▸";
+      playBtn.disabled = false;
+      log("<b>Run complete.</b> One run_id, 8 state transitions, 2 external MCP tool dispatches, state persisted twice.", "ok");
+      return;
+    }
+    var s = STATES[idx];
+    var el = document.getElementById("ts-" + idx);
+    el.classList.add("active");
+    log("<b>" + s.name + ":</b> " + s.detail, s.cls);
+    idx++;
+  }
+
+  playBtn.addEventListener("click", function(){
+    if(timer) return;
+    build();
+    logEl.innerHTML = "";
+    idx = 0;
+    playBtn.textContent = "Running…";
+    playBtn.disabled = true;
+    timer = setInterval(step, 900);
+  });
+
+  resetBtn.addEventListener("click", function(){
+    if(timer){ clearInterval(timer); timer = null; }
+    idx = 0;
+    playBtn.textContent = "Run this request ▸";
+    playBtn.disabled = false;
+    logEl.innerHTML = "";
+    build();
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>

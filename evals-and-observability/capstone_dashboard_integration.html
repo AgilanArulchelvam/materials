@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Dashboard Integration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --span-c:#4fc3f7; --eval-c:#f2c14e; --ok-c:#7fd8a0; --accent:#7fd8a0; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(127,216,160,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--span-c); color:var(--span-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--eval-c); color:var(--eval-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--ok-c); color:var(--ok-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(127,216,160,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#12141a; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:260px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#12141a; border-color:var(--accent); font-weight:600;}
+
+  /* live dashboard mockup */
+  .dash{display:flex; flex-direction:column; gap:0.8rem;}
+  .dash-filters{display:flex; gap:0.6rem; flex-wrap:wrap;}
+  .run-row{border:1.5px solid var(--rule); border-radius:10px; padding:0.75rem 1rem; background:var(--panel-2); font-family:var(--mono); font-size:0.8rem; opacity:0; transform:translateY(6px); transition:opacity .4s, transform .4s, border-color .2s;}
+  .run-row.show{opacity:1; transform:translateY(0);}
+  .run-row.err{border-color:var(--bad-c);}
+  .run-row.ok{border-color:var(--ok-c);}
+  .run-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .run-id{color:var(--ink);}
+  .run-meta{color:var(--ink-dim); font-size:0.72rem; display:flex; gap:0.9rem;}
+  .run-badge{font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; padding:0.15rem 0.5rem; border-radius:12px;}
+  .run-badge.ok{background:rgba(127,216,160,0.15); color:var(--ok-c);}
+  .run-badge.err{background:rgba(255,107,107,0.15); color:var(--bad-c);}
+  .run-scores{margin-top:0.5rem; display:flex; gap:1rem; flex-wrap:wrap; font-size:0.72rem; color:var(--ink-dim);}
+  .run-scores b{color:var(--eval-c);}
+  .dash-empty{font-family:var(--mono); font-size:0.82rem; color:var(--ink-dim); padding:1.2rem; text-align:center; border:1px dashed var(--rule); border-radius:10px;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(127,216,160,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.span{border-left-color:var(--span-c); background:rgba(79,195,247,0.06);} .callout.span b{color:var(--span-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> EVALS &amp; OBSERVABILITY LAB · CAPSTONE DASHBOARD INTEGRATION</div>
+  <h1>Every orchestrated run produces a trace and a score, automatically — not by remembering to log it.</h1>
+  <p class="lede"><code class="inline">trace_dashboard_practice.html</code> built the viewer against 4 fixed sample traces. This lab wires the SOURCE of that data into <code class="inline">backend/capstone_scaffold_fastapi_mcp.html</code>: instrumentation hooks in the orchestrator from <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code>, an eval-gate pass borrowed from <code class="inline">cicd_eval_gating_survival_exercise.html</code>, and both flowing into the SAME schema <code class="inline">database/capstone_schema_finalization_and_indexes.html</code> finalizes this week — not a separate ad hoc store.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Middleware + explicit calls — where hooks actually go</div>
+    <div class="pipe-label b">trace_id, spans, eval scores — recorded per run</div>
+    <div class="pipe-label c">One schema, not a second ad hoc store</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="hooks">1 · Where Instrumentation Hooks Go</a>
+  <a data-target="recorded">2 · What Gets Recorded Per Run</a>
+  <a data-target="flow">3 · One Schema, Not Two Stores</a>
+  <a data-target="live">4 · The Dashboard, Populating Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHERE HOOKS GO ============ -->
+<section id="hooks">
+  <div class="kicker">01 — Middleware for what's universal, explicit calls for what isn't</div>
+  <h2>Where instrumentation hooks go in the scaffold</h2>
+
+  <p><strong>Start here, before adding a single hook.</strong> Think about airport security versus a gate agent scanning your boarding pass. Security applies to EVERY passenger, uniformly, before they can go anywhere further into the airport — that's middleware: it wraps every request without any individual route needing to ask for it. The gate agent's scan is different — it's a specific, deliberate check that only makes sense at that one gate, for that one flight. A capstone's instrumentation needs both: request-level middleware for what's true of every request, and explicit calls inside the orchestrator for what's specific to an agent run's internal structure.</p>
+
+  <div class="code"><span class="c-cmt"># app/observability/middleware.py -- fills the scaffold's second
+# empty slot (app/observability/), registered in create_app() right
+# after health.router, per the scaffold's "health first, then
+# everything else" ordering rule</span>
+<span class="c-kw">from</span> fastapi <span class="c-kw">import</span> Request
+<span class="c-kw">from</span> uuid <span class="c-kw">import</span> uuid4
+<span class="c-kw">from</span> app.observability.tracer <span class="c-kw">import</span> start_root_span, end_root_span
+
+<span class="c-kw">async def</span> <span class="c-fn">tracing_middleware</span>(request: Request, call_next):
+    <span class="c-cmt"># UNIVERSAL, every request gets one: a trace_id, a root span,
+    # and its duration -- exactly the shape opentelemetry_basics.html
+    # and latency_and_tracing_integration.html already teach</span>
+    trace_id = request.headers.get(<span class="c-str">"x-trace-id"</span>) <span class="c-kw">or</span> <span class="c-fn">str</span>(uuid4())
+    span = start_root_span(trace_id=trace_id, name=<span class="c-fn">f"{request.method} {request.url.path}"</span>)
+    request.state.trace_id = trace_id   <span class="c-cmt"># orchestrator reads this below</span>
+
+    response = <span class="c-kw">await</span> call_next(request)
+
+    end_root_span(span, status_code=response.status_code)
+    response.headers[<span class="c-str">"x-trace-id"</span>] = trace_id
+    <span class="c-kw">return</span> response
+
+<span class="c-cmt"># registered in create_app():
+#   app.middleware("http")(tracing_middleware)</span></div>
+
+  <p>Middleware handles the outer boundary — one root span per HTTP request, universally, with zero per-route code needed. But an orchestrated run isn't ONE operation, it's several (per <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> section 4's traced example: route, dispatch, dispatch, compose). Those sub-steps need EXPLICIT calls inside the orchestrator itself, because only the orchestrator knows when one agent turn ends and the next begins:</p>
+
+  <div class="code"><span class="c-cmt"># app/orchestrator/run.py -- Orchestrator.step(), now instrumented.
+# Explicit child-span calls, nested under the root span middleware
+# already opened for this request.</span>
+<span class="c-kw">from</span> app.observability.tracer <span class="c-kw">import</span> start_span, end_span
+<span class="c-kw">from</span> app.observability.evals <span class="c-kw">import</span> score_run
+
+<span class="c-kw">class</span> <span class="c-fn">Orchestrator</span>:
+    <span class="c-kw">async def</span> <span class="c-fn">step</span>(self, run_id, user_message, trace_id):
+        span = start_span(trace_id, parent_span_id=<span class="c-kw">None</span>, name=<span class="c-str">"orchestrator.step"</span>)
+        <span class="c-kw">try</span>:
+            tool_name, tool_args = self._route(user_message, state)
+
+            <span class="c-cmt"># one child span PER tool dispatch -- this is what lets the
+            # dashboard's waterfall (section 4) show each tool call
+            # as its own timed, attributable row, not one lump sum</span>
+            tool_span = start_span(trace_id, parent_span_id=span.id, name=<span class="c-fn">f"tool.{tool_name}"</span>)
+            tool_result = <span class="c-kw">await</span> self.mcp.call_tool(tool_name, tool_args)
+            end_span(tool_span, attributes={<span class="c-str">"tool.name"</span>: tool_name})
+
+            reply = self._render_reply(tool_result)
+            <span class="c-cmt"># the eval pass -- see section 2 -- runs as PART of the same
+            # traced run, not a separate offline batch job</span>
+            eval_scores = <span class="c-kw">await</span> score_run(trace_id=trace_id, reply=reply, tool_result=tool_result)
+
+            end_span(span, attributes={<span class="c-str">"eval.scores"</span>: eval_scores})
+            <span class="c-kw">return</span> reply
+        <span class="c-kw">except</span> <span class="c-fn">Exception</span> <span class="c-kw">as</span> e:
+            end_span(span, error=<span class="c-fn">str</span>(e))
+            <span class="c-kw">raise</span></div>
+
+  <div class="callout span"><b>Interview-ready definition:</b> instrumentation belongs in middleware for what's true of EVERY request regardless of what it does (a trace_id, a root span, overall duration and status), and in explicit calls at the point where a domain-specific boundary actually occurs (one child span per agent turn, one per tool dispatch) — because only the code at that boundary (the orchestrator, not generic middleware) knows where one meaningful unit of work ends and the next begins.</div>
+</section>
+
+<!-- ============ SECTION 2: WHAT GETS RECORDED ============ -->
+<section id="recorded">
+  <div class="kicker">02 — trace_id, spans per step, and a score — never just one of the three</div>
+  <h2>What gets recorded per run</h2>
+
+  <p><strong>Start here, before assuming "logging the response" is enough.</strong> Think about a flight's black box versus a passenger's memory of the flight. A passenger remembers roughly what happened — smooth, then some turbulence, then landed fine. A black box records EVERY instrument reading, continuously, whether or not anything went wrong, precisely because you don't know in advance which flight will need to be investigated. A capstone run needs the black-box version: recorded unconditionally, not only when something looks wrong.</p>
+
+  <table class="cmp">
+    <tr><th>Recorded</th><th>Source</th><th>Why it's not optional</th></tr>
+    <tr><td><code class="inline">trace_id</code></td><td>Generated by <code class="inline">tracing_middleware</code>, section 1</td><td>The single key every other record — spans, eval scores — joins back to. Without it, spans and scores are orphaned, unlinkable rows.</td></tr>
+    <tr><td>Spans per agent turn / tool call</td><td>Explicit <code class="inline">start_span</code>/<code class="inline">end_span</code> calls inside the orchestrator, section 1</td><td>The list-view/detail-view split <code class="inline">trace_dashboard_practice.html</code> section 1 designed around requires REAL per-step timing data to populate the detail waterfall — a single "total duration" number can't be decomposed after the fact.</td></tr>
+    <tr><td>Eval scores</td><td><code class="inline">score_run(...)</code>, called as part of the SAME traced step, section 1</td><td>Per <code class="inline">database/eval_results_schema.html</code>'s core argument: a score with no trace behind it is untrustworthy. Scoring inline, in the same span tree, keeps the score permanently attached to the exact run that produced it.</td></tr>
+  </table>
+
+  <p>Recording all three UNCONDITIONALLY — for every run, not just runs that look interesting or runs that fail — is what makes the dashboard in section 4 show a representative picture rather than a survivorship-biased one. A dashboard that only records failed or slow runs can never answer "what does a NORMAL run look like," which <code class="inline">trace_dashboard_practice.html</code>'s own sample set (2 OK, 1 slow-but-OK, 1 error) deliberately includes for exactly this reason.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> "full instrumentation" for an orchestrated run means recording a trace_id, a span per meaningful sub-step, and an eval score — for every run, unconditionally — not selectively logging only the runs that look noteworthy after the fact, because which runs turn out to matter is exactly the thing you can't know until you already have the data to check.</div>
+</section>
+
+<!-- ============ SECTION 3: ONE SCHEMA ============ -->
+<section id="flow">
+  <div class="kicker">03 — This week's schema work is not a coincidence</div>
+  <h2>How this data flows to the schema finalized this same week</h2>
+
+  <p><strong>Start here, before reaching for a second data store.</strong> It would be easy to bolt on a lightweight, separate store just for "dashboard data" — a small SQLite file, a JSON log, anything quick. This is exactly the trap <code class="inline">database/eval_trace_schema_finalization.html</code> already argued against for eval spans specifically: a second, ad hoc store for what is fundamentally the SAME data (trace_id-linked spans and scores) just means two systems to keep consistent, two query languages, and eventually one going stale relative to the other.</p>
+
+  <div class="code"><span class="c-cmt"># app/observability/tracer.py -- writes to the SAME database
+# capstone_schema_finalization_and_indexes.html finalizes this week,
+# not a separate store</span>
+<span class="c-kw">async def</span> <span class="c-fn">end_span</span>(span, attributes=<span class="c-kw">None</span>, error=<span class="c-kw">None</span>):
+    span.ended_at = now()
+    <span class="c-kw">await</span> db.execute(
+        <span class="c-str">"""INSERT INTO eval_span
+           (span_id, trace_id, parent_span_id, span_name,
+            started_at, ended_at, attributes)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)"""</span>,
+        span.id, span.trace_id, span.parent_span_id, span.name,
+        span.started_at, span.ended_at, json.dumps(attributes <span class="c-kw">or</span> {}),
+    )
+
+<span class="c-kw">async def</span> <span class="c-fn">score_run</span>(trace_id, reply, tool_result):
+    scores = compute_eval_scores(reply, tool_result)  <span class="c-cmt"># per eval_scenario_design.html</span>
+    <span class="c-kw">await</span> db.execute(
+        <span class="c-str">"""INSERT INTO eval_result
+           (result_id, run_id, eval_type, score, passed, trace_id, evaluated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)"""</span>,
+        uuid4(), current_run_id.get(), <span class="c-str">"capstone_live"</span>,
+        scores[<span class="c-str">"overall"</span>], scores[<span class="c-str">"overall"</span>] >= <span class="c-num">0.7</span>, trace_id, now(),
+    )
+    <span class="c-kw">return</span> scores</div>
+
+  <p>This is the direct, load-bearing link between this lab and lab 5's schema work: <code class="inline">eval_span</code> and <code class="inline">eval_result</code> are the SAME tables <code class="inline">database/eval_trace_schema_finalization.html</code> designed and <code class="inline">database/capstone_schema_finalization_and_indexes.html</code> indexes and migrates this week — this lab's instrumentation is the CODE that writes into that schema at runtime, and lab 5's indexes (e.g. <code class="inline">idx_eval_span_trace</code>) are what make the dashboard's own queries (section 4, "load every span for this trace_id") fast rather than a full table scan.</p>
+
+  <div class="callout warn"><b>What breaks if this rule is violated:</b> the moment dashboard data lives somewhere other than <code class="inline">eval_run</code>/<code class="inline">eval_result</code>/<code class="inline">eval_span</code>, every query pattern lab 5 indexes for stops applying to it, every CI/CD eval gate <code class="inline">cicd_eval_gating_survival_exercise.html</code> built stops seeing it, and the capstone ends up with two silently diverging pictures of "how is this system actually performing" — exactly the failure mode a single source of truth schema is meant to prevent.</div>
+</section>
+
+<!-- ============ SECTION 4: LIVE DASHBOARD ============ -->
+<section id="live">
+  <div class="kicker">04 — Watch runs land in the dashboard as they execute</div>
+  <h2>The dashboard, populating as simulated capstone runs execute</h2>
+
+  <p><strong>Start here, before assuming this is a static mockup.</strong> Press "Simulate traffic" to fire a burst of simulated orchestrated runs through the pipeline described above — each one gets a trace_id, spans, and an eval score, and lands in the list below in real time, exactly the way section 1–3's actual instrumentation would populate <code class="inline">trace_dashboard_practice.html</code>'s dashboard against real traffic instead of 4 fixed samples.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>CAPSTONE RUNS — LIVE</span>
+      <div><button class="btn" id="sim-run">Simulate traffic ▸</button> <button class="btn secondary" id="sim-reset">Reset</button></div>
+    </div>
+    <div class="dash">
+      <div class="dash-filters">
+        <button class="chip active" data-filter="all">All runs</button>
+        <button class="chip" data-filter="fail">Failed eval gate</button>
+        <button class="chip" data-filter="slow">Slow (&gt;1200ms)</button>
+      </div>
+      <div id="run-list"></div>
+      <div class="dash-empty" id="run-empty" style="display:none;">No runs match this filter yet.</div>
+    </div>
+    <div class="log" id="sim-log"></div>
+  </div>
+
+  <div class="callout span"><b>What to notice:</b> every row that appears already carries a <code class="inline">trace_id</code>, a duration derived from real (simulated) span timing, and an eval score — never a row missing one of the three, exactly section 2's "recorded unconditionally" rule. Filtering to "Failed eval gate" reuses the SAME score field <code class="inline">cicd_eval_gating_survival_exercise.html</code> gates deploys on, now surfaced per-run instead of per-deploy.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the wiring yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · A tool call that errors before a span closes</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's orchestrator code wraps <code class="inline">self.mcp.call_tool(...)</code> in a child span, but if that call raises before <code class="inline">end_span(tool_span, ...)</code> runs, the span never gets an <code class="inline">ended_at</code>. What does this do to the dashboard, and how should the code be fixed?</p>
+    <details><summary>Show solution</summary><div class="solution">An eval_span row with started_at set but ended_at NULL (or never
+inserted at all, if the INSERT itself happens inside end_span) is
+either an invalid row against the schema's NOT NULL constraint on
+ended_at (lab 5's schema), causing the write itself to fail and the
+span to silently vanish from the trace entirely, or -- if the schema
+were laxly built to allow NULL -- a "hung" span the dashboard's
+waterfall can't compute a duration_ms for, since
+eval_trace_schema_finalization.html's duration_ms column is a
+GENERATED column computed from ended_at - started_at, which errors or
+returns NULL when ended_at is missing. Either way, that trace's
+waterfall is now incomplete or broken specifically for the failing
+tool call -- ironically the exact run most worth being able to debug.
+
+The fix is a try/finally around the span, not a bare try/except that
+might skip the end_span call on the error path:
+
+    tool_span = start_span(trace_id, parent_span_id=span.id, name=f"tool.{tool_name}")
+    try:
+        tool_result = await self.mcp.call_tool(tool_name, tool_args)
+    except Exception as e:
+        end_span(tool_span, attributes={"tool.name": tool_name}, error=str(e))
+        raise
+    else:
+        end_span(tool_span, attributes={"tool.name": tool_name})
+
+This guarantees every span that STARTS also ENDS, successfully or with
+an error attribute recorded -- exactly the same "the process must
+always record an outcome, success or failure, never silence" principle
+section 2 argues for at the level of whole runs, now applied at the
+level of one individual span.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Should eval scoring block the response to the user?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's code calls <code class="inline">await score_run(...)</code> synchronously, inside the same request that returns a reply to the user. What's the trade-off, and is this the right call for a capstone-scale system?</p>
+    <details><summary>Show solution</summary><div class="solution">The trade-off is response latency versus data completeness. Scoring
+synchronously means the user's HTTP response doesn't return until
+compute_eval_scores() finishes -- if that involves an LLM-graded eval
+(per model_graded_evals.html, itself a real LLM call with its own
+latency), the user waits for BOTH the actual answer generation AND a
+separate scoring pass before getting a response, adding real,
+user-visible latency for something the user never asked for or
+benefits from directly.
+
+The alternative -- scoring asynchronously, e.g. publishing the
+(trace_id, reply, tool_result) tuple to a queue and letting a separate
+worker consume it and write the eval_result row afterward -- returns
+the reply to the user immediately and only delays when eval_result
+becomes visible in the dashboard, not the user-facing latency at all.
+
+For a capstone-SCALE system specifically (low request volume, no
+strict SLA), synchronous scoring is a reasonable, simpler default --
+it avoids standing up a queue and worker for a request volume that
+doesn't need one, and the extra latency (typically a few hundred ms
+for a fast deterministic eval per deterministic_evals.html, more for a
+model-graded one) is tolerable. The asynchronous version becomes the
+right call once either request volume grows enough that added latency
+matters, or eval scoring specifically becomes the more expensive of
+the two paths (a heavyweight model-graded eval suite rather than a
+handful of deterministic checks) -- exactly the kind of scale-driven
+trade-off uvicorn_gunicorn_workers.html and the async job queue design
+already reason about for other expensive side-effects.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Detecting a missing eval score for a completed run</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Design a query against the schema from section 3 (<code class="inline">eval_run</code>, <code class="inline">eval_result</code>, <code class="inline">eval_span</code>) that finds every run with spans recorded but NO corresponding <code class="inline">eval_result</code> row — i.e. a run that executed but was never scored, violating section 2's "recorded unconditionally" rule. What would cause this in practice?</p>
+    <details><summary>Show solution</summary><div class="solution">The query is a LEFT JOIN from distinct trace_ids in eval_span out to
+eval_result, filtering for no match:
+
+    SELECT DISTINCT es.trace_id
+    FROM eval_span es
+    LEFT JOIN eval_result er ON er.trace_id = es.trace_id
+    WHERE er.trace_id IS NULL;
+
+This finds every trace_id that has span data (meaning the run actually
+executed, at least partially) but no eval_result row at all (meaning
+scoring never happened or never completed for it) -- a genuine
+"instrumentation gap" the dashboard's own health should be checked
+against periodically, not just used to monitor the CAPSTONE'S health.
+
+What causes this in practice, most plausibly given section 1's code:
+an exception raised INSIDE score_run() itself (a malformed
+compute_eval_scores() call, a DB write failure on the eval_result
+INSERT specifically) that isn't caught -- if end_span(span, ...) for
+the OUTER orchestrator.step() span runs in a try/finally per problem
+1's fix but score_run()'s own failure isn't separately guarded, the
+outer span still closes (looking complete from a tracing perspective)
+while the eval_result row never gets written. The fix mirrors problem
+1's: wrap score_run() in its own try/except that, on failure, still
+writes SOME eval_result row (even one explicitly marked eval_type=
+"scoring_failed") rather than leaving a silent gap that this recovery
+query is the only way to notice after the fact.</div></details>
+  </div>
+
+  <div class="callout span">
+    <b>Self-check before lab 5:</b> could you, without notes, (1) explain why middleware handles the outer span but explicit calls handle inner spans, (2) name all three things recorded per run and why each is non-optional, and (3) explain why a second ad hoc store for dashboard data is a trap rather than a shortcut? Lab 5 finalizes and indexes the exact schema this lab writes into.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone dashboard integration, evals &amp; observability.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var runListEl = document.getElementById("run-list");
+  var emptyEl = document.getElementById("run-empty");
+  var logEl = document.getElementById("sim-log");
+  var simBtn = document.getElementById("sim-run");
+  var resetBtn = document.getElementById("sim-reset");
+  var filterChips = document.querySelectorAll(".dash-filters .chip");
+
+  var runs = [];
+  var currentFilter = "all";
+  var counter = 0;
+
+  var TEMPLATES = [
+    {tool:"hybrid_search", duration:640, score:0.91, ok:true},
+    {tool:"query_financials", duration:980, score:0.84, ok:true},
+    {tool:"hybrid_search", duration:1420, score:0.55, ok:false},
+    {tool:"summarize_document", duration:1980, score:0.72, ok:true},
+    {tool:"query_financials", duration:410, score:0.95, ok:true},
+    {tool:"hybrid_search", duration:1310, score:0.48, ok:false}
+  ];
+
+  function shortId(){
+    return "run-" + (1000 + Math.floor(Math.random() * 8999));
+  }
+  function traceId(){
+    return "tr-" + Math.random().toString(16).slice(2, 8);
+  }
+
+  function log(text){
+    var p = document.createElement("div");
+    p.className = "line fadein";
+    p.innerHTML = text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function matchesFilter(run){
+    if(currentFilter === "all") return true;
+    if(currentFilter === "fail") return !run.passed;
+    if(currentFilter === "slow") return run.duration > 1200;
+    return true;
+  }
+
+  function render(){
+    runListEl.innerHTML = "";
+    var visible = runs.filter(matchesFilter);
+    if(visible.length === 0){
+      emptyEl.style.display = "block";
+    } else {
+      emptyEl.style.display = "none";
+      visible.forEach(function(run){
+        var row = document.createElement("div");
+        row.className = "run-row fadein " + (run.passed ? "ok" : "err");
+        row.innerHTML =
+          '<div class="run-head">' +
+            '<span class="run-id">' + run.runId + ' <span style="color:var(--ink-dim);">(' + run.traceId + ')</span></span>' +
+            '<span class="run-meta"><span>' + run.duration + 'ms</span><span class="run-badge ' + (run.passed ? "ok" : "err") + '">' + (run.passed ? "eval pass" : "eval fail") + '</span></span>' +
+          '</div>' +
+          '<div class="run-scores">tool=<b>' + run.tool + '</b> · spans=' + run.spans + ' · eval score=<b>' + run.score.toFixed(2) + '</b></div>';
+        runListEl.appendChild(row);
+        setTimeout(function(){ row.classList.add("show"); }, 20);
+      });
+    }
+  }
+
+  function simulateOne(){
+    var t = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
+    var jitter = Math.round((Math.random() - 0.5) * 200);
+    var run = {
+      runId: shortId(),
+      traceId: traceId(),
+      tool: t.tool,
+      duration: Math.max(120, t.duration + jitter),
+      spans: 3,
+      score: Math.max(0, Math.min(1, t.score + (Math.random() - 0.5) * 0.08)),
+      passed: t.ok
+    };
+    runs.unshift(run);
+    log("<b>" + run.runId + "</b> (" + run.traceId + ") — trace_id assigned, 3 spans recorded, tool=" + run.tool + ", eval score=" + run.score.toFixed(2) + " (" + (run.passed ? "pass" : "fail") + ")");
+    render();
+  }
+
+  simBtn.addEventListener("click", function(){
+    simBtn.disabled = true;
+    var count = 0;
+    var iv = setInterval(function(){
+      simulateOne();
+      count++;
+      if(count >= 6){
+        clearInterval(iv);
+        simBtn.disabled = false;
+      }
+    }, 500);
+  });
+
+  resetBtn.addEventListener("click", function(){
+    runs = [];
+    logEl.innerHTML = "";
+    render();
+  });
+
+  filterChips.forEach(function(chip){
+    chip.addEventListener("click", function(){
+      filterChips.forEach(function(c){ c.classList.remove("active"); });
+      chip.classList.add("active");
+      currentFilter = chip.dataset.filter;
+      render();
+    });
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

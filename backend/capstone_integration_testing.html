@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Integration Testing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --app-c:#4fc3f7; --mcp-c:#f2c14e; --obs-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--app-c); color:var(--app-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:340px; overflow-y:auto;}
+  .log .line{margin:0.2rem 0; padding:0.35rem 0.55rem; border-radius:6px; border-left:3px solid var(--rule);}
+  .log .line.pass{border-left-color:var(--obs-c); background:rgba(127,216,160,0.06); color:var(--obs-c);}
+  .log .line.fail{border-left-color:var(--bad-c); background:rgba(255,107,107,0.08); color:var(--bad-c);}
+  .log .line.info{color:var(--ink-dim);}
+  .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .tree{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0; line-height:1.7; color:#cdd0d8; white-space:pre;}
+  .tree .dir{color:var(--mcp-c);}
+  .tree .file{color:var(--app-c);}
+  .tree .cmt{color:#5f6675;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--obs-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.app{border-left-color:var(--app-c); background:rgba(79,195,247,0.06);} .callout.app b{color:var(--app-c);}
+  .callout.mcp{border-left-color:var(--mcp-c); background:rgba(242,193,78,0.06);} .callout.mcp b{color:var(--mcp-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND LAB · CAPSTONE INTEGRATION TESTING</div>
+  <h1>Every piece worked alone. Prove they work wired together.</h1>
+  <p class="lede">Unit tests confirm the orchestrator's routing logic, the search tool's fusion math, and one index's query plan each work in isolation. None of that proves a real request actually flows: client → FastAPI route → orchestrator → MCP tool dispatch → hybrid search → instrumentation writes → the schema <code class="inline">database/capstone_schema_finalization_and_indexes.html</code> finalized this week. This lab builds that end-to-end test, for real, against the scaffold from <code class="inline">backend/capstone_scaffold_fastapi_mcp.html</code>.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Async FastAPI test structure — fixtures, client, mocking trade-offs</div>
+    <div class="pipe-label b">One real scenario: request → orchestrator → tools → response</div>
+    <div class="pipe-label c">Assert on the response AND the resulting trace/eval records</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="structure">1 · Test Structure for an Async FastAPI App</a>
+  <a data-target="mocking">2 · Mocking vs Real MCP Calls</a>
+  <a data-target="scenario">3 · The End-to-End Scenario</a>
+  <a data-target="smoke">4 · A Repeatable Smoke Test</a>
+  <a data-target="live">5 · Watch a Test Run, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: TEST STRUCTURE ============ -->
+<section id="structure">
+  <div class="kicker">01 — Fixtures that build a real, disposable system, not a mock of one</div>
+  <h2>Test structure for an async FastAPI app calling MCP tools</h2>
+
+  <p><strong>Start here, before writing a single test function.</strong> Think about a dress rehearsal versus a table read for a play. A table read tests each actor's LINES in isolation, sitting around a table — useful, but it never confirms the lighting cue actually fires when the actor hits their mark, or that the prop is where the actor expects it. A dress rehearsal runs the ENTIRE production, start to finish, with everything wired together — the only way to catch problems that only exist at the SEAMS between pieces, not inside any one piece. Integration tests are the dress rehearsal: unit tests (the table read) already exist elsewhere for the orchestrator's routing logic and the search tool's fusion math individually — this lab is specifically about the seams.</p>
+
+  <div class="code"><span class="c-cmt"># tests/conftest.py -- shared fixtures for the whole integration suite</span>
+<span class="c-kw">import</span> pytest
+<span class="c-kw">import</span> pytest_asyncio
+<span class="c-kw">from</span> httpx <span class="c-kw">import</span> AsyncClient, ASGITransport
+<span class="c-kw">from</span> main <span class="c-kw">import</span> create_app
+<span class="c-kw">from</span> app.orchestrator.state <span class="c-kw">import</span> RunStateStore
+<span class="c-kw">from</span> fakeredis.aioredis <span class="c-kw">import</span> FakeRedis   <span class="c-cmt"># in-memory Redis, real Redis protocol</span>
+
+<span class="c-fn">@pytest_asyncio.fixture</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_db</span>():
+    <span class="c-cmt"># a REAL Postgres instance -- per section 2, this is deliberately
+    # NOT mocked, since the schema/index behavior itself is part of
+    # what this suite needs to exercise honestly</span>
+    <span class="c-kw">from</span> app.db <span class="c-kw">import</span> create_test_database, drop_test_database
+    db = <span class="c-kw">await</span> create_test_database()  <span class="c-cmt"># runs migrations fresh, per lab 5</span>
+    <span class="c-kw">yield</span> db
+    <span class="c-kw">await</span> drop_test_database(db)      <span class="c-cmt"># torn down after EVERY test -- no
+                                     # cross-test state leakage</span>
+
+<span class="c-fn">@pytest_asyncio.fixture</span>
+<span class="c-kw">async def</span> <span class="c-fn">run_store</span>():
+    <span class="c-cmt"># fake, in-memory Redis -- fast, no external service needed for CI,
+    # but speaks the real Redis wire protocol so RunStateStore's actual
+    # code runs unmodified against it (see section 2's trade-off table)</span>
+    fake_redis = FakeRedis()
+    <span class="c-kw">yield</span> RunStateStore(fake_redis)
+
+<span class="c-fn">@pytest_asyncio.fixture</span>
+<span class="c-kw">async def</span> <span class="c-fn">client</span>(test_db, run_store):
+    app = create_app(db=test_db, run_store=run_store)
+    <span class="c-kw">async with</span> AsyncClient(transport=ASGITransport(app=app), base_url=<span class="c-str">"http://test"</span>) <span class="c-kw">as</span> ac:
+        <span class="c-kw">yield</span> ac</div>
+
+  <p>Three deliberate choices worth naming: the app is built via <code class="inline">create_app(db=test_db, run_store=run_store)</code>, matching the scaffold's own <code class="inline">create_app()</code> factory function (per <code class="inline">capstone_scaffold_fastapi_mcp.html</code> section 2) rather than importing the module-level <code class="inline">app</code> singleton — this is what makes DEPENDENCY INJECTION of test doubles possible at all, the same reasoning <code class="inline">dependency_injection.html</code> gives for why routes should never construct their own dependencies directly. <code class="inline">httpx.AsyncClient</code> with <code class="inline">ASGITransport</code> drives real ASGI request/response cycles against the app in-process — no actual network socket, but every layer of FastAPI's routing, middleware (including lab 3's tracing middleware), and dependency resolution genuinely runs. And <code class="inline">test_db</code> tears down after every single test, preventing one test's leftover rows from silently making a LATER test pass or fail for the wrong reason.</p>
+
+  <div class="callout app"><b>Interview-ready definition:</b> integration test fixtures should construct the REAL application object (via its actual factory function, not a stripped-down substitute) wired to REAL or REALISTIC dependencies (a real test database, a protocol-faithful in-memory Redis) — the goal is exercising the actual seams between components, which a fixture built from hand-rolled stand-ins for the app itself cannot do, no matter how carefully the stand-ins are written.</div>
+</section>
+
+<!-- ============ SECTION 2: MOCKING VS REAL ============ -->
+<section id="mocking">
+  <div class="kicker">02 — Every dependency is a separate, deliberate decision</div>
+  <h2>Mocking vs. real MCP calls, decided per dependency</h2>
+
+  <p><strong>Start here, before mocking everything for speed or nothing for realism.</strong> Both extremes are wrong for the same reason: a suite that mocks EVERYTHING tests nothing but your mocks agreeing with your assumptions about the real systems, and a suite that mocks NOTHING is slow, flaky against external services, and expensive to run on every commit. The right call is made per-dependency, weighing what that specific dependency's role in the seam actually is.</p>
+
+  <table class="cmp">
+    <tr><th>Dependency</th><th>Mock or real?</th><th>Why</th></tr>
+    <tr><td>The database (<code class="inline">test_db</code>)</td><td><strong>Real</strong> (ephemeral test instance)</td><td>The seam being tested — whether writes actually land per lab 5's schema, whether indexes serve the queries they're built for — cannot be verified against a mock without simply re-asserting the mock's own hard-coded behavior back at itself</td></tr>
+    <tr><td>Redis (<code class="inline">run_store</code>)</td><td><strong>Real protocol, fake backend</strong> (<code class="inline">fakeredis</code>)</td><td>The orchestrator's actual Redis client code runs unmodified — the seam between <code class="inline">RunStateStore</code> and Redis is genuinely exercised — without requiring a real Redis process in CI</td></tr>
+    <tr><td>The MCP server (search tool, ping)</td><td><strong>Real</strong> (mounted in-process, per the scaffold)</td><td>Whether the orchestrator's calls actually reach the MCP protocol layer and get correctly routed to a tool handler IS the seam <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> section 3 designed — mocking this away tests nothing about that design decision</td></tr>
+    <tr><td>An external LLM API call (inside a tool's logic)</td><td><strong>Mocked</strong></td><td>Genuinely external, slow, costs real money per call, and non-deterministic — none of which this suite needs to verify; a fixed, canned response is sufficient since the LLM's own output quality is <code class="inline">evals-and-observability/</code>'s concern, not integration testing's</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt"># Mocking ONLY the genuinely external dependency -- the LLM call
+# inside the summarization tool -- while everything else stays real</span>
+<span class="c-kw">from</span> unittest.mock <span class="c-kw">import</span> AsyncMock, patch
+
+<span class="c-fn">@pytest.mark.asyncio</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_chat_with_mocked_llm</span>(client):
+    <span class="c-kw">with</span> patch(<span class="c-str">"app.services.summarization.call_llm"</span>, new=AsyncMock(return_value=<span class="c-str">"a fixed, canned summary"</span>)):
+        response = <span class="c-kw">await</span> client.post(<span class="c-str">"/chat"</span>, json={<span class="c-str">"message"</span>: <span class="c-str">"summarize the Q3 report"</span>})
+        <span class="c-kw">assert</span> response.status_code == <span class="c-num">200</span></div>
+
+  <p>Notice the mock is patched at the NARROWEST possible point — <code class="inline">app.services.summarization.call_llm</code>, the specific external call — rather than mocking the whole tool, the whole orchestrator, or the whole MCP layer around it. This preserves the real seam (orchestrator → MCP protocol → tool handler → service layer) while only removing the one piece that's genuinely external and non-deterministic, exactly the "protocol-agnostic service module" separation <code class="inline">capstone_scaffold_fastapi_mcp.html</code>'s own practice problem 2 argued for.</p>
+
+  <div class="callout mcp"><b>Interview-ready definition:</b> the mock-vs-real decision for each dependency in an integration test should be made by asking "is THIS dependency part of the seam I'm trying to verify?" — internal seams (orchestrator↔MCP, app↔database, app↔Redis) should stay real or protocol-faithful, while genuinely external, slow, costly, or non-deterministic dependencies (a real LLM API, a real third-party service) should be mocked at the narrowest point that still exercises everything around them.</div>
+</section>
+
+<!-- ============ SECTION 3: THE END-TO-END SCENARIO ============ -->
+<section id="scenario">
+  <div class="kicker">03 — One real request, asserted on twice: the response AND the side effects</div>
+  <h2>The end-to-end scenario, in full</h2>
+
+  <p><strong>Start here, before writing the assertions.</strong> A unit test typically asserts on ONE thing: a function's return value. An integration test for this capstone needs to assert on TWO categories of outcome, because a full orchestrated run produces two kinds of result — the reply returned to the caller, AND the durable records (trace, spans, eval score) it's supposed to leave behind in the schema lab 5 finalized. A test that only checks the response and never checks the database is blind to exactly the kind of bug lab 3's practice problem 1 covers: a span that starts but never closes, silently.</p>
+
+  <div class="code"><span class="c-cmt"># tests/test_capstone_e2e.py</span>
+<span class="c-kw">import</span> pytest
+
+<span class="c-fn">@pytest.mark.asyncio</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_full_orchestrated_run_produces_reply_and_records</span>(client, test_db):
+    <span class="c-cmt"># 1. ARRANGE: nothing extra needed -- the fixtures already gave us
+    #    a real app, a real (empty) test database, a real MCP server
+    #    mounted, and a fake-but-protocol-faithful Redis</span>
+
+    <span class="c-cmt"># 2. ACT: one real request through the full stack --
+    #    FastAPI route -> orchestrator -> MCP tool dispatch ->
+    #    hybrid_search tool -> instrumentation -> response</span>
+    response = <span class="c-kw">await</span> client.post(<span class="c-str">"/chat"</span>, json={
+        <span class="c-str">"message"</span>: <span class="c-str">"what does the capstone scaffold's readiness endpoint check?"</span>
+    })
+
+    <span class="c-cmt"># 3. ASSERT on the RESPONSE -- the user-visible contract</span>
+    <span class="c-kw">assert</span> response.status_code == <span class="c-num">200</span>
+    body = response.json()
+    <span class="c-kw">assert</span> <span class="c-str">"run_id"</span> <span class="c-kw">in</span> body
+    <span class="c-kw">assert</span> <span class="c-fn">len</span>(body[<span class="c-str">"reply"</span>]) > <span class="c-num">0</span>
+    trace_id = response.headers[<span class="c-str">"x-trace-id"</span>]   <span class="c-cmt"># set by tracing_middleware, lab 3 section 1</span>
+
+    <span class="c-cmt"># 4. ASSERT on the SIDE EFFECTS -- did this run actually get recorded
+    #    the way lab 3's instrumentation and lab 5's schema promise?</span>
+    spans = <span class="c-kw">await</span> test_db.fetch(
+        <span class="c-str">"SELECT span_name, ended_at FROM eval_span WHERE trace_id = $1"</span>, trace_id
+    )
+    <span class="c-kw">assert</span> <span class="c-fn">len</span>(spans) >= <span class="c-num">2</span>              <span class="c-cmt"># root span + at least one tool-call span</span>
+    <span class="c-kw">assert</span> <span class="c-fn">all</span>(s[<span class="c-str">"ended_at"</span>] <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span> <span class="c-kw">for</span> s <span class="c-kw">in</span> spans)  <span class="c-cmt"># NO span left hanging open -- problem 1, lab 3</span>
+
+    eval_result = <span class="c-kw">await</span> test_db.fetchrow(
+        <span class="c-str">"SELECT score, passed FROM eval_result WHERE trace_id = $1"</span>, trace_id
+    )
+    <span class="c-kw">assert</span> eval_result <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span>    <span class="c-cmt"># recorded UNCONDITIONALLY -- lab 3 section 2's rule
+                                # checked here, not just asserted in prose</span>
+    <span class="c-kw">assert</span> eval_result[<span class="c-str">"score"</span>] <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span></div>
+
+  <p>This single test exercises the ENTIRE integration surface this week's five prior labs built: the FastAPI route (lab wiring), the orchestrator's dispatch (lab 1), the search tool (lab 2), the tracing and eval instrumentation (lab 3), and the schema it all writes into (lab 5) — one failing assertion here pinpoints exactly which SEAM broke, in a way no single lab's own isolated tests could.</p>
+
+  <div class="callout warn"><b>What a response-only test would miss:</b> a version of this test that only checked <code class="inline">response.status_code == 200</code> and <code class="inline">"reply" in body</code> would happily PASS even if the tracing middleware silently failed to write spans, or if <code class="inline">score_run()</code> raised and was swallowed somewhere — the user would still get a normal-looking reply, while the capstone's entire observability promise quietly failed underneath it. This is exactly why "assert on the response AND the resulting trace/eval records" is stated as a requirement, not a nice-to-have.</div>
+</section>
+
+<!-- ============ SECTION 4: SMOKE TEST ============ -->
+<section id="smoke">
+  <div class="kicker">04 — One fast, repeatable check before every deploy</div>
+  <h2>Structuring this as a repeatable smoke test</h2>
+
+  <p><strong>Start here, before treating section 3's test as the only thing that matters.</strong> A full integration suite (many scenarios, many edge cases) is valuable but too slow to run before every single deploy. A SMOKE TEST is a small, fast subset — does the system even come up and handle the most basic real request — run as a final gate, exactly the role <code class="inline">cicd_eval_gating_survival_exercise.html</code>'s eval-gate stage plays for output quality, now applied to structural correctness.</p>
+
+  <div class="tree"><span class="dir">tests/</span>
+├── <span class="file">conftest.py</span>              <span class="cmt"># section 1's fixtures</span>
+├── <span class="dir">unit/</span>                  <span class="cmt"># fast, isolated -- orchestrator routing logic,
+                        #   fusion math, individual index query plans</span>
+├── <span class="dir">integration/</span>
+│   ├── <span class="file">test_capstone_e2e.py</span>  <span class="cmt"># section 3's full scenario, plus variants
+                              #  (tool failure, empty search results, etc.)</span>
+│   └── <span class="file">test_schema_writes.py</span> <span class="cmt"># targeted: does each table get written
+                              #  correctly in isolation from a full run</span>
+└── <span class="file">smoke_test.py</span>          <span class="cmt"># SECTION 4: the minimal pre-deploy gate,
+                        #   run separately, run fast, run always</span></div>
+
+  <div class="code"><span class="c-cmt"># tests/smoke_test.py -- run via `pytest tests/smoke_test.py`,
+# wired into the CI/CD pipeline's eval-gate stage per
+# cicd_eval_gating_survival_exercise.html, as a stage that must pass
+# BEFORE deploy, not after</span>
+<span class="c-kw">import</span> pytest
+
+<span class="c-fn">@pytest.mark.asyncio</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_health_and_readiness</span>(client):
+    <span class="c-kw">assert</span> (<span class="c-kw">await</span> client.get(<span class="c-str">"/healthz"</span>)).status_code == <span class="c-num">200</span>
+    <span class="c-kw">assert</span> (<span class="c-kw">await</span> client.get(<span class="c-str">"/readyz"</span>)).status_code == <span class="c-num">200</span>
+
+<span class="c-fn">@pytest.mark.asyncio</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_mcp_tools_are_reachable</span>(client):
+    <span class="c-cmt"># confirms the scaffold's original checklist item 5 still holds
+    # true AFTER everything this week wired on top of it</span>
+    response = <span class="c-kw">await</span> client.get(<span class="c-str">"/mcp/sse"</span>)
+    <span class="c-kw">assert</span> response.status_code == <span class="c-num">200</span>
+
+<span class="c-fn">@pytest.mark.asyncio</span>
+<span class="c-kw">async def</span> <span class="c-fn">test_one_full_chat_round_trip</span>(client, test_db):
+    <span class="c-cmt"># the SAME core assertion as section 3, kept deliberately minimal --
+    # one request, response looks sane, at least ONE row landed in
+    # eval_span. Not exhaustive -- that's what integration/ is for.
+    # This just needs to be FAST and CATCH A TOTALLY BROKEN DEPLOY.</span>
+    response = <span class="c-kw">await</span> client.post(<span class="c-str">"/chat"</span>, json={<span class="c-str">"message"</span>: <span class="c-str">"ping"</span>})
+    <span class="c-kw">assert</span> response.status_code == <span class="c-num">200</span>
+    trace_id = response.headers[<span class="c-str">"x-trace-id"</span>]
+    row = <span class="c-kw">await</span> test_db.fetchrow(<span class="c-str">"SELECT 1 FROM eval_span WHERE trace_id = $1 LIMIT 1"</span>, trace_id)
+    <span class="c-kw">assert</span> row <span class="c-kw">is</span> <span class="c-kw">not</span> <span class="c-kw">None</span></div>
+
+  <p>The smoke test deliberately duplicates a SMALLER version of section 3's assertion rather than importing or calling it — smoke tests trade thoroughness for speed and independence; if section 3's larger integration file changes shape, the smoke test shouldn't break as a side effect of an unrelated refactor.</p>
+
+  <div class="checklist">
+    <div style="font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;">Pre-deploy smoke checklist</div>
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">Health and readiness endpoints both return 200 against a freshly built app</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">The MCP SSE endpoint is reachable and <code class="inline">tools/list</code> returns the expected tool set (<code class="inline">ping</code>, <code class="inline">hybrid_search</code>, any others registered)</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">One full <code class="inline">POST /chat</code> round trip returns 200 AND produces at least one <code class="inline">eval_span</code> row with a matching <code class="inline">trace_id</code></label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">The smoke suite runs in under 30 seconds — if it's slower, something has drifted from "smoke test" toward "full integration suite" and needs to be moved to <code class="inline">tests/integration/</code></label></li>
+      <li><input type="checkbox" id="chk5"><label for="chk5">The smoke suite is wired into CI as a gate BEFORE deploy, per <code class="inline">cicd_eval_gating_survival_exercise.html</code>'s pipeline shape — not run manually, not run after the fact</label></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: LIVE TEST RUN ============ -->
+<section id="live">
+  <div class="kicker">05 — Watch the smoke test execute, then watch it catch a real regression</div>
+  <h2>A test run, live — including one that catches a real bug</h2>
+
+  <p><strong>Start here, before assuming a passing suite proves nothing was ever broken.</strong> Run the smoke suite below against a healthy build, then run it again against a deliberately broken one (tracing middleware fails to close a span) — the same suite, unmodified, catching a real regression at exactly the seam section 3 argued response-only tests would miss.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>pytest tests/smoke_test.py</span>
+      <div><button class="btn" id="run-healthy">Run against healthy build ▸</button> <button class="btn secondary" id="run-broken">Run against broken build ▸</button> <button class="btn secondary" id="run-reset">Reset</button></div>
+    </div>
+    <div class="log" id="test-log"></div>
+  </div>
+
+  <div class="callout"><b>What to notice:</b> both runs pass <code class="inline">test_health_and_readiness</code> and <code class="inline">test_mcp_tools_are_reachable</code> identically — the break is specifically in the span-closing logic, which only <code class="inline">test_one_full_chat_round_trip</code>'s database assertion catches. A response-only version of that same test would have passed on the broken build too, exactly section 3's warning made concrete.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the suite yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Testing the empty-search-results case from lab 2</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Write the integration test (structure, not full code needed) that verifies <code class="inline">storage-and-rag/capstone_hybrid_search_integration.html</code>'s practice problem 1 fix — the orchestrator explicitly handling an empty search result rather than silently proceeding to generation. What would this test's arrange/act/assert look like, and what's the one dependency that MUST stay real for this specific test to mean anything?</p>
+    <details><summary>Show solution</summary><div class="solution">Arrange: seed the test database (or the search index/service, if
+mocked at that boundary specifically) so that a chosen query is
+GUARANTEED to return zero hybrid_search results -- e.g. querying for
+a term that matches nothing in the test corpus at all.
+
+Act: POST /chat with that query, exactly like section 3's scenario,
+through the real client fixture.
+
+Assert: this is the interesting part, and where it differs from
+section 3's happy-path test. Two things to check: (1) the RESPONSE
+should reflect problem 1's chosen fix explicitly -- e.g. the reply
+text contains an honest "no relevant information found" message rather
+than a suspiciously confident-sounding fabricated answer with no
+grounding; and (2) the EVAL RECORD for this run should reflect the
+same thing -- e.g. eval_type or an attribute on the eval_span marking
+this as an "empty_search" case, so the dashboard (lab 3) can actually
+distinguish this failure mode from a normal successful run, per
+problem 1's own solution in the hybrid search lab.
+
+The dependency that MUST stay real here: the search tool/index itself
+(or a faithful stand-in that genuinely returns zero results for the
+chosen query), NOT mocked to directly return an empty list. If the
+test mocks call_tool("hybrid_search", ...) to return [] directly, it
+never actually verifies that a REAL, no-match query against the REAL
+index produces an empty result in the first place -- it only verifies
+the orchestrator's handling of a hypothetical empty list, which could
+pass even if the real search tool never actually returns an empty list
+for ANY query (a bug in the search tool's own empty-result path would
+go completely undetected). This is exactly section 2's "is this
+dependency part of the seam being tested" question, applied here: the
+search-returns-empty behavior IS part of what this specific test needs
+to verify, so it can't be the mocked piece.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · A flaky test caused by fixture teardown order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's <code class="inline">test_db</code> fixture drops the test database after every test. A teammate reports that <code class="inline">test_capstone_e2e.py</code> passes reliably alone but fails intermittently when run as part of the FULL suite alongside other test files. What's the most likely cause given the fixture scope shown in section 1, and how would you confirm it?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause is a fixture SCOPE mismatch -- section 1's
+fixtures, as written, use pytest_asyncio's default function scope
+(a fresh test_db and run_store per individual test function), which
+should actually PREVENT this exact symptom if scope is correctly
+function-level throughout. So the realistic culprit is that a scope
+was accidentally widened somewhere -- e.g. test_db or run_store
+redefined with scope="session" or scope="module" in a conftest.py
+closer to the failing test file, intending to speed up the suite by
+reusing one database across many tests, but breaking test isolation
+in the process: an earlier test in the same session leaves rows behind
+(or a stale trace_id) that a LATER test's assertions accidentally
+match against, producing a pass or fail that depends on WHICH OTHER
+TESTS ran first and in what order -- the classic signature of shared,
+insufficiently-isolated test state, and exactly why "fails only in the
+full suite, passes alone" is such a strong diagnostic signal for this
+specific class of bug.
+
+To confirm: run the suite with pytest's -p no:randomly (or whatever
+disables test-order randomization, if a plugin like pytest-randomly is
+in use) to get a STABLE failure order, then bisect by running smaller
+and smaller subsets of tests before test_capstone_e2e.py until the
+minimal reproducing subset is found. Separately, grep the test
+directory's conftest.py files for any scope= argument on a fixture
+touching the database or Redis, since that's the concrete code change
+most likely to explain this exact symptom, and would show up
+immediately once specifically looked for rather than being obvious
+from the failure alone.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Deciding where a test for lab 5's partial index belongs</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Should a test verifying that <code class="inline">database/capstone_schema_finalization_and_indexes.html</code>'s <code class="inline">idx_agent_run_running</code> partial index is actually used by the query planner (via <code class="inline">EXPLAIN</code>) live in <code class="inline">tests/unit/</code>, <code class="inline">tests/integration/</code>, or the smoke test — and why?</p>
+    <details><summary>Show solution</summary><div class="solution">tests/integration/, specifically NOT unit and NOT the smoke test, for
+two separate reasons that are each individually sufficient.
+
+Not unit: verifying an EXPLAIN plan requires a real database with real
+(or realistically-shaped, per capacity_estimation_practice.html's
+volume assumptions) data and a real query planner making a real cost-
+based decision -- there is no meaningful way to unit-test this against
+an isolated function or a mock, since the thing being tested IS the
+interaction between the database engine, its statistics, and the
+schema, not any single function's logic in isolation. This is a
+seam-level concern by definition, which is exactly what integration
+tests exist for.
+
+Not the smoke test: an index-usage check is valuable but not part of
+"is this deploy catastrophically broken" -- the smoke test's whole
+design point (section 4) is staying fast and minimal, catching total
+failures (won't start, can't reach the DB, MCP unreachable) before
+every deploy. A missing or unused index degrades PERFORMANCE, it
+doesn't break correctness or availability -- a real distinction worth
+keeping the smoke test's gate focused on. It belongs in the full
+integration suite instead, run on a slower cadence (e.g. nightly, or
+on every merge to main rather than every single deploy attempt),
+exactly the same reasoning that separates a fast CI lint/test/build
+stage from a slower, more thorough nightly suite in most real
+pipelines.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before Week 2 closes:</b> could you, without notes, (1) explain why the app fixture uses the real <code class="inline">create_app()</code> factory instead of a hand-built substitute, (2) name which capstone dependencies stay real versus mocked and why for each, and (3) explain what a response-only assertion would miss that a response-plus-database assertion catches? This closes Saturday, and Week 2 — every lab this week (orchestrator, hybrid search, dashboard, schema, this test suite) is now one wired-together, end-to-end-tested system.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone integration testing, backend &amp; APIs.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var logEl = document.getElementById("test-log");
+  var healthyBtn = document.getElementById("run-healthy");
+  var brokenBtn = document.getElementById("run-broken");
+  var resetBtn = document.getElementById("run-reset");
+
+  var BASE_TESTS = [
+    {name: "test_health_and_readiness", pass: true, detail: "GET /healthz -> 200, GET /readyz -> 200"},
+    {name: "test_mcp_tools_are_reachable", pass: true, detail: "GET /mcp/sse -> 200, tools/list returns [ping, hybrid_search]"}
+  ];
+
+  function log(text, cls){
+    var p = document.createElement("div");
+    p.className = "line fadein " + cls;
+    p.innerHTML = text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function runSuite(broken){
+    logEl.innerHTML = "";
+    healthyBtn.disabled = true;
+    brokenBtn.disabled = true;
+    log("<b>Collected 3 tests from tests/smoke_test.py</b>", "info");
+
+    var tests = BASE_TESTS.concat([
+      broken
+        ? {name: "test_one_full_chat_round_trip", pass: false, detail: "POST /chat -> 200 (reply looked fine) but SELECT 1 FROM eval_span WHERE trace_id=... returned NO ROWS -- tracing middleware failed to persist the span"}
+        : {name: "test_one_full_chat_round_trip", pass: true, detail: "POST /chat -> 200, eval_span row found for trace_id -- full seam verified"}
+    ]);
+
+    var i = 0;
+    function next(){
+      if(i >= tests.length){
+        var failed = tests.filter(function(t){ return !t.pass; }).length;
+        if(failed === 0){
+          log("<b>3 passed</b> in 0.41s — safe to deploy.", "pass");
+        } else {
+          log("<b>" + failed + " failed, " + (tests.length - failed) + " passed</b> in 0.44s — DEPLOY BLOCKED.", "fail");
+        }
+        healthyBtn.disabled = false;
+        brokenBtn.disabled = false;
+        return;
+      }
+      var t = tests[i];
+      log((t.pass ? "PASSED  " : "FAILED  ") + "<b>" + t.name + "</b><br><span style=\"font-size:0.72rem;\">" + t.detail + "</span>", t.pass ? "pass" : "fail");
+      i++;
+      setTimeout(next, 500);
+    }
+    setTimeout(next, 300);
+  }
+
+  healthyBtn.addEventListener("click", function(){ runSuite(false); });
+  brokenBtn.addEventListener("click", function(){ runSuite(true); });
+  resetBtn.addEventListener("click", function(){
+    logEl.innerHTML = "";
+    healthyBtn.disabled = false;
+    brokenBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>

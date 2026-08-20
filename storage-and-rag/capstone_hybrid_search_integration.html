@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Hybrid Search Integration</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dense-c:#4fc3f7; --sparse-c:#f2c14e; --fusion-c:#7fd8a0; --bad-c:#ff6b6b; --accent:#c792ea;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dense-c); color:var(--dense-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--sparse-c); color:var(--sparse-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--fusion-c); color:var(--fusion-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  .lookup-controls{display:flex; gap:0.6rem; flex-wrap:wrap; margin-bottom:1rem;}
+  .chip{font-family:var(--mono); font-size:0.78rem; padding:0.4rem 0.85rem; border-radius:20px; border:1px solid var(--rule); background:var(--panel-2); cursor:pointer; color:var(--ink); transition:all .2s;}
+  .chip:hover{border-color:var(--accent);}
+  .chip.active{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+
+  .results-grid{display:grid; grid-template-columns:1fr 1fr; gap:1.2rem; margin:1.2rem 0;}
+  @media(max-width:760px){.results-grid{grid-template-columns:1fr;}}
+  .results-col{border:1.5px solid var(--rule); border-radius:12px; padding:1rem 1.1rem; background:var(--panel-2);}
+  .results-col h4{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.7rem;}
+  .results-col.dense h4{color:var(--dense-c);}
+  .results-col.sparse h4{color:var(--sparse-c);}
+  .result-row{font-family:var(--mono); font-size:0.78rem; padding:0.45rem 0.6rem; border-radius:6px; margin-bottom:0.4rem; display:flex; justify-content:space-between; gap:0.6rem; background:#0b0d11; border:1px solid var(--rule);}
+  .result-row .rscore{color:var(--ink-dim); font-size:0.72rem;}
+
+  /* context window fill visualization */
+  .ctx-window{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.2rem; margin:1.2rem 0;}
+  .ctx-slot{font-family:var(--mono); font-size:0.78rem; padding:0.6rem 0.8rem; border-radius:8px; margin-bottom:0.5rem; border-left:3px solid var(--rule); background:var(--panel-2); opacity:0; transform:translateX(-8px); transition:opacity .4s, transform .4s;}
+  .ctx-slot.show{opacity:1; transform:translateX(0);}
+  .ctx-slot.merged{border-left-color:var(--fusion-c);}
+  .ctx-slot .cslot-src{color:var(--ink-dim); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em;}
+  .ctx-budget{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-top:0.8rem; padding-top:0.8rem; border-top:1px dashed var(--rule);}
+
+  .fusion-stage{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.2rem; margin:1.2rem 0;}
+  .fusion-row{display:grid; grid-template-columns:1.6fr 0.9fr 0.9fr 1fr; gap:0.6rem; align-items:center; font-family:var(--mono); font-size:0.78rem; padding:0.5rem 0.3rem; border-bottom:1px solid var(--rule);}
+  .fusion-row.head{color:var(--ink-dim); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1.5px solid var(--rule);}
+  .fusion-row:last-child{border-bottom:none;}
+  .fusion-score{color:var(--fusion-c); font-weight:600;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.fusion{border-left-color:var(--fusion-c); background:rgba(127,216,160,0.06);} .callout.fusion b{color:var(--fusion-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> STORAGE &amp; RAG LAB · CAPSTONE HYBRID SEARCH INTEGRATION</div>
+  <h1>Hybrid search stops being a technique and becomes a callable tool.</h1>
+  <p class="lede"><code class="inline">hybrid_search.html</code> taught RRF fusion of dense and sparse results; <code class="inline">realtime_rag_engine_design.html</code> designed the freshness-aware index behind it. This lab wires both into <code class="inline">backend/capstone_scaffold_fastapi_mcp.html</code> as a real MCP tool — a schema the orchestrator from <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> can call — and traces how a blended result set actually becomes context for generation.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Exposed as an MCP tool with a real input/output schema</div>
+    <div class="pipe-label b">Index lives embedded vs a separate service — a real trade-off</div>
+    <div class="pipe-label c">Fused results merged into a bounded context window</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="tool">1 · Search as an MCP Tool</a>
+  <a data-target="where">2 · Where the Index Lives</a>
+  <a data-target="merge">3 · Results Into Context</a>
+  <a data-target="demo">4 · Live Hybrid Search Demo</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SEARCH AS AN MCP TOOL ============ -->
+<section id="tool">
+  <div class="kicker">01 — Same fusion algorithm, now behind a protocol boundary</div>
+  <h2>Exposing hybrid search as an MCP tool</h2>
+
+  <p><strong>Start here, before writing the tool definition.</strong> Think about a library's reference desk versus letting patrons wander the stacks themselves. Handing an agent RAW access to the vector index and the keyword index (two separate systems, two separate query APIs) is like letting it wander the stacks — it has to know the layout. Wrapping both behind ONE reference desk — "ask a question, get back the best-fused answer" — is what an MCP tool does: it collapses <code class="inline">hybrid_search.html</code>'s two-index, RRF-fusion machinery behind a single schema the orchestrator (per <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> section 3) can call exactly like it calls any other tool.</p>
+
+  <div class="code"><span class="c-cmt"># app/mcp_servers/search_tool.py -- registered alongside example_server.py's
+# "ping" tool, in the SAME capstone_mcp Server instance from the scaffold</span>
+<span class="c-kw">from</span> mcp.types <span class="c-kw">import</span> Tool, TextContent
+<span class="c-kw">from</span> app.mcp_servers.example_server <span class="c-kw">import</span> capstone_mcp
+<span class="c-kw">from</span> app.services.hybrid_search <span class="c-kw">import</span> run_hybrid_search  <span class="c-cmt"># protocol-agnostic logic,
+                                                          # same separation as the
+                                                          # scaffold's problem 2</span>
+
+SEARCH_TOOL_SCHEMA = Tool(
+    name=<span class="c-str">"hybrid_search"</span>,
+    description=<span class="c-str">"Search the capstone's document corpus using blended dense (vector) and sparse (keyword) retrieval, RRF-fused."</span>,
+    inputSchema={
+        <span class="c-str">"type"</span>: <span class="c-str">"object"</span>,
+        <span class="c-str">"properties"</span>: {
+            <span class="c-str">"query"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"string"</span>, <span class="c-str">"description"</span>: <span class="c-str">"Natural-language search query"</span>},
+            <span class="c-str">"top_k"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"integer"</span>, <span class="c-str">"minimum"</span>: <span class="c-num">1</span>, <span class="c-str">"maximum"</span>: <span class="c-num">20</span>, <span class="c-str">"default"</span>: <span class="c-num">5</span>},
+            <span class="c-str">"dense_weight"</span>: {<span class="c-str">"type"</span>: <span class="c-str">"number"</span>, <span class="c-str">"minimum"</span>: <span class="c-num">0</span>, <span class="c-str">"maximum"</span>: <span class="c-num">1</span>, <span class="c-str">"default"</span>: <span class="c-num">0.5</span>},
+        },
+        <span class="c-str">"required"</span>: [<span class="c-str">"query"</span>],
+    },
+)
+
+<span class="c-fn">@capstone_mcp.call_tool</span>()
+<span class="c-kw">async def</span> <span class="c-fn">call_tool</span>(name: <span class="c-fn">str</span>, arguments: <span class="c-fn">dict</span>) -> <span class="c-fn">list</span>[TextContent]:
+    <span class="c-kw">if</span> name == <span class="c-str">"hybrid_search"</span>:
+        results = <span class="c-kw">await</span> run_hybrid_search(
+            query=arguments[<span class="c-str">"query"</span>],
+            top_k=arguments.get(<span class="c-str">"top_k"</span>, <span class="c-num">5</span>),
+            dense_weight=arguments.get(<span class="c-str">"dense_weight"</span>, <span class="c-num">0.5</span>),
+        )
+        <span class="c-cmt"># structured JSON back as text content, per json_schema_tool_specs.html's
+        # convention -- the orchestrator parses this, not a human</span>
+        <span class="c-kw">return</span> [TextContent(type=<span class="c-str">"text"</span>, text=json.dumps(results))]
+    <span class="c-kw">if</span> name == <span class="c-str">"ping"</span>:
+        <span class="c-kw">return</span> [TextContent(type=<span class="c-str">"text"</span>, text=<span class="c-str">"pong"</span>)]
+    <span class="c-kw">raise</span> ValueError(<span class="c-fn">f"Unknown tool: {name}"</span>)</div>
+
+  <p>Note the schema constrains <code class="inline">dense_weight</code> to <code class="inline">[0, 1]</code> and <code class="inline">top_k</code> to a small bounded range — the same defensive schema design <code class="inline">json_schema_tool_specs.html</code> taught for <code class="inline">search_flights</code>'s <code class="inline">cabin_class</code> enum, now protecting against a malformed or adversarial call requesting, say, <code class="inline">top_k: 100000</code> and blowing the context budget section 3 works within.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> exposing hybrid search as an MCP tool means the fusion algorithm's implementation detail (RRF, weighted linear combination, whichever <code class="inline">hybrid_search.html</code> covers) stays entirely behind the tool's schema boundary — callers supply a query and a few bounded knobs, never index internals — which is exactly what lets the orchestrator treat this tool identically to any other MCP tool it dispatches to.</div>
+</section>
+
+<!-- ============ SECTION 2: WHERE THE INDEX LIVES ============ -->
+<section id="where">
+  <div class="kicker">02 — Embedded vs a separate service, the real trade-off</div>
+  <h2>Where the index lives relative to the FastAPI process</h2>
+
+  <p><strong>Start here, before deciding.</strong> Think about keeping a reference book on your own desk versus walking down the hall to the library. Keeping it on your desk (embedded) is instant but means every desk needs its own copy, and updating one copy doesn't update the others. Walking to the library (a separate service) means everyone shares ONE up-to-date copy, at the cost of a walk every time. <code class="inline">realtime_rag_engine_design.html</code> already worked through this exact trade-off for a freshness-critical RAG system; this section applies it specifically to the capstone's single FastAPI process.</p>
+
+  <div class="dc-compare">
+    <div class="dc-col a">
+      <h4>Embedded index (in-process)</h4>
+      <p>The vector/keyword index loads into the same process as the FastAPI app — no network hop per search. Fast, but N running workers (per <code class="inline">uvicorn_gunicorn_workers.html</code>) means N in-memory copies of the index, each consuming its own RAM, and a new document ingested has to somehow reach every worker's copy, not just one.</p>
+    </div>
+    <div class="dc-col b">
+      <h4>Separate search service</h4>
+      <p>One index, one service, called over HTTP/gRPC from every FastAPI worker — ingestion updates ONE place and every worker sees it immediately. Costs a network round trip per search call, and adds a new dependency <code class="inline">/readyz</code> must check, same as section 1's Redis dependency in the orchestrator lab.</p>
+    </div>
+  </div>
+
+  <table class="cmp">
+    <tr><th>Factor</th><th>Embedded</th><th>Separate service</th></tr>
+    <tr><td>Per-query latency</td><td>Lowest — no network hop</td><td>+network RTT, but often still &lt;50ms for a co-located service</td></tr>
+    <tr><td>Memory cost</td><td>Multiplied by worker count</td><td>Paid once, shared</td></tr>
+    <tr><td>Freshness after ingest</td><td>Stale until every worker reloads (see <code class="inline">realtime_rag_engine_design.html</code>'s "not yet indexed" window)</td><td>Fresh the moment the one shared index updates</td></tr>
+    <tr><td>Right choice when</td><td>Corpus is small/static, single-worker or dev deploys</td><td>Corpus is large, updates frequently, or multiple workers/services need the same index</td></tr>
+  </table>
+
+  <p>For this capstone specifically: the scaffold's own dependency table (section 4 of <code class="inline">capstone_scaffold_fastapi_mcp.html</code>) already assumes a database layer arrives once Week 2's schema work lands (lab 5, this same week) — and a corpus that supports the capstone's own eval/tracing dashboard content is exactly the kind of thing that gets updated out-of-band, not embedded and baked into each worker's memory. The separate-service model is the better default here, with the MCP tool from section 1 calling out to it rather than holding the index directly.</p>
+
+  <div class="callout fusion"><b>Interview-ready definition:</b> an embedded index trades freshness and memory efficiency for raw per-query speed and simplicity, correct for small/static/single-worker deployments; a separate search service trades a network hop for a single shared, immediately-fresh index visible to every caller — the same in-process-vs-external trade-off <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> draws for orchestrator state, applied here to a search index instead.</div>
+</section>
+
+<!-- ============ SECTION 3: RESULTS INTO CONTEXT ============ -->
+<section id="merge">
+  <div class="kicker">03 — Fused results are not automatically usable context</div>
+  <h2>How fused results get merged into the orchestrator's context</h2>
+
+  <p><strong>Start here, before assuming "return the top 5" is sufficient.</strong> A search result list and an LLM's context window are not the same shape — a ranked list of <code class="inline">(doc_id, score)</code> pairs has to become actual TEXT, budgeted against a token limit, before generation can use it. This is where hybrid search's output meets the orchestrator's context-assembly step.</p>
+
+  <div class="code"><span class="c-cmt"># app/orchestrator/context.py -- called from run.py's step() after a
+# hybrid_search tool call returns, before composing the final reply</span>
+<span class="c-kw">def</span> <span class="c-fn">merge_into_context</span>(search_results: <span class="c-fn">list</span>[<span class="c-fn">dict</span>], token_budget: <span class="c-fn">int</span> = <span class="c-num">2000</span>) -> <span class="c-fn">str</span>:
+    <span class="c-cmt"># results arrive PRE-RANKED by RRF fusion (hybrid_search.html) --
+    # this function's only job is fitting them into a token budget,
+    # not re-ranking them again</span>
+    chunks = []
+    used = <span class="c-num">0</span>
+    <span class="c-kw">for</span> r <span class="c-kw">in</span> search_results:
+        <span class="c-cmt"># rough token estimate; a real implementation uses the model's
+        # own tokenizer, not len(text) // 4</span>
+        est_tokens = <span class="c-fn">len</span>(r[<span class="c-str">"text"</span>]) // <span class="c-num">4</span>
+        <span class="c-kw">if</span> used + est_tokens > token_budget:
+            <span class="c-kw">break</span>   <span class="c-cmt"># stop merging, don't truncate mid-chunk -- a half a
+                     # sentence is worse than one fewer full chunk</span>
+        chunks.append(<span class="c-fn">f"[source: {r['doc_id']}, fused_score={r['score']:.3f}]\n{r['text']}"</span>)
+        used += est_tokens
+    <span class="c-kw">return</span> <span class="c-str">"\n\n"</span>.join(chunks)</div>
+
+  <p>Two details worth naming explicitly, because both are easy to skip and both cause real bugs: results are budgeted in RANK ORDER, not truncated arbitrarily, so the highest-fused-score result is never the one cut for space; and each chunk keeps its <code class="inline">doc_id</code> attached in the merged text, so a later eval pass (lab 3's dashboard) can trace a generated answer back to which specific search result it came from — the same provenance link <code class="inline">database/eval_results_schema.html</code> requires between a score and its trace.</p>
+
+  <div class="callout"><b>Interview-ready definition:</b> merging search results into context means converting a ranked list into a token-budgeted string WITHOUT re-ranking (fusion already decided order) and WITHOUT silently truncating mid-chunk — stopping at the last chunk that fully fits is what keeps the context both within budget and internally coherent.</div>
+</section>
+
+<!-- ============ SECTION 4: LIVE DEMO ============ -->
+<section id="demo">
+  <div class="kicker">04 — Watch fusion happen, then watch it fill a context window</div>
+  <h2>Live hybrid search demo, feeding a simulated context window</h2>
+
+  <p><strong>Start here, before treating this as read-only.</strong> Type a query below (or use the sample) to see dense and sparse results retrieved independently, RRF-fused into one ranked list, and then merged into a simulated 2000-token context window exactly the way section 3's code does — watch the budget bar fill and the fourth result get cut for space.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>Hybrid search → RRF fusion → context window</span>
+      <div><button class="btn" id="demo-run">Run search ▸</button> <button class="btn secondary" id="demo-reset">Reset</button></div>
+    </div>
+
+    <div class="results-grid">
+      <div class="results-col dense">
+        <h4>Dense (vector) results</h4>
+        <div id="dense-results"></div>
+      </div>
+      <div class="results-col sparse">
+        <h4>Sparse (BM25) results</h4>
+        <div id="sparse-results"></div>
+      </div>
+    </div>
+
+    <div class="fusion-stage">
+      <div class="fusion-row head"><div>Document</div><div>Dense rank</div><div>Sparse rank</div><div>RRF score</div></div>
+      <div id="fusion-rows"></div>
+    </div>
+
+    <div class="ctx-window">
+      <div style="font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;">Simulated context window</div>
+      <div id="ctx-slots"></div>
+      <div class="ctx-budget" id="ctx-budget">0 / 2000 tokens used</div>
+    </div>
+  </div>
+
+  <div class="callout fusion"><b>What to notice:</b> the document ranked #1 by dense search alone is NOT always the document ranked #1 after fusion — a document that ranks moderately on BOTH signals often out-scores one that ranks #1 on only one signal, exactly the RRF behavior <code class="inline">hybrid_search.html</code> demonstrates. And the context window below stops merging once the budget is hit, leaving the lowest-fused-score result out entirely — visible proof that context budgeting is a real, not hypothetical, constraint.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the integration yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · A search call that returns zero results</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's <code class="inline">hybrid_search</code> tool returns an empty result list for a query with no matches. What should the orchestrator (from <code class="inline">capstone_orchestrator_integration.html</code>) do with an empty tool result, and what's wrong with silently proceeding to generation as if nothing happened?</p>
+    <details><summary>Show solution</summary><div class="solution">Silently proceeding is the most common real bug in RAG-backed agents:
+the LLM generating the final reply has no signal that search came back
+empty, so it often "helpfully" fabricates an answer that sounds
+grounded but isn't -- a classic hallucination triggered specifically by
+missing context rather than by the model being asked something
+unanswerable. The orchestrator needs to treat an empty result list as
+a distinct, checkable branch in its routing logic (section 3 of the
+orchestrator lab's _route/_is_terminal methods), not just an empty
+string that flows through unchanged.
+
+Two reasonable responses, both better than silence: (1) have the
+orchestrator's merge_into_context step produce an explicit marker --
+e.g. "[No search results found for this query]" -- included in the
+prompt sent to the model, so the model is EXPLICITLY told context is
+missing rather than inferring it from absence; or (2) have the
+orchestrator's routing logic branch on empty results and either retry
+with a broadened query (fewer/no filters, a rephrased query) or return
+a reply that honestly states no relevant information was found, rather
+than calling the generation step at all. Option 2 is stronger when the
+capstone's eval/tracing dashboard (lab 3) needs to distinguish "search
+found nothing, correctly reported" from "search found something,
+generation ignored it" as two different failure modes worth separate
+eval metrics.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Choosing dense_weight per query type</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 1's schema exposes <code class="inline">dense_weight</code> as a caller-supplied parameter, defaulting to 0.5. Should the orchestrator ever pass a value other than the default, and if so, based on what?</p>
+    <details><summary>Show solution</summary><div class="solution">Yes -- a fixed 0.5 for every query wastes information the orchestrator
+often already has. hybrid_search.html's own failure-mode demo shows
+dense (vector) retrieval winning on QUERIES ABOUT MEANING/PARAPHRASE
+(a question worded very differently from the source text but semantically
+close) and sparse (BM25/keyword) retrieval winning on queries containing
+EXACT TERMS THAT MATTER LITERALLY -- an error code, a proper noun, a
+specific field name. A well-built orchestrator can cheaply classify
+which regime a given query falls into (e.g. a simple heuristic: does
+the query contain a quoted string, an identifier-looking token, or a
+capitalized proper noun not at the sentence start? lean sparse-heavy;
+otherwise lean dense-heavy) and pass a correspondingly skewed
+dense_weight rather than always defaulting to an even blend.
+
+The risk of over-engineering this: a classifier that's wrong half the
+time is worse than a fixed 0.5 default, because it introduces
+inconsistent, hard-to-debug retrieval quality instead of one uniformly
+mediocre-but-predictable behavior. The practical middle ground most
+real systems land on is exactly what hybrid_search.html's RRF fusion
+already provides -- a reasonably weight-INSENSITIVE default that
+performs acceptably across query types -- with per-query weight
+overrides reserved for cases with strong, cheap, high-confidence
+signal (e.g. the query literally contains an ID pattern matching a
+known schema field).</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · Index staleness after a document update</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2 recommends a separate search service for this capstone. A document gets updated in the underlying store, and a search five seconds later still returns the OLD version. Is this necessarily a bug, and how would you reason about whether it's acceptable?</p>
+    <details><summary>Show solution</summary><div class="solution">Not necessarily a bug -- it depends entirely on the freshness SLA the
+system commits to, which is precisely the question
+realtime_rag_engine_design.html poses and answers concretely for a
+continuously-updating corpus: define an explicit "not yet indexed"
+window (e.g. "updates are searchable within 10 seconds, worst case")
+rather than either promising instant consistency (expensive, often
+unnecessary) or leaving the window undefined (a support the search
+system silently just... does).
+
+To reason about whether 5 seconds is acceptable here: check what
+INGESTS the update into the separate search service. If it's an async
+background indexing job (the common, cheaper pattern -- write to the
+primary store, then asynchronously re-embed and re-index), a few
+seconds of staleness is an inherent, expected property of that
+architecture, not a bug -- the fix is DOCUMENTING the window, not
+eliminating it (eliminating it usually means synchronous re-indexing
+on every write, which trades ingest latency for read freshness, often
+the wrong trade for a capstone with a low update rate). If instead the
+system's stated contract promises immediate consistency and 5 seconds
+violates that contract, then yes, it's a real bug -- most likely a
+missing or too-infrequent index refresh cycle, or a caching layer in
+front of the search service serving a stale response past its
+intended TTL.</div></details>
+  </div>
+
+  <div class="callout fusion">
+    <b>Self-check before lab 3:</b> could you, without notes, (1) write the schema for a search-as-a-tool MCP definition with correctly bounded parameters, (2) argue for embedded vs separate-service indexing given a stated deployment shape, and (3) explain why context merging respects fusion's rank order rather than re-scoring? Lab 3 wires up the dashboard that will show exactly how often this tool gets called and how its latency behaves.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone hybrid search integration, storage &amp; RAG.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var DENSE = [
+    {doc:"doc-412", score:0.91, text:"The capstone's readiness endpoint checks MCP server connectivity using an in-process call with a short timeout, returning 503 if the dependency does not respond within budget."},
+    {doc:"doc-118", score:0.87, text:"Orchestrator state must be externalized to Redis or Postgres once the FastAPI app runs under multiple Uvicorn workers, since in-process dicts are not shared across worker processes."},
+    {doc:"doc-503", score:0.79, text:"Hybrid search blends dense vector similarity with sparse keyword matching, fusing the two ranked lists with Reciprocal Rank Fusion rather than a fixed linear weight."},
+    {doc:"doc-207", score:0.66, text:"A trace span records a start time, end time, parent span id, and any errors raised during that specific step of an agent's run."},
+  ];
+  var SPARSE = [
+    {doc:"doc-503", score:0.88, text:"Hybrid search blends dense vector similarity with sparse keyword matching, fusing the two ranked lists with Reciprocal Rank Fusion rather than a fixed linear weight."},
+    {doc:"doc-091", score:0.74, text:"CREATE INDEX idx_eval_span_trace ON eval_span(trace_id) speeds up the common lookup pattern of fetching every span for one trace_id."},
+    {doc:"doc-412", score:0.61, text:"The capstone's readiness endpoint checks MCP server connectivity using an in-process call with a short timeout, returning 503 if the dependency does not respond within budget."},
+    {doc:"doc-330", score:0.55, text:"A p95 latency of 480ms across 1000 simulated runs means 950 of those runs completed in 480ms or less."},
+  ];
+
+  function rrf(rankMap){
+    // Reciprocal Rank Fusion, k=60, a common default
+    var K = 60;
+    var scores = {};
+    Object.keys(rankMap).forEach(function(doc){
+      var ranks = rankMap[doc];
+      var s = 0;
+      ranks.forEach(function(r){ if(r !== null){ s += 1 / (K + r); } });
+      scores[doc] = s;
+    });
+    return scores;
+  }
+
+  function renderResults(list, elId, cls){
+    var el = document.getElementById(elId);
+    el.innerHTML = "";
+    list.forEach(function(r, i){
+      var row = document.createElement("div");
+      row.className = "result-row";
+      row.innerHTML = "<span>#" + (i+1) + " " + r.doc + "</span><span class=\"rscore\">score " + r.score.toFixed(2) + "</span>";
+      el.appendChild(row);
+    });
+  }
+
+  function renderFusion(fused){
+    var el = document.getElementById("fusion-rows");
+    el.innerHTML = "";
+    fused.forEach(function(f){
+      var row = document.createElement("div");
+      row.className = "fusion-row";
+      row.innerHTML = "<div>" + f.doc + "</div><div>" + (f.denseRank !== null ? "#" + f.denseRank : "—") +
+        "</div><div>" + (f.sparseRank !== null ? "#" + f.sparseRank : "—") +
+        "</div><div class=\"fusion-score\">" + f.score.toFixed(4) + "</div>";
+      el.appendChild(row);
+    });
+  }
+
+  function renderContext(fused, docs){
+    var el = document.getElementById("ctx-slots");
+    var budgetEl = document.getElementById("ctx-budget");
+    el.innerHTML = "";
+    var budget = 2000;
+    var used = 0;
+    var i = 0;
+
+    function addNext(){
+      if(i >= fused.length){
+        budgetEl.textContent = used + " / " + budget + " tokens used";
+        return;
+      }
+      var f = fused[i];
+      var doc = docs[f.doc];
+      var est = Math.ceil(doc.text.length / 4) * 6; // exaggerate for demo so budget fills within 4 results
+      if(used + est > budget){
+        var skipped = document.createElement("div");
+        skipped.className = "ctx-slot fadein";
+        skipped.style.borderLeftColor = "var(--bad-c)";
+        skipped.innerHTML = "<span class=\"cslot-src\">CUT — over budget</span><br>" + f.doc + " (fused_score=" + f.score.toFixed(4) + ") did not fit in the remaining " + (budget - used) + " tokens.";
+        el.appendChild(skipped);
+        budgetEl.textContent = used + " / " + budget + " tokens used";
+        return;
+      }
+      used += est;
+      var slot = document.createElement("div");
+      slot.className = "ctx-slot merged";
+      slot.innerHTML = "<span class=\"cslot-src\">source: " + f.doc + ", fused_score=" + f.score.toFixed(4) + "</span><br>" + doc.text;
+      el.appendChild(slot);
+      setTimeout(function(){ slot.classList.add("show"); }, 20);
+      i++;
+      setTimeout(addNext, 350);
+    }
+    addNext();
+  }
+
+  function runDemo(){
+    renderResults(DENSE, "dense-results", "dense");
+    renderResults(SPARSE, "sparse-results", "sparse");
+
+    var docs = {};
+    DENSE.forEach(function(r){ docs[r.doc] = r; });
+    SPARSE.forEach(function(r){ docs[r.doc] = r; });
+
+    var denseRankOf = {};
+    DENSE.forEach(function(r, i){ denseRankOf[r.doc] = i + 1; });
+    var sparseRankOf = {};
+    SPARSE.forEach(function(r, i){ sparseRankOf[r.doc] = i + 1; });
+
+    var allDocs = Object.keys(docs);
+    var rankMap = {};
+    allDocs.forEach(function(d){
+      rankMap[d] = [denseRankOf[d] || null, sparseRankOf[d] || null];
+    });
+    var scores = rrf(rankMap);
+
+    var fused = allDocs.map(function(d){
+      return {doc:d, score:scores[d], denseRank: denseRankOf[d] || null, sparseRank: sparseRankOf[d] || null};
+    }).sort(function(a,b){ return b.score - a.score; });
+
+    renderFusion(fused);
+    renderContext(fused, docs);
+  }
+
+  document.getElementById("demo-run").addEventListener("click", runDemo);
+  document.getElementById("demo-reset").addEventListener("click", function(){
+    document.getElementById("dense-results").innerHTML = "";
+    document.getElementById("sparse-results").innerHTML = "";
+    document.getElementById("fusion-rows").innerHTML = "";
+    document.getElementById("ctx-slots").innerHTML = "";
+    document.getElementById("ctx-budget").textContent = "0 / 2000 tokens used";
+  });
+})();
+</script>
+</body>
+</html>

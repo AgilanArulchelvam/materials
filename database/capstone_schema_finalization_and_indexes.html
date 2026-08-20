@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Schema Finalization &amp; Indexes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --tbl-c:#4fc3f7; --idx-c:#f2c14e; --ok-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--tbl-c); color:var(--tbl-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--idx-c); color:var(--idx-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--ok-c); color:var(--ok-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .log{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:1rem; min-height:1.4em; border-top:1px dashed var(--rule); padding-top:0.8rem; max-height:280px; overflow-y:auto;}
+  .log .line{margin:0.15rem 0;} .log .line b{color:var(--ink);}
+  .fadein{animation:fadein .4s ease;}
+  @keyframes fadein{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  /* query-to-index matcher */
+  .matcher{display:flex; flex-direction:column; gap:0.8rem;}
+  .match-row{display:grid; grid-template-columns:1.6fr 1.4fr auto; gap:1rem; align-items:center; padding:0.8rem 1rem; border:1.5px solid var(--rule); border-radius:10px; background:var(--panel-2);}
+  @media(max-width:700px){.match-row{grid-template-columns:1fr; gap:0.6rem;}}
+  .match-query{font-family:var(--mono); font-size:0.82rem; color:var(--ink);}
+  .match-select{font-family:var(--mono); font-size:0.78rem; background:var(--panel); color:var(--ink); border:1px solid var(--rule); border-radius:6px; padding:0.4rem 0.6rem;}
+  .match-result{font-family:var(--mono); font-size:0.75rem; min-width:80px; text-align:center; padding:0.3rem 0.6rem; border-radius:6px;}
+  .match-result.correct{background:rgba(127,216,160,0.15); color:var(--ok-c);}
+  .match-result.wrong{background:rgba(255,107,107,0.15); color:var(--bad-c);}
+  .match-result.unchecked{background:var(--panel); color:var(--ink-dim);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--ok-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.tbl{border-left-color:var(--tbl-c); background:rgba(79,195,247,0.06);} .callout.tbl b{color:var(--tbl-c);}
+  .callout.idx{border-left-color:var(--idx-c); background:rgba(242,193,78,0.06);} .callout.idx b{color:var(--idx-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DB DESIGN LAB · CAPSTONE SCHEMA FINALIZATION &amp; INDEXES</div>
+  <h1>Every table this week has been building toward, indexed and migrated for real.</h1>
+  <p class="lede"><code class="inline">database/eval_trace_schema_finalization.html</code> extended <code class="inline">eval_results_schema.html</code> with a real <code class="inline">eval_span</code> table; <code class="inline">database/capstone_capacity_estimation_practice.html</code> sized the whole schema against real growth assumptions. This lab finalizes it: the complete capstone schema — agent runs, tool calls, spans, eval results — with a real <code class="inline">CREATE INDEX</code> for every genuine query pattern this week's other labs actually issue, a migration script, and how to verify an index is actually being used.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Four tables, every index tied to a named query pattern</div>
+    <div class="pipe-label b">A real, additive migration script</div>
+    <div class="pipe-label c">Verifying an index is actually used, not just declared</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="schema">1 · The Finalized Schema</a>
+  <a data-target="indexes">2 · Indexes, Tied to Query Patterns</a>
+  <a data-target="migration">3 · The Migration Script</a>
+  <a data-target="verify">4 · Verifying an Index Is Used</a>
+  <a data-target="matcher">5 · Query-to-Index Matcher</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: FINALIZED SCHEMA ============ -->
+<section id="schema">
+  <div class="kicker">01 — Everything this week accumulated, in one place</div>
+  <h2>The finalized capstone schema</h2>
+
+  <p><strong>Start here, before any index.</strong> Think about moving from a set of sticky notes tracking a project to one properly organized binder — the sticky notes (this week's separate labs: <code class="inline">eval_results_schema.html</code>'s original design, <code class="inline">eval_trace_schema_finalization.html</code>'s span extension, <code class="inline">capacity_estimation_practice.html</code>'s growth assumptions) each captured something true, but scattered. Finalizing means bringing all of it into ONE schema, stated once, that every other capstone lab — the orchestrator's instrumentation (<code class="inline">capstone_dashboard_integration.html</code>), the tool-call tracking implied by <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> — writes into and reads from.</p>
+
+  <div class="code"><span class="c-cmt">-- migrations/0009_finalize_capstone_schema.sql
+-- Four tables: the complete capstone data model.
+-- agent_run and eval_run are UNCHANGED from eval_results_schema.html;
+-- tool_call is NEW this lab; eval_span is UNCHANGED from
+-- eval_trace_schema_finalization.html. Nothing here rewrites an
+-- existing column -- pure extension, per section 3's migration.</span>
+
+<span class="c-kw">CREATE TABLE</span> agent_run (
+    run_id       <span class="c-kw">UUID PRIMARY KEY</span>,
+    agent_id     <span class="c-kw">TEXT NOT NULL</span>,
+    started_at   <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    ended_at     <span class="c-kw">TIMESTAMPTZ</span>,
+    status       <span class="c-kw">TEXT NOT NULL</span>              <span class="c-cmt">-- 'running' | 'done' | 'error'</span>
+);
+
+<span class="c-kw">CREATE TABLE</span> tool_call (
+    call_id          <span class="c-kw">UUID PRIMARY KEY</span>,
+    run_id           <span class="c-kw">UUID NOT NULL REFERENCES</span> agent_run(run_id),
+    sequence_number  <span class="c-kw">INTEGER NOT NULL</span>,      <span class="c-cmt">-- ordered position within the run</span>
+    tool_name        <span class="c-kw">TEXT NOT NULL</span>,
+    arguments        <span class="c-kw">JSONB NOT NULL</span>,
+    result           <span class="c-kw">JSONB</span>,
+    latency_ms       <span class="c-kw">NUMERIC</span>,
+    status           <span class="c-kw">TEXT NOT NULL</span>,          <span class="c-cmt">-- 'success' | 'error' | 'timeout'</span>
+    called_at        <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+);
+
+<span class="c-kw">CREATE TABLE</span> eval_run (
+    eval_run_id   <span class="c-kw">UUID PRIMARY KEY</span>,
+    started_at    <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    model_version <span class="c-kw">TEXT NOT NULL</span>,
+    dataset_id    <span class="c-kw">TEXT</span>,
+    suite_name    <span class="c-kw">TEXT NOT NULL</span>
+);
+
+<span class="c-kw">CREATE TABLE</span> eval_result (
+    result_id     <span class="c-kw">UUID PRIMARY KEY</span>,
+    eval_run_id   <span class="c-kw">UUID</span> <span class="c-kw">REFERENCES</span> eval_run(eval_run_id),
+    run_id        <span class="c-kw">UUID REFERENCES</span> agent_run(run_id),  <span class="c-cmt">-- links a score to the actual run</span>
+    eval_type     <span class="c-kw">TEXT NOT NULL</span>,
+    score         <span class="c-kw">NUMERIC</span>,
+    passed        <span class="c-kw">BOOLEAN</span>,
+    trace_id      <span class="c-kw">TEXT NOT NULL</span>,
+    evaluated_at  <span class="c-kw">TIMESTAMPTZ NOT NULL</span>
+);
+
+<span class="c-kw">CREATE TABLE</span> eval_span (
+    span_id         <span class="c-kw">TEXT PRIMARY KEY</span>,
+    trace_id        <span class="c-kw">TEXT NOT NULL</span>,           <span class="c-cmt">-- matches eval_result.trace_id, joined at query time</span>
+    parent_span_id  <span class="c-kw">TEXT REFERENCES</span> eval_span(span_id),  <span class="c-cmt">-- NULL = root span</span>
+    span_name       <span class="c-kw">TEXT NOT NULL</span>,
+    started_at      <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    ended_at        <span class="c-kw">TIMESTAMPTZ NOT NULL</span>,
+    duration_ms     <span class="c-kw">NUMERIC GENERATED ALWAYS AS</span>
+                        (<span class="c-kw">EXTRACT</span>(<span class="c-kw">EPOCH FROM</span> ended_at - started_at) * <span class="c-num">1000</span>) <span class="c-kw">STORED</span>,
+    attributes      <span class="c-kw">JSONB</span>
+);</div>
+
+  <p>Notice <code class="inline">tool_call</code> is the one genuinely NEW table here, filling a gap the earlier labs named but didn't build: <code class="inline">capstone_capacity_estimation_practice.html</code>'s entity list assumed tool calls as a distinct, sizeable entity, and <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code>'s orchestrator dispatches tool calls that need to be durably recorded somewhere beyond the ephemeral span data — <code class="inline">tool_call</code> is that durable, queryable record, complementary to (not a duplicate of) the trace-level <code class="inline">eval_span</code> rows the same dispatch also produces.</p>
+
+  <div class="callout tbl"><b>Interview-ready definition:</b> "finalizing" a schema means consolidating every table designed across separate, earlier design passes into one coherent, currently-accurate reference — adding the one genuinely missing table the earlier work implied but never built (<code class="inline">tool_call</code>, here) — without silently rewriting anything already in production, and without leaving any table's purpose ambiguous relative to the others (agent_run = the run itself, tool_call = each dispatched action, eval_run/eval_result = scoring, eval_span = trace structure).</div>
+</section>
+
+<!-- ============ SECTION 2: INDEXES ============ -->
+<section id="indexes">
+  <div class="kicker">02 — Every index earns its place by naming a real query</div>
+  <h2>Indexes, each tied to an actual query pattern</h2>
+
+  <p><strong>Start here, before adding an index "to be safe."</strong> Think about a book's index (the paper kind) — a good one lists exactly the terms readers actually look up, not every word in the book. An index on every word would be enormous, slow to maintain, and mostly useless, because most words aren't things anyone searches for. A database index is the same trade: each one costs write overhead and storage FOREVER, in exchange for speeding up ONE specific access pattern — so each index proposed below is justified by naming the actual query it serves, not offered as a blanket "index the foreign keys" habit.</p>
+
+  <div class="code"><span class="c-cmt">-- idx 1: "give me the full ordered call sequence for run Y" --
+-- ORDER BY sequence_number is the whole point of this table;
+-- this composite index makes that scan free instead of a sort.</span>
+<span class="c-kw">CREATE INDEX</span> idx_tool_call_run_seq <span class="c-kw">ON</span> tool_call(run_id, sequence_number);
+
+<span class="c-cmt">-- idx 2: "what's tool X's failure rate over the last 24 hours" --
+-- filters by tool_name AND a time range together, so a composite
+-- index in this column order serves both predicates in one scan.</span>
+<span class="c-kw">CREATE INDEX</span> idx_tool_call_name_time <span class="c-kw">ON</span> tool_call(tool_name, called_at);
+
+<span class="c-cmt">-- idx 3: "show me every span for the trace behind eval_result X" --
+-- the exact join eval_trace_schema_finalization.html's own demo runs;
+-- without this, every trace lookup is a full table scan of eval_span.</span>
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_trace <span class="c-kw">ON</span> eval_span(trace_id);
+
+<span class="c-cmt">-- idx 4: "walk the child spans of a given parent, for waterfall rendering" --
+-- serves capstone_dashboard_integration.html's detail-view expansion.</span>
+<span class="c-kw">CREATE INDEX</span> idx_eval_span_parent <span class="c-kw">ON</span> eval_span(parent_span_id);
+
+<span class="c-cmt">-- idx 5: "every eval_result for a given agent run" -- links a run's
+-- outcome back to its scores, needed by the dashboard's per-run row.</span>
+<span class="c-kw">CREATE INDEX</span> idx_eval_result_run <span class="c-kw">ON</span> eval_result(run_id);
+
+<span class="c-cmt">-- idx 6: "runs currently in 'running' state, oldest first" -- lets an
+-- ops query find stuck/long-running orchestrator runs cheaply, per
+-- capstone_orchestrator_integration.html's loop-termination concerns.
+-- A PARTIAL index -- only rows matching status='running' are indexed --
+-- since most rows will eventually be 'done', and indexing those would
+-- be pure overhead for a query that never looks at them.</span>
+<span class="c-kw">CREATE INDEX</span> idx_agent_run_running <span class="c-kw">ON</span> agent_run(started_at)
+    <span class="c-kw">WHERE</span> status = <span class="c-str">'running'</span>;</div>
+
+  <table class="cmp">
+    <tr><th>Index</th><th>Query pattern it serves</th><th>Why this column order</th></tr>
+    <tr><td><code>idx_tool_call_run_seq</code></td><td>Ordered call sequence for one run</td><td><code>run_id</code> first (equality filter), <code>sequence_number</code> second (range/order) — the standard equality-then-range composite index rule</td></tr>
+    <tr><td><code>idx_tool_call_name_time</code></td><td>Failure rate for tool X, last 24h</td><td><code>tool_name</code> first (equality), <code>called_at</code> second (range) — same rule, different columns</td></tr>
+    <tr><td><code>idx_eval_span_trace</code></td><td>All spans for one trace_id</td><td>Single column — the join key itself, no compound need</td></tr>
+    <tr><td><code>idx_eval_span_parent</code></td><td>Children of a given span, waterfall rendering</td><td>Single column — self-referencing FK lookups need their own index, not implied by the PK</td></tr>
+    <tr><td><code>idx_eval_result_run</code></td><td>All eval scores for one agent run</td><td>Single column FK lookup, same reasoning as <code>idx_eval_span_parent</code></td></tr>
+    <tr><td><code>idx_agent_run_running</code></td><td>Find stuck/long-running runs</td><td>Partial index — smaller, cheaper to maintain, since only a small fraction of rows are ever <code>'running'</code> at once</td></tr>
+  </table>
+
+  <div class="callout idx"><b>Interview-ready definition:</b> a defensible index proposal always states the query pattern FIRST, then the index — never the reverse. Composite indexes put equality-filtered columns before range-filtered or sorted columns; single-column indexes are for direct FK/join-key lookups; and a partial index (<code class="inline">WHERE status = 'running'</code>) is worth naming explicitly whenever a query only ever cares about a small, identifiable subset of rows, since indexing the excluded majority would be pure overhead with no matching query to justify it.</div>
+</section>
+
+<!-- ============ SECTION 3: MIGRATION ============ -->
+<section id="migration">
+  <div class="kicker">03 — Additive, with a real rollback, exactly like the labs it builds on</div>
+  <h2>The migration script</h2>
+
+  <p><strong>Start here, before running anything against a real database.</strong> Same renovation-not-demolition principle <code class="inline">eval_trace_schema_finalization.html</code> section 2 already established: this migration only CREATEs — new tables, new indexes — and touches nothing already holding production rows.</p>
+
+  <div class="code"><span class="c-cmt">-- migrations/0009_finalize_capstone_schema.sql
+-- UP: pure addition. tool_call is new; every index is new;
+-- agent_run, eval_run, eval_result, eval_span keep their existing
+-- column definitions from earlier migrations, untouched.</span>
+
+<span class="c-kw">BEGIN</span>;
+
+<span class="c-kw">CREATE TABLE IF NOT EXISTS</span> tool_call ( <span class="c-cmt">/* full definition, section 1 */</span> );
+
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_tool_call_run_seq  <span class="c-kw">ON</span> tool_call(run_id, sequence_number);
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_tool_call_name_time <span class="c-kw">ON</span> tool_call(tool_name, called_at);
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_eval_span_trace     <span class="c-kw">ON</span> eval_span(trace_id);
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_eval_span_parent    <span class="c-kw">ON</span> eval_span(parent_span_id);
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_eval_result_run     <span class="c-kw">ON</span> eval_result(run_id);
+<span class="c-kw">CREATE INDEX IF NOT EXISTS</span> idx_agent_run_running   <span class="c-kw">ON</span> agent_run(started_at) <span class="c-kw">WHERE</span> status = <span class="c-str">'running'</span>;
+
+<span class="c-kw">COMMIT</span>;
+
+<span class="c-cmt">-- DOWN: drop exactly what this migration added, nothing more.
+-- agent_run, eval_run, eval_result, eval_span are never referenced
+-- here because they were never touched by the UP migration either.</span>
+<span class="c-kw">BEGIN</span>;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_agent_run_running;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_eval_result_run;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_eval_span_parent;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_eval_span_trace;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_tool_call_name_time;
+<span class="c-kw">DROP INDEX IF EXISTS</span> idx_tool_call_run_seq;
+<span class="c-kw">DROP TABLE IF EXISTS</span> tool_call;
+<span class="c-kw">COMMIT</span>;</div>
+
+  <p>One detail worth naming explicitly: <code class="inline">CREATE INDEX</code> (without <code class="inline">CONCURRENTLY</code>) takes a lock that blocks writes to the indexed table for the duration of the build. On <code class="inline">tool_call</code> — brand new, empty at migration time — this is instant and harmless. On <code class="inline">eval_span</code> and <code class="inline">eval_result</code>, which may already hold real rows by the time this migration runs, a large enough table makes that lock duration genuinely disruptive — the production-safe version of this migration would use <code class="inline">CREATE INDEX CONCURRENTLY</code> for any index on a table that already has meaningful data, accepting a slower index build in exchange for not blocking writes.</p>
+
+  <div class="callout warn"><b>What "safe to run against a live table" actually requires:</b> additive DDL alone isn't sufficient once tables have real rows — <code class="inline">CREATE INDEX</code> without <code class="inline">CONCURRENTLY</code> is additive in the schema sense but still takes a write-blocking lock, which is a real production risk on <code class="inline">eval_span</code>/<code class="inline">eval_result</code> specifically (both already populated by <code class="inline">capstone_dashboard_integration.html</code>'s live instrumentation), even though it's a non-issue on the brand-new, empty <code class="inline">tool_call</code> table.</div>
+</section>
+
+<!-- ============ SECTION 4: VERIFY INDEX USAGE ============ -->
+<section id="verify">
+  <div class="kicker">04 — An index that isn't used is pure overhead</div>
+  <h2>Verifying an index is actually being used</h2>
+
+  <p><strong>Start here, before trusting that a CREATE INDEX statement did its job.</strong> Think about installing a new highway exit ramp and never actually confirming any cars use it — you've paid the construction cost either way. Same with a database index: it costs write overhead and storage the moment it exists, whether or not the query planner ever chooses to use it. Confirming usage isn't optional polish — it's the only way to know section 2's indexes are earning their cost.</p>
+
+  <div class="code"><span class="c-cmt">-- The standard verification tool: EXPLAIN (or EXPLAIN ANALYZE to
+-- actually execute and report real timing, not just the plan).</span>
+<span class="c-kw">EXPLAIN ANALYZE</span>
+<span class="c-kw">SELECT</span> span_name, started_at, duration_ms
+<span class="c-kw">FROM</span> eval_span
+<span class="c-kw">WHERE</span> trace_id = <span class="c-str">'7f3a9c'</span>
+<span class="c-kw">ORDER BY</span> started_at;
+
+<span class="c-cmt">-- What a HEALTHY plan looks like (index in use):
+--   Index Scan using idx_eval_span_trace on eval_span
+--     Index Cond: (trace_id = '7f3a9c')
+--     -> the planner went STRAIGHT to matching rows via the index,
+--        never touched rows for any other trace_id
+
+-- What an UNHEALTHY plan looks like (index NOT used):
+--   Seq Scan on eval_span
+--     Filter: (trace_id = '7f3a9c')
+--     -> the planner read EVERY row in the table and checked each
+--        one against the filter -- idx_eval_span_trace exists but
+--        was never consulted at all</span></div>
+
+  <p>Reasoning about WHY a planner skips an index it has available, even when one exists exactly matching the query, is worth being able to explain without needing to actually reproduce it against a live database:</p>
+
+  <table class="cmp">
+    <tr><th>Reason the planner skips the index</th><th>What it means</th></tr>
+    <tr><td>The table is small</td><td>For a tiny table, a sequential scan can be CHEAPER than an index lookup (fewer total pages to read either way) — this is correct planner behavior, not a bug, and disappears naturally as the table grows toward realistic capstone volume per <code class="inline">capacity_estimation_practice.html</code>'s projections</td></tr>
+    <tr><td>Stale table statistics</td><td>The planner estimates cost using statistics (<code class="inline">ANALYZE</code> output) about row counts and value distributions; if those are stale (e.g. right after a large bulk load with no <code class="inline">ANALYZE</code> run since), the planner can badly misjudge whether the index is worth using</td></tr>
+    <tr><td>A function or cast wraps the indexed column</td><td><code class="inline">WHERE LOWER(tool_name) = 'search'</code> against a plain index on <code class="inline">tool_name</code> can't use that index at all — the index is built on the raw column values, not the transformed ones, unless a matching functional index is created</td></tr>
+    <tr><td>The query filters on a different column than expected</td><td>A query filtering primarily on <code class="inline">eval_type</code> with only a secondary check on <code class="inline">trace_id</code> won't benefit from <code class="inline">idx_eval_span_trace</code> the way this section's example query does — the index has to match what the query ACTUALLY filters on first</td></tr>
+  </table>
+
+  <div class="callout idx"><b>Interview-ready definition:</b> declaring an index and confirming it's used are two separate steps — <code class="inline">EXPLAIN ANALYZE</code> against the actual query pattern the index was built for is how you confirm the planner chose an Index Scan over a Seq Scan; an index that exists but never appears in any real query's plan is dead weight, worth periodically auditing for and dropping, not assumed correct just because the <code class="inline">CREATE INDEX</code> statement ran without error.</div>
+</section>
+
+<!-- ============ SECTION 5: QUERY-TO-INDEX MATCHER ============ -->
+<section id="matcher">
+  <div class="kicker">05 — Match the query pattern to the index that actually serves it</div>
+  <h2>Query-pattern-to-index matcher</h2>
+
+  <p><strong>Start here, before checking your answers.</strong> For each query pattern below, pick the index from section 2 that actually serves it. Some are direct matches; a couple are deliberately closer calls, testing whether you're matching on the RIGHT column, not just any column that happens to appear in the query.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>Match each query pattern to its serving index</span> <button class="btn secondary" id="matcher-check">Check all ▸</button></div>
+    <div class="matcher" id="matcher-rows"></div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the schema yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · A missing index the schema doesn't have yet</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">The capstone dashboard (<code class="inline">capstone_dashboard_integration.html</code>) needs to answer "show me the 20 most recent agent runs with their overall eval pass/fail status" — a query joining <code class="inline">agent_run</code> and <code class="inline">eval_result</code>, ordered by <code class="inline">started_at</code> descending, limited to 20. None of section 2's six indexes serve this directly. Design the index that does.</p>
+    <details><summary>Show solution</summary><div class="solution">The query's access pattern is: no equality filter at all (it wants
+ALL recent runs, not runs matching a specific value), just an ORDER BY
+started_at DESC with a LIMIT. This is a different shape from every
+index in section 2 -- those all lead with an equality-filtered column.
+Here, the right index is a single-column index directly on the ORDER
+BY column, matching DESCENDING order explicitly (some databases build
+ascending by default and can still use it for a DESC scan by reading
+backwards, but stating it explicitly is the more defensible answer):
+
+    CREATE INDEX idx_agent_run_started_at ON agent_run(started_at DESC);
+
+With this index, "20 most recent runs" becomes an index scan that
+reads exactly 20 rows in already-sorted order and stops -- rather than
+a full table scan followed by an expensive sort of every row just to
+take the top 20. The join to eval_result for each of those 20 runs
+then uses idx_eval_result_run (already in section 2) to find that
+run's scores efficiently, one indexed lookup per row rather than a
+second full scan.
+
+This is worth naming as a DISTINCT index-design case from section 2's
+examples: those were all "find matching rows by equality, optionally
+ordered within the match" (composite, equality-then-range); this one
+is "no equality filter, order the WHOLE table and take the top N" --
+a pure ORDER BY + LIMIT pattern, which wants a single-column index on
+exactly the sort column, in the exact sort direction the query uses.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Justifying idx_agent_run_running as a partial index over a full one</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 2's <code class="inline">idx_agent_run_running</code> is a PARTIAL index (<code class="inline">WHERE status = 'running'</code>). Quantify, using <code class="inline">capacity_estimation_practice.html</code>'s assumptions, roughly how much smaller this partial index is than a full index on <code class="inline">agent_run(started_at)</code> covering every row, and explain why that size difference matters beyond just disk space.</p>
+    <details><summary>Show solution</summary><div class="solution">Using capacity_estimation_practice.html's own growth assumptions as a
+rough basis: agent runs accumulate continuously, and at any given
+moment, the number of runs actually IN the 'running' state (mid-flight,
+not yet done or errored) is bounded by current concurrent traffic --
+plausibly a few dozen to a few hundred at once for a capstone-scale
+system, versus potentially tens of thousands of historical run_id rows
+accumulated over weeks/months of total operation. A partial index
+covering only 'running' rows could realistically be two to three
+orders of magnitude smaller than a full index covering every
+historical row, and that ratio only grows more favorable to the
+partial index over time as more completed runs accumulate.
+
+Why this matters beyond disk space: every INSERT and UPDATE against
+agent_run has to maintain every index defined on that table, including
+updating each index's internal structure. A full index on started_at
+gets touched (and must be updated) on every single row write,
+including writes for a run that finished and moved OUT of 'running'
+status three months ago and will never again match this index's
+purpose. A partial index only needs maintenance work for rows that
+currently match its WHERE clause -- once a run's status flips from
+'running' to 'done', it's REMOVED from the partial index's working set
+implicitly, keeping the index's ongoing write overhead proportional to
+CURRENT concurrent load rather than to the ever-growing total history.
+This is a genuinely different scaling behavior, not just a smaller
+constant-factor win -- the full index's write overhead grows without
+bound as history accumulates, while the partial index's stays roughly
+flat, bounded by concurrent traffic.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 3 · A composite index built in the wrong column order</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A teammate proposes building <code class="inline">idx_tool_call_name_time</code> (section 2) as <code class="inline">(called_at, tool_name)</code> instead of <code class="inline">(tool_name, called_at)</code>. Using the "what's tool X's failure rate over the last 24 hours" query this index is meant to serve, explain concretely why the column order matters and isn't just a cosmetic choice.</p>
+    <details><summary>Show solution</summary><div class="solution">Column order in a composite (multi-column) B-tree index determines
+which QUERY SHAPES the index can serve efficiently, and it's not
+symmetric -- (tool_name, called_at) and (called_at, tool_name) are
+genuinely different indexes with different capabilities, not the same
+index in two notations.
+
+A B-tree composite index is effectively sorted first by the leading
+column, then by the second column WITHIN each value of the first. With
+(tool_name, called_at): all rows for tool_name = 'hybrid_search' are
+grouped together and, within that group, sorted by called_at -- so
+"failure rate for hybrid_search in the last 24h" becomes: jump directly
+to the 'hybrid_search' group (via the leading column), then scan only
+the recent portion of that already-sorted-by-time sub-range. Both the
+equality filter (tool_name) and the range filter (called_at) are
+served by ONE efficient index traversal.
+
+With (called_at, tool_name) reversed: rows are grouped by TIME first,
+and within each time slice, sorted by tool_name. To answer the same
+query, the database would have to scan every row in the last 24 hours
+(fine, that's the range part) but then, for EACH of those rows, check
+whether tool_name matches 'hybrid_search' -- it can't jump directly to
+just the matching tool's rows within that time range the way the
+correct ordering can, because tool_name isn't the leading sort key.
+For a system with many distinct tools, this means scanning through
+rows for irrelevant tools mixed into the same time range, doing
+much more filtering work than necessary.
+
+The general rule this confirms: composite index column order should
+put the EQUALITY-filtered column(s) first, then the RANGE-filtered
+column(s) — exactly the ordering rationale table in section 2 already
+states for both idx_tool_call_run_seq and idx_tool_call_name_time, and
+reversing it doesn't just make the index "slightly less optimal," it
+can make the query fall back to scanning far more rows than the
+correctly-ordered version ever would.</div></details>
+  </div>
+
+  <div class="callout tbl">
+    <b>Self-check before Saturday:</b> could you, without notes, (1) name all four tables and what each one is for, (2) pick the right index for a new query pattern by naming equality-vs-range columns first, and (3) explain the difference between a healthy Index Scan and an unhealthy Seq Scan in an EXPLAIN plan? Saturday's <code class="inline">backend/capstone_integration_testing.html</code> is next — testing the whole wired-together system, including whether writes actually land correctly in this exact schema.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone schema finalization &amp; indexes, database fundamentals.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var INDEXES = [
+    "idx_tool_call_run_seq",
+    "idx_tool_call_name_time",
+    "idx_eval_span_trace",
+    "idx_eval_span_parent",
+    "idx_eval_result_run",
+    "idx_agent_run_running"
+  ];
+
+  var ROWS = [
+    {query: "Full ordered call sequence for run Y", correct: "idx_tool_call_run_seq"},
+    {query: "Failure rate for tool X over the last 24 hours", correct: "idx_tool_call_name_time"},
+    {query: "All spans for the trace behind a failed eval_result", correct: "idx_eval_span_trace"},
+    {query: "Child spans of a given span, for waterfall rendering", correct: "idx_eval_span_parent"},
+    {query: "All eval scores for one agent run", correct: "idx_eval_result_run"},
+    {query: "Find long-running, still-active orchestrator runs", correct: "idx_agent_run_running"}
+  ];
+
+  var container = document.getElementById("matcher-rows");
+
+  function buildSelect(rowIdx){
+    var sel = document.createElement("select");
+    sel.className = "match-select";
+    sel.dataset.row = rowIdx;
+    var blank = document.createElement("option");
+    blank.value = "";
+    blank.textContent = "Choose an index…";
+    sel.appendChild(blank);
+    INDEXES.forEach(function(idx){
+      var opt = document.createElement("option");
+      opt.value = idx;
+      opt.textContent = idx;
+      sel.appendChild(opt);
+    });
+    return sel;
+  }
+
+  function build(){
+    container.innerHTML = "";
+    ROWS.forEach(function(row, i){
+      var el = document.createElement("div");
+      el.className = "match-row";
+      var queryEl = document.createElement("div");
+      queryEl.className = "match-query";
+      queryEl.textContent = row.query;
+      el.appendChild(queryEl);
+      el.appendChild(buildSelect(i));
+      var resultEl = document.createElement("div");
+      resultEl.className = "match-result unchecked";
+      resultEl.id = "result-" + i;
+      resultEl.textContent = "Unchecked";
+      el.appendChild(resultEl);
+      container.appendChild(el);
+    });
+  }
+
+  document.getElementById("matcher-check").addEventListener("click", function(){
+    var selects = container.querySelectorAll(".match-select");
+    selects.forEach(function(sel){
+      var i = parseInt(sel.dataset.row, 10);
+      var resultEl = document.getElementById("result-" + i);
+      if(sel.value === ROWS[i].correct){
+        resultEl.className = "match-result correct";
+        resultEl.textContent = "Correct";
+      } else if(sel.value === ""){
+        resultEl.className = "match-result unchecked";
+        resultEl.textContent = "Unchecked";
+      } else {
+        resultEl.className = "match-result wrong";
+        resultEl.textContent = "Try again";
+      }
+    });
+  });
+
+  build();
+})();
+</script>
+</body>
+</html>
