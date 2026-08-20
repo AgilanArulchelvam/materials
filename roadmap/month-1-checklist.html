@@ -20,7 +20,6 @@
     --amber-dim: #7a5a34;
     --teal: #5fc9b0;
     --teal-dim: #2c5147;
-    --done: #5fc9b0;
   }
   *{box-sizing:border-box;}
   body{
@@ -49,23 +48,8 @@
   }
   h1{
     font-family:'IBM Plex Mono',monospace;
-    font-size:20px; font-weight:600; margin:0 0 14px; line-height:1.3;
+    font-size:20px; font-weight:600; margin:0; line-height:1.3;
     color:var(--ink);
-  }
-  .progress-shell{
-    display:flex; align-items:center; gap:12px;
-  }
-  .progress-track{
-    flex:1; height:8px; background:var(--bg-raised);
-    border:1px solid var(--line); border-radius:2px; overflow:hidden;
-  }
-  .progress-fill{
-    height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal));
-    width:0%; transition:width 0.4s ease;
-  }
-  .progress-label{
-    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim);
-    white-space:nowrap;
   }
 
   main{padding:20px 16px 0; max-width:640px; margin:0 auto;}
@@ -89,90 +73,43 @@
     overflow:hidden;
   }
   .week-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 16px;
-    cursor:pointer;
-    user-select:none;
+    display:flex; align-items:baseline; gap:10px;
+    padding:16px 16px 12px;
   }
-  .week-head:active{background:var(--bg-raised);}
-  .week-head-left{display:flex; align-items:baseline; gap:10px;}
   .week-num{
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);
     letter-spacing:0.1em;
   }
   .week-title{font-size:15px; font-weight:600; color:var(--ink);}
-  .week-meta{
-    display:flex; align-items:center; gap:10px;
-  }
-  .week-count{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-  }
-  .chevron{
-    width:10px; height:10px;
-    border-right:1.5px solid var(--ink-dim);
-    border-bottom:1.5px solid var(--ink-dim);
-    transform:rotate(45deg);
-    transition:transform 0.25s ease;
-    flex-shrink:0;
-  }
-  .week.open .chevron{transform:rotate(-135deg);}
-  .week-mini-bar{
-    height:3px; background:var(--line-soft);
-  }
-  .week-mini-fill{
-    height:100%; background:var(--teal); width:0%; transition:width 0.4s ease;
-  }
 
-  .week-body{
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.35s ease;
-  }
-  .week.open .week-body{max-height:4000px;}
-
-  .topic{
+  .topic-list{
     border-top:1px solid var(--line-soft);
-    padding:14px 16px 16px;
+    padding:6px 16px 14px;
   }
-  .topic-head{
-    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  .topic-link{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0;
+    text-decoration:none;
+    border-bottom:1px solid var(--line-soft);
   }
-  .topic-title{
-    font-size:13.5px; font-weight:600; color:var(--ink);
+  .topic-link:last-child{border-bottom:none;}
+  .topic-name{
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
     flex:1;
+    transition:color 0.15s ease;
   }
+  .topic-link:hover .topic-name{color:var(--ink);}
   .topic-tag{
     font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em;
     text-transform:uppercase; color:var(--ink-faint);
     border:1px solid var(--line); border-radius:2px; padding:2px 6px;
     flex-shrink:0;
   }
-  .item{
-    display:flex; align-items:flex-start; gap:10px;
-    padding:7px 0;
-    cursor:pointer;
+  .topic-arrow{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--teal);
+    flex-shrink:0; opacity:0.7; transition:opacity 0.15s ease, transform 0.15s ease;
   }
-  .box{
-    width:16px; height:16px; flex-shrink:0; margin-top:1px;
-    border:1.5px solid var(--ink-faint);
-    border-radius:3px;
-    display:flex; align-items:center; justify-content:center;
-    transition:all 0.15s ease;
-  }
-  .item.checked .box{
-    background:var(--teal); border-color:var(--teal);
-  }
-  .box svg{width:10px; height:10px; opacity:0; transition:opacity 0.1s;}
-  .item.checked .box svg{opacity:1;}
-  .item-text{
-    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
-    transition:color 0.15s ease;
-  }
-  .item.checked .item-text{
-    color:var(--ink-faint);
-    text-decoration:line-through;
-    text-decoration-color:var(--line);
-  }
+  .topic-link:hover .topic-arrow{opacity:1; transform:translateX(2px);}
 
   .checkpoint{
     margin:6px 16px 14px;
@@ -186,418 +123,114 @@
     text-transform:uppercase; color:var(--amber); margin-bottom:6px;
   }
   .checkpoint-text{font-size:13px; color:var(--ink-dim); line-height:1.5;}
-
-  .reset-row{
-    max-width:640px; margin:24px auto 0; padding:0 16px;
-    display:flex; justify-content:center;
-  }
-  .reset-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-    background:none; border:1px solid var(--line); border-radius:3px;
-    padding:8px 14px; cursor:pointer;
-  }
-  .reset-btn:active{color:var(--ink); border-color:var(--ink-faint);}
-
-  .sync-badge{
-    margin-top:10px; font-size:10.5px; color:var(--amber); letter-spacing:0.02em;
-  }
-  .loading{
-    text-align:center; padding:60px 20px; color:var(--ink-faint);
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">month 1 log</div>
+  <div class="eyebrow">month 1 roadmap</div>
   <h1>Month 1: Python Foundations, Internals, Async & Core Data Structures</h1>
-  <div class="progress-shell">
-    <div class="progress-track"><div class="progress-fill" id="overallFill"></div></div>
-    <div class="progress-label mono" id="overallLabel">0 / 0</div>
-  </div>
-  <div class="sync-badge mono" id="syncBadge" style="display:none;"></div>
 </header>
 
-<main id="main">
-  <div class="loading">loading progress…</div>
-</main>
-
-<div class="reset-row">
-  <button class="reset-btn" id="resetBtn">reset all progress</button>
-</div>
+<main id="main"></main>
 
 <script>
-const MONTHS = [
-{ title: "Month 1: Python Foundations, Internals, Async & Core Data Structures", weeks: [
-  { label: "Week 1", title: "Python Syntax Foundations", topics: [
-    { name: "Mutability, scoping, closures, *args/**kwargs", tag: "core", items: [
-      "Mutable vs immutable types, and why it matters for default arguments",
-      "LEGB order (Local → Enclosing → Global → Built-in)",
-      "What a closure is — a function capturing an enclosing variable",
-      "nonlocal vs global",
-      "*args / **kwargs packing, unpacking, and calling with */**"
+const MONTH = {
+  title: "Month 1: Python Foundations, Internals, Async & Core Data Structures",
+  weeks: [
+    { label: "Week 1", title: "Python Syntax Foundations", topics: [
+      { name: "Mutability, scoping, closures, *args/**kwargs", tag: "core", href: "../python/memory_and_scoping.html" },
+      { name: "Comprehensions & unpacking", tag: "core", href: "../python/comprehensions_and_unpacking.html" },
+      { name: "Decorators + functools", tag: "core", href: "../python/decorators.html" },
+      { name: "System Design: latency, throughput, scaling vocab", tag: "thu", href: "../systems/latency_and_throughput.html" },
+      { name: "DB Design: relational fundamentals, PK/FK", tag: "fri", href: "../database/tables_and_keys.html" },
+      { name: "OOP part 1: classes, dataclasses, dunders", tag: "core", href: "../python/classes_and_dunders.html" }
     ]},
-    { name: "Comprehensions & unpacking", tag: "core", items: [
-      "List, dict, and set comprehensions",
-      "Generator expressions as the lazy variant",
-      "Nested comprehensions and when they hurt readability",
-      "Tuple/list unpacking incl. a, *rest = [...]",
-      "Unpacking in function calls and returns"
+    { label: "Week 2", title: "OOP, Generators & Context Managers", topics: [
+      { name: "OOP part 2: composition vs inheritance, @property", tag: "core", href: "../python/oop_composition_and_abc.html" },
+      { name: "Iterators/generators", tag: "core", href: "../python/iterators_and_generators.html" },
+      { name: "Context managers", tag: "core", href: "../python/context_managers.html" },
+      { name: "System Design: vertical vs horizontal, deep dive", tag: "thu", href: "../systems/vertical_vs_horizontal_scaling.html" },
+      { name: "DB Design: normalization 1NF–2NF", tag: "fri", href: "../database/normalization_1nf_2nf.html" }
     ]},
-    { name: "Decorators + functools", tag: "core", items: [
-      "How a decorator wraps a function",
-      "Decorators with arguments (decorator factory)",
-      "functools.wraps and why it matters",
-      "functools.lru_cache and functools.partial",
-      "Stacking multiple decorators — order of application"
+    { label: "Week 3", title: "Packaging, Typing, Errors + Checkpoint", topics: [
+      { name: "Modules & packaging", tag: "core", href: "../python/modules_and_packaging.html" },
+      { name: "Typing", tag: "core", href: "../python/typing.html" },
+      { name: "Error handling", tag: "core", href: "../python/error_handling.html" },
+      { name: "System Design: stateless vs stateful", tag: "thu", href: "../systems/stateless_vs_stateful.html" },
+      { name: "DB Design: normalization 3NF + ER modeling", tag: "fri", href: "../database/normalization_3nf_and_er_modeling.html" }
+    ], checkpoint: "From memory: write a decorator, a context manager, and a generator-based pipeline. No reference material." },
+    { label: "Week 4", title: "Linked Lists & Trees (Growth, Rotations)", topics: [
+      { name: "Big-O by hand; Linked Lists", tag: "core", href: "../dsa/big_o_and_linked_lists.html" },
+      { name: "Trees deep dive 1: BST mechanics", tag: "core", href: "../dsa/bst_mechanics.html" },
+      { name: "Trees deep dive 2: rotations & balancing ('growth')", tag: "core", href: "../dsa/tree_rotations_and_balancing.html" },
+      { name: "System Design: load balancers", tag: "thu", href: "../systems/load_balancers.html" }
     ]},
-    { name: "System Design: latency, throughput, scaling vocab", tag: "thu", items: [
-      "Definitions of latency and throughput",
-      "Why optimizing one can hurt the other",
-      "Vertical vs horizontal scaling — one-line definitions",
-      "What 'scaling' solves for: load, availability, cost"
-    ]},
-    { name: "DB Design: relational fundamentals, PK/FK", tag: "fri", items: [
-      "What a relational table is: rows, columns, schema",
-      "Primary key: uniqueness, why every table needs one",
-      "Foreign key: referential integrity between tables",
-      "One-to-many vs many-to-many, and join tables"
-    ]},
-    { name: "OOP part 1: classes, dataclasses, dunders", tag: "core", items: [
-      "class syntax, __init__, instance vs class attributes",
-      "@dataclass: what it auto-generates, field() for defaults",
-      "Common dunders: __repr__, __eq__, __len__, __iter__, __hash__",
-      "self and why it's explicit in Python"
-    ]}
-  ]},
-  { label: "Week 2", title: "OOP, Generators & Context Managers", topics: [
-    { name: "OOP part 2: composition vs inheritance, @property", tag: "core", items: [
-      "Composition ('has-a') vs inheritance ('is-a')",
-      "Multiple inheritance and MRO, conceptually",
-      "@property and @x.setter",
-      "Abstract base classes (abc.ABC, @abstractmethod)"
-    ]},
-    { name: "Iterators/generators", tag: "core", items: [
-      "The iterator protocol: __iter__ and __next__",
-      "yield vs return — pausing/resuming state",
-      "yield from for delegating to a sub-generator",
-      "Generator expressions vs list comprehensions — memory trade-off"
-    ]},
-    { name: "Context managers", tag: "core", items: [
-      "with statement mechanics: __enter__/__exit__",
-      "What __exit__ receives on exception, and suppressing one",
-      "contextlib.contextmanager shortcut",
-      "Real use cases: file handles, DB transactions, locks"
-    ]},
-    { name: "System Design: vertical vs horizontal, deep dive", tag: "thu", items: [
-      "Vertical scaling limits: single point of failure, hardware ceiling",
-      "Horizontal scaling requirements: statelessness, load balancing, partitioning",
-      "Cost, complexity, and failure-mode trade-offs"
-    ]},
-    { name: "DB Design: normalization 1NF–2NF", tag: "fri", items: [
-      "1NF: atomic values, no repeating groups",
-      "2NF: no partial dependency on part of a composite key",
-      "Spotting a 1NF/2NF violation in a sample table"
-    ]}
-  ]},
-  { label: "Week 3", title: "Packaging, Typing, Errors + Checkpoint", topics: [
-    { name: "Modules & packaging", tag: "core", items: [
-      "import mechanics: module search path, sys.path, __init__.py",
-      "Absolute vs relative imports",
-      "pyproject.toml basics: metadata, dependencies, build system",
-      "Virtual environments: why isolation matters"
-    ]},
-    { name: "Typing", tag: "core", items: [
-      "Basic type hints: variables, signatures, return types",
-      "Generics: list[int], dict[str, int], TypeVar",
-      "Protocol for structural typing",
-      "Running mypy and reading/fixing its errors",
-      "Optional/Union and None handling"
-    ]},
-    { name: "Error handling", tag: "core", items: [
-      "Exception hierarchy: Exception → ValueError, KeyError, etc.",
-      "Defining custom exceptions — when it's warranted",
-      "try/except/else/finally — what each block is for",
-      "Catching specific exceptions vs bare except",
-      "Raising with context: raise X from Y"
-    ]},
-    { name: "System Design: stateless vs stateful", tag: "thu", items: [
-      "What 'state' means for a service",
-      "Why stateless services scale horizontally more easily",
-      "Where state has to live if the service is stateless"
-    ]},
-    { name: "DB Design: normalization 3NF + ER modeling", tag: "fri", items: [
-      "3NF: no transitive dependency",
-      "When denormalization is a deliberate trade-off",
-      "ER modeling: entities, attributes, relationships, cardinality"
-    ]}
-  ], checkpoint: "From memory: write a decorator, a context manager, and a generator-based pipeline. No reference material." },
-  { label: "Week 4", title: "Linked Lists & Trees (Growth, Rotations)", topics: [
-    { name: "Big-O by hand; Linked Lists", tag: "core", items: [
-      "Deriving time complexity by counting operations",
-      "Best/average/worst case, and when they diverge",
-      "Singly vs doubly linked list trade-offs vs arrays",
-      "Insert head/tail, delete, search, reverse — complexity of each"
-    ]},
-    { name: "Trees deep dive 1: BST mechanics", tag: "core", items: [
-      "BST property: left < node < right",
-      "Insert, delete (incl. two-children case), search — by hand",
-      "In-order, pre-order, post-order, level-order traversal",
-      "Why an unbalanced BST degrades to O(n)"
-    ]},
-    { name: "Trees deep dive 2: rotations & balancing ('growth')", tag: "core", items: [
-      "Left rotation and right rotation — shape changes, step by step",
-      "Balance factor and when AVL trees rotate",
-      "LL, RR, LR, RL rotation cases",
-      "Red-Black trees — the invariant they maintain, conceptually",
-      "Why balancing guarantees O(log n) operations"
-    ]},
-    { name: "System Design: load balancers", tag: "thu", items: [
-      "What a load balancer does, and why",
-      "Round-robin vs least-connections vs IP-hash",
-      "Health checks and failover"
-    ]}
-  ]},
-  { label: "Week 5", title: "Graphs, Hash Maps & Heaps from Scratch", topics: [
-    { name: "Graphs: representations, BFS/DFS", tag: "core", items: [
-      "Adjacency list vs matrix — space/time trade-offs",
-      "Directed vs undirected, weighted vs unweighted",
-      "BFS: queue-based, level-by-level, shortest path unweighted",
-      "DFS: stack/recursion-based — when it's the right tool"
-    ]},
-    { name: "Graphs continued: cycle detection", tag: "core", items: [
-      "Cycle detection in a directed graph (visited/in-progress states)",
-      "Cycle detection in an undirected graph (parent tracking)",
-      "Topological sort — why it requires no cycles"
-    ]},
-    { name: "Hash Maps from scratch", tag: "core", items: [
-      "Hash function properties: deterministic, uniform distribution",
-      "Collision handling: chaining vs open addressing",
-      "Load factor and resizing/rehashing",
-      "Why average-case O(1) can degrade to O(n)"
-    ]},
-    { name: "System Design: CDNs", tag: "thu", items: [
-      "What a CDN caches and why (geographic proximity → latency)",
-      "Cache hit vs miss, origin server fallback",
-      "Cache invalidation as a hard problem (briefly)"
-    ]},
-    { name: "Heaps from scratch", tag: "core", items: [
-      "Min-heap vs max-heap and the heap property",
-      "Array-based representation (parent/child index math)",
-      "Sift-up (insert) and sift-down (extract) — by hand",
-      "Why heap ops are O(log n) and heap build is O(n)"
-    ]}
-  ], checkpoint: "Explain, from memory, how a BST rebalances and why a hash map needs collision handling." },
-  { label: "Week 6", title: "CPython Internals, Concurrency & Survival Exercise", topics: [
-    { name: "CPython internals: refcounting, GC", tag: "core", items: [
-      "Reference counting and object lifetime (sys.getrefcount)",
-      "Why refcounting alone can't handle reference cycles",
-      "The generational garbage collector, conceptually"
-    ]},
-    { name: "The GIL", tag: "core", items: [
-      "What the GIL is and why it exists",
-      "Why it limits CPU-bound but not I/O-bound multithreading",
-      "threading vs multiprocessing given the GIL",
-      "What --disable-gil changes (free-threaded builds), conceptually"
-    ]},
-    { name: "asyncio", tag: "core", items: [
-      "Event loop: single-threaded, cooperative multitasking",
-      "Coroutines (async def, await) vs regular functions",
-      "Tasks: scheduling a coroutine to run concurrently",
-      "Futures: representing a not-yet-ready result",
-      "Why awaiting a blocking call defeats the purpose"
-    ]},
-    { name: "Non-blocking I/O vs threading/multiprocessing", tag: "thu", items: [
-      "When async I/O wins: many concurrent I/O-bound connections",
-      "When multiprocessing wins: CPU-bound work, sidesteps the GIL",
-      "When plain threading is enough"
-    ]},
-    { name: "DB Design: SQL vs NoSQL", tag: "fri", items: [
-      "Schema-on-write vs schema-on-read",
-      "Where relational (ACID, joins) wins",
-      "Where document/key-value (flexible schema, horizontal scale) wins",
-      "The real trade-offs: consistency models, query flexibility"
-    ]},
-    { name: "Survival Exercise: raw select/selectors", tag: "sat", items: [
-      "Blocking vs non-blocking sockets",
-      "What select/selectors does: monitoring readiness without threads",
-      "Event loop structure: register, wait, dispatch",
-      "Why this is the same idea asyncio's event loop is built on"
-    ]}
-  ], checkpoint: "Write a decorator, context manager, and generator pipeline from memory. Explain tree rotations and hash collisions out loud. Async TCP server (select/selectors) handles 50+ concurrent connections without blocking." }
-]}
-];
-
-
-
-let state = {};
-let syncOk = true;
-const STORAGE_KEY = "checked-items-month-1";
-let saveTimer = null;
-
-async function loadState() {
-  try {
-    const res = await window.storage.get(STORAGE_KEY, false);
-    state = res ? JSON.parse(res.value) : {};
-  } catch (e) {
-    state = {};
-  }
-}
-
-async function attemptSave() {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-    syncOk = true;
-  } catch (e) {
-    try {
-      await new Promise(r => setTimeout(r, 400));
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-      syncOk = true;
-    } catch (e2) {
-      syncOk = false;
-    }
-  }
-  updateSyncBadge();
-}
-
-function saveState() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(attemptSave, 300);
-}
-
-function updateSyncBadge() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  badge.textContent = syncOk ? '' : 'saved on this device only — sync unavailable';
-  badge.style.display = syncOk ? 'none' : 'block';
-}
-
-function itemId(mi, wi, ti, ii) { return `m${mi}-w${wi}-t${ti}-i${ii}`; }
+    { label: "Week 5", title: "Graphs, Hash Maps & Heaps from Scratch", topics: [
+      { name: "Graphs: representations, BFS/DFS", tag: "core", href: "../dsa/graphs_bfs_dfs.html" },
+      { name: "Graphs continued: cycle detection", tag: "core", href: "../dsa/graph_cycle_detection.html" },
+      { name: "Hash Maps from scratch", tag: "core", href: "../dsa/hash_maps_from_scratch.html" },
+      { name: "System Design: CDNs", tag: "thu", href: "../systems/cdns.html" },
+      { name: "Heaps from scratch", tag: "core", href: "../dsa/heaps_from_scratch.html" }
+    ], checkpoint: "Explain, from memory, how a BST rebalances and why a hash map needs collision handling." },
+    { label: "Week 6", title: "CPython Internals, Concurrency & Survival Exercise", topics: [
+      { name: "CPython internals: refcounting, GC", tag: "core", href: "../python/cpython_internals.html" },
+      { name: "The GIL", tag: "core", href: "../python/the_gil.html" },
+      { name: "asyncio", tag: "core", href: "../python/asyncio_fundamentals.html" },
+      { name: "Non-blocking I/O vs threading/multiprocessing", tag: "thu", href: "../systems/nonblocking_io_vs_threading.html" },
+      { name: "DB Design: SQL vs NoSQL", tag: "fri", href: "../database/sql_vs_nosql.html" },
+      { name: "Survival Exercise: raw select/selectors", tag: "sat", href: "../dsa/raw_sockets_event_loop.html" }
+    ], checkpoint: "Write a decorator, context manager, and generator pipeline from memory. Explain tree rotations and hash collisions out loud. Async TCP server (select/selectors) handles 50+ concurrent connections without blocking." }
+  ]
+};
 
 function render() {
   const main = document.getElementById('main');
   main.innerHTML = '';
 
-  let totalItems = 0, totalChecked = 0;
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'month-header';
+  monthHeader.innerHTML = `<span class="month-title mono">${MONTH.title}</span>`;
+  main.appendChild(monthHeader);
 
-  MONTHS.forEach((month, mi) => {
-    let monthTotal = 0, monthChecked = 0;
-    month.weeks.forEach((wk) => {
-      wk.topics.forEach((t) => { monthTotal += t.items.length; });
-    });
+  MONTH.weeks.forEach((wk) => {
+    const weekEl = document.createElement('div');
+    weekEl.className = 'week';
 
-    const monthHeader = document.createElement('div');
-    monthHeader.className = 'month-header';
-    monthHeader.innerHTML = `<span class="month-title mono">${month.title}</span>`;
-    main.appendChild(monthHeader);
+    const head = document.createElement('div');
+    head.className = 'week-head';
+    head.innerHTML = `
+      <span class="week-num mono">${wk.label}</span>
+      <span class="week-title">${wk.title}</span>
+    `;
+    weekEl.appendChild(head);
 
-    month.weeks.forEach((wk, wi) => {
-      let weekTotal = 0, weekChecked = 0;
-      wk.topics.forEach((t, ti) => {
-        t.items.forEach((_, ii) => {
-          weekTotal++;
-          if (state[itemId(mi, wi, ti, ii)]) weekChecked++;
-        });
-      });
-      totalItems += weekTotal;
-      totalChecked += weekChecked;
-      monthChecked += weekChecked;
-
-      const weekEl = document.createElement('div');
-      weekEl.className = 'week';
-      weekEl.id = `week-${mi}-${wi}`;
-
-      const head = document.createElement('div');
-      head.className = 'week-head';
-      head.innerHTML = `
-        <div class="week-head-left">
-          <span class="week-num mono">${wk.label}</span>
-          <span class="week-title">${wk.title}</span>
-        </div>
-        <div class="week-meta">
-          <span class="week-count mono">${weekChecked}/${weekTotal}</span>
-          <span class="chevron"></span>
-        </div>
+    const list = document.createElement('div');
+    list.className = 'topic-list';
+    wk.topics.forEach((t) => {
+      const a = document.createElement('a');
+      a.className = 'topic-link';
+      a.href = t.href;
+      a.innerHTML = `
+        <span class="topic-name">${t.name}</span>
+        <span class="topic-tag mono">${t.tag}</span>
+        <span class="topic-arrow mono">&rarr;</span>
       `;
-      head.addEventListener('click', () => weekEl.classList.toggle('open'));
-
-      const miniBar = document.createElement('div');
-      miniBar.className = 'week-mini-bar';
-      const miniFill = document.createElement('div');
-      miniFill.className = 'week-mini-fill';
-      miniFill.style.width = weekTotal ? `${(weekChecked/weekTotal)*100}%` : '0%';
-      miniBar.appendChild(miniFill);
-
-      const body = document.createElement('div');
-      body.className = 'week-body';
-
-      wk.topics.forEach((t, ti) => {
-        const topicEl = document.createElement('div');
-        topicEl.className = 'topic';
-        const topicHead = document.createElement('div');
-        topicHead.className = 'topic-head';
-        topicHead.innerHTML = `
-          <span class="topic-title">${t.name}</span>
-          <span class="topic-tag mono">${t.tag}</span>
-        `;
-        topicEl.appendChild(topicHead);
-
-        t.items.forEach((text, ii) => {
-          const id = itemId(mi, wi, ti, ii);
-          const checked = !!state[id];
-          const itemEl = document.createElement('div');
-          itemEl.className = 'item' + (checked ? ' checked' : '');
-          itemEl.innerHTML = `
-            <span class="box"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0f1715" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="item-text">${text}</span>
-          `;
-          itemEl.addEventListener('click', () => {
-            state[id] = !state[id];
-            saveState();
-            render();
-            const el = document.getElementById(`week-${mi}-${wi}`);
-            if (el) el.classList.add('open');
-          });
-          topicEl.appendChild(itemEl);
-        });
-
-        body.appendChild(topicEl);
-      });
-
-      weekEl.appendChild(head);
-      weekEl.appendChild(miniBar);
-      weekEl.appendChild(body);
-      main.appendChild(weekEl);
-
-      if (wk.checkpoint) {
-        const cp = document.createElement('div');
-        cp.className = 'checkpoint';
-        cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${month.title.split(':')[0]}, ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
-        main.appendChild(cp);
-      }
+      list.appendChild(a);
     });
-  });
+    weekEl.appendChild(list);
+    main.appendChild(weekEl);
 
-  const overallFill = document.getElementById('overallFill');
-  const overallLabel = document.getElementById('overallLabel');
-  overallFill.style.width = totalItems ? `${(totalChecked/totalItems)*100}%` : '0%';
-  overallLabel.textContent = `${totalChecked} / ${totalItems}`;
+    if (wk.checkpoint) {
+      const cp = document.createElement('div');
+      cp.className = 'checkpoint';
+      cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
+      main.appendChild(cp);
+    }
+  });
 }
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!confirm('Reset all progress across all 6 months?')) return;
-  state = {};
-  saveState();
-  render();
-});
-
-(async () => {
-  await loadState();
-  render();
-  const first = document.getElementById('week-0-0');
-  if (first) first.classList.add('open');
-})();
+render();
 </script>
 
 </body>

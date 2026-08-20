@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Month 5 :: Evals, Observability & Infra</title>
+<title>Month 5 :: AI Evaluations, Observability & Infra</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -20,7 +20,6 @@
     --amber-dim: #7a5a34;
     --teal: #5fc9b0;
     --teal-dim: #2c5147;
-    --done: #5fc9b0;
   }
   *{box-sizing:border-box;}
   body{
@@ -49,23 +48,8 @@
   }
   h1{
     font-family:'IBM Plex Mono',monospace;
-    font-size:20px; font-weight:600; margin:0 0 14px; line-height:1.3;
+    font-size:20px; font-weight:600; margin:0; line-height:1.3;
     color:var(--ink);
-  }
-  .progress-shell{
-    display:flex; align-items:center; gap:12px;
-  }
-  .progress-track{
-    flex:1; height:8px; background:var(--bg-raised);
-    border:1px solid var(--line); border-radius:2px; overflow:hidden;
-  }
-  .progress-fill{
-    height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal));
-    width:0%; transition:width 0.4s ease;
-  }
-  .progress-label{
-    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim);
-    white-space:nowrap;
   }
 
   main{padding:20px 16px 0; max-width:640px; margin:0 auto;}
@@ -89,90 +73,43 @@
     overflow:hidden;
   }
   .week-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 16px;
-    cursor:pointer;
-    user-select:none;
+    display:flex; align-items:baseline; gap:10px;
+    padding:16px 16px 12px;
   }
-  .week-head:active{background:var(--bg-raised);}
-  .week-head-left{display:flex; align-items:baseline; gap:10px;}
   .week-num{
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);
     letter-spacing:0.1em;
   }
   .week-title{font-size:15px; font-weight:600; color:var(--ink);}
-  .week-meta{
-    display:flex; align-items:center; gap:10px;
-  }
-  .week-count{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-  }
-  .chevron{
-    width:10px; height:10px;
-    border-right:1.5px solid var(--ink-dim);
-    border-bottom:1.5px solid var(--ink-dim);
-    transform:rotate(45deg);
-    transition:transform 0.25s ease;
-    flex-shrink:0;
-  }
-  .week.open .chevron{transform:rotate(-135deg);}
-  .week-mini-bar{
-    height:3px; background:var(--line-soft);
-  }
-  .week-mini-fill{
-    height:100%; background:var(--teal); width:0%; transition:width 0.4s ease;
-  }
 
-  .week-body{
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.35s ease;
-  }
-  .week.open .week-body{max-height:4000px;}
-
-  .topic{
+  .topic-list{
     border-top:1px solid var(--line-soft);
-    padding:14px 16px 16px;
+    padding:6px 16px 14px;
   }
-  .topic-head{
-    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  .topic-link{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0;
+    text-decoration:none;
+    border-bottom:1px solid var(--line-soft);
   }
-  .topic-title{
-    font-size:13.5px; font-weight:600; color:var(--ink);
+  .topic-link:last-child{border-bottom:none;}
+  .topic-name{
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
     flex:1;
+    transition:color 0.15s ease;
   }
+  .topic-link:hover .topic-name{color:var(--ink);}
   .topic-tag{
     font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em;
     text-transform:uppercase; color:var(--ink-faint);
     border:1px solid var(--line); border-radius:2px; padding:2px 6px;
     flex-shrink:0;
   }
-  .item{
-    display:flex; align-items:flex-start; gap:10px;
-    padding:7px 0;
-    cursor:pointer;
+  .topic-arrow{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--teal);
+    flex-shrink:0; opacity:0.7; transition:opacity 0.15s ease, transform 0.15s ease;
   }
-  .box{
-    width:16px; height:16px; flex-shrink:0; margin-top:1px;
-    border:1.5px solid var(--ink-faint);
-    border-radius:3px;
-    display:flex; align-items:center; justify-content:center;
-    transition:all 0.15s ease;
-  }
-  .item.checked .box{
-    background:var(--teal); border-color:var(--teal);
-  }
-  .box svg{width:10px; height:10px; opacity:0; transition:opacity 0.1s;}
-  .item.checked .box svg{opacity:1;}
-  .item-text{
-    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
-    transition:color 0.15s ease;
-  }
-  .item.checked .item-text{
-    color:var(--ink-faint);
-    text-decoration:line-through;
-    text-decoration-color:var(--line);
-  }
+  .topic-link:hover .topic-arrow{opacity:1; transform:translateX(2px);}
 
   .checkpoint{
     margin:6px 16px 14px;
@@ -186,314 +123,103 @@
     text-transform:uppercase; color:var(--amber); margin-bottom:6px;
   }
   .checkpoint-text{font-size:13px; color:var(--ink-dim); line-height:1.5;}
-
-  .reset-row{
-    max-width:640px; margin:24px auto 0; padding:0 16px;
-    display:flex; justify-content:center;
-  }
-  .reset-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-    background:none; border:1px solid var(--line); border-radius:3px;
-    padding:8px 14px; cursor:pointer;
-  }
-  .reset-btn:active{color:var(--ink); border-color:var(--ink-faint);}
-
-  .sync-badge{
-    margin-top:10px; font-size:10.5px; color:var(--amber); letter-spacing:0.02em;
-  }
-  .loading{
-    text-align:center; padding:60px 20px; color:var(--ink-faint);
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">month 5 log</div>
+  <div class="eyebrow">month 5 roadmap</div>
   <h1>Month 5: AI Evaluations, Observability & Production Infrastructure</h1>
-  <div class="progress-shell">
-    <div class="progress-track"><div class="progress-fill" id="overallFill"></div></div>
-    <div class="progress-label mono" id="overallLabel">0 / 0</div>
-  </div>
-  <div class="sync-badge mono" id="syncBadge" style="display:none;"></div>
 </header>
 
-<main id="main">
-  <div class="loading">loading progress…</div>
-</main>
-
-<div class="reset-row">
-  <button class="reset-btn" id="resetBtn">reset all progress</button>
-</div>
+<main id="main"></main>
 
 <script>
-const MONTHS = [
-{ title: "Month 5: AI Evaluations, Observability & Production Infrastructure", weeks: [
-  { label: "Week 1", title: "Eval Frameworks", topics: [
-    { name: "Deterministic evals", tag: "core", items: [
-      "Exact-match/schema validation/rule-based checks",
-      "Writing deterministic eval checks"
+const MONTH = {
+  title: "Month 5: AI Evaluations, Observability & Production Infrastructure",
+  weeks: [
+    { label: "Week 1", title: "Eval Frameworks", topics: [
+      { name: "Deterministic evals", tag: "core", href: "../evals-and-observability/deterministic_evals.html" },
+      { name: "Model-graded evals", tag: "core", href: "../evals-and-observability/model_graded_evals.html" },
+      { name: "Trajectory-based evals", tag: "core", href: "../evals-and-observability/trajectory_based_evals.html" },
+      { name: "System Design: observability pipeline", tag: "thu", href: "../systems/observability_pipeline_design.html" },
+      { name: "DB Design: eval results/traces schema", tag: "fri", href: "../database/eval_results_schema.html" },
+      { name: "Custom pytest-based evals", tag: "sat", href: "../evals-and-observability/pytest_evals_practice.html" }
     ]},
-    { name: "Model-graded evals", tag: "core", items: [
-      "Using an LLM as judge",
-      "Failure modes of model-graded evals"
+    { label: "Week 2", title: "Observability", topics: [
+      { name: "OpenTelemetry basics", tag: "core", href: "../evals-and-observability/opentelemetry_basics.html" },
+      { name: "LangSmith or Arize Phoenix", tag: "core", href: "../evals-and-observability/langsmith_or_phoenix.html" },
+      { name: "Instrument the Month 4 agent with tracing", tag: "core", href: "../evals-and-observability/instrument_month4_agent.html" },
+      { name: "System Design: CI/CD gating system", tag: "thu", href: "../backend/cicd_gating_system_design.html" },
+      { name: "DB Design: read replicas & caching for dashboards", tag: "fri", href: "../database/read_replicas_and_dashboard_caching.html" },
+      { name: "Practice: small trace-viewing dashboard", tag: "sat", href: "../evals-and-observability/trace_dashboard_practice.html" }
     ]},
-    { name: "Trajectory-based evals", tag: "core", items: [
-      "Scoring the sequence of steps, not just the final answer",
-      "DeepEval/Ragas concepts"
+    { label: "Week 3", title: "Infra", topics: [
+      { name: "Multi-stage Docker builds", tag: "core", href: "../evals-and-observability/multistage_docker_builds.html" },
+      { name: "Nginx reverse proxy", tag: "core", href: "../evals-and-observability/nginx_reverse_proxy.html" },
+      { name: "Uvicorn/Gunicorn", tag: "core", href: "../evals-and-observability/uvicorn_gunicorn_workers.html" },
+      { name: "System Design: chat app at scale", tag: "thu", href: "../backend/chat_app_at_scale_design.html" },
+      { name: "DB Design: apply sharding/replication to eval data", tag: "fri", href: "../database/apply_sharding_replication_to_evals.html" },
+      { name: "CI/CD pipeline basics", tag: "sat", href: "../evals-and-observability/cicd_pipeline_basics.html" }
     ]},
-    { name: "System Design: observability pipeline", tag: "thu", items: [
-      "Collecting traces/metrics/logs at scale",
-      "Storage & query design for observability data"
-    ]},
-    { name: "DB Design: eval results/traces schema", tag: "fri", items: [
-      "Schema for eval runs, scores, trace records"
-    ]},
-    { name: "Custom pytest-based evals", tag: "sat", items: [
-      "Build a pytest suite for the Month 4 agent"
-    ]}
-  ]},
-  { label: "Week 2", title: "Observability", topics: [
-    { name: "OpenTelemetry basics", tag: "core", items: [
-      "Traces, spans, and how they nest",
-      "Metrics vs traces vs logs — what each is for"
-    ]},
-    { name: "LangSmith or Arize Phoenix", tag: "core", items: [
-      "What it adds over raw OpenTelemetry for LLM tracing"
-    ]},
-    { name: "Instrument the Month 4 agent with tracing", tag: "core", items: [
-      "Verify traces capture tool calls end-to-end"
-    ]},
-    { name: "System Design: CI/CD gating system", tag: "thu", items: [
-      "Gating deploys on test/eval thresholds",
-      "Rollback strategy on failure"
-    ]},
-    { name: "DB Design: read replicas & caching for dashboards", tag: "fri", items: [
-      "Offloading dashboard queries from primary",
-      "Caching strategy for frequent queries"
-    ]},
-    { name: "Practice: small trace-viewing dashboard", tag: "sat", items: [
-      "Minimal dashboard rendering recent traces"
-    ]}
-  ]},
-  { label: "Week 3", title: "Infra", topics: [
-    { name: "Multi-stage Docker builds", tag: "core", items: [
-      "Separating build & runtime stages",
-      "Shrinking image size"
-    ]},
-    { name: "Nginx reverse proxy", tag: "core", items: [
-      "Routing, TLS termination",
-      "Load balancing basics"
-    ]},
-    { name: "Uvicorn/Gunicorn", tag: "core", items: [
-      "Sync vs async worker models",
-      "How many workers to run"
-    ]},
-    { name: "System Design: chat app at scale", tag: "thu", items: [
-      "Connection management at scale",
-      "Message delivery guarantees",
-      "Horizontal scaling of stateful connections"
-    ]},
-    { name: "DB Design: apply sharding/replication to eval data", tag: "fri", items: [
-      "Document the tradeoff for eval-data storage"
-    ]},
-    { name: "CI/CD pipeline basics", tag: "sat", items: [
-      "Set up lint/test/build pipeline"
-    ]}
-  ]},
-  { label: "Week 4", title: "Survival Exercise: Eval + Tracing Pipeline", topics: [
-    { name: "Design 50 test scenarios", tag: "core", items: [
-      "Write a scenario set covering agent behaviors"
-    ]},
-    { name: "Tool-selection accuracy + hallucination rate", tag: "core", items: [
-      "Implement measurement logic"
-    ]},
-    { name: "Latency measurement + tracing integration", tag: "core", items: [
-      "Wire latency + tracing into the pipeline"
-    ]},
-    { name: "System Design: review all case studies cold", tag: "thu", items: [
-      "Re-derive Month 5 designs without notes"
-    ]},
-    { name: "DB Design: finalize eval/trace schema", tag: "fri", items: [
-      "Lock schema, run migration"
-    ]},
-    { name: "Gate CI/CD on eval thresholds + finish", tag: "sat", items: [
-      "Pipeline blocks a bad deploy at least once"
-    ]}
-  ], checkpoint: "Pipeline actually blocks a deployment at least once during testing." }
-]}
-];
-
-
-
-let state = {};
-let syncOk = true;
-const STORAGE_KEY = "checked-items-month-5";
-let saveTimer = null;
-
-async function loadState() {
-  try {
-    const res = await window.storage.get(STORAGE_KEY, false);
-    state = res ? JSON.parse(res.value) : {};
-  } catch (e) {
-    state = {};
-  }
-}
-
-async function attemptSave() {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-    syncOk = true;
-  } catch (e) {
-    try {
-      await new Promise(r => setTimeout(r, 400));
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-      syncOk = true;
-    } catch (e2) {
-      syncOk = false;
-    }
-  }
-  updateSyncBadge();
-}
-
-function saveState() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(attemptSave, 300);
-}
-
-function updateSyncBadge() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  badge.textContent = syncOk ? '' : 'saved on this device only — sync unavailable';
-  badge.style.display = syncOk ? 'none' : 'block';
-}
-
-function itemId(mi, wi, ti, ii) { return `m${mi}-w${wi}-t${ti}-i${ii}`; }
+    { label: "Week 4", title: "Survival Exercise: Eval + Tracing Pipeline", topics: [
+      { name: "Design 50 test scenarios", tag: "core", href: "../evals-and-observability/eval_scenario_design.html" },
+      { name: "Tool-selection accuracy + hallucination rate", tag: "core", href: "../evals-and-observability/tool_selection_and_hallucination_metrics.html" },
+      { name: "Latency measurement + tracing integration", tag: "core", href: "../evals-and-observability/latency_and_tracing_integration.html" },
+      { name: "System Design: review all case studies cold", tag: "thu", href: "../systems/month5_case_studies_cold_review.html" },
+      { name: "DB Design: finalize eval/trace schema", tag: "fri", href: "../database/eval_trace_schema_finalization.html" },
+      { name: "Gate CI/CD on eval thresholds + finish", tag: "sat", href: "../evals-and-observability/cicd_eval_gating_survival_exercise.html" }
+    ], checkpoint: "Pipeline actually blocks a deployment at least once during testing." }
+  ]
+};
 
 function render() {
   const main = document.getElementById('main');
   main.innerHTML = '';
 
-  let totalItems = 0, totalChecked = 0;
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'month-header';
+  monthHeader.innerHTML = `<span class="month-title mono">${MONTH.title}</span>`;
+  main.appendChild(monthHeader);
 
-  MONTHS.forEach((month, mi) => {
-    let monthTotal = 0, monthChecked = 0;
-    month.weeks.forEach((wk) => {
-      wk.topics.forEach((t) => { monthTotal += t.items.length; });
-    });
+  MONTH.weeks.forEach((wk) => {
+    const weekEl = document.createElement('div');
+    weekEl.className = 'week';
 
-    const monthHeader = document.createElement('div');
-    monthHeader.className = 'month-header';
-    monthHeader.innerHTML = `<span class="month-title mono">${month.title}</span>`;
-    main.appendChild(monthHeader);
+    const head = document.createElement('div');
+    head.className = 'week-head';
+    head.innerHTML = `
+      <span class="week-num mono">${wk.label}</span>
+      <span class="week-title">${wk.title}</span>
+    `;
+    weekEl.appendChild(head);
 
-    month.weeks.forEach((wk, wi) => {
-      let weekTotal = 0, weekChecked = 0;
-      wk.topics.forEach((t, ti) => {
-        t.items.forEach((_, ii) => {
-          weekTotal++;
-          if (state[itemId(mi, wi, ti, ii)]) weekChecked++;
-        });
-      });
-      totalItems += weekTotal;
-      totalChecked += weekChecked;
-      monthChecked += weekChecked;
-
-      const weekEl = document.createElement('div');
-      weekEl.className = 'week';
-      weekEl.id = `week-${mi}-${wi}`;
-
-      const head = document.createElement('div');
-      head.className = 'week-head';
-      head.innerHTML = `
-        <div class="week-head-left">
-          <span class="week-num mono">${wk.label}</span>
-          <span class="week-title">${wk.title}</span>
-        </div>
-        <div class="week-meta">
-          <span class="week-count mono">${weekChecked}/${weekTotal}</span>
-          <span class="chevron"></span>
-        </div>
+    const list = document.createElement('div');
+    list.className = 'topic-list';
+    wk.topics.forEach((t) => {
+      const a = document.createElement('a');
+      a.className = 'topic-link';
+      a.href = t.href;
+      a.innerHTML = `
+        <span class="topic-name">${t.name}</span>
+        <span class="topic-tag mono">${t.tag}</span>
+        <span class="topic-arrow mono">&rarr;</span>
       `;
-      head.addEventListener('click', () => weekEl.classList.toggle('open'));
-
-      const miniBar = document.createElement('div');
-      miniBar.className = 'week-mini-bar';
-      const miniFill = document.createElement('div');
-      miniFill.className = 'week-mini-fill';
-      miniFill.style.width = weekTotal ? `${(weekChecked/weekTotal)*100}%` : '0%';
-      miniBar.appendChild(miniFill);
-
-      const body = document.createElement('div');
-      body.className = 'week-body';
-
-      wk.topics.forEach((t, ti) => {
-        const topicEl = document.createElement('div');
-        topicEl.className = 'topic';
-        const topicHead = document.createElement('div');
-        topicHead.className = 'topic-head';
-        topicHead.innerHTML = `
-          <span class="topic-title">${t.name}</span>
-          <span class="topic-tag mono">${t.tag}</span>
-        `;
-        topicEl.appendChild(topicHead);
-
-        t.items.forEach((text, ii) => {
-          const id = itemId(mi, wi, ti, ii);
-          const checked = !!state[id];
-          const itemEl = document.createElement('div');
-          itemEl.className = 'item' + (checked ? ' checked' : '');
-          itemEl.innerHTML = `
-            <span class="box"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0f1715" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="item-text">${text}</span>
-          `;
-          itemEl.addEventListener('click', () => {
-            state[id] = !state[id];
-            saveState();
-            render();
-            const el = document.getElementById(`week-${mi}-${wi}`);
-            if (el) el.classList.add('open');
-          });
-          topicEl.appendChild(itemEl);
-        });
-
-        body.appendChild(topicEl);
-      });
-
-      weekEl.appendChild(head);
-      weekEl.appendChild(miniBar);
-      weekEl.appendChild(body);
-      main.appendChild(weekEl);
-
-      if (wk.checkpoint) {
-        const cp = document.createElement('div');
-        cp.className = 'checkpoint';
-        cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${month.title.split(':')[0]}, ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
-        main.appendChild(cp);
-      }
+      list.appendChild(a);
     });
-  });
+    weekEl.appendChild(list);
+    main.appendChild(weekEl);
 
-  const overallFill = document.getElementById('overallFill');
-  const overallLabel = document.getElementById('overallLabel');
-  overallFill.style.width = totalItems ? `${(totalChecked/totalItems)*100}%` : '0%';
-  overallLabel.textContent = `${totalChecked} / ${totalItems}`;
+    if (wk.checkpoint) {
+      const cp = document.createElement('div');
+      cp.className = 'checkpoint';
+      cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
+      main.appendChild(cp);
+    }
+  });
 }
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!confirm('Reset all progress across all 6 months?')) return;
-  state = {};
-  saveState();
-  render();
-});
-
-(async () => {
-  await loadState();
-  render();
-  const first = document.getElementById('week-0-0');
-  if (first) first.classList.add('open');
-})();
+render();
 </script>
 
 </body>

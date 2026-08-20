@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Month 3 :: Storage Engines & RAG</title>
+<title>Month 3 :: Storage Engines, Vector Databases & RAG</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -20,7 +20,6 @@
     --amber-dim: #7a5a34;
     --teal: #5fc9b0;
     --teal-dim: #2c5147;
-    --done: #5fc9b0;
   }
   *{box-sizing:border-box;}
   body{
@@ -49,23 +48,8 @@
   }
   h1{
     font-family:'IBM Plex Mono',monospace;
-    font-size:20px; font-weight:600; margin:0 0 14px; line-height:1.3;
+    font-size:20px; font-weight:600; margin:0; line-height:1.3;
     color:var(--ink);
-  }
-  .progress-shell{
-    display:flex; align-items:center; gap:12px;
-  }
-  .progress-track{
-    flex:1; height:8px; background:var(--bg-raised);
-    border:1px solid var(--line); border-radius:2px; overflow:hidden;
-  }
-  .progress-fill{
-    height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal));
-    width:0%; transition:width 0.4s ease;
-  }
-  .progress-label{
-    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim);
-    white-space:nowrap;
   }
 
   main{padding:20px 16px 0; max-width:640px; margin:0 auto;}
@@ -89,90 +73,43 @@
     overflow:hidden;
   }
   .week-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 16px;
-    cursor:pointer;
-    user-select:none;
+    display:flex; align-items:baseline; gap:10px;
+    padding:16px 16px 12px;
   }
-  .week-head:active{background:var(--bg-raised);}
-  .week-head-left{display:flex; align-items:baseline; gap:10px;}
   .week-num{
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);
     letter-spacing:0.1em;
   }
   .week-title{font-size:15px; font-weight:600; color:var(--ink);}
-  .week-meta{
-    display:flex; align-items:center; gap:10px;
-  }
-  .week-count{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-  }
-  .chevron{
-    width:10px; height:10px;
-    border-right:1.5px solid var(--ink-dim);
-    border-bottom:1.5px solid var(--ink-dim);
-    transform:rotate(45deg);
-    transition:transform 0.25s ease;
-    flex-shrink:0;
-  }
-  .week.open .chevron{transform:rotate(-135deg);}
-  .week-mini-bar{
-    height:3px; background:var(--line-soft);
-  }
-  .week-mini-fill{
-    height:100%; background:var(--teal); width:0%; transition:width 0.4s ease;
-  }
 
-  .week-body{
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.35s ease;
-  }
-  .week.open .week-body{max-height:4000px;}
-
-  .topic{
+  .topic-list{
     border-top:1px solid var(--line-soft);
-    padding:14px 16px 16px;
+    padding:6px 16px 14px;
   }
-  .topic-head{
-    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  .topic-link{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0;
+    text-decoration:none;
+    border-bottom:1px solid var(--line-soft);
   }
-  .topic-title{
-    font-size:13.5px; font-weight:600; color:var(--ink);
+  .topic-link:last-child{border-bottom:none;}
+  .topic-name{
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
     flex:1;
+    transition:color 0.15s ease;
   }
+  .topic-link:hover .topic-name{color:var(--ink);}
   .topic-tag{
     font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em;
     text-transform:uppercase; color:var(--ink-faint);
     border:1px solid var(--line); border-radius:2px; padding:2px 6px;
     flex-shrink:0;
   }
-  .item{
-    display:flex; align-items:flex-start; gap:10px;
-    padding:7px 0;
-    cursor:pointer;
+  .topic-arrow{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--teal);
+    flex-shrink:0; opacity:0.7; transition:opacity 0.15s ease, transform 0.15s ease;
   }
-  .box{
-    width:16px; height:16px; flex-shrink:0; margin-top:1px;
-    border:1.5px solid var(--ink-faint);
-    border-radius:3px;
-    display:flex; align-items:center; justify-content:center;
-    transition:all 0.15s ease;
-  }
-  .item.checked .box{
-    background:var(--teal); border-color:var(--teal);
-  }
-  .box svg{width:10px; height:10px; opacity:0; transition:opacity 0.1s;}
-  .item.checked .box svg{opacity:1;}
-  .item-text{
-    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
-    transition:color 0.15s ease;
-  }
-  .item.checked .item-text{
-    color:var(--ink-faint);
-    text-decoration:line-through;
-    text-decoration-color:var(--line);
-  }
+  .topic-link:hover .topic-arrow{opacity:1; transform:translateX(2px);}
 
   .checkpoint{
     margin:6px 16px 14px;
@@ -186,335 +123,103 @@
     text-transform:uppercase; color:var(--amber); margin-bottom:6px;
   }
   .checkpoint-text{font-size:13px; color:var(--ink-dim); line-height:1.5;}
-
-  .reset-row{
-    max-width:640px; margin:24px auto 0; padding:0 16px;
-    display:flex; justify-content:center;
-  }
-  .reset-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-    background:none; border:1px solid var(--line); border-radius:3px;
-    padding:8px 14px; cursor:pointer;
-  }
-  .reset-btn:active{color:var(--ink); border-color:var(--ink-faint);}
-
-  .sync-badge{
-    margin-top:10px; font-size:10.5px; color:var(--amber); letter-spacing:0.02em;
-  }
-  .loading{
-    text-align:center; padding:60px 20px; color:var(--ink-faint);
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">month 3 log</div>
+  <div class="eyebrow">month 3 roadmap</div>
   <h1>Month 3: Storage Engines, Vector Databases & RAG Architectures</h1>
-  <div class="progress-shell">
-    <div class="progress-track"><div class="progress-fill" id="overallFill"></div></div>
-    <div class="progress-label mono" id="overallLabel">0 / 0</div>
-  </div>
-  <div class="sync-badge mono" id="syncBadge" style="display:none;"></div>
 </header>
 
-<main id="main">
-  <div class="loading">loading progress…</div>
-</main>
-
-<div class="reset-row">
-  <button class="reset-btn" id="resetBtn">reset all progress</button>
-</div>
+<main id="main"></main>
 
 <script>
-const MONTHS = [
-{ title: "Month 3: Storage Engines, Vector Databases & RAG Architectures", weeks: [
-  { label: "Week 1", title: "Storage Engines", topics: [
-    { name: "B-Tree vs columnar storage", tag: "core", items: [
-      "Row-oriented vs column-oriented layout",
-      "Why columnar wins for OLAP",
-      "Why row-oriented wins for OLTP"
+const MONTH = {
+  title: "Month 3: Storage Engines, Vector Databases & RAG Architectures",
+  weeks: [
+    { label: "Week 1", title: "Storage Engines", topics: [
+      { name: "B-Tree vs columnar storage", tag: "core", href: "../storage-and-rag/btree_vs_columnar.html" },
+      { name: "HNSW indexing", tag: "core", href: "../storage-and-rag/hnsw_indexing.html" },
+      { name: "IVF indexing", tag: "core", href: "../storage-and-rag/ivf_indexing.html" },
+      { name: "System Design: caching layer", tag: "thu", href: "../systems/caching_layer_design.html" },
+      { name: "DB Design: Sharding and partitioning", tag: "fri", href: "../database/sharding_and_partitioning.html" },
+      { name: "Practice: consolidate storage-engine tradeoffs", tag: "sat", href: "../storage-and-rag/storage_engine_consolidation.html" }
     ]},
-    { name: "HNSW indexing", tag: "core", items: [
-      "Hierarchical navigable small world graphs — the layered idea",
-      "Approximate vs exact nearest neighbor search",
-      "Build time/memory vs query speed/recall trade-off"
+    { label: "Week 2", title: "Chunking & Hybrid Search", topics: [
+      { name: "Chunking — semantic & windowed", tag: "core", href: "../storage-and-rag/chunking_semantic_and_windowed.html" },
+      { name: "Chunking — parent-child", tag: "core", href: "../storage-and-rag/chunking_parent_child.html" },
+      { name: "Hybrid search (dense + BM25)", tag: "core", href: "../storage-and-rag/hybrid_search.html" },
+      { name: "System Design: search-autocomplete", tag: "thu", href: "../backend/search_autocomplete_design.html" },
+      { name: "DB Design: Replication", tag: "fri", href: "../database/replication.html" },
+      { name: "Re-ranking", tag: "sat", href: "../storage-and-rag/reranking.html" }
     ]},
-    { name: "IVF indexing", tag: "core", items: [
-      "Inverted file index — clustering into buckets",
-      "Searching nearby clusters vs the whole dataset",
-      "IVF vs HNSW — when each is preferred"
+    { label: "Week 3", title: "Context & RAG Mechanics", topics: [
+      { name: "Token budget management", tag: "core", href: "../storage-and-rag/token_budget_management.html" },
+      { name: "Prompt compression", tag: "core", href: "../storage-and-rag/prompt_compression.html" },
+      { name: "Context assembly (no framework)", tag: "core", href: "../storage-and-rag/context_assembly.html" },
+      { name: "System Design: RAG-backed Q&A system", tag: "thu", href: "../storage-and-rag/rag_qa_system_design.html" },
+      { name: "DB Design: Time-series/telemetry schema", tag: "fri", href: "../database/time_series_schema.html" },
+      { name: "Practice: mini context-assembly pipeline", tag: "sat", href: "../storage-and-rag/context_pipeline_practice.html" }
     ]},
-    { name: "System Design: caching layer", tag: "thu", items: [
-      "Write-through vs write-back caching",
-      "Cache eviction policies",
-      "Cache consistency tradeoffs"
-    ]},
-    { name: "DB Design: Sharding and partitioning", tag: "fri", items: [
-      "Horizontal vs vertical partitioning",
-      "Shard key selection & distribution",
-      "Cross-shard query complexity"
-    ]},
-    { name: "Practice: consolidate storage-engine tradeoffs", tag: "sat", items: [
-      "Write comparison doc: B-tree vs columnar vs HNSW vs IVF",
-      "Pick the right engine for 3 sample workloads"
-    ]}
-  ]},
-  { label: "Week 2", title: "Chunking & Hybrid Search", topics: [
-    { name: "Chunking — semantic & windowed", tag: "core", items: [
-      "Fixed-size/windowed chunking and overlap",
-      "Semantic chunking — splitting on meaning boundaries"
-    ]},
-    { name: "Chunking — parent-child", tag: "core", items: [
-      "Small chunks for retrieval vs larger parent for context",
-      "When parent-child beats flat chunking"
-    ]},
-    { name: "Hybrid search (dense + BM25)", tag: "core", items: [
-      "Dense embedding search vs sparse BM25",
-      "Why combining both often beats either alone"
-    ]},
-    { name: "System Design: search-autocomplete", tag: "thu", items: [
-      "Prefix-matching structures (trie)",
-      "Ranking & latency constraints",
-      "Handling typos/fuzzy matches"
-    ]},
-    { name: "DB Design: Replication", tag: "fri", items: [
-      "Leader-follower replication & lag",
-      "Quorum-based replication & consistency",
-      "Failover mechanics, conceptually"
-    ]},
-    { name: "Re-ranking", tag: "sat", items: [
-      "Re-ranking as a second-pass refinement step",
-      "Why the re-ranker is usually a smaller/different model"
-    ]}
-  ]},
-  { label: "Week 3", title: "Context & RAG Mechanics", topics: [
-    { name: "Token budget management", tag: "core", items: [
-      "Estimating token counts for a context window",
-      "Strategies for staying under budget"
-    ]},
-    { name: "Prompt compression", tag: "core", items: [
-      "Summarizing older context",
-      "Trade-off: compression vs information loss"
-    ]},
-    { name: "Context assembly (no framework)", tag: "core", items: [
-      "Assembling chunks + instructions + history into a prompt",
-      "Ordering & prioritization decisions"
-    ]},
-    { name: "System Design: RAG-backed Q&A system", tag: "thu", items: [
-      "Retrieval + generation pipeline design",
-      "Handling low-confidence retrieval",
-      "Latency budget across the pipeline"
-    ]},
-    { name: "DB Design: Time-series/telemetry schema", tag: "fri", items: [
-      "Wide vs narrow table design",
-      "Retention/downsampling strategies",
-      "Why time-series schemas differ from transactional"
-    ]},
-    { name: "Practice: mini context-assembly pipeline", tag: "sat", items: [
-      "End-to-end pipeline on a sample corpus"
-    ]}
-  ]},
-  { label: "Week 4", title: "Survival Exercise: Vector Retrieval Engine", topics: [
-    { name: "Cosine similarity fundamentals", tag: "core", items: [
-      "Brute-force cosine similarity search in NumPy",
-      "Complexity of brute-force at scale"
-    ]},
-    { name: "HNSW-style index construction", tag: "core", items: [
-      "Build an HNSW-style index from scratch",
-      "Layered graph construction"
-    ]},
-    { name: "Hybrid search + re-ranking, applied", tag: "core", items: [
-      "Add hybrid search to the engine",
-      "Add a re-ranking step"
-    ]},
-    { name: "System Design: review all 3 case studies cold", tag: "thu", items: [
-      "Re-derive caching/autocomplete/RAG designs",
-      "Compare tradeoffs across all three"
-    ]},
-    { name: "DB Design: Vector DB schema design", tag: "fri", items: [
-      "Storing embeddings alongside metadata",
-      "Metadata filtering — pre-filter vs post-filter",
-      "Indexing strategy for a vector column"
-    ]},
-    { name: "Benchmark & finish", tag: "sat", items: [
-      "Benchmark recall vs brute-force on a 10k-vector set",
-      "Confirm ~90% recall target"
-    ]}
-  ], checkpoint: "HNSW-style index returns top-10 neighbors within ~90% recall of brute-force search on a 10k-vector set. Explain a sharding trade-off out loud." }
-]}
-];
-
-
-
-let state = {};
-let syncOk = true;
-const STORAGE_KEY = "checked-items-month-3";
-let saveTimer = null;
-
-async function loadState() {
-  try {
-    const res = await window.storage.get(STORAGE_KEY, false);
-    state = res ? JSON.parse(res.value) : {};
-  } catch (e) {
-    state = {};
-  }
-}
-
-async function attemptSave() {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-    syncOk = true;
-  } catch (e) {
-    try {
-      await new Promise(r => setTimeout(r, 400));
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-      syncOk = true;
-    } catch (e2) {
-      syncOk = false;
-    }
-  }
-  updateSyncBadge();
-}
-
-function saveState() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(attemptSave, 300);
-}
-
-function updateSyncBadge() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  badge.textContent = syncOk ? '' : 'saved on this device only — sync unavailable';
-  badge.style.display = syncOk ? 'none' : 'block';
-}
-
-function itemId(mi, wi, ti, ii) { return `m${mi}-w${wi}-t${ti}-i${ii}`; }
+    { label: "Week 4", title: "Survival Exercise: Vector Retrieval Engine", topics: [
+      { name: "Cosine similarity fundamentals", tag: "core", href: "../storage-and-rag/cosine_similarity_fundamentals.html" },
+      { name: "HNSW-style index construction", tag: "core", href: "../storage-and-rag/hnsw_from_scratch.html" },
+      { name: "Hybrid search + re-ranking, applied", tag: "core", href: "../storage-and-rag/hybrid_search_and_reranking_applied.html" },
+      { name: "System Design: review all 3 case studies cold", tag: "thu", href: "../backend/system_design_review_month3_cold.html" },
+      { name: "DB Design: Vector DB schema design", tag: "fri", href: "../storage-and-rag/vector_db_schema_design.html" },
+      { name: "Benchmark & finish", tag: "sat", href: "../storage-and-rag/benchmark_and_finish.html" }
+    ], checkpoint: "HNSW-style index returns top-10 neighbors within ~90% recall of brute-force search on a 10k-vector set. Explain a sharding trade-off out loud." }
+  ]
+};
 
 function render() {
   const main = document.getElementById('main');
   main.innerHTML = '';
 
-  let totalItems = 0, totalChecked = 0;
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'month-header';
+  monthHeader.innerHTML = `<span class="month-title mono">${MONTH.title}</span>`;
+  main.appendChild(monthHeader);
 
-  MONTHS.forEach((month, mi) => {
-    let monthTotal = 0, monthChecked = 0;
-    month.weeks.forEach((wk) => {
-      wk.topics.forEach((t) => { monthTotal += t.items.length; });
-    });
+  MONTH.weeks.forEach((wk) => {
+    const weekEl = document.createElement('div');
+    weekEl.className = 'week';
 
-    const monthHeader = document.createElement('div');
-    monthHeader.className = 'month-header';
-    monthHeader.innerHTML = `<span class="month-title mono">${month.title}</span>`;
-    main.appendChild(monthHeader);
+    const head = document.createElement('div');
+    head.className = 'week-head';
+    head.innerHTML = `
+      <span class="week-num mono">${wk.label}</span>
+      <span class="week-title">${wk.title}</span>
+    `;
+    weekEl.appendChild(head);
 
-    month.weeks.forEach((wk, wi) => {
-      let weekTotal = 0, weekChecked = 0;
-      wk.topics.forEach((t, ti) => {
-        t.items.forEach((_, ii) => {
-          weekTotal++;
-          if (state[itemId(mi, wi, ti, ii)]) weekChecked++;
-        });
-      });
-      totalItems += weekTotal;
-      totalChecked += weekChecked;
-      monthChecked += weekChecked;
-
-      const weekEl = document.createElement('div');
-      weekEl.className = 'week';
-      weekEl.id = `week-${mi}-${wi}`;
-
-      const head = document.createElement('div');
-      head.className = 'week-head';
-      head.innerHTML = `
-        <div class="week-head-left">
-          <span class="week-num mono">${wk.label}</span>
-          <span class="week-title">${wk.title}</span>
-        </div>
-        <div class="week-meta">
-          <span class="week-count mono">${weekChecked}/${weekTotal}</span>
-          <span class="chevron"></span>
-        </div>
+    const list = document.createElement('div');
+    list.className = 'topic-list';
+    wk.topics.forEach((t) => {
+      const a = document.createElement('a');
+      a.className = 'topic-link';
+      a.href = t.href;
+      a.innerHTML = `
+        <span class="topic-name">${t.name}</span>
+        <span class="topic-tag mono">${t.tag}</span>
+        <span class="topic-arrow mono">&rarr;</span>
       `;
-      head.addEventListener('click', () => weekEl.classList.toggle('open'));
-
-      const miniBar = document.createElement('div');
-      miniBar.className = 'week-mini-bar';
-      const miniFill = document.createElement('div');
-      miniFill.className = 'week-mini-fill';
-      miniFill.style.width = weekTotal ? `${(weekChecked/weekTotal)*100}%` : '0%';
-      miniBar.appendChild(miniFill);
-
-      const body = document.createElement('div');
-      body.className = 'week-body';
-
-      wk.topics.forEach((t, ti) => {
-        const topicEl = document.createElement('div');
-        topicEl.className = 'topic';
-        const topicHead = document.createElement('div');
-        topicHead.className = 'topic-head';
-        topicHead.innerHTML = `
-          <span class="topic-title">${t.name}</span>
-          <span class="topic-tag mono">${t.tag}</span>
-        `;
-        topicEl.appendChild(topicHead);
-
-        t.items.forEach((text, ii) => {
-          const id = itemId(mi, wi, ti, ii);
-          const checked = !!state[id];
-          const itemEl = document.createElement('div');
-          itemEl.className = 'item' + (checked ? ' checked' : '');
-          itemEl.innerHTML = `
-            <span class="box"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0f1715" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="item-text">${text}</span>
-          `;
-          itemEl.addEventListener('click', () => {
-            state[id] = !state[id];
-            saveState();
-            render();
-            const el = document.getElementById(`week-${mi}-${wi}`);
-            if (el) el.classList.add('open');
-          });
-          topicEl.appendChild(itemEl);
-        });
-
-        body.appendChild(topicEl);
-      });
-
-      weekEl.appendChild(head);
-      weekEl.appendChild(miniBar);
-      weekEl.appendChild(body);
-      main.appendChild(weekEl);
-
-      if (wk.checkpoint) {
-        const cp = document.createElement('div');
-        cp.className = 'checkpoint';
-        cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${month.title.split(':')[0]}, ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
-        main.appendChild(cp);
-      }
+      list.appendChild(a);
     });
-  });
+    weekEl.appendChild(list);
+    main.appendChild(weekEl);
 
-  const overallFill = document.getElementById('overallFill');
-  const overallLabel = document.getElementById('overallLabel');
-  overallFill.style.width = totalItems ? `${(totalChecked/totalItems)*100}%` : '0%';
-  overallLabel.textContent = `${totalChecked} / ${totalItems}`;
+    if (wk.checkpoint) {
+      const cp = document.createElement('div');
+      cp.className = 'checkpoint';
+      cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
+      main.appendChild(cp);
+    }
+  });
 }
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!confirm('Reset all progress across all 6 months?')) return;
-  state = {};
-  saveState();
-  render();
-});
-
-(async () => {
-  await loadState();
-  render();
-  const first = document.getElementById('week-0-0');
-  if (first) first.classList.add('open');
-})();
+render();
 </script>
 
 </body>

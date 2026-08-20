@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Month 2 :: Backend API Design & Protocols</title>
+<title>Month 2 :: Backend API Design & Relational Databases</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
@@ -20,7 +20,6 @@
     --amber-dim: #7a5a34;
     --teal: #5fc9b0;
     --teal-dim: #2c5147;
-    --done: #5fc9b0;
   }
   *{box-sizing:border-box;}
   body{
@@ -49,23 +48,8 @@
   }
   h1{
     font-family:'IBM Plex Mono',monospace;
-    font-size:20px; font-weight:600; margin:0 0 14px; line-height:1.3;
+    font-size:20px; font-weight:600; margin:0; line-height:1.3;
     color:var(--ink);
-  }
-  .progress-shell{
-    display:flex; align-items:center; gap:12px;
-  }
-  .progress-track{
-    flex:1; height:8px; background:var(--bg-raised);
-    border:1px solid var(--line); border-radius:2px; overflow:hidden;
-  }
-  .progress-fill{
-    height:100%; background:linear-gradient(90deg, var(--teal-dim), var(--teal));
-    width:0%; transition:width 0.4s ease;
-  }
-  .progress-label{
-    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-dim);
-    white-space:nowrap;
   }
 
   main{padding:20px 16px 0; max-width:640px; margin:0 auto;}
@@ -89,90 +73,43 @@
     overflow:hidden;
   }
   .week-head{
-    display:flex; align-items:center; justify-content:space-between;
-    padding:16px 16px;
-    cursor:pointer;
-    user-select:none;
+    display:flex; align-items:baseline; gap:10px;
+    padding:16px 16px 12px;
   }
-  .week-head:active{background:var(--bg-raised);}
-  .week-head-left{display:flex; align-items:baseline; gap:10px;}
   .week-num{
     font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--amber);
     letter-spacing:0.1em;
   }
   .week-title{font-size:15px; font-weight:600; color:var(--ink);}
-  .week-meta{
-    display:flex; align-items:center; gap:10px;
-  }
-  .week-count{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-  }
-  .chevron{
-    width:10px; height:10px;
-    border-right:1.5px solid var(--ink-dim);
-    border-bottom:1.5px solid var(--ink-dim);
-    transform:rotate(45deg);
-    transition:transform 0.25s ease;
-    flex-shrink:0;
-  }
-  .week.open .chevron{transform:rotate(-135deg);}
-  .week-mini-bar{
-    height:3px; background:var(--line-soft);
-  }
-  .week-mini-fill{
-    height:100%; background:var(--teal); width:0%; transition:width 0.4s ease;
-  }
 
-  .week-body{
-    max-height:0;
-    overflow:hidden;
-    transition:max-height 0.35s ease;
-  }
-  .week.open .week-body{max-height:4000px;}
-
-  .topic{
+  .topic-list{
     border-top:1px solid var(--line-soft);
-    padding:14px 16px 16px;
+    padding:6px 16px 14px;
   }
-  .topic-head{
-    display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  .topic-link{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 0;
+    text-decoration:none;
+    border-bottom:1px solid var(--line-soft);
   }
-  .topic-title{
-    font-size:13.5px; font-weight:600; color:var(--ink);
+  .topic-link:last-child{border-bottom:none;}
+  .topic-name{
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
     flex:1;
+    transition:color 0.15s ease;
   }
+  .topic-link:hover .topic-name{color:var(--ink);}
   .topic-tag{
     font-family:'IBM Plex Mono',monospace; font-size:9.5px; letter-spacing:0.08em;
     text-transform:uppercase; color:var(--ink-faint);
     border:1px solid var(--line); border-radius:2px; padding:2px 6px;
     flex-shrink:0;
   }
-  .item{
-    display:flex; align-items:flex-start; gap:10px;
-    padding:7px 0;
-    cursor:pointer;
+  .topic-arrow{
+    font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--teal);
+    flex-shrink:0; opacity:0.7; transition:opacity 0.15s ease, transform 0.15s ease;
   }
-  .box{
-    width:16px; height:16px; flex-shrink:0; margin-top:1px;
-    border:1.5px solid var(--ink-faint);
-    border-radius:3px;
-    display:flex; align-items:center; justify-content:center;
-    transition:all 0.15s ease;
-  }
-  .item.checked .box{
-    background:var(--teal); border-color:var(--teal);
-  }
-  .box svg{width:10px; height:10px; opacity:0; transition:opacity 0.1s;}
-  .item.checked .box svg{opacity:1;}
-  .item-text{
-    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
-    transition:color 0.15s ease;
-  }
-  .item.checked .item-text{
-    color:var(--ink-faint);
-    text-decoration:line-through;
-    text-decoration-color:var(--line);
-  }
+  .topic-link:hover .topic-arrow{opacity:1; transform:translateX(2px);}
 
   .checkpoint{
     margin:6px 16px 14px;
@@ -186,340 +123,101 @@
     text-transform:uppercase; color:var(--amber); margin-bottom:6px;
   }
   .checkpoint-text{font-size:13px; color:var(--ink-dim); line-height:1.5;}
-
-  .reset-row{
-    max-width:640px; margin:24px auto 0; padding:0 16px;
-    display:flex; justify-content:center;
-  }
-  .reset-btn{
-    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--ink-faint);
-    background:none; border:1px solid var(--line); border-radius:3px;
-    padding:8px 14px; cursor:pointer;
-  }
-  .reset-btn:active{color:var(--ink); border-color:var(--ink-faint);}
-
-  .sync-badge{
-    margin-top:10px; font-size:10.5px; color:var(--amber); letter-spacing:0.02em;
-  }
-  .loading{
-    text-align:center; padding:60px 20px; color:var(--ink-faint);
-    font-family:'IBM Plex Mono',monospace; font-size:12px;
-  }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">month 2 log</div>
+  <div class="eyebrow">month 2 roadmap</div>
   <h1>Month 2: Backend API Design, Relational Databases & Protocol Mechanics</h1>
-  <div class="progress-shell">
-    <div class="progress-track"><div class="progress-fill" id="overallFill"></div></div>
-    <div class="progress-label mono" id="overallLabel">0 / 0</div>
-  </div>
-  <div class="sync-badge mono" id="syncBadge" style="display:none;"></div>
 </header>
 
-<main id="main">
-  <div class="loading">loading progress…</div>
-</main>
-
-<div class="reset-row">
-  <button class="reset-btn" id="resetBtn">reset all progress</button>
-</div>
+<main id="main"></main>
 
 <script>
-const MONTHS = [
-{ title: "Month 2: Backend API Design, Relational Databases & Protocol Mechanics", weeks: [
-  { label: "Week 1", title: "FastAPI Fundamentals", topics: [
-    { name: "FastAPI routing & Pydantic V2 validation", tag: "core", items: [
-      "Path/query/body params, response models",
-      "Pydantic V2 validators, Field() constraints, nested models",
-      "Automatic OpenAPI docs generation"
+const MONTH = {
+  title: "Month 2: Backend API Design, Relational Databases & Protocol Mechanics",
+  weeks: [
+    { label: "Week 1", title: "FastAPI Fundamentals", topics: [
+      { name: "FastAPI routing & Pydantic V2 validation", tag: "core", href: "../backend/fastapi_routing_and_pydantic.html" },
+      { name: "Dependency injection", tag: "core", href: "../backend/dependency_injection.html" },
+      { name: "Custom middleware", tag: "core", href: "../backend/custom_middleware.html" },
+      { name: "System Design: URL shortener", tag: "thu", href: "../backend/url_shortener_design.html" },
+      { name: "DB Design: Indexing", tag: "fri", href: "../database/indexing.html" },
+      { name: "Auth basics (JWT/OAuth2)", tag: "core", href: "../backend/auth_jwt_oauth2.html" }
     ]},
-    { name: "Dependency injection", tag: "core", items: [
-      "Depends() mechanics — resolving/caching per request",
-      "Sharing a DB session or config object via DI",
-      "Overriding dependencies for testing"
+    { label: "Week 2", title: "Wire Formats", topics: [
+      { name: "HTTP/1.1 vs HTTP/2", tag: "core", href: "../backend/http1_vs_http2.html" },
+      { name: "WebSockets", tag: "core", href: "../backend/websockets.html" },
+      { name: "gRPC", tag: "core", href: "../backend/grpc.html" },
+      { name: "System Design: rate limiter", tag: "thu", href: "../backend/rate_limiter_design.html" },
+      { name: "DB Design: Transactions & isolation levels", tag: "fri", href: "../database/transactions_and_isolation.html" },
+      { name: "SSE (Server-Sent Events)", tag: "core", href: "../backend/sse.html" }
     ]},
-    { name: "Custom middleware", tag: "core", items: [
-      "BaseHTTPMiddleware vs ASGI middleware",
-      "Request/response interception (logging, timing, headers)",
-      "Middleware ordering and its effect on request flow"
+    { label: "Week 3", title: "Async ORMs & DB Ops", topics: [
+      { name: "SQLAlchemy async basics", tag: "core", href: "../backend/sqlalchemy_async.html" },
+      { name: "AsyncPG / raw async drivers", tag: "core", href: "../backend/raw_async_drivers.html" },
+      { name: "Connection pooling", tag: "core", href: "../backend/connection_pooling.html" },
+      { name: "System Design: notification service", tag: "thu", href: "../backend/notification_service_design.html" },
+      { name: "DB Design: CRUD done right", tag: "fri", href: "../database/crud_done_right.html" },
+      { name: "Explicit transactions", tag: "core", href: "../backend/explicit_transactions.html" }
     ]},
-    { name: "System Design: URL shortener", tag: "thu", items: [
-      "Hashing/encoding scheme for short codes",
-      "Storage & lookup design",
-      "Handling collisions and scale"
-    ]},
-    { name: "DB Design: Indexing", tag: "fri", items: [
-      "B-Tree index structure and range queries",
-      "Composite indexes and column order sensitivity",
-      "Reading EXPLAIN ANALYZE: seq scan vs index scan"
-    ]},
-    { name: "Auth basics (JWT/OAuth2)", tag: "core", items: [
-      "JWT structure: header, payload, signature",
-      "OAuth2 password flow, conceptually",
-      "Token expiry, refresh tokens, safe storage"
-    ]}
-  ]},
-  { label: "Week 2", title: "Wire Formats", topics: [
-    { name: "HTTP/1.1 vs HTTP/2", tag: "core", items: [
-      "Head-of-line blocking in HTTP/1.1",
-      "Multiplexing, header compression, server push in HTTP/2",
-      "When the difference actually matters"
-    ]},
-    { name: "WebSockets", tag: "core", items: [
-      "The upgrade handshake from HTTP to WebSocket",
-      "Full-duplex communication vs request/response",
-      "Connection lifecycle: open, message, close, error"
-    ]},
-    { name: "gRPC", tag: "core", items: [
-      "Protocol Buffers as the wire format",
-      "Unary vs streaming RPCs",
-      "When gRPC beats REST, and when it doesn't"
-    ]},
-    { name: "System Design: rate limiter", tag: "thu", items: [
-      "Token bucket vs sliding window algorithms",
-      "Distributed rate limiting",
-      "Handling burst traffic"
-    ]},
-    { name: "DB Design: Transactions & isolation levels", tag: "fri", items: [
-      "ACID properties, one sentence each",
-      "Isolation levels: Read Uncommitted → Serializable",
-      "Dirty reads, non-repeatable reads, phantom reads"
-    ]},
-    { name: "SSE (Server-Sent Events)", tag: "core", items: [
-      "One-directional server-to-client streaming",
-      "text/event-stream format",
-      "SSE vs WebSockets — when one-directional is enough"
-    ]}
-  ]},
-  { label: "Week 3", title: "Async ORMs & DB Ops", topics: [
-    { name: "SQLAlchemy async basics", tag: "core", items: [
-      "AsyncSession, async engine setup",
-      "Declarative models vs Core",
-      "Async query execution patterns"
-    ]},
-    { name: "AsyncPG / raw async drivers", tag: "core", items: [
-      "When raw drivers outperform an ORM",
-      "Prepared statements",
-      "Trade-off: less abstraction, more control"
-    ]},
-    { name: "Connection pooling", tag: "core", items: [
-      "Why pooling matters (connection setup cost)",
-      "Pool size tuning — too small vs too large",
-      "Pool exhaustion as a failure mode"
-    ]},
-    { name: "System Design: notification service", tag: "thu", items: [
-      "Fan-out delivery patterns",
-      "Retry & dead-letter handling",
-      "Multi-channel delivery (email/push/SMS)"
-    ]},
-    { name: "DB Design: CRUD done right", tag: "fri", items: [
-      "Idempotency keys for safe retries",
-      "Optimistic vs pessimistic locking",
-      "Soft deletes vs hard deletes"
-    ]},
-    { name: "Explicit transactions", tag: "core", items: [
-      "BEGIN/COMMIT/ROLLBACK semantics",
-      "Nested transactions / savepoints",
-      "Wrapping multi-step operations atomically"
-    ]}
-  ]},
-  { label: "Week 4", title: "Integration & Survival Exercise", topics: [
-    { name: "Streaming architecture integration", tag: "core", items: [
-      "Combine WebSockets + SSE in one service",
-      "Normalize schema for streamed data",
-      "Wire rate-limiting + error middleware together"
-    ]},
-    { name: "System Design: review URL shortener, rate limiter, notification cold", tag: "thu", items: [
-      "Re-derive each design without notes",
-      "Compare tradeoffs across all three",
-      "Identify what breaks at 10x scale"
-    ]},
-    { name: "DB Design: Migrations with Alembic + SQL vs NoSQL", tag: "fri", items: [
-      "Writing/running an Alembic migration, upgrade/downgrade",
-      "Autogenerate vs hand-written migrations",
-      "SQL vs NoSQL trade-offs, revisited with a concrete service"
-    ]},
-    { name: "Survival Exercise: finish & load test", tag: "sat", items: [
-      "Load test the streaming service",
-      "Fix dropped-connection issues under load",
-      "Confirm schema + migrations hold up"
-    ]}
-  ], checkpoint: "Design a schema for a feature request in under 20 minutes and defend indexing choices. Service survives a basic load test without dropped connections." }
-]}
-];
-
-
-
-let state = {};
-let syncOk = true;
-const STORAGE_KEY = "checked-items-month-2";
-let saveTimer = null;
-
-async function loadState() {
-  try {
-    const res = await window.storage.get(STORAGE_KEY, false);
-    state = res ? JSON.parse(res.value) : {};
-  } catch (e) {
-    state = {};
-  }
-}
-
-async function attemptSave() {
-  try {
-    await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-    syncOk = true;
-  } catch (e) {
-    try {
-      await new Promise(r => setTimeout(r, 400));
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
-      syncOk = true;
-    } catch (e2) {
-      syncOk = false;
-    }
-  }
-  updateSyncBadge();
-}
-
-function saveState() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(attemptSave, 300);
-}
-
-function updateSyncBadge() {
-  const badge = document.getElementById('syncBadge');
-  if (!badge) return;
-  badge.textContent = syncOk ? '' : 'saved on this device only — sync unavailable';
-  badge.style.display = syncOk ? 'none' : 'block';
-}
-
-function itemId(mi, wi, ti, ii) { return `m${mi}-w${wi}-t${ti}-i${ii}`; }
+    { label: "Week 4", title: "Integration & Survival Exercise", topics: [
+      { name: "Streaming architecture integration", tag: "core", href: "../backend/streaming_architecture_integration.html" },
+      { name: "System Design: review URL shortener, rate limiter, notification cold", tag: "thu", href: "../backend/system_design_review_cold.html" },
+      { name: "DB Design: Migrations with Alembic + SQL vs NoSQL", tag: "fri", href: "../database/migrations_and_sql_vs_nosql_revisited.html" },
+      { name: "Survival Exercise: finish & load test", tag: "sat", href: "../backend/survival_exercise_load_test.html" }
+    ], checkpoint: "Design a schema for a feature request in under 20 minutes and defend indexing choices. Service survives a basic load test without dropped connections." }
+  ]
+};
 
 function render() {
   const main = document.getElementById('main');
   main.innerHTML = '';
 
-  let totalItems = 0, totalChecked = 0;
+  const monthHeader = document.createElement('div');
+  monthHeader.className = 'month-header';
+  monthHeader.innerHTML = `<span class="month-title mono">${MONTH.title}</span>`;
+  main.appendChild(monthHeader);
 
-  MONTHS.forEach((month, mi) => {
-    let monthTotal = 0, monthChecked = 0;
-    month.weeks.forEach((wk) => {
-      wk.topics.forEach((t) => { monthTotal += t.items.length; });
-    });
+  MONTH.weeks.forEach((wk) => {
+    const weekEl = document.createElement('div');
+    weekEl.className = 'week';
 
-    const monthHeader = document.createElement('div');
-    monthHeader.className = 'month-header';
-    monthHeader.innerHTML = `<span class="month-title mono">${month.title}</span>`;
-    main.appendChild(monthHeader);
+    const head = document.createElement('div');
+    head.className = 'week-head';
+    head.innerHTML = `
+      <span class="week-num mono">${wk.label}</span>
+      <span class="week-title">${wk.title}</span>
+    `;
+    weekEl.appendChild(head);
 
-    month.weeks.forEach((wk, wi) => {
-      let weekTotal = 0, weekChecked = 0;
-      wk.topics.forEach((t, ti) => {
-        t.items.forEach((_, ii) => {
-          weekTotal++;
-          if (state[itemId(mi, wi, ti, ii)]) weekChecked++;
-        });
-      });
-      totalItems += weekTotal;
-      totalChecked += weekChecked;
-      monthChecked += weekChecked;
-
-      const weekEl = document.createElement('div');
-      weekEl.className = 'week';
-      weekEl.id = `week-${mi}-${wi}`;
-
-      const head = document.createElement('div');
-      head.className = 'week-head';
-      head.innerHTML = `
-        <div class="week-head-left">
-          <span class="week-num mono">${wk.label}</span>
-          <span class="week-title">${wk.title}</span>
-        </div>
-        <div class="week-meta">
-          <span class="week-count mono">${weekChecked}/${weekTotal}</span>
-          <span class="chevron"></span>
-        </div>
+    const list = document.createElement('div');
+    list.className = 'topic-list';
+    wk.topics.forEach((t) => {
+      const a = document.createElement('a');
+      a.className = 'topic-link';
+      a.href = t.href;
+      a.innerHTML = `
+        <span class="topic-name">${t.name}</span>
+        <span class="topic-tag mono">${t.tag}</span>
+        <span class="topic-arrow mono">&rarr;</span>
       `;
-      head.addEventListener('click', () => weekEl.classList.toggle('open'));
-
-      const miniBar = document.createElement('div');
-      miniBar.className = 'week-mini-bar';
-      const miniFill = document.createElement('div');
-      miniFill.className = 'week-mini-fill';
-      miniFill.style.width = weekTotal ? `${(weekChecked/weekTotal)*100}%` : '0%';
-      miniBar.appendChild(miniFill);
-
-      const body = document.createElement('div');
-      body.className = 'week-body';
-
-      wk.topics.forEach((t, ti) => {
-        const topicEl = document.createElement('div');
-        topicEl.className = 'topic';
-        const topicHead = document.createElement('div');
-        topicHead.className = 'topic-head';
-        topicHead.innerHTML = `
-          <span class="topic-title">${t.name}</span>
-          <span class="topic-tag mono">${t.tag}</span>
-        `;
-        topicEl.appendChild(topicHead);
-
-        t.items.forEach((text, ii) => {
-          const id = itemId(mi, wi, ti, ii);
-          const checked = !!state[id];
-          const itemEl = document.createElement('div');
-          itemEl.className = 'item' + (checked ? ' checked' : '');
-          itemEl.innerHTML = `
-            <span class="box"><svg viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="#0f1715" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-            <span class="item-text">${text}</span>
-          `;
-          itemEl.addEventListener('click', () => {
-            state[id] = !state[id];
-            saveState();
-            render();
-            const el = document.getElementById(`week-${mi}-${wi}`);
-            if (el) el.classList.add('open');
-          });
-          topicEl.appendChild(itemEl);
-        });
-
-        body.appendChild(topicEl);
-      });
-
-      weekEl.appendChild(head);
-      weekEl.appendChild(miniBar);
-      weekEl.appendChild(body);
-      main.appendChild(weekEl);
-
-      if (wk.checkpoint) {
-        const cp = document.createElement('div');
-        cp.className = 'checkpoint';
-        cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${month.title.split(':')[0]}, ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
-        main.appendChild(cp);
-      }
+      list.appendChild(a);
     });
-  });
+    weekEl.appendChild(list);
+    main.appendChild(weekEl);
 
-  const overallFill = document.getElementById('overallFill');
-  const overallLabel = document.getElementById('overallLabel');
-  overallFill.style.width = totalItems ? `${(totalChecked/totalItems)*100}%` : '0%';
-  overallLabel.textContent = `${totalChecked} / ${totalItems}`;
+    if (wk.checkpoint) {
+      const cp = document.createElement('div');
+      cp.className = 'checkpoint';
+      cp.innerHTML = `<div class="checkpoint-label mono">checkpoint — ${wk.label}</div><div class="checkpoint-text">${wk.checkpoint}</div>`;
+      main.appendChild(cp);
+    }
+  });
 }
 
-document.getElementById('resetBtn').addEventListener('click', () => {
-  if (!confirm('Reset all progress across all 6 months?')) return;
-  state = {};
-  saveState();
-  render();
-});
-
-(async () => {
-  await loadState();
-  render();
-  const first = document.getElementById('week-0-0');
-  if (first) first.classList.add('open');
-})();
+render();
 </script>
 
 </body>
