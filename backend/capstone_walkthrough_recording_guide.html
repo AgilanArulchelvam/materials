@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Walkthrough Recording Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --app-c:#4fc3f7; --mcp-c:#f2c14e; --obs-c:#7fd8a0; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(127,216,160,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--app-c); color:var(--app-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .narrative-stage{display:flex; flex-direction:column; gap:0.6rem; margin:1.2rem 0;}
+  .stage-box{font-family:var(--mono); font-size:0.82rem; padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; transition:all .3s;}
+  .stage-box .st-name{font-weight:600; color:var(--ink);}
+  .stage-box .st-budget{font-size:0.72rem; color:var(--accent);}
+  .stage-box.active{border-color:var(--accent); background:rgba(255,138,101,0.08); box-shadow:0 0 12px rgba(255,138,101,0.25);}
+  .stage-box.done{border-color:var(--obs-c);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem; flex-wrap:wrap;}
+  .timer-display{font-size:1.6rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--obs-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.app{border-left-color:var(--app-c); background:rgba(79,195,247,0.06);} .callout.app b{color:var(--app-c);}
+  .callout.checkpoint{border-left-color:var(--obs-c); background:rgba(127,216,160,0.08); font-family:var(--mono); font-size:0.88rem;} .callout.checkpoint b{color:var(--obs-c);}
+
+  .quick-fire{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1rem 0;}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND LAB · CAPSTONE WALKTHROUGH RECORDING GUIDE</div>
+  <h1>Say the whole system out loud, record it, and listen back honestly.</h1>
+  <p class="lede">Every other lab this week built or hardened a piece of the capstone. This one is different: it's a practice METHODOLOGY, not new technical content — how to prepare, structure, and deliver a strong verbal walkthrough of the ENTIRE system, the kind an interviewer or a teammate asks for cold. A narrative structure, how to record and self-critique honestly, and a live timer/checklist tool to practice against.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">A five-beat narrative structure that scales from 3 to 10 minutes</div>
+    <div class="pipe-label b">Recording and listening back — what to actually check for</div>
+    <div class="pipe-label c">A live practice tool: timer, checklist, and quick-fire follow-ups</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="structure">1 · Narrative Structure</a>
+  <a data-target="recording">2 · Practicing Out Loud and Recording</a>
+  <a data-target="critique">3 · Self-Critique Checklist</a>
+  <a data-target="tool">4 · Practice Tool</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: NARRATIVE STRUCTURE ============ -->
+<section id="structure">
+  <div class="kicker">01 — Five beats, in a fixed order, that scale to any time budget</div>
+  <h2>A suggested narrative structure</h2>
+
+  <p><strong>Start here, before opening a recording app.</strong> Think about the difference between someone giving you turn-by-turn directions versus someone handing you a map and letting you find your own way. A rambling, chronological account of "first I built the scaffold, then I added the orchestrator, then..." is turn-by-turn directions — technically complete, but the listener has to hold the whole thing in their head to see the shape. A structured walkthrough is the map: problem, then architecture, then decisions, then trade-offs, then what's next — a fixed order that lets a listener orient themselves at any point, and that you can compress or expand to fit any time budget without losing coherence.</p>
+
+  <table class="cmp">
+    <tr><th>Beat</th><th>What it covers</th><th>Source material already built this week/last</th></tr>
+    <tr><td>1. Problem</td><td>What is this system for, in one or two sentences — the "context/goals" section a real architecture doc needs</td><td><code class="inline">backend/capstone_architecture_documentation.html</code> section 3's context/goals</td></tr>
+    <tr><td>2. Architecture</td><td>The components and how a request flows through them, narrated in order</td><td>Same lab's component diagram and data-flow walkthrough</td></tr>
+    <tr><td>3. Key decisions</td><td>One or two decisions you'd actually defend, with the rejected alternative named</td><td><code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> problem 1 (Redis vs Postgres), or any decision from <code class="inline">dsa/capstone_combined_mock_full_loop.html</code> Round 4's own worked template</td></tr>
+    <tr><td>4. Trade-offs / limitations</td><td>What's honestly still weak, found through real testing — not hypothetical</td><td><code class="inline">systems/capstone_load_testing.html</code>'s actual bottleneck findings; <code class="inline">backend/capstone_debugging_integration_issues.html</code>'s bug categories</td></tr>
+    <tr><td>5. At scale</td><td>What breaks first at 10x, and how you'd redesign for it</td><td><code class="inline">database/capstone_schema_cold_defense.html</code> section 3's own 10x-scale surprise question</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt"># Time-budget scaling -- the SAME five beats, compressed or expanded.
+# Never drop a beat entirely to save time -- compress each one instead,
+# so the map stays complete even when the tour is short.</span>
+
+<span class="c-fn">3 minutes  </span>(elevator version):  ~30s per beat, one sentence each
+<span class="c-fn">10 minutes </span>(the Week 4 checkpoint's own budget): ~2 min per beat
+<span class="c-fn">20 minutes </span>(a real onsite deep-dive): expand beats 2-4 with follow-up depth,
+                        keep 1 and 5 tight -- they're framing, not the payload</span></div>
+
+  <div class="callout app"><b>Interview-ready definition:</b> a strong system walkthrough is structured by QUESTION (what is it, how's it built, why these choices, what's weak, what's next) rather than by CHRONOLOGY (what I built first, second, third) — the fixed five-beat order lets a listener follow along and lets you compress or expand any single beat to fit the time you're given, without ever losing the overall shape.</div>
+</section>
+
+<!-- ============ SECTION 2: PRACTICING AND RECORDING ============ -->
+<section id="recording">
+  <div class="kicker">02 — Why recording yourself beats rehearsing silently</div>
+  <h2>Practicing out loud and recording yourself</h2>
+
+  <p><strong>Start here, before deciding this step is unnecessary.</strong> Think about the difference between reading sheet music in your head and actually playing the piece out loud. Reading silently, every passage feels fluent — your inner voice never stumbles, never runs out of breath, never loses the thread mid-phrase. Playing it out loud reveals the ACTUAL friction points: the phrase that's harder to say than it was to think, the transition that doesn't flow, the section where you realize you don't actually know the next word. A verbal walkthrough has the exact same gap between "I understand this" and "I can say this smoothly, cold, under time pressure" — and the only way to find that gap is to actually talk, not think.</p>
+
+  <table class="cmp">
+    <tr><th>Practice level</th><th>What it catches</th><th>What it misses</th></tr>
+    <tr><td>Silent mental rehearsal</td><td>Whether you know the FACTS</td><td>Whether you can PRODUCE them fluently under time pressure — the actual skill being tested</td></tr>
+    <tr><td>Talking out loud, unrecorded</td><td>Verbal stumbles, pacing awareness in the moment</td><td>Anything you don't notice in real time — most people underestimate their own filler words and pacing problems while speaking</td></tr>
+    <tr><td>Recorded and played back</td><td>Everything above, PLUS an honest outside view of pacing, jargon, and whether you're actually answering "why" — the only method that catches what you can't self-monitor while talking</td><td>Nothing structural — this is the complete method, just costs more time per rep</td></tr>
+  </table>
+
+  <div class="callout"><b>How to actually record this, practically:</b> a phone voice memo is enough — video adds value (catching filler gestures, eye contact if presenting to a screen) but audio alone already catches most of what matters: pacing, filler words, and whether each beat from section 1 actually gets said in the order and depth intended. Do the FULL five-beat walkthrough in one uninterrupted take at your target time budget, exactly like <code class="inline">dsa/capstone_combined_mock_full_loop.html</code>'s own "run it as one continuous loop, not paused and resumed" rule for mocks — a walkthrough recorded in disconnected fragments doesn't reveal the same pacing and transition problems a real, continuous delivery does.</div>
+</section>
+
+<!-- ============ SECTION 3: SELF-CRITIQUE CHECKLIST ============ -->
+<section id="critique">
+  <div class="kicker">03 — Listen back once for each of these, not all at once</div>
+  <h2>Self-critique checklist</h2>
+
+  <p><strong>Start here, before your first playback.</strong> Trying to catch pacing, jargon, AND "why vs. what" all in one listen splits attention across three different kinds of listening — each one is a genuinely different skill to check for. Play the recording back multiple times, once per category below, the same way a code reviewer runs a checklist pass by pass rather than trying to catch every category of bug in one read.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="c1"><label for="c1"><strong>Pacing:</strong> did any single beat (section 1) eat disproportionately more time than its budget, at the expense of a later beat getting rushed or cut? Listen for where you actually ran out of time versus where you chose to move on.</label></li>
+      <li><input type="checkbox" id="c2"><label for="c2"><strong>Jargon without explanation:</strong> every time you said a term like "RRF fusion," "partial index," or "read-modify-write race" — did you also say what it MEANS in plain terms, or did you assume the listener already knows? A walkthrough for a non-specialist listener needs the second half of that sentence every time.</label></li>
+      <li><input type="checkbox" id="c3"><label for="c3"><strong>Answering "why," not just "what":</strong> for beat 3 (key decisions) specifically — did you name what you built, or did you also name WHY, against the specific rejected alternative? "I used Redis" is a "what." "I used Redis instead of Postgres because run state is high-write and disposable" is a "why."</label></li>
+      <li><input type="checkbox" id="c4"><label for="c4"><strong>Honesty of the limitations beat:</strong> did beat 4 name a REAL, specific weakness found through actual testing (<code class="inline">capstone_load_testing.html</code>'s findings, a real bug from <code class="inline">capstone_debugging_integration_issues.html</code>) — or did it default to a safe, vague, humble-brag-shaped non-answer?</label></li>
+      <li><input type="checkbox" id="c5"><label for="c5"><strong>Filler words and verbal tics:</strong> count "um," "like," "so basically," or long unfilled pauses — not to eliminate them entirely, but to notice whether they cluster around specific beats, which usually means that beat isn't actually fluent yet and needs more rehearsal, not more filler-word suppression.</label></li>
+    </ul>
+  </div>
+
+  <div class="callout checkpoint"><b>Month 6 Week 4 checkpoint — the actual bar this practice is training toward:</b> "Walk someone through the capstone's schema and architecture, cold, in under 10 minutes — including what breaks first at 10x scale and how you'd redesign the schema for it." Every beat in section 1's structure maps directly onto this — beats 1-2 are "architecture," beat 5 is "what breaks first at 10x scale," and the schema-specific version of beats 3-4 is exactly <code class="inline">database/capstone_schema_cold_defense.html</code>'s own drill. This lab's practice tool below times against that same 10-minute budget on purpose.</div>
+</section>
+
+<!-- ============ SECTION 4: PRACTICE TOOL ============ -->
+<section id="tool">
+  <div class="kicker">04 — Time your own walkthrough against the five beats, live</div>
+  <h2>Practice tool: timed walkthrough with beat checklist</h2>
+
+  <p><strong>Start here, before your next recorded take.</strong> Press start, talk through your own capstone walkthrough out loud (or silently rehearse pacing first), and check off each beat as you cover it. The tool flags if you're spending disproportionate time on one beat relative to a 10-minute total budget, split according to section 1's suggested weighting.</p>
+
+  <div class="lab">
+    <div class="lab-title">
+      <span>Walkthrough timer — 10:00 total budget</span>
+      <div class="timer-box">
+        <span class="timer-display" id="wt-time">10:00</span>
+        <button class="btn" id="wt-start">Start</button>
+        <button class="btn secondary" id="wt-reset">Reset</button>
+      </div>
+    </div>
+    <div class="narrative-stage" id="wt-stages"></div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now answer a follow-up under real time pressure</div>
+  <h2>Practice problems</h2>
+
+  <div class="quick-fire">
+    <p style="margin:0 0 0.6rem;"><strong>Quick-fire drill:</strong> a real walkthrough almost always gets interrupted with a follow-up mid-flow. Practice answering each of these in under 60 seconds, out loud, before revealing what a strong answer covers.</p>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · "You said Redis for run state — what happens if Redis goes down mid-run?"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Answer in under 60 seconds, out loud, before revealing.</p>
+    <details><summary>Show what a strong 60-second answer covers</summary><div class="solution">A strong answer names the CONCRETE failure mode, not a vague "it would
+be bad": any run with in-flight state loses that state -- the run's
+turns list and status become unrecoverable, since Redis is the ONLY
+place that ephemeral state lives (capstone_orchestrator_integration
+.html section 1's explicit trade-off: Redis's weaker durability
+guarantee was accepted BECAUSE the state is disposable). Concretely:
+a client mid-conversation would get an error or a fresh, empty run on
+their next request, since the orchestrator has no memory of the
+prior turns.
+
+What DOESN'T break: anything already durably recorded -- agent_run,
+tool_call, eval_span, eval_result in Postgres are unaffected, since
+they're written to a completely separate store with its own
+durability guarantees. So a Redis outage loses IN-FLIGHT work, not
+HISTORICAL record -- a meaningful distinction worth stating explicitly
+rather than treating "Redis is down" as one uniform bad outcome.
+
+What you'd do about it, if pushed further: Redis persistence options
+(RDB snapshots or AOF) trade some write performance for surviving a
+restart, or, more robustly, treating an in-flight run as always
+resumable by re-deriving state from tool_call and eval_span's
+already-durable partial record rather than depending on Redis as the
+only source -- a real design change worth naming as a "future work"
+item rather than something the schema already handles.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · "If you had one more week, what would you actually build next?"</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Answer in under 60 seconds, out loud, before revealing.</p>
+    <details><summary>Show what a strong 60-second answer covers</summary><div class="solution">The weak version of this answer is a vague wishlist ("more features,
+better UI, more testing"). The strong version names ONE specific thing,
+grounded in a REAL finding from this week's actual work, with a
+concrete reason it's the highest-priority next step over other
+options.
+
+A strong worked example: "The load test found the orchestrator's
+Redis lock becomes the binding constraint above roughly 140 concurrent
+users. I'd implement the atomic-operation fix from capstone_
+orchestrator_integration.html's own practice problem -- restructuring
+state as a Redis-native RPUSH instead of load-modify-save -- since
+that's the single highest-leverage change: it directly addresses the
+ACTUAL measured bottleneck rather than a guessed one, and load_
+testing.html's own data shows exactly where the current ceiling is."
+
+What makes this strong: it's SPECIFIC (not "improve performance" but
+the exact fix, from the exact lab, addressing the exact measured
+number), it's PRIORITIZED with a stated reason (highest-leverage
+because it's the MEASURED bottleneck, not a guess), and it demonstrates
+that "what's next" flows directly from real testing done this week
+rather than being an unrelated wishlist item disconnected from the
+actual system's demonstrated weak points.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before recording your real take:</b> could you, without notes, (1) name all five beats of the narrative structure in order, (2) state which specific finding from this week you'd use for beat 4 (limitations), and (3) answer both quick-fire questions above in under 60 seconds each, cold? This is the last core lab of Week 3 — Week 4 is daily combined mocks, and this walkthrough is exactly the muscle they'll draw on first.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone walkthrough recording guide, backend &amp; APIs.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var TOTAL_SECONDS = 10 * 60;
+  var STAGES = [
+    {name: "1. Problem", seconds: 60, detail: "What the system is for, in a sentence or two"},
+    {name: "2. Architecture", seconds: 180, detail: "Components and request flow, narrated in order"},
+    {name: "3. Key decisions", seconds: 180, detail: "One or two decisions, with the rejected alternative named"},
+    {name: "4. Trade-offs / limitations", seconds: 120, detail: "A real weakness, found through actual testing"},
+    {name: "5. At scale", seconds: 60, detail: "What breaks first at 10x, and how you'd redesign for it"}
+  ];
+
+  var stagesWrap = document.getElementById("wt-stages");
+  var timeEl = document.getElementById("wt-time");
+  var startBtn = document.getElementById("wt-start");
+  var resetBtn = document.getElementById("wt-reset");
+
+  var elapsed = 0;
+  var intervalId = null;
+  var stageBoxes = [];
+
+  function formatTime(s){
+    var m = Math.floor(s / 60);
+    var sec = s % 60;
+    return m + ":" + (sec < 10 ? "0" : "") + sec;
+  }
+
+  function buildStages(){
+    stagesWrap.innerHTML = "";
+    stageBoxes = [];
+    STAGES.forEach(function(s, i){
+      var el = document.createElement("div");
+      el.className = "stage-box";
+      el.innerHTML = "<span><span class=\"st-name\">" + s.name + "</span> — " + s.detail + "</span><span class=\"st-budget\">budget " + formatTime(s.seconds) + "</span>";
+      stagesWrap.appendChild(el);
+      stageBoxes.push(el);
+    });
+  }
+
+  function currentStageIndex(){
+    var acc = 0;
+    for (var i = 0; i < STAGES.length; i++){
+      acc += STAGES[i].seconds;
+      if (elapsed < acc) return i;
+    }
+    return STAGES.length - 1;
+  }
+
+  function render(){
+    var remaining = Math.max(0, TOTAL_SECONDS - elapsed);
+    timeEl.textContent = formatTime(remaining);
+    timeEl.classList.toggle("warn", remaining <= 60);
+
+    var idx = currentStageIndex();
+    stageBoxes.forEach(function(box, i){
+      box.classList.remove("active", "done");
+      if (elapsed >= TOTAL_SECONDS){
+        box.classList.add("done");
+      } else if (i < idx){
+        box.classList.add("done");
+      } else if (i === idx){
+        box.classList.add("active");
+      }
+    });
+  }
+
+  function tick(){
+    elapsed += 1;
+    if (elapsed >= TOTAL_SECONDS){
+      elapsed = TOTAL_SECONDS;
+      render();
+      clearInterval(intervalId);
+      intervalId = null;
+      startBtn.textContent = "Time's up";
+      startBtn.disabled = true;
+      return;
+    }
+    render();
+  }
+
+  startBtn.addEventListener("click", function(){
+    if (intervalId) return;
+    startBtn.textContent = "Running…";
+    startBtn.disabled = true;
+    intervalId = setInterval(tick, 1000);
+  });
+
+  resetBtn.addEventListener("click", function(){
+    if (intervalId){ clearInterval(intervalId); intervalId = null; }
+    elapsed = 0;
+    startBtn.textContent = "Start";
+    startBtn.disabled = false;
+    render();
+  });
+
+  buildStages();
+  render();
+})();
+</script>
+</body>
+</html>

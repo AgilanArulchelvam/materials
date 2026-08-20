@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Schema Cold Defense</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --tbl-c:#4fc3f7; --idx-c:#f2c14e; --ok-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--tbl-c); color:var(--tbl-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--idx-c); color:var(--idx-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--ok-c); color:var(--ok-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .drill{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .drill-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; margin-bottom:1rem; padding-bottom:0.9rem; border-bottom:1px dashed var(--rule);}
+  .drill-tag{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid var(--tbl-c); color:var(--tbl-c); background:rgba(79,195,247,0.08);}
+  .drill-tag.idx{border-color:var(--idx-c); color:var(--idx-c); background:rgba(242,193,78,0.08);}
+  .drill-q{font-family:var(--mono); font-size:0.82rem; color:var(--ink-dim); margin:0.4rem 0;}
+  .drill-q b{color:var(--ink);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--ok-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .rubric-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin:1rem 0;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.5rem 1rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .score-readout{font-family:var(--mono); font-size:0.95rem; color:var(--ink); margin-top:1rem; padding:1rem; border-radius:8px; background:#0b0d11; border:1px solid var(--rule);}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.tbl{border-left-color:var(--tbl-c); background:rgba(79,195,247,0.06);} .callout.tbl b{color:var(--tbl-c);}
+  .callout.idx{border-left-color:var(--idx-c); background:rgba(242,193,78,0.06);} .callout.idx b{color:var(--idx-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> DB DESIGN LAB · CAPSTONE SCHEMA COLD DEFENSE</div>
+  <h1>No notes. No slides. Defend every table, every index, from memory.</h1>
+  <p class="lede"><code class="inline">database/capstone_schema_finalization_and_indexes.html</code> built the finalized schema with every design choice reasoned through in writing. This lab is the cold-recall companion: for every table and every index, explain from memory WHY it exists, WHY these columns and types, WHICH query pattern it serves, and what breaks if it's removed — before revealing the actual answer. Then a surprise-question section simulating a skeptical interviewer probing edge cases your original design never explicitly covered.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Every table — defended from memory, answer hidden until you try</div>
+    <div class="pipe-label b">Every index — the query pattern first, always</div>
+    <div class="pipe-label c">Surprise questions — new requirements your schema wasn't asked about yet</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="how">How to Run This Drill</a>
+  <a data-target="tables">1 · Defend Every Table</a>
+  <a data-target="indexes">2 · Defend Every Index</a>
+  <a data-target="surprise">3 · Surprise Questions</a>
+  <a data-target="rubric">4 · Self-Grading Rubric</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ HOW TO RUN THIS DRILL ============ -->
+<section id="how">
+  <div class="kicker">Before opening the first table — read this once</div>
+  <h2>How to run this drill honestly</h2>
+
+  <p><strong>Start here, before revealing anything.</strong> Think about the difference between recognizing an answer and PRODUCING one. Reading <code class="inline">capstone_schema_finalization_and_indexes.html</code>'s reasoning and nodding along feels like understanding — and it mostly is, in the moment, with the text right there. Recognition is not the skill an interviewer actually tests. They ask "why this index" cold, with nothing in front of you but the schema itself, and the gap between "I recognize that reasoning as correct when I read it" and "I can generate that reasoning myself, out loud, right now" is exactly what this drill is built to surface — following the same <code class="inline">&lt;details&gt;</code>-hidden-answer pattern <code class="inline">systems/month5_case_studies_cold_review.html</code> and <code class="inline">dsa/capstone_combined_mock_full_loop.html</code> already established for this repo's cold-recall labs.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="rule1"><label for="rule1">Say your answer OUT LOUD (or write it down) before clicking to reveal — silently thinking "yeah, I know this" is not the same skill and doesn't train the same muscle</label></li>
+      <li><input type="checkbox" id="rule2"><label for="rule2">Do not open <code class="inline">capstone_schema_finalization_and_indexes.html</code> in another tab while running this drill — the whole point is recall without the source in front of you</label></li>
+      <li><input type="checkbox" id="rule3"><label for="rule3">If you genuinely can't produce an answer, that's real, useful signal — mark it honestly rather than reverse-engineering a plausible-sounding answer from the reveal after the fact</label></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ SECTION 1: DEFEND EVERY TABLE ============ -->
+<section id="tables">
+  <div class="kicker">01 — Four tables, each with a reason to exist independent of the other three</div>
+  <h2>Defend every table, cold</h2>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">TABLE</span><code class="inline" style="font-size:1rem;">agent_run</code></div>
+    <p class="drill-q"><b>From memory, before revealing:</b> why does this table exist, why these specific columns and types, and what breaks if it's removed?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Why it exists: agent_run is the ROOT record of a single orchestrated
+run -- one row per run_id, the anchor every other table (tool_call via
+run_id, eval_result via run_id, eval_span indirectly via trace_id)
+ultimately relates back to. Without it, there's no durable record that
+a run ever happened at all, independent of whatever ephemeral state
+lived in Redis during the run itself (capstone_orchestrator_
+integration.html section 1).
+
+Why these columns: run_id (UUID PRIMARY KEY) is the join key every
+other table uses. agent_id (TEXT NOT NULL) identifies WHICH agent/
+configuration produced this run, needed the moment more than one agent
+variant exists. started_at/ended_at (TIMESTAMPTZ, ended_at nullable)
+capture the run's actual wall-clock lifetime -- ended_at is nullable
+specifically because a still-running run legitimately has no end time
+yet, not because the schema is incomplete. status (TEXT, 'running' |
+'done' | 'error') is what idx_agent_run_running's partial index
+filters on, and what an ops query needs to answer "what's still
+active."
+
+What breaks if removed: every OTHER table loses its anchor -- tool_call
+and eval_result's run_id foreign keys would reference nothing, and
+there would be no way to answer "how many runs happened today" or
+"what's this run's overall status" without reconstructing it from
+scattered eval_span rows, which have no run_id column at all (only
+trace_id) -- agent_run is the only table that directly represents
+"one full orchestrated run" as a first-class entity.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">TABLE</span><code class="inline" style="font-size:1rem;">tool_call</code></div>
+    <p class="drill-q"><b>From memory, before revealing:</b> why does this table exist, why these specific columns and types, and what breaks if it's removed?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Why it exists: tool_call is the durable, queryable record of every
+individual tool dispatch the orchestrator made during a run --
+distinct from eval_span, which records TRACE structure (timing,
+nesting) but not the actual arguments/results a tool call carried.
+capstone_schema_finalization_and_indexes.html section 1 is explicit
+that this was the one genuinely NEW table the finalization pass added,
+filling a gap earlier labs implied but never built.
+
+Why these columns: call_id (UUID PRIMARY KEY) identifies this specific
+call. run_id (UUID NOT NULL REFERENCES agent_run) anchors it to the
+parent run. sequence_number (INTEGER NOT NULL) captures ORDER within
+the run -- without it, tool calls would only be orderable by
+called_at, which loses precision if two calls share a timestamp.
+tool_name (TEXT NOT NULL) and arguments/result (JSONB) capture WHAT
+was called and with what -- JSONB specifically because different tools
+have genuinely different argument/result shapes, and a rigid
+column-per-field schema would need a new migration for every new
+tool. latency_ms (NUMERIC) and status ('success'|'error'|'timeout')
+capture the OUTCOME, needed for exactly the "failure rate for tool X"
+query idx_tool_call_name_time serves.
+
+What breaks if removed: there would be no durable record of WHAT
+arguments a tool was actually called with or what it returned --
+eval_span's attributes JSONB could technically carry SOME of this, but
+mixing trace-structure concerns with tool-call-detail concerns into
+one table would make eval_span's own indexes (built for trace/span
+lookups) serve a completely different, unrelated query shape poorly,
+exactly why capacity_estimation_practice.html's own entity list kept
+these as separate, sizeable entities in the first place.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">TABLE</span><code class="inline" style="font-size:1rem;">eval_run / eval_result</code></div>
+    <p class="drill-q"><b>From memory, before revealing:</b> why TWO tables here instead of one, and what breaks if <code class="inline">eval_result</code> is removed?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Why two tables: eval_run represents a whole EVALUATION SUITE
+execution (one row per batch run of eval_scenario_design.html's
+scenarios, capturing model_version/dataset_id/suite_name as
+properties of the BATCH), while eval_result represents one SCORE for
+one specific agent_run (or, via the nullable eval_run_id, one score
+produced as part of a batch suite run). This is a genuine 1:many
+relationship -- one eval_run execution produces MANY eval_result rows
+-- and collapsing them into one table would mean repeating the
+suite-level metadata (model_version, dataset_id) on every single
+score row, a real normalization violation with no query pattern
+actually justifying the duplication.
+
+Why eval_result's specific columns: run_id (nullable REFERENCES
+agent_run) links a score back to the actual production run that
+produced it -- nullable because a batch eval_run's scores test
+scenarios that may not correspond to any real agent_run at all.
+trace_id (TEXT NOT NULL) is what ties a score to the SPAN tree that
+explains it, per eval_trace_schema_finalization.html's whole
+argument that "a score with no trace behind it is untrustworthy."
+score/passed capture the actual outcome; eval_type distinguishes
+WHICH evaluation criterion produced this row, since a single run can
+be scored on multiple dimensions (accuracy, hallucination rate, tool
+selection).
+
+What breaks if eval_result is removed: there would be no durable
+record that scoring ever happened at all -- capstone_dashboard_
+integration.html's central claim, "full instrumentation means a
+score for every run, unconditionally," becomes unverifiable, since
+eval_span alone records trace STRUCTURE but never the actual
+pass/fail judgment. The dashboard would have timing data with no way
+to answer "was this run actually good."</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">TABLE</span><code class="inline" style="font-size:1rem;">eval_span</code></div>
+    <p class="drill-q"><b>From memory, before revealing:</b> why does this table exist, why the self-referencing <code class="inline">parent_span_id</code>, and what breaks if it's removed?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Why it exists: eval_span is the TRACE STRUCTURE table -- one row per
+unit of instrumented work (a root span for the whole run, child spans
+for each tool dispatch or sub-step), capturing timing and nesting
+independent of what got scored or what arguments a tool call carried.
+It's what makes a waterfall view (capstone_dashboard_integration.html,
+and dsa/capstone_combined_mock_full_loop_round2.html Round 1's
+self-time computation) possible at all.
+
+Why parent_span_id self-references eval_span: this is what encodes
+the TREE structure -- a span with parent_span_id = NULL is a root
+span (one per trace_id, typically), and every other span points to
+its immediate parent, letting the dashboard reconstruct full nesting
+via idx_eval_span_parent (walking children of a given span) without
+needing a separate tree-representation table. duration_ms as a
+GENERATED column (computed from ended_at - started_at) rather than a
+stored, independently-set value is deliberate: it can never drift out
+of sync with the two timestamps that actually define it, eliminating
+an entire class of "duration says X but started_at/ended_at implies
+Y" bugs by construction.
+
+What breaks if removed: the dashboard would have eval_result's
+pass/fail scores with ZERO visibility into WHERE time was actually
+spent within a run, or which sub-step's timing correlates with a low
+score -- exactly the diagnostic power latency_and_tracing_
+integration.html's whole percentile-latency argument depends on. A
+score alone tells you something failed; eval_span is what tells you
+WHERE and HOW LONG each piece took to get there.</div></details>
+  </div>
+</section>
+
+<!-- ============ SECTION 2: DEFEND EVERY INDEX ============ -->
+<section id="indexes">
+  <div class="kicker">02 — The query pattern first, always — never the reverse</div>
+  <h2>Defend every index, cold</h2>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag idx">INDEX</span><code class="inline" style="font-size:0.95rem;">idx_tool_call_run_seq ON tool_call(run_id, sequence_number)</code></div>
+    <p class="drill-q"><b>From memory:</b> which query pattern does this serve, why this column order, and what breaks if it's dropped?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Query pattern: "give me the full ordered call sequence for run Y" --
+fetching every tool_call row for one run, in the order they actually
+happened. Column order: run_id first because it's the EQUALITY filter
+(one specific run), sequence_number second because it's what the
+query ORDERS by -- the standard equality-then-range/sort composite
+index rule, letting the database jump directly to run Y's rows via
+run_id and read them back already in sequence-number order, no
+separate sort step needed.
+
+What breaks if dropped: the query still returns correct results (an
+index never changes correctness) but falls back to a sequential scan
+of the entire tool_call table followed by an explicit sort -- and
+since tool_call grows without bound over the system's lifetime (every
+tool call ever made), this scan gets slower in direct proportion to
+total historical volume, not to the size of any one run.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag idx">INDEX</span><code class="inline" style="font-size:0.95rem;">idx_eval_span_trace ON eval_span(trace_id)</code></div>
+    <p class="drill-q"><b>From memory:</b> which query pattern does this serve, and why is it single-column rather than composite?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Query pattern: "show me every span for the trace behind eval_result
+X" -- the fundamental join eval_trace_schema_finalization.html's own
+demo runs, and the query the dashboard issues every time a user
+expands one run's detail view.
+
+Why single-column: trace_id is the JOIN KEY itself, with no secondary
+sort or range filter layered on top of it in the query's actual access
+pattern -- unlike idx_tool_call_run_seq, there's no second dimension
+(no "and order/filter by X within one trace_id") that a composite
+index would need to serve. Adding a second column here would add
+write overhead with no query it actually helps.
+
+What breaks if dropped: every trace-detail lookup becomes a full
+sequential scan of eval_span filtering by trace_id -- and since
+eval_span is the highest-write-volume table in the whole schema (every
+sub-step of every run produces at least one row), this is the single
+most damaging index to lose, in proportion to the table's own growth
+rate.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag idx">INDEX</span><code class="inline" style="font-size:0.95rem;">idx_agent_run_running ON agent_run(started_at) WHERE status = 'running'</code></div>
+    <p class="drill-q"><b>From memory:</b> which query pattern does this serve, why is it PARTIAL rather than full, and what breaks if it's dropped?</p>
+    <details><summary>Reveal the defense</summary><div class="solution">Query pattern: "find stuck/long-running orchestrator runs, oldest
+first" -- an ops query that only ever cares about the small,
+currently-active subset of agent_run, never the (much larger)
+historical set of completed runs.
+
+Why partial: a full index on started_at would be maintained on EVERY
+write to agent_run forever, including writes for runs that finished
+months ago and will never again match this query's purpose -- pure
+overhead with no matching use. A partial index (WHERE status =
+'running') only covers currently-active rows, staying small and
+cheap to maintain in proportion to CURRENT concurrent load rather
+than total accumulated history -- capstone_schema_finalization_and_
+indexes.html problem 2's own quantified argument: two to three orders
+of magnitude smaller, and that ratio only improves as history grows.
+
+What breaks if dropped: the "find stuck runs" ops query falls back to
+a full sequential scan of agent_run's entire history, filtering out
+almost every row it reads (since the vast majority of historical rows
+are 'done', not 'running') -- a query that gets slower every single
+day the system stays in production, exactly the failure mode a status-
+value change (dsa/capstone_debugging_integration_issues.html problem 1)
+can also silently reintroduce if a new active-status value bypasses
+this index's WHERE clause.</div></details>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: SURPRISE QUESTIONS ============ -->
+<section id="surprise">
+  <div class="kicker">03 — The interviewer pushes on something your design never explicitly covered</div>
+  <h2>Surprise questions — probing edge cases</h2>
+
+  <p><strong>Start here, before revealing.</strong> A real schema defense rarely stays inside the boundaries of what you already wrote down. These three questions simulate a skeptical interviewer pushing into territory <code class="inline">capstone_schema_finalization_and_indexes.html</code> never directly addressed — answer each one cold before revealing.</p>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">SURPRISE</span></div>
+    <p class="drill-q"><b>"What if a tool call needs to be RETRIED — does your schema support that, or does it silently break?"</b></p>
+    <details><summary>Reveal the defense</summary><div class="solution">Honest answer: the schema as designed does NOT explicitly distinguish
+a retry from a brand-new call -- tool_call's sequence_number is scoped
+per run_id, not per "logical attempt," so if the orchestrator retries
+a timed-out call, the retry gets its own call_id and the NEXT
+sequence_number in line, indistinguishable from a genuinely different
+tool call at the schema level. This isn't a crash, but it's a real
+gap: a query counting "how many DISTINCT tool actions did this run
+take" would overcount retries as separate actions.
+
+How the schema WOULD need to change to support this properly: add a
+nullable retry_of column (UUID REFERENCES tool_call(call_id)) on
+tool_call, pointing a retry back at the original attempt it's
+retrying -- additive, non-breaking, consistent with every other
+migration in this schema being pure addition (capstone_schema_
+finalization_and_indexes.html section 3). This is exactly the kind of
+answer a strong cold defense gives: naming the gap honestly rather
+than pretending the schema already handles something it doesn't, then
+proposing a concrete, minimal, additive fix consistent with the
+schema's existing migration philosophy.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">SURPRISE</span></div>
+    <p class="drill-q"><b>"Your dashboard needs to show 'average eval score per tool used' — walk me through whether your current indexes make that cheap or expensive, live."</b></p>
+    <details><summary>Reveal the defense</summary><div class="solution">Honest answer: this query needs to join tool_call and eval_result
+through agent_run (tool_call.run_id = agent_run.run_id = eval_result.
+run_id), then group by tool_call.tool_name and average eval_result.
+score -- and NONE of section 2's six indexes serve this join+aggregate
+pattern directly. idx_tool_call_run_seq helps fetch tool calls for
+ONE run fast, but this query needs to aggregate across ALL runs that
+used a given tool, which is a different access shape entirely (no
+leading equality filter on run_id at all -- the grouping key is
+tool_name, which isn't the leading column of any existing index).
+
+What this reveals under live questioning: this is a legitimately
+EXPENSIVE query as things stand -- it would need either a new
+composite index on tool_call(tool_name, run_id) to make the join
+efficient per tool_name, or, more realistically for a genuine
+aggregate-across-everything query like this, a materialized rollup
+table (recomputed periodically, not live) rather than trying to index
+this specific ad-hoc aggregate directly against live OLTP tables --
+exactly the "one deliberate denormalization, explicitly justified"
+capstone_combined_mock_full_loop.html Round 2's rubric calls for. The
+strong answer here isn't claiming the current schema already handles
+this well -- it's correctly diagnosing that it doesn't, and proposing
+the right category of fix (a rollup, not just another b-tree index)
+for an aggregate-shaped query this different from anything the schema
+was originally indexed for.</div></details>
+  </div>
+
+  <div class="drill">
+    <div class="drill-head"><span class="drill-tag">SURPRISE</span></div>
+    <p class="drill-q"><b>"What happens to this schema at 10x the current data volume — what's the FIRST thing that breaks?"</b></p>
+    <details><summary>Reveal the defense</summary><div class="solution">This is deliberately the SAME question the Month 6 Week 4 checkpoint
+asks explicitly ("including what breaks first at 10x scale and how
+you'd redesign the schema for it") -- worth having a genuinely
+considered answer ready, not improvised for the first time under
+pressure.
+
+The honest, specific answer: eval_span is the highest-write-volume
+table by a wide margin (every sub-step of every run produces at least
+one row, versus one row per run for agent_run or one row per tool
+dispatch for tool_call, which is a strictly smaller multiplier). At
+10x data volume, idx_eval_span_trace and idx_eval_span_parent both
+keep working CORRECTLY (b-tree indexes scale logarithmically, not
+linearly, with table size) but the table's sheer physical size starts
+to matter for a different reason: vacuum/maintenance overhead on a
+table this large and this write-heavy becomes a real operational
+concern, and any query that DOESN'T hit an index well (like the
+surprise question above about aggregate eval scores per tool) goes
+from "acceptably slow" to "genuinely unusable" as the base table size
+grows 10x.
+
+The redesign: this is where a TIME-BASED partition strategy on
+eval_span (partitioning by started_at, e.g. monthly) becomes the right
+answer rather than a nice-to-have -- old partitions can be archived or
+dropped independently of live traffic, VACUUM only needs to touch
+recent partitions in the common case, and idx_eval_span_trace stays
+small and fast PER PARTITION rather than growing against the entire
+historical table. This is a genuinely different structural answer than
+anything in the original finalized schema, and naming it unprompted
+is exactly what separates "I can recite my own design" from "I
+understand the design well enough to know its real breaking point."</div></details>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: SELF-GRADING RUBRIC ============ -->
+<section id="rubric">
+  <div class="kicker">04 — Grade the whole defense, not each answer in isolation</div>
+  <h2>Self-grading rubric</h2>
+
+  <p><strong>Start here, before scoring yourself.</strong> Rate your OVERALL performance across sections 1-3 against these four criteria — this is a holistic grade for the whole cold-defense session, not a per-question tally.</p>
+
+  <table class="cmp">
+    <tr><th>Criterion</th><th>What "met" looks like</th></tr>
+    <tr><td>Query pattern stated first</td><td>Every index defense named the actual query BEFORE describing the index — never the reverse</td></tr>
+    <tr><td>"What breaks if removed" was concrete</td><td>Answers named a SPECIFIC downstream consequence (a query that gets slower, a join that fails, a diagnostic capability lost) — not a vague "things would be worse"</td></tr>
+    <tr><td>Surprise questions were answered honestly</td><td>Gaps in the current schema were named as gaps, with a genuinely proposed fix — not talked around or pretended away</td></tr>
+    <tr><td>The 10x-scale question had a real, specific answer</td><td>Named the actual highest-write table and a real structural fix (partitioning, in this case) — not a generic "we'd scale the database"</td></tr>
+  </table>
+
+  <div class="rubric-grade" data-round="overall">
+    <button class="grade-btn" data-grade="strong">Strong — met all four</button>
+    <button class="grade-btn" data-grade="mixed">Mixed — met 2-3</button>
+    <button class="grade-btn" data-grade="weak">Weak — met 0-1</button>
+  </div>
+  <div class="score-readout" id="rubric-readout">Select a grade above.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now defend a change YOU propose, cold</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Defending a denormalization decision under direct pushback</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">An interviewer says: "Your schema is fully normalized — four separate tables joined by foreign keys. Isn't that going to make every dashboard query slow? Why didn't you just denormalize eval_result to include the tool_name and run status directly, avoiding the joins entirely?" Defend the normalized design, cold, without just repeating "normalization is good practice."</p>
+    <details><summary>Show solution</summary><div class="solution">The weak version of this defense is exactly what the question is
+baiting: "normalization avoids redundancy" as an abstract principle,
+recited without connecting it to THIS schema's actual access
+patterns. The strong defense argues from the real trade-off, the same
+way capstone_schema_finalization_and_indexes.html section 2 argues
+for every index -- state the actual COST of denormalizing here, not
+just the abstract benefit of not doing it.
+
+Concretely: denormalizing tool_name onto eval_result would mean a
+SINGLE eval_result row (one score) somehow representing potentially
+MULTIPLE tool calls within the same run (a run can dispatch several
+tools before producing one final scored reply) -- there's no single
+correct tool_name value to denormalize onto a row that doesn't
+correspond to exactly one tool call. Denormalizing run status onto
+eval_result is more plausible but creates a REAL problem section 1's
+"what breaks if removed" framing already trained: agent_run.status
+changes over a run's lifetime (running -> done or error), and a
+denormalized copy on eval_result would go STALE the moment status
+changes after the eval_result row was written, unless every status
+transition also updates every associated eval_result row -- extra
+write complexity purely to avoid one join that idx_eval_result_run
+already makes cheap.
+
+The actual defense: the joins THIS schema needs (eval_result to
+agent_run via run_id, eval_span to eval_result via trace_id) are all
+served by existing single-column indexes, making them genuinely cheap
+-- O(log n) index lookups, not full scans. Denormalization is worth
+its write-complexity and staleness cost specifically when a query
+pattern is expensive DESPITE good indexes (the aggregate "average
+score per tool" surprise question in section 3 is a real example of
+exactly that case, which is why THAT one legitimately calls for a
+rollup table) -- not as a default response to "there are joins."
+Normalizing here and denormalizing selectively there, based on actual
+measured query cost, is the defensible position; denormalizing
+everything preemptively to avoid joins that were never actually shown
+to be slow is not.</div></details>
+  </div>
+
+  <div class="callout tbl">
+    <b>Self-check before Saturday's walkthrough recording:</b> could you, without notes, defend all four tables and all six indexes back to back, in under ten minutes total, the way the Month 6 Week 4 checkpoint will ask for the whole architecture? <code class="inline">backend/capstone_walkthrough_recording_guide.html</code> is next — this exact schema defense is one section of that full walkthrough.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone schema cold defense, database fundamentals.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var labels = {
+    strong: "Strong — you can defend this schema cold. Move to the walkthrough recording with confidence; this section is essentially rehearsed.",
+    mixed: "Mixed — some criteria held up, others didn't. Re-run section 3's surprise questions specifically before Saturday; those are the ones most likely to come up unprompted.",
+    weak: "Weak — worth another full pass through sections 1-2 before attempting section 3 again. Cold recall of the base schema needs to be solid before surprise questions are worth practicing."
+  };
+
+  document.querySelectorAll(".rubric-grade").forEach(function(group){
+    var readout = document.getElementById("rubric-readout");
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

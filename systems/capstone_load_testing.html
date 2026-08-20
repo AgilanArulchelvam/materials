@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Load Testing</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --p50-c:#7fd8a0; --p95-c:#f2c14e; --p99-c:#ff6b6b; --accent:#4fc3f7; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(79,195,247,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--p50-c); color:var(--p50-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.b{border-color:var(--p95-c); color:var(--p95-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--p99-c); color:var(--p99-c); background:rgba(255,107,107,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(79,195,247,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .slider-row{display:flex; align-items:center; gap:1rem; margin:1rem 0; flex-wrap:wrap;}
+  .slider-row input[type="range"]{flex:1; min-width:200px; accent-color:var(--accent);}
+  .slider-readout{font-family:var(--mono); font-size:0.9rem; color:var(--ink); min-width:11ch;}
+
+  .load-chart{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.2rem; margin:1rem 0;}
+  .load-bars{display:flex; align-items:flex-end; gap:6px; height:160px; margin-bottom:0.6rem;}
+  .load-bar{flex:1; border-radius:3px 3px 0 0; min-height:2px; transition:height .3s ease, background .3s ease;}
+  .load-legend{display:flex; gap:1.2rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.75rem; color:var(--ink-dim);}
+  .load-legend .sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:0.4rem; vertical-align:middle;}
+
+  .readout-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:0.8rem; margin:1.2rem 0;}
+  .readout-cell{border:1.5px solid var(--rule); border-radius:10px; padding:0.8rem 1rem; background:var(--panel-2);}
+  .readout-cell .label{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.3rem;}
+  .readout-cell .value{font-family:var(--mono); font-size:1.3rem; font-weight:700; color:var(--ink);}
+  .readout-cell.hot .value{color:var(--bad-c);}
+  .readout-cell.ok .value{color:var(--p50-c);}
+
+  .bottleneck-banner{font-family:var(--mono); font-size:0.85rem; padding:0.9rem 1.1rem; border-radius:10px; border:1.5px solid var(--rule); background:var(--panel-2); margin-top:0.8rem;}
+  .bottleneck-banner.warn{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+  .bottleneck-banner.ok{border-color:var(--p50-c); color:var(--p50-c); background:rgba(127,216,160,0.08);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--p50-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(79,195,247,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.p95{border-left-color:var(--p95-c); background:rgba(242,193,78,0.06);} .callout.p95 b{color:var(--p95-c);}
+  .callout.ok{border-left-color:var(--p50-c); background:rgba(127,216,160,0.06);} .callout.ok b{color:var(--p50-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> SYSTEMS LAB · CAPSTONE LOAD TESTING</div>
+  <h1>Every seam survived one request. Now send a thousand at once.</h1>
+  <p class="lede"><code class="inline">backend/capstone_integration_testing.html</code> proved correctness under ONE request at a time. Load testing asks a different question entirely: what happens to throughput and latency as concurrent traffic ramps up, and which single component saturates FIRST — the orchestrator serializing on shared state, the search index, a synchronous downstream MCP call, or the tracing writes themselves. This lab builds the load test, teaches what to measure, and gives you a simulated ramp to watch break in real time.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">What to measure — throughput and p50/p95/p99 latency</div>
+    <div class="pipe-label b">How to design the ramp — realistic request mix, not one endpoint</div>
+    <div class="pipe-label c">How to read the results — which component saturates first</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="measure">1 · What to Measure</a>
+  <a data-target="design">2 · Designing the Load Test</a>
+  <a data-target="bottlenecks">3 · Candidate Bottlenecks</a>
+  <a data-target="ramp">4 · Simulated Ramp, Live</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHAT TO MEASURE ============ -->
+<section id="measure">
+  <div class="kicker">01 — Throughput answers "how much"; percentile latency answers "how bad, for whom"</div>
+  <h2>What to measure under load</h2>
+
+  <p><strong>Start here, before running any load tool.</strong> Think about a single toll booth versus the whole highway during rush hour. Watching ONE car pass through tells you the booth works. It tells you nothing about what happens when a thousand cars arrive in the same ten minutes — does the booth process them at a steady rate (throughput), and for the unlucky driver stuck behind a jam, how long do THEY actually wait (the tail of the latency distribution, not the average)? A load test exists specifically to answer the second question, which no single-request integration test can.</p>
+
+  <table class="cmp">
+    <tr><th>Metric</th><th>What it answers</th><th>Where it comes from in this capstone</th></tr>
+    <tr><td>Throughput (req/s)</td><td>How many completed requests the system sustains per second at a given concurrency level</td><td>Count of successful <code class="inline">POST /chat</code> responses per second, measured by the load generator itself</td></tr>
+    <tr><td>p50 latency</td><td>The typical request's experience</td><td>Root span duration, per <code class="inline">evals-and-observability/latency_and_tracing_integration.html</code> section 1 — the SAME span data this week's dashboard already records</td></tr>
+    <tr><td>p95 latency</td><td>What the worst-served 5% of users experience — the number most real SLAs are actually defined against</td><td>Same root span data, aggregated across the load test's full request set</td></tr>
+    <tr><td>p99 latency</td><td>The deep tail — invisible in an average, and often invisible in p50 too</td><td>Same source; this is the number most likely to reveal a bottleneck an average completely hides</td></tr>
+    <tr><td>Error rate</td><td>Whether the system fails OPEN (returns errors fast) or fails BAD (hangs, times out, or returns wrong data) under saturation</td><td>Non-200 responses and timeouts from the load generator, cross-checked against <code class="inline">eval_span</code> rows with no matching <code class="inline">eval_result</code> — a load-induced version of <code class="inline">backend/capstone_debugging_integration_issues.html</code>'s silent instrumentation gap</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt"># Reading percentile latency out of the SAME span data
+# latency_and_tracing_integration.html already collects -- load
+# testing doesn't need new instrumentation, it needs a new WORKLOAD
+# to run that instrumentation against.</span>
+<span class="c-kw">import</span> numpy <span class="c-kw">as</span> np
+
+<span class="c-kw">def</span> <span class="c-fn">summarize_load_test</span>(root_span_durations_ms: <span class="c-fn">list</span>[<span class="c-fn">float</span>]) -> <span class="c-fn">dict</span>:
+    arr = np.array(root_span_durations_ms)
+    <span class="c-kw">return</span> {
+        <span class="c-str">"p50"</span>: np.percentile(arr, <span class="c-num">50</span>),
+        <span class="c-str">"p95"</span>: np.percentile(arr, <span class="c-num">95</span>),
+        <span class="c-str">"p99"</span>: np.percentile(arr, <span class="c-num">99</span>),
+        <span class="c-str">"max"</span>: arr.max(),
+        <span class="c-str">"count"</span>: <span class="c-fn">len</span>(arr),
+    }</div>
+
+  <div class="callout"><b>Interview-ready definition:</b> a load test's job is to plot throughput AND percentile latency against increasing concurrency on the same timeline — the interesting result is never a single number, it's the SHAPE of the curve: throughput that plateaus while latency keeps climbing is the universal signature of a saturated bottleneck, and knowing where that plateau begins is the entire point of running the test at all.</div>
+</section>
+
+<!-- ============ SECTION 2: DESIGNING THE LOAD TEST ============ -->
+<section id="design">
+  <div class="kicker">02 — A realistic ramp, against a realistic request mix</div>
+  <h2>Designing the load test</h2>
+
+  <p><strong>Start here, before pointing a tool at the system.</strong> Two design mistakes make a load test's results meaningless: hammering ONE endpoint with identical requests (real traffic is never uniform — some requests hit the search tool, some don't, some are multi-turn continuations of an existing <code class="inline">run_id</code>), and jumping straight to maximum concurrency instead of ramping (a sudden step function tells you the system fell over, but not WHERE the knee in the curve actually was).</p>
+
+  <div class="code"><span class="c-cmt"># load_test.py -- ramping concurrent users against a realistic mix
+# of the three capstone request shapes, using locust-style semantics</span>
+<span class="c-kw">import</span> random
+
+REQUEST_MIX = [
+    (<span class="c-num">0.5</span>, <span class="c-str">"new_chat_with_search"</span>),      <span class="c-cmt"># new run_id, needs hybrid_search</span>
+    (<span class="c-num">0.3</span>, <span class="c-str">"continue_existing_run"</span>),    <span class="c-cmt"># existing run_id, loads prior state</span>
+    (<span class="c-num">0.2</span>, <span class="c-str">"new_chat_no_search"</span>),        <span class="c-cmt"># new run_id, tool-free reply</span>
+]
+
+<span class="c-kw">class</span> <span class="c-fn">CapstoneUser</span>:
+    <span class="c-kw">async def</span> <span class="c-fn">one_request</span>(self, client):
+        r = random.random()
+        cumulative = <span class="c-num">0</span>
+        <span class="c-kw">for</span> weight, shape <span class="c-kw">in</span> REQUEST_MIX:
+            cumulative += weight
+            <span class="c-kw">if</span> r <= cumulative:
+                <span class="c-kw">return await</span> self._send(client, shape)
+
+<span class="c-kw">async def</span> <span class="c-fn">ramp</span>(target_concurrency: <span class="c-fn">int</span>, step_seconds: <span class="c-fn">int</span> = <span class="c-num">30</span>):
+    <span class="c-cmt"># ramp concurrency in steps, holding each step steady long enough
+    # to reach equilibrium (a few seconds of warm-up noise at the
+    # START of each step should be discarded, not counted)</span>
+    <span class="c-kw">for</span> concurrency <span class="c-kw">in</span> <span class="c-fn">range</span>(<span class="c-num">10</span>, target_concurrency + <span class="c-num">1</span>, <span class="c-num">10</span>):
+        <span class="c-kw">await</span> hold_concurrency(concurrency, duration=step_seconds)
+        <span class="c-kw">yield</span> collect_metrics_for_step(concurrency)</div>
+
+  <table class="cmp">
+    <tr><th>Design choice</th><th>Why it matters</th></tr>
+    <tr><td>Weighted request mix, not one endpoint</td><td>The orchestrator's real bottleneck (per section 3) may only appear under a MIX — e.g. <code class="inline">continue_existing_run</code> requests contend on the same Redis keys as new runs, a contention pattern a search-only load test would never surface</td></tr>
+    <tr><td>Ramp in steps, hold each step, discard warm-up</td><td>A single jump to max concurrency conflates "the system is at capacity" with "the system is still warming up (cold caches, cold connections)" — holding steady and discarding the first few seconds of each step isolates steady-state behavior</td></tr>
+    <tr><td>Run against a realistically-sized dataset</td><td>Per <code class="inline">database/capstone_capacity_estimation_practice.html</code>'s growth assumptions — load-testing hybrid search against 50 documents when production has 500,000 will completely hide an index-scaling bottleneck that only appears at real volume</td></tr>
+    <tr><td>Measure the DATABASE side effects too, not just responses</td><td>Exactly <code class="inline">capstone_integration_testing.html</code> section 3's "assert on the response AND the resulting trace/eval records" rule, applied under load — a system that returns fast 200s while silently dropping <code class="inline">eval_result</code> writes under contention is failing in the worst possible way: looking healthy while it isn't</td></tr>
+  </table>
+
+  <div class="callout p95"><b>Interview-ready definition:</b> a well-designed load test ramps concurrency in discrete, held steps against a WEIGHTED mix of the system's real request shapes, discards each step's warm-up period, and measures both response-side and database-side outcomes at every step — a flat spike to max concurrency against one endpoint tells you the system broke, not where or why.</div>
+</section>
+
+<!-- ============ SECTION 3: CANDIDATE BOTTLENECKS ============ -->
+<section id="bottlenecks">
+  <div class="kicker">03 — Four real candidates, each with its own signature in the data</div>
+  <h2>Reading results to find the actual bottleneck</h2>
+
+  <p><strong>Start here, before assuming "it's just slow."</strong> Every one of this capstone's major components is a plausible bottleneck, and each one leaves a DIFFERENT fingerprint in throughput/latency data — the skill this section teaches is matching the fingerprint to the cause, not guessing.</p>
+
+  <table class="cmp">
+    <tr><th>Candidate</th><th>Signature under load</th><th>How to confirm</th></tr>
+    <tr><td>Orchestrator serializing on shared state</td><td>Throughput plateaus early; p95/p99 latency grows roughly LINEARLY with concurrency even while CPU usage stays low — the system is waiting on a lock, not doing work</td><td>Check Redis lock wait time directly (per <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> problem 2's <code class="inline">SET NX</code> lock) — if lock acquisition time dominates a request's total latency at high concurrency, this is confirmed</td></tr>
+    <tr><td>Search index (hybrid search)</td><td>Latency grows specifically on the <code class="inline">new_chat_with_search</code> request shape from section 2's mix, while <code class="inline">new_chat_no_search</code> stays flat — an isolated, shape-specific slowdown rather than a system-wide one</td><td>Compare per-span latency (not just root span) for the <code class="inline">hybrid_search</code> span specifically, per <code class="inline">latency_and_tracing_integration.html</code> section 1's span-vs-request-level distinction — if that ONE span's p95 is climbing while others stay flat, the index is the bottleneck</td></tr>
+    <tr><td>A synchronous downstream MCP call</td><td>Throughput caps at a suspiciously round number close to (worker_count × 1/average_call_duration) — a classic signature of a blocking call inside code that should be concurrent</td><td>Check whether the suspect tool's call is properly <code class="inline">await</code>ed inside an async handler versus accidentally using a blocking (non-async) client library, which would serialize an entire worker's event loop behind ONE slow call — the exact hazard <code class="inline">capstone_orchestrator_integration.html</code> problem 3's missing-timeout bug is a cousin of</td></tr>
+    <tr><td>DB writes for tracing/eval</td><td>Response latency (what the USER sees) stays flat even as concurrency rises, but the GAP between response time and eval_result write time (per <code class="inline">capstone_dashboard_integration.html</code>'s async-vs-sync scoring trade-off) grows — the user-facing path is fine, the observability path is falling behind</td><td>Track write latency to <code class="inline">eval_span</code>/<code class="inline">eval_result</code> separately from response latency; if scoring is fire-and-forget (async, per that lab's own practice problem 1), a growing queue backlog here is invisible to users but means the DASHBOARD is increasingly showing stale or incomplete data under load</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The trap this table is built to avoid:</b> "throughput dropped, so add more workers" is the wrong conclusion if the actual bottleneck is a SHARED resource (a lock, a single index, a single DB connection pool) — more workers just means more processes contending for the same choke point, and can occasionally make p99 WORSE by adding more contention without adding more real capacity. Confirming WHICH component saturated first, per this table, always comes before choosing a fix.</div>
+</section>
+
+<!-- ============ SECTION 4: SIMULATED RAMP ============ -->
+<section id="ramp">
+  <div class="kicker">04 — Ramp concurrency yourself, watch the curves and the culprit</div>
+  <h2>Simulated load ramp, live</h2>
+
+  <p><strong>Start here, before reading the readout.</strong> Drag the slider to ramp simulated concurrent users against a simulated capstone whose orchestrator has a real contention point (matching section 3's first candidate). Watch throughput plateau and p95/p99 diverge from p50 as concurrency rises past the system's real capacity — and watch which component the simulation reports as saturated first.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>Concurrency ramp simulator</span></div>
+    <div class="slider-row">
+      <label for="concurrency-slider" style="font-family:var(--mono); font-size:0.8rem; color:var(--ink-dim);">Concurrent users</label>
+      <input type="range" id="concurrency-slider" min="5" max="300" step="5" value="5">
+      <span class="slider-readout" id="concurrency-readout">5 users</span>
+    </div>
+
+    <div class="load-chart">
+      <div class="load-bars" id="load-bars"></div>
+      <div class="load-legend">
+        <span><span class="sw" style="background:var(--p50-c);"></span>p50</span>
+        <span><span class="sw" style="background:var(--p95-c);"></span>p95</span>
+        <span><span class="sw" style="background:var(--p99-c);"></span>p99</span>
+      </div>
+    </div>
+
+    <div class="readout-grid">
+      <div class="readout-cell" id="cell-throughput"><div class="label">Throughput</div><div class="value" id="val-throughput">—</div></div>
+      <div class="readout-cell" id="cell-p50"><div class="label">p50 latency</div><div class="value" id="val-p50">—</div></div>
+      <div class="readout-cell" id="cell-p95"><div class="label">p95 latency</div><div class="value" id="val-p95">—</div></div>
+      <div class="readout-cell" id="cell-p99"><div class="label">p99 latency</div><div class="value" id="val-p99">—</div></div>
+    </div>
+
+    <div class="bottleneck-banner ok" id="bottleneck-banner">System has headroom — no component near saturation yet.</div>
+  </div>
+
+  <div class="callout ok"><b>What to notice:</b> throughput rises roughly linearly at low concurrency, then flattens well before 300 users — right around the point where the orchestrator's lock-wait time starts dominating. p50 stays deceptively calm through most of the ramp; p95 and p99 are the first numbers to reveal the problem, exactly section 1's argument for watching the tail instead of the average.</div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now design the fix, not just the finding</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · The knee in the curve moved after a fix — did it actually help?</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">After identifying the orchestrator's Redis lock as the bottleneck (section 3, candidate 1), a teammate replaces the lock with <code class="inline">capstone_orchestrator_integration.html</code> problem 2's atomic-operation fix (RPUSH instead of load/mutate/save). Re-running section 4's ramp, throughput now plateaus at a HIGHER concurrency, but p99 latency at that new plateau is still climbing sharply. Is this fix "working," and what would you check next?</p>
+    <details><summary>Show solution</summary><div class="solution">Partially working, and the two numbers are telling two different
+things -- worth separating rather than treating "did it help" as one
+yes/no question. The fact that the PLATEAU moved to a higher
+concurrency is real evidence the lock was genuinely part of the
+original bottleneck: removing lock-wait time let the system sustain
+more simultaneous work before throughput capped out, exactly the
+predicted effect of candidate 1's fix in section 3.
+
+But p99 still climbing sharply AT the new, higher plateau means
+something else is now the binding constraint -- the fix didn't remove
+ALL contention, it moved the ceiling higher and revealed the NEXT
+bottleneck underneath it, which is the normal, expected outcome of
+fixing one bottleneck in a multi-component system (the "whack-a-mole"
+nature of performance work: removing the tightest constraint just
+exposes the next-tightest one, it rarely means "the system is now
+fully unconstrained"). What to check next: re-run section 3's whole
+table of candidates against the NEW plateau's traffic pattern -- is
+p99 now driven by the search index at higher concurrency, by DB write
+contention on eval_span (candidate 4, since more successful requests
+now mean more write volume than before), or by something the RPUSH
+change itself introduced (e.g. a single Redis list growing large
+enough that RPUSH's own performance degrades, which the atomic-
+operation fix's own trade-off notes in capstone_orchestrator_
+integration.html problem 2 already flagged as a condition on it
+"mapping cleanly onto a Redis primitive"). The right conclusion is
+"the fix worked AND surfaced a new binding constraint," not simply
+"the fix didn't work" or "the fix is done."</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · Designing a load test that would catch section 3's DB-write candidate</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Section 3's fourth bottleneck candidate (DB writes for tracing/eval) is specifically dangerous because user-facing latency can stay flat while it happens — the load test's THROUGHPUT and RESPONSE-latency numbers alone would miss it entirely. What would you add to section 2's load test design to actually catch this candidate, and why wouldn't the design as originally written catch it?</p>
+    <details><summary>Show solution</summary><div class="solution">Section 2's load test, as designed, measures exactly two things: the
+load generator's own view of response latency/throughput, and (per
+its own "measure the database side effects too" row) an assertion
+that database writes happened at all -- but neither of those, on their
+own, catches a write pipeline that is falling BEHIND without failing
+outright. A queue of unwritten eval_result rows that grows throughout
+the load test, but eventually drains after the test ends, would show
+"eval_result rows exist for every trace_id" as TRUE by the time
+anyone checks, while completely missing that the writes were
+significantly delayed DURING the test -- which is precisely the
+dashboard-staleness problem this candidate describes.
+
+What to add: track write LATENCY (time between a run finishing and
+its eval_result row actually landing, not just whether it eventually
+lands), sampled continuously throughout the ramp rather than checked
+once at the end -- essentially running latency_and_tracing_integration
+.html's own percentile-latency treatment against the SCORING pipeline,
+not just the user-facing request pipeline, as its own separate
+timeline. Concretely: log a timestamp when score_run() is CALLED and
+compare it against eval_result.evaluated_at once written, computing
+p50/p95/p99 of that GAP across the load test's duration, plotted
+against concurrency exactly like section 4's simulator does for
+user-facing latency. A gap that grows with concurrency, even while
+user-facing p95 stays flat, is the specific, otherwise-invisible
+signature this candidate produces -- and is exactly the kind of
+result a load test that only watches the response path would never
+surface, which is the whole reason this problem is worth practicing
+deliberately rather than assuming "the response was fast" is
+sufficient evidence the whole system is healthy.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before writing the architecture doc:</b> could you, without notes, (1) name why p50 is the wrong number to watch for finding a bottleneck, (2) match each of section 3's four bottleneck candidates to its data signature from memory, and (3) explain why fixing one bottleneck often reveals another rather than "finishing" performance work? <code class="inline">backend/capstone_architecture_documentation.html</code> is next — the load test's actual findings are exactly the kind of "known limitations" content a real architecture doc needs to state honestly.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone load testing, systems fundamentals.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var slider = document.getElementById("concurrency-slider");
+  var readout = document.getElementById("concurrency-readout");
+  var barsWrap = document.getElementById("load-bars");
+  var valThroughput = document.getElementById("val-throughput");
+  var valP50 = document.getElementById("val-p50");
+  var valP95 = document.getElementById("val-p95");
+  var valP99 = document.getElementById("val-p99");
+  var cellThroughput = document.getElementById("cell-throughput");
+  var cellP95 = document.getElementById("cell-p95");
+  var cellP99 = document.getElementById("cell-p99");
+  var banner = document.getElementById("bottleneck-banner");
+
+  var CAPACITY = 140; // saturation point for the orchestrator lock
+
+  var BAR_COUNT = 24;
+  for (var i = 0; i < BAR_COUNT; i++){
+    var b = document.createElement("div");
+    b.className = "load-bar";
+    b.id = "bar-" + i;
+    barsWrap.appendChild(b);
+  }
+
+  function computeMetrics(c){
+    // Throughput rises near-linearly then saturates past CAPACITY.
+    var maxThroughput = 95;
+    var throughput = maxThroughput * (1 - Math.exp(-c / CAPACITY));
+
+    // p50 stays fairly flat, small growth.
+    var p50 = 80 + c * 0.15;
+
+    // p95/p99 grow slowly below capacity, then steeply past it --
+    // the lock-wait-time signature from section 3, candidate 1.
+    var overCapacity = Math.max(0, c - CAPACITY);
+    var p95 = 140 + c * 0.6 + Math.pow(overCapacity, 1.6) * 0.9;
+    var p99 = 200 + c * 1.1 + Math.pow(overCapacity, 1.7) * 2.1;
+
+    return {
+      throughput: throughput,
+      p50: p50,
+      p95: p95,
+      p99: p99
+    };
+  }
+
+  function render(){
+    var c = parseInt(slider.value, 10);
+    readout.textContent = c + " users";
+    var m = computeMetrics(c);
+
+    valThroughput.textContent = m.throughput.toFixed(1) + " req/s";
+    valP50.textContent = Math.round(m.p50) + " ms";
+    valP95.textContent = Math.round(m.p95) + " ms";
+    valP99.textContent = Math.round(m.p99) + " ms";
+
+    var overCapacity = c > CAPACITY;
+    cellThroughput.classList.toggle("hot", overCapacity && m.throughput > 85);
+    cellP95.classList.toggle("hot", m.p95 > 400);
+    cellP99.classList.toggle("hot", m.p99 > 700);
+
+    // bars: last BAR_COUNT points along the ramp from 5 to current c
+    var maxVal = 1200;
+    for (var i = 0; i < BAR_COUNT; i++){
+      var frac = (i + 1) / BAR_COUNT;
+      var sampleC = Math.max(5, Math.round(c * frac));
+      var sm = computeMetrics(sampleC);
+      var el = document.getElementById("bar-" + i);
+      var heightPct = Math.min(100, (sm.p99 / maxVal) * 100);
+      el.style.height = Math.max(2, heightPct) + "%";
+      el.style.background = sampleC > CAPACITY ? "var(--p99-c)" : (sampleC > CAPACITY * 0.7 ? "var(--p95-c)" : "var(--p50-c)");
+    }
+
+    if (c > CAPACITY * 1.3){
+      banner.className = "bottleneck-banner warn";
+      banner.innerHTML = "<b>Saturated:</b> throughput has plateaued near " + m.throughput.toFixed(0) + " req/s while p99 keeps climbing — the orchestrator's Redis lock is the binding constraint at this concurrency, matching section 3's candidate 1 signature (linear-ish latency growth with flat CPU, throughput capped well below what a lock-free path could sustain).";
+    } else if (c > CAPACITY * 0.7){
+      banner.className = "bottleneck-banner warn";
+      banner.innerHTML = "<b>Approaching saturation:</b> p95/p99 are starting to diverge from p50 — the earliest visible sign the lock-contention bottleneck is close, before throughput has visibly plateaued yet.";
+    } else {
+      banner.className = "bottleneck-banner ok";
+      banner.textContent = "System has headroom — no component near saturation yet.";
+    }
+  }
+
+  slider.addEventListener("input", render);
+  render();
+})();
+</script>
+</body>
+</html>

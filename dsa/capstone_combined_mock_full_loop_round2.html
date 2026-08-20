@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Combined Mock: Full Loop, Round 2</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --dsa-c:#4fc3f7; --schema-c:#f2c14e; --sys-c:#7fd8a0; --behav-c:#c792ea; --accent:#ff8a65; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,138,101,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(199,146,234,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--dsa-c); color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--schema-c); color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--sys-c); color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .pipe-label.d{border-color:var(--behav-c); color:var(--behav-c); background:rgba(199,146,234,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(255,138,101,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .station{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .station-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.8rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px dashed var(--rule);}
+  .station-tag{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid;}
+  .station-tag.dsa{color:var(--dsa-c); border-color:var(--dsa-c); background:rgba(79,195,247,0.08);}
+  .station-tag.schema{color:var(--schema-c); border-color:var(--schema-c); background:rgba(242,193,78,0.08);}
+  .station-tag.sys{color:var(--sys-c); border-color:var(--sys-c); background:rgba(127,216,160,0.08);}
+  .station-tag.behav{color:var(--behav-c); border-color:var(--behav-c); background:rgba(199,146,234,0.08);}
+
+  .timer-box{font-family:var(--mono); display:flex; align-items:center; gap:0.7rem;}
+  .timer-display{font-size:1.4rem; font-weight:700; color:var(--ink); min-width:4.6ch; text-align:right;}
+  .timer-display.warn{color:var(--bad-c);}
+  .timer-bar{width:130px; height:8px; border-radius:4px; background:var(--panel-2); overflow:hidden; border:1px solid var(--rule);}
+  .timer-fill{height:100%; background:var(--sys-c); width:100%; transition:width 1s linear, background .3s;}
+  .timer-fill.warn{background:var(--bad-c);}
+
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .rubric{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1.2rem 0;}
+  .rubric-title{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim); margin-bottom:0.8rem;}
+  .rubric-grid{display:grid; grid-template-columns:1fr 1fr; gap:1rem;}
+  @media(max-width:700px){.rubric-grid{grid-template-columns:1fr;}}
+  .rubric-col{border-radius:8px; padding:0.9rem 1rem; font-size:0.83rem;}
+  .rubric-col.strong{border:1.5px solid var(--sys-c); background:rgba(127,216,160,0.06);}
+  .rubric-col.weak{border:1.5px solid var(--bad-c); background:rgba(255,107,107,0.06);}
+  .rubric-col h5{font-family:var(--mono); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; margin:0 0 0.5rem;}
+  .rubric-col.strong h5{color:var(--sys-c);}
+  .rubric-col.weak h5{color:var(--bad-c);}
+  .rubric-col ul{margin:0; padding-left:1.1rem; font-size:0.82rem;}
+  .rubric-col li{margin:0.3rem 0;}
+
+  .self-grade{display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:1rem;}
+  .grade-btn{font-family:var(--mono); font-size:0.75rem; padding:0.4rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink-dim); cursor:pointer; transition:all .2s;}
+  .grade-btn:hover{border-color:var(--accent);}
+  .grade-btn.selected{background:var(--accent); color:#14100c; border-color:var(--accent); font-weight:600;}
+  .grade-readout{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); margin-top:0.6rem;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--sys-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(255,138,101,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.dsa{border-left-color:var(--dsa-c); background:rgba(79,195,247,0.06);} .callout.dsa b{color:var(--dsa-c);}
+  .callout.schema{border-left-color:var(--schema-c); background:rgba(242,193,78,0.06);} .callout.schema b{color:var(--schema-c);}
+  .callout.sys{border-left-color:var(--sys-c); background:rgba(127,216,160,0.06);} .callout.sys b{color:var(--sys-c);}
+  .callout.behav{border-left-color:var(--behav-c); background:rgba(199,146,234,0.06);} .callout.behav b{color:var(--behav-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> COMBINED MOCK · CAPSTONE FULL LOOP, ROUND 2</div>
+  <h1>Same four rounds. New problems. This is the rep, not a rerun.</h1>
+  <p class="lede"><code class="inline">dsa/capstone_combined_mock_full_loop.html</code> was Round 1: four full-length rounds (DSA, schema design, system design, behavioral) testing whether depth holds up under cumulative fatigue across a realistic loop. This week's checklist repeats the exact same item — "combined mock interview, timed, full timed mock" — with no new elaboration, which means the honest read is: run it again, for real stamina practice, not a harder tier. Same format, same four full-length time budgets, same rubric style. Every problem below is DIFFERENT from Round 1's, so this trains the actual skill (depth holding up under fatigue, on FRESH content) rather than letting memorized answers from Round 1 stand in for genuine recall.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">Round 1 — DSA, full-length, 30 minutes — new problem</div>
+    <div class="pipe-label b">Round 2 — Schema design, full-length, 35 minutes — new prompt</div>
+    <div class="pipe-label c">Round 3 — System design, full-length, 45 minutes — new deep-dive</div>
+    <div class="pipe-label d">Round 4 — Behavioral / capstone walkthrough, 30 minutes — new decision</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="how">Why Run This Again</a>
+  <a data-target="r1">Round 1 · DSA</a>
+  <a data-target="r2">Round 2 · Schema Design</a>
+  <a data-target="r3">Round 3 · System Design</a>
+  <a data-target="r4">Round 4 · Behavioral</a>
+  <a data-target="reflection">Reflection: Comparing Loops</a>
+  <a data-target="practice">Run the Full Loop Checklist</a>
+</nav>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section id="how">
+  <div class="kicker">Before round 1 — read this once, not mid-loop</div>
+  <h2>Why run the exact same format again, and what actually changed</h2>
+
+  <p><strong>Start here, before starting any timer.</strong> Think about a musician running a piece a second time in dress rehearsal, not to learn new notes, but because the first run revealed which passages fell apart under real performance pressure and needed another honest pass. This week's roadmap names "combined mock interview, timed — full timed mock" with the exact same wording as last week — no new format, no elevated difficulty stated. The honest interpretation isn't "invent a harder tier the checklist never asked for" — it's that stamina under a realistic loop is a skill that needs REPETITION to actually build, the same way running one practice marathon doesn't make the second one easy. This is that second rep.</p>
+
+  <p>What's genuinely different from Round 1, and why it matters: every prompt below is a NEW problem, not last week's problem restated. This matters because the whole point of Round 1's reflection section was measuring whether depth holds up under fatigue — if Round 2 reused Round 1's exact prompts, a strong performance here could just mean "I memorized the reference answer," which measures nothing. New content on the same difficulty tier isolates the actual skill: can you produce fresh, deep reasoning on hour two of a loop the same way you can on hour zero.</p>
+
+  <table class="cmp">
+    <tr><th></th><th>Round 1 (<code class="inline">capstone_combined_mock_full_loop.html</code>)</th><th>This lab (Round 2)</th></tr>
+    <tr><td>Format</td><td>4 full rounds, 30-45 min each</td><td>Identical format, identical time budgets</td></tr>
+    <tr><td>Problems</td><td>Redundant-tool-call loop detection; full schema from scratch; capstone system design + orchestrator state deep-dive; a Redis-vs-Postgres decision walkthrough</td><td>A DIFFERENT problem in every round — same difficulty tier, new content (see each round below)</td></tr>
+    <tr><td>Skill trained</td><td>First exposure to full-loop stamina and fatigue</td><td>Whether Round 1's stamina gains actually generalize to NEW problems, not just familiar ones</td></tr>
+    <tr><td>Reflection focus</td><td>Stamina curve within one loop (Round 1 → Round 4)</td><td>Stamina curve BETWEEN loops (this loop vs. last week's), read together</td></tr>
+  </table>
+
+  <div class="callout dsa"><b>How to actually use this lab:</b> exactly Round 1's own advice, repeated because it still applies — run all four rounds in one sitting, in order, breaks capped at 5 minutes, self-grade honestly before reading any reference approach. The one new instruction: before starting, briefly recall your four Round 1 self-grades. The reflection section asks you to compare them against this run's grades directly, so it's worth having them in mind, not just on record somewhere unread.</div>
+</section>
+
+<!-- ============ ROUND 1: DSA ============ -->
+<section id="r1">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag dsa">ROUND 1 — DSA · FULL LENGTH · 30:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-1"></div></div>
+        <span class="timer-display" id="time-1">30:00</span>
+        <button class="btn" id="start-1">Start</button>
+        <button class="btn secondary" id="reset-1">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The eval/tracing dashboard (<code class="inline">evals-and-observability/capstone_dashboard_integration.html</code>) needs to render a waterfall view of a run's spans — given a flat list of <code class="inline">(span_id, parent_span_id, started_at, duration_ms)</code> records for one <code class="inline">trace_id</code>, reconstruct the span TREE (parent_span_id null = root) and compute, for every span, its "self time" — the span's own duration minus the total duration of its direct children (the time spent in that span NOT accounted for by any sub-span). Design the algorithm, state its time complexity, and handle the edge case of a span whose <code class="inline">ended_at</code> was never recorded (per <code class="inline">backend/capstone_debugging_integration_issues.html</code>'s silent-gap bug category).</p>
+    <p style="font-size:0.88rem;">This is a full round: work through the tree-building step, the self-time computation, a complexity proof, and the missing-<code class="inline">ended_at</code> edge case unprompted — not a sketch.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Builds a parent → children adjacency map in one O(n) pass before computing anything, rather than repeatedly scanning the flat list per span</li>
+            <li>Computes self-time via a single bottom-up (or top-down accumulate-and-subtract) traversal, O(n) total, and states why it's not O(n²)</li>
+            <li>Raises the missing-<code class="inline">ended_at</code> case UNPROMPTED and proposes a concrete handling (exclude from self-time math with a flagged "incomplete" state, not a crash or a silent zero)</li>
+            <li>Names what a NEGATIVE self-time value would mean (children's total duration exceeds the parent's — a real bug worth surfacing, not silently clamping to zero)</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Recomputes each span's children by rescanning the full flat list per span (O(n²)) with no adjacency map</li>
+            <li>Never proves or states the complexity, just asserts "should be fast"</li>
+            <li>Missing <code class="inline">ended_at</code> either crashes the whole computation or is silently treated as duration 0 with no flag</li>
+            <li>Never considers that self-time could come out negative, or what that would mean</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="1">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-1"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">Step 1: one O(n) pass over the flat span list builds a dict from
+parent_span_id -> list of child span_ids (and a separate dict from
+span_id -> the span's own record), exactly the adjacency-list
+representation trees_and_binary_search_trees.html builds from a flat
+edge list. The root is whichever span has parent_span_id = None,
+matching eval_span's own schema definition in
+database/capstone_schema_finalization_and_indexes.html section 1.
+
+Step 2: self-time for a span = its own duration_ms minus the SUM of
+its direct children's duration_ms (not all descendants -- only direct
+children, since a grandchild's time is already excluded from the
+child's own self-time separately). Computing this for every span
+requires, for each span, summing its direct children's durations --
+which the adjacency map from step 1 makes O(1) amortized per span
+(iterate each span's children list once), giving O(n) total across
+the whole tree, not O(n) per span (which would be the O(n^2) weak
+answer). No traversal ORDER actually matters here since each span's
+self-time only depends on its OWN direct children, not on any
+recursive aggregate from further down -- worth stating explicitly,
+since it's a genuinely simpler case than a full bottom-up tree DP
+would suggest at first glance.
+
+The missing ended_at edge case (unprompted, per the strong rubric):
+per capstone_schema_finalization_and_indexes.html section 1,
+duration_ms is a GENERATED column computed from ended_at - started_at
+-- a span with no ended_at (exactly backend/capstone_debugging_
+integration_issues.html section 4's silent instrumentation-gap bug,
+here showing up as a data-quality problem for THIS algorithm to
+handle) has a NULL duration_ms. Silently treating NULL as 0 would
+make that span's self-time massively NEGATIVE-looking once its
+children's real durations are subtracted from a zero. The correct
+handling: exclude spans with NULL duration_ms from self-time
+computation entirely, mark them "incomplete" in the rendered
+waterfall, and -- since the row exists but never closed -- this is
+itself useful DIAGNOSTIC information for the dashboard to surface,
+not just an error to hide.
+
+Negative self-time in general (also unprompted, per the strong
+rubric): if it occurs on a span WITH a valid duration_ms, it means the
+children's total reported duration exceeds the parent's -- structurally
+impossible for correctly-nested spans, and a strong signal of either
+clock skew between processes recording started_at/ended_at, or an
+overlapping-siblings bug in the tracing instrumentation itself. This
+should be surfaced as a data-integrity warning on the dashboard, never
+silently clamped to zero, since clamping would hide a real
+instrumentation bug behind a plausible-looking zero.</div></details>
+  </div>
+</section>
+
+<!-- ============ ROUND 2: SCHEMA DESIGN ============ -->
+<section id="r2">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag schema">ROUND 2 — SCHEMA DESIGN · FULL LENGTH · 35:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-2"></div></div>
+        <span class="timer-display" id="time-2">35:00</span>
+        <button class="btn" id="start-2">Start</button>
+        <button class="btn secondary" id="reset-2">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> The capstone needs a new capability: rate-limiting per client, tracked as "how many <code class="inline">agent_run</code>s has this client started in the last 60 seconds." Design the schema addition from scratch, out loud — where does client identity live, what table(s) track the rolling count, what index makes a rate-limit CHECK cheap on every single request, and how would you migrate this into the existing finalized schema (<code class="inline">database/capstone_schema_finalization_and_indexes.html</code>) without a write-blocking lock on tables that already hold production data. Then discuss whether this data belongs in Postgres at all, or whether it's actually a better fit for Redis given the access pattern.</p>
+    <p style="font-size:0.88rem;">This is the full version of a genuinely new schema decision, not a restatement of the existing finalized schema — the round tests whether you can apply the SAME reasoning method (query pattern first, then index; access pattern first, then storage choice) to something you haven't seen designed for you already.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>States the actual query first ("count runs for client X in the last 60s") before proposing any table or index</li>
+            <li>Recognizes this is a HIGH-FREQUENCY, short-lived counter — structurally similar to orchestrator run state, not to durable trace history — and explicitly revisits <code class="inline">capstone_orchestrator_integration.html</code> problem 1's Redis-vs-Postgres reasoning to argue for Redis (e.g. a sliding window counter) over a new Postgres table</li>
+            <li>If arguing FOR Postgres, names a real index that would serve the query (composite on client_id + started_at) and acknowledges the write-amplification cost on every single request</li>
+            <li>Proposes a concrete, additive, non-locking migration if Postgres is chosen, per <code class="inline">capstone_schema_finalization_and_indexes.html</code> section 3's <code class="inline">CREATE INDEX CONCURRENTLY</code> rule</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Jumps to a new Postgres table with no discussion of the access pattern driving that choice</li>
+            <li>Never revisits the Redis-vs-Postgres reasoning already established elsewhere in the capstone, treating this as an unrelated decision</li>
+            <li>Proposes an index but never names the specific query it serves</li>
+            <li>Migration plan doesn't mention lock behavior on tables with existing data</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="2">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-2"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">The query pattern first, stated precisely: "given client_id X, how
+many agent_run rows were started in the last 60 seconds" -- a SLIDING
+WINDOW count, checked on every single incoming request (the rate
+limiter has to run BEFORE the request is allowed to proceed, so this
+query sits directly on the hot path of every request, not in a
+background job).
+
+That access pattern -- checked on literally every request, needs to be
+fast, and the underlying data (a rolling 60-second window) is
+disposable and constantly expiring -- is structurally identical to
+capstone_orchestrator_integration.html problem 1's argument for Redis
+over Postgres for run state: high write/read rate, no durability
+requirement beyond the current window, and a natural expiry. The
+strong answer applies that SAME reasoning here rather than defaulting
+to "add a table" out of habit. A concrete Redis-native implementation:
+a sorted set per client_id, keyed by request timestamp (ZADD on each
+new run, ZREMRANGEBYSCORE to evict anything older than 60s, ZCARD to
+get the current count) -- O(log n) per operation, no schema migration
+needed at all, and no write-blocking lock risk on any existing table.
+
+If a candidate argues FOR Postgres instead (a legitimate answer if
+they want a durable audit trail of rate-limit events, not just live
+enforcement): the query "count runs for client X since time Y" wants
+a composite index on (client_id, started_at) -- equality filter on
+client_id first, range filter on started_at second, exactly the same
+composite-index-ordering rule capstone_schema_finalization_and_indexes
+.html section 2 already established for idx_tool_call_name_time. The
+migration would be a straightforward CREATE TABLE (new, empty, no
+lock concern) plus CREATE INDEX CONCURRENTLY on the new table's own
+column, following section 3's "safe to run against a live table" rule
+-- though since this is a brand new table, CONCURRENTLY isn't strictly
+required here (only existing, populated tables need it), which is
+itself worth stating to show the migration-safety reasoning is
+actually understood, not just pattern-matched.
+
+What separates a strong live answer from a merely correct one:
+recognizing this ISN'T a fresh decision -- it's the SAME decision
+capstone_orchestrator_integration.html problem 1 already made, now
+being re-derived for a new feature, and saying so explicitly ("this
+has the same shape as run state, so I'd make the same call") is
+exactly the kind of connected reasoning a real interviewer is
+listening for across a whole loop, not just within one round.</div></details>
+  </div>
+</section>
+
+<!-- ============ ROUND 3: SYSTEM DESIGN ============ -->
+<section id="r3">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag sys">ROUND 3 — SYSTEM DESIGN · FULL LENGTH · 45:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-3"></div></div>
+        <span class="timer-display" id="time-3">45:00</span>
+        <button class="btn" id="start-3">Start</button>
+        <button class="btn secondary" id="reset-3">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Design the capstone end to end again, at full depth: requirements clarification, capacity estimation, high-level architecture — then go deep on a DIFFERENT component than Round 1 of last week's mock: the hybrid search index's behavior under load. Specifically: <code class="inline">systems/capstone_load_testing.html</code> identified the search index as one of four candidate bottlenecks. Assume the interviewer pushes: "your load test shows the search index's p95 climbing sharply past 100 concurrent users — walk me through how you'd diagnose whether it's a compute bottleneck, an I/O bottleneck, or a lock/contention bottleneck inside the index itself, and what you'd change for each case."</p>
+    <p style="font-size:0.88rem;">Deliberately the LONGEST round again, and again comes after two other full rounds — same self-check as Round 1's mock: is this deep-dive as sharp as it would be fresh, or visibly thinner?</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Clarifies requirements and re-derives capacity estimation with real numbers before drawing anything, exactly as thoroughly as it would be done first thing in a fresh loop</li>
+            <li>Separates the three candidate causes (compute, I/O, lock/contention) into DISTINCT, checkable diagnostics rather than one vague "the index is slow"</li>
+            <li>Names a genuinely different fix for each of the three causes, not one generic "add more resources" answer for all three</li>
+            <li>Explicitly ties this back to <code class="inline">capstone_load_testing.html</code> section 3's bottleneck-signature table rather than re-deriving diagnosis methodology from nothing</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Skips requirements/capacity estimation since "it's the same system as last time"</li>
+            <li>Treats compute, I/O, and lock contention as interchangeable — one fix ("scale it up") offered for all three</li>
+            <li>Deep-dive is noticeably thinner than Round 1's system design answer would predict — the specific fatigue signature this format is built to surface</li>
+            <li>Never connects back to the load-testing lab's own diagnostic framework, re-deriving everything from scratch less rigorously under time pressure</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="3">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-3"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">High-level architecture: identical to Round 1's mock reference answer
+-- FastAPI + orchestrator + MCP tools + hybrid search + eval/tracing
+dashboard, per this week's own backend/capstone_architecture_
+documentation.html worked example. A strong answer draws this
+correctly and quickly here, since it's now the SECOND time reproducing
+it -- if it's slower or shakier than Round 1's version was, that's
+itself useful signal about how well the architecture actually got
+internalized versus memorized for one specific round.
+
+The three-way diagnosis, which is the actual point of this round:
+
+COMPUTE bottleneck: the fusion/ranking math (RRF or weighted
+combination, per hybrid_search.html) itself becomes the limiting
+factor as query volume rises -- diagnosable by watching CPU utilization
+on the process hosting the index climb toward saturation WHILE p95
+latency rises, with no corresponding rise in I/O wait time. Fix: the
+fusion computation is typically cheap per-query (bounded by top_k, not
+corpus size), so a genuine compute bottleneck here more likely means
+too much work happening PER query (e.g. re-scoring far more candidates
+than top_k actually needs) -- the fix is tightening the candidate set
+BEFORE fusion, not adding raw compute.
+
+I/O bottleneck: the underlying index storage (disk-backed vector index
+or inverted index) can't serve lookups fast enough at the current
+query rate -- diagnosable by disk I/O wait time or, for an in-memory
+index, whether the corpus has grown past available RAM and started
+paging. Fix: this is exactly storage-and-rag/capstone_hybrid_search_
+integration.html section 2's "where the index lives" trade-off,
+revisited under load -- an embedded, in-process index that was fine at
+low query volume may need to move to a separate, horizontally
+scalable search service once I/O becomes the binding constraint,
+trading network-hop latency for the ability to add more index
+replicas.
+
+Lock/contention bottleneck: concurrent queries are serializing on a
+shared resource INSIDE the index implementation itself (e.g. a global
+read lock around an in-memory data structure that technically allows
+concurrent reads but is implemented with an overly coarse lock) --
+diagnosable by the SAME signature capstone_load_testing.html section 3
+gives for the orchestrator's Redis lock: latency growing while CPU and
+I/O both stay comparatively low, because requests are WAITING, not
+working. Fix: this is a code-level concurrency bug in the index
+implementation, not a capacity problem -- profiling exactly where the
+lock is held and either narrowing its scope or replacing it with a
+lock-free / reader-writer-lock-friendly data structure fixes it
+without adding any new infrastructure at all.
+
+What separates a strong live answer from a merely correct one:
+treating "the index is slow under load" as three DIFFERENT hypotheses
+requiring three DIFFERENT diagnostic signals and three DIFFERENT
+fixes, rather than one vague diagnosis -- exactly capstone_load_
+testing.html section 3's entire point, that different bottlenecks
+leave different fingerprints and matching the fingerprint to the cause
+is the actual skill, not guessing "just scale it."</div></details>
+  </div>
+</section>
+
+<!-- ============ ROUND 4: BEHAVIORAL ============ -->
+<section id="r4">
+  <div class="station">
+    <div class="station-head">
+      <span class="station-tag behav">ROUND 4 — BEHAVIORAL / CAPSTONE WALKTHROUGH · 30:00</span>
+      <div class="timer-box">
+        <div class="timer-bar"><div class="timer-fill" id="fill-4"></div></div>
+        <span class="timer-display" id="time-4">30:00</span>
+        <button class="btn" id="start-4">Start</button>
+        <button class="btn secondary" id="reset-4">Reset</button>
+      </div>
+    </div>
+
+    <p><strong>Prompt:</strong> Round 1 of last week's mock asked for your hardest TECHNICAL decision. This round asks something different: walk through the hardest BUG you found and fixed this week (pick a real one from <code class="inline">backend/capstone_debugging_integration_issues.html</code> — the state race, the schema mismatch, or the silent instrumentation gap; or a genuinely different one from your own actual debugging this week) — what the symptom looked like from the outside, how you narrowed it down to root cause, what the fix was, and what you'd change about the system so this CLASS of bug is harder to reintroduce. Expect a skeptical follow-up: "how do you know your fix actually addressed the root cause and not just the symptom?"</p>
+    <p style="font-size:0.88rem;">Deliberately last again, right after the heaviest round — and deliberately a DIFFERENT kind of behavioral prompt than Round 1's mock (a bug story instead of a design-decision story), since real loops rarely ask the exact same behavioral question twice and being able to generate a fresh, specific answer under fatigue is the actual skill.</p>
+
+    <div class="rubric">
+      <div class="rubric-title">Self-grading rubric — grade BEFORE reading the reference approach</div>
+      <div class="rubric-grid">
+        <div class="rubric-col strong">
+          <h5>Strong answer</h5>
+          <ul>
+            <li>Names ONE specific bug with a concrete symptom, not "there were some bugs"</li>
+            <li>Describes the actual isolation process (what was checked, in what order, what ruled out what) not just "I found it"</li>
+            <li>Survives "how do you know it's the root cause, not the symptom" with a concrete verification step (e.g. reproduced the bug, applied the fix, confirmed the specific failure mode no longer occurs under the same conditions)</li>
+            <li>Names a real structural change (not just the one-line fix) that makes the bug CLASS less likely to recur</li>
+          </ul>
+        </div>
+        <div class="rubric-col weak">
+          <h5>Weak answer</h5>
+          <ul>
+            <li>Generic ("I debugged some integration issues and fixed them")</li>
+            <li>Can't describe the actual isolation process, jumps straight from "there was a bug" to "here's the fix"</li>
+            <li>The root-cause-vs-symptom follow-up exposes that the fix was never actually verified, just applied and assumed to work</li>
+            <li>No structural takeaway — the "fix" was purely local, no reflection on preventing the class of bug</li>
+          </ul>
+        </div>
+      </div>
+      <div class="self-grade" data-round="4">
+        <button class="grade-btn" data-grade="strong">Strong</button>
+        <button class="grade-btn" data-grade="mixed">Mixed</button>
+        <button class="grade-btn" data-grade="weak">Weak</button>
+      </div>
+      <div class="grade-readout" id="readout-4"></div>
+    </div>
+
+    <details><summary>Show reference approach (only after your timer ends AND you've self-graded)</summary><div class="solution">No single "correct" answer by design, but a strong worked example
+using backend/capstone_debugging_integration_issues.html's own silent
+instrumentation gap as the source material: "The hardest bug this week
+was an idempotency fast-path in the orchestrator that returned a
+cached reply for a retried request WITHOUT calling score_run() --
+meaning the response looked completely normal, 200 status, sensible
+reply, but no eval_result row ever landed for that trace_id. I found
+it because our smoke test specifically checks the database, not just
+the response -- exactly the 'assert on the response AND the resulting
+records' rule from capstone_integration_testing.html -- and it started
+failing intermittently, only on retried requests. I isolated it by
+grepping every return statement inside step() and checking whether
+each one was downstream of the score_run() call or upstream of it --
+found the early-return sitting above it. The fix was moving trace
+initialization to the very top of the function so no future
+early-return could bypass it. To verify it was the actual root cause
+and not just a patch: I reproduced the original failure by reverting
+the fix, confirmed the smoke test failed the same way, reapplied the
+fix, and confirmed it passed -- not just 'the code looks right now.'
+The structural change beyond the one-line fix: I made it a review
+rule that any new early-return added to an instrumented function has
+to be checked against where instrumentation sits in that function,
+since this exact bug class is created by adding a return LATER without
+re-reading the whole function's control flow."
+
+What makes this a strong template to imitate: names the SPECIFIC bug
+(not "a bug"), describes the SPECIFIC isolation method (grep every
+return statement, not "I debugged it"), gives a SPECIFIC verification
+step for the root-cause follow-up (revert-reproduce-reapply-confirm,
+not just an assertion), and names a SPECIFIC structural takeaway (a
+review rule, not "be more careful") -- every clause is checkable
+against real work, exactly what survives a skeptical follow-up and
+what a vague, unverifiable answer cannot.</div></details>
+  </div>
+</section>
+
+<!-- ============ REFLECTION: COMPARING LOOPS ============ -->
+<section id="reflection">
+  <div class="kicker">The skill this second rep trains that a single loop cannot</div>
+  <h2>Reflection: comparing this loop against last week's</h2>
+
+  <p><strong>Start here, before reading the list below.</strong> Round 1's mock trained fatigue-resistance WITHIN one loop. This second rep trains something a single loop structurally cannot show you: whether the STAMINA gain from last week actually transferred to new problems, or whether last week's strong performance was partly the comfort of familiar-feeling content. Comparing the two loops' grade patterns side by side is the only way to see this directly.</p>
+
+  <h3>What to actually compare, round to round, loop to loop</h3>
+  <ul>
+    <li><strong>Line up both loops' four grades side by side, in order.</strong> If Round 1 (last week) went strong/strong/mixed/weak and this loop goes strong/strong/strong/mixed, that's a real, measurable stamina improvement — worth naming explicitly rather than just feeling vaguely "more comfortable" this time.</li>
+    <li><strong>Notice if the SAME round is still the weak point.</strong> If Round 3 (system design) was the weakest last week AND this week, that's not a fatigue problem — that's a genuine knowledge or practice gap in that specific area, worth targeted review rather than more full-loop reps, which train stamina, not missing content.</li>
+    <li><strong>Check whether Round 4's specificity held up on a DIFFERENT kind of prompt.</strong> Last week's Round 4 asked for a design decision; this week's asks for a bug story — if the second one felt noticeably harder to make specific and concrete, that's a sign the skill trained was "tell this one story well" rather than "generate a specific, honest answer to whatever's actually asked," a meaningfully different and more fragile skill.</li>
+    <li><strong>Resist grading this loop against Round 1's PROBLEMS instead of Round 1's PERFORMANCE.</strong> The comparison that matters is your own grade pattern across loops, not whether this loop's problems felt "easier" or "harder" than last week's — problem difficulty was deliberately matched, so a felt difference is more likely fatigue or familiarity than actual difficulty.</li>
+  </ul>
+
+  <div class="callout warn"><b>The failure mode this second rep is built to surface:</b> a strong Round 1 performance that turns out to have been propped up by familiar-feeling framing rather than genuine fluency — this only becomes visible by running the SAME format again on GENUINELY new content and honestly comparing the two grade patterns, which is exactly why this lab exists as a second full rep rather than being replaced by a single "harder" mock.</div>
+</section>
+
+<!-- ============ PRACTICE: RUN THE FULL LOOP CHECKLIST ============ -->
+<section id="practice">
+  <div class="kicker">Do this for real, start to finish</div>
+  <h2>Practice: run the full loop checklist</h2>
+  <p>Same checklist shape as Round 1's mock, adjusted for the comparison this second rep specifically enables.</p>
+
+  <div class="checklist">
+    <ul>
+      <li><input type="checkbox" id="chk1"><label for="chk1">All four rounds run in ONE sitting, in order (1 → 2 → 3 → 4), with breaks capped at 5 minutes each</label></li>
+      <li><input type="checkbox" id="chk2"><label for="chk2">Each round's timer was actually started and run to completion or to a genuine stopping point</label></li>
+      <li><input type="checkbox" id="chk3"><label for="chk3">Each round was self-graded against its rubric BEFORE reading the reference approach</label></li>
+      <li><input type="checkbox" id="chk4"><label for="chk4">Round 4 used a REAL bug from this week's actual debugging work, not a hypothetical or generic answer</label></li>
+      <li><input type="checkbox" id="chk5"><label for="chk5">This loop's four grades were written down next to last week's four grades, side by side, in order — not just "it felt better/worse"</label></li>
+      <li><input type="checkbox" id="chk6"><label for="chk6">If the same round was weak in both loops, that was named as a content gap, not written off as fatigue</label></li>
+      <li><input type="checkbox" id="chk7"><label for="chk7">One concrete adjustment for the NEXT loop (Week 4's daily mocks) was written down, informed by comparing both loops' patterns — not just "do better"</label></li>
+    </ul>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Reading your own two-loop grade pattern honestly</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Line up your four Round 1 (last week) grades and your four Round 2 (this week) grades. If they're nearly identical round-for-round, what are the two most likely explanations — and how would you tell which one is actually true rather than assuming the flattering one?</p>
+    <details><summary>Show solution</summary><div class="solution">Two genuinely different explanations produce the SAME surface pattern
+(identical grades round for round), which is exactly why this is worth
+distinguishing carefully rather than defaulting to whichever
+explanation feels better:
+
+Explanation A (flattering): stamina and depth genuinely plateaued at a
+stable, solid level -- the skill is consolidated, and repeating the
+format confirms consistency rather than revealing a gap. This would be
+the correct read if the WEAK points, if any, are different problems
+each time but the same underlying reasoning quality throughout.
+
+Explanation B (less flattering, and more likely if unexamined): the
+grading itself became less rigorous the second time around -- self-
+grading against a rubric is honest-effort-dependent, and a familiar
+FORMAT (even with different content) can make a second pass feel
+"fine" through familiarity with the rubric's own categories rather
+than genuinely re-evaluating the actual answer against them fresh.
+
+How to tell which is true: don't just compare the GRADES, compare the
+actual REASONING behind each round's answer against its own rubric's
+specific bullet points, item by item, not just a holistic "strong/
+mixed/weak" gut call. If, re-reading your own Round 3 system-design
+answer from this loop, you can point to the SPECIFIC rubric line ("all
+three candidate causes named with distinct diagnostics") and confirm
+it was genuinely met -- not just remembered as "that round went well" --
+explanation A holds up under scrutiny. If re-reading reveals the
+self-grade was more generous than the actual content supports, that's
+concrete evidence of explanation B, and the fix is external
+accountability -- having someone else grade your answer against the
+same rubric, since self-grading's accuracy degrades exactly in
+proportion to how motivated you are to see yourself as having
+improved.</div></details>
+  </div>
+
+  <div class="callout sys">
+    <b>Self-check before Week 4 starts:</b> could you, without notes, (1) name one concrete stamina or content gap this second rep revealed that Round 1 alone couldn't have shown, (2) compare your two loops' grade patterns honestly rather than just remembering "it went well," and (3) name the one adjustment you're carrying into Week 4's daily mocks? This closes out Thursday — Friday's <code class="inline">database/capstone_schema_cold_defense.html</code> is next, a different kind of cold recall: defending the finalized schema without a timer, without notes, against direct questioning.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone combined mock, full loop, round 2.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+/* TIMER ROUNDS */
+(function(){
+  var rounds = [
+    { n: 1, seconds: 30 * 60 },
+    { n: 2, seconds: 35 * 60 },
+    { n: 3, seconds: 45 * 60 },
+    { n: 4, seconds: 30 * 60 }
+  ];
+
+  rounds.forEach(function(rd){
+    var totalSeconds = rd.seconds;
+    var remaining = totalSeconds;
+    var intervalId = null;
+    var timeEl = document.getElementById("time-" + rd.n);
+    var fillEl = document.getElementById("fill-" + rd.n);
+    var startBtn = document.getElementById("start-" + rd.n);
+    var resetBtn = document.getElementById("reset-" + rd.n);
+
+    function formatTime(s){
+      var m = Math.floor(s / 60);
+      var sec = s % 60;
+      return m + ":" + (sec < 10 ? "0" : "") + sec;
+    }
+
+    function render(){
+      timeEl.textContent = formatTime(remaining);
+      var pct = Math.max(0, (remaining / totalSeconds) * 100);
+      fillEl.style.width = pct + "%";
+      var isWarn = remaining <= 120;
+      timeEl.classList.toggle("warn", isWarn);
+      fillEl.classList.toggle("warn", isWarn);
+    }
+
+    function tick(){
+      remaining -= 1;
+      if (remaining <= 0){
+        remaining = 0;
+        render();
+        clearInterval(intervalId);
+        intervalId = null;
+        startBtn.textContent = "Time's up";
+        startBtn.disabled = true;
+        return;
+      }
+      render();
+    }
+
+    startBtn.addEventListener("click", function(){
+      if (intervalId) return;
+      startBtn.textContent = "Running…";
+      startBtn.disabled = true;
+      intervalId = setInterval(tick, 1000);
+    });
+
+    resetBtn.addEventListener("click", function(){
+      if (intervalId){ clearInterval(intervalId); intervalId = null; }
+      remaining = totalSeconds;
+      startBtn.textContent = "Start";
+      startBtn.disabled = false;
+      render();
+    });
+
+    render();
+  });
+})();
+
+/* SELF-GRADE BUTTONS */
+(function(){
+  var labels = {
+    strong: "Marked Strong — matches the strong-answer criteria above.",
+    mixed: "Marked Mixed — some strong-answer criteria met, some weak-answer patterns present.",
+    weak: "Marked Weak — closer to the weak-answer patterns. Worth re-running this round on a fresh problem."
+  };
+
+  document.querySelectorAll(".self-grade").forEach(function(group){
+    var round = group.dataset.round;
+    var readout = document.getElementById("readout-" + round);
+    group.querySelectorAll(".grade-btn").forEach(function(btn){
+      btn.addEventListener("click", function(){
+        group.querySelectorAll(".grade-btn").forEach(function(b){ b.classList.remove("selected"); });
+        btn.classList.add("selected");
+        readout.textContent = labels[btn.dataset.grade];
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

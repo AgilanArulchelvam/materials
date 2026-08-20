@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Architecture Documentation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --app-c:#4fc3f7; --mcp-c:#f2c14e; --obs-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b; --db-c:#ff8a65;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(199,146,234,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(79,195,247,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--app-c); color:var(--app-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .diagram-wrap{background:#0b0d11; border:1px solid var(--rule); border-radius:12px; padding:1.2rem; margin:1.2rem 0; overflow-x:auto;}
+  .diagram-wrap svg{display:block; min-width:640px; width:100%; height:auto;}
+  .diagram-legend{display:flex; gap:1.2rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); margin-top:0.9rem;}
+  .diagram-legend .sw{display:inline-block; width:22px; height:3px; margin-right:0.4rem; vertical-align:middle;}
+  .diagram-legend .sw.dash{background:repeating-linear-gradient(90deg, var(--ink-dim) 0 4px, transparent 4px 8px);}
+  .diagram-legend .sw.solid{background:var(--ink-dim);}
+  .diagram-node-info{font-family:var(--mono); font-size:0.78rem; color:var(--ink-dim); background:var(--panel-2); border:1px solid var(--rule); border-radius:8px; padding:0.8rem 1rem; margin-top:0.8rem; min-height:1.4em;}
+  .diagram-node-info b{color:var(--ink);}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--obs-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.app{border-left-color:var(--app-c); background:rgba(79,195,247,0.06);} .callout.app b{color:var(--app-c);}
+  .callout.mcp{border-left-color:var(--mcp-c); background:rgba(242,193,78,0.06);} .callout.mcp b{color:var(--mcp-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND LAB · CAPSTONE ARCHITECTURE DOCUMENTATION</div>
+  <h1>The document someone reads before they ever read your code.</h1>
+  <p class="lede">Every lab this week and last built a real piece of this capstone. None of them, on their own, tell a new reader — a teammate, an interviewer, future-you in six months — how the pieces fit, why each design decision was made over its alternative, or what's known to be broken. This lab teaches what sections a real architecture doc needs, how to draw a component diagram that actually communicates (not just boxes and arrows), and works through a full architecture doc for THIS capstone, referencing every lab that built it.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">The five sections a real architecture doc needs</div>
+    <div class="pipe-label b">A diagram that shows sync vs async, in-process vs network hop</div>
+    <div class="pipe-label c">A worked example, for this repo's own capstone</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="sections">1 · What Sections a Good Doc Has</a>
+  <a data-target="diagram">2 · Drawing a Diagram That Communicates</a>
+  <a data-target="worked">3 · Worked Example: This Capstone's Doc</a>
+  <a data-target="inspect">4 · Inspect the Architecture Diagram</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: SECTIONS ============ -->
+<section id="sections">
+  <div class="kicker">01 — Five sections, each answering a question no other section answers</div>
+  <h2>What sections a good architecture doc has</h2>
+
+  <p><strong>Start here, before opening a blank document.</strong> Think about the difference between a map and a travel diary. A travel diary (most READMEs) tells you what happened, in the order it happened — useful, but you have to read the whole thing to find anything specific. A map (an architecture doc) is organized by QUESTION: where am I, how do I get from A to B, what's the fastest route, what roads are closed. A good architecture doc is structured the same way — five sections, each answering one question a reader actually has, not a narrative of how the system was built.</p>
+
+  <table class="cmp">
+    <tr><th>Section</th><th>Question it answers</th><th>What goes wrong if it's missing</th></tr>
+    <tr><td>Context / goals</td><td>What is this system FOR, and what does it explicitly NOT need to do?</td><td>A reader can't judge whether a design decision was reasonable without knowing what it was optimizing for — "why Redis for run state" only makes sense against the stated goal "low-latency, disposable, high-write" from <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> section 1</td></tr>
+    <tr><td>Component diagram</td><td>What are the pieces, and how do they connect?</td><td>Without this, every other section is describing parts of a whole the reader can't picture — the single highest-leverage section, covered in depth in section 2</td></tr>
+    <tr><td>Data flow</td><td>What actually happens, in order, for the system's core use case?</td><td>A diagram shows STRUCTURE but not SEQUENCE — without a walked-through data flow, a reader can't tell whether step 3 happens before or after step 5, or what triggers what</td></tr>
+    <tr><td>Key design decisions, with rationale</td><td>Why THIS choice over the real alternative?</td><td>Undocumented decisions get silently "fixed" by a future reader who doesn't know they were deliberate — exactly the failure <code class="inline">dsa/capstone_combined_mock_full_loop.html</code> Round 4's rubric is built to catch when someone can't defend a choice under questioning</td></tr>
+    <tr><td>Known limitations / future work</td><td>What's honestly still broken or unaddressed?</td><td>A doc that only describes what works reads as either dishonest or unaware — and this section is exactly where <code class="inline">systems/capstone_load_testing.html</code>'s actual bottleneck findings belong, not buried in a chat log</td></tr>
+  </table>
+
+  <div class="callout app"><b>Interview-ready definition:</b> a good architecture doc is organized around the questions a NEW reader actually has (what is this, how do the pieces connect, what happens when, why this design, what's still broken) — not a chronological account of how it was built. If a section could only be understood by someone who already watched the system get built, it belongs in a changelog, not the architecture doc.</div>
+</section>
+
+<!-- ============ SECTION 2: DRAWING A DIAGRAM ============ -->
+<section id="diagram">
+  <div class="kicker">02 — Boxes and arrows are necessary, never sufficient</div>
+  <h2>Drawing a component diagram that actually communicates</h2>
+
+  <p><strong>Start here, before drawing a single box.</strong> Think about a subway map versus a street map of the same city. A street map shows every road at true scale — accurate, but useless for "how do I get from here to there," because it doesn't distinguish a fast express line from a local one that stops everywhere. A subway map deliberately DISTORTS geography to make the thing that actually matters — which lines are fast, where you transfer — immediately visible. A good architecture diagram makes the same trade: it isn't a literal picture of file layout, it's a picture of the distinctions that actually change how a reader should reason about the system.</p>
+
+  <table class="cmp">
+    <tr><th>Distinction a real diagram must show</th><th>Why "just boxes and arrows" hides it</th></tr>
+    <tr><td>Synchronous call vs. asynchronous / fire-and-forget</td><td>A solid arrow that looks identical whether the caller BLOCKS waiting for a reply or moves on immediately hides exactly the trade-off <code class="inline">evals-and-observability/capstone_dashboard_integration.html</code>'s own practice problem 1 debates for <code class="inline">score_run()</code> — a reader can't reason about latency impact without knowing which arrows block</td></tr>
+    <tr><td>In-process call vs. a real network hop</td><td>An in-process Python function call and an HTTP or MCP protocol call to a different service both look like "A talks to B" in a naive diagram, but only one of them can time out, retry, or fail independently — <code class="inline">capstone_orchestrator_integration.html</code> section 3's deliberate choice to dispatch to the co-located MCP server AS IF it were remote (through the protocol layer, not a direct import) is invisible unless the diagram marks that edge as a protocol call, not a plain function call</td></tr>
+    <tr><td>Which component owns which piece of state</td><td>If two boxes both "talk to" a database-shaped box with no further detail, a reader can't tell that Redis and Postgres serve genuinely different roles (ephemeral run state vs. durable trace/eval history, per <code class="inline">capstone_orchestrator_integration.html</code> problem 1) — ownership needs its own visual distinction, not just a generic "data" arrow</td></tr>
+  </table>
+
+  <div class="code"><span class="c-cmt">Practical conventions worth adopting for every diagram in this doc:</span>
+
+solid arrow      = synchronous call, caller blocks for a reply
+dashed arrow     = asynchronous / fire-and-forget, caller proceeds
+thick border     = a real network hop (HTTP, MCP protocol, DB wire protocol)
+thin border      = in-process call (regular Python function call)
+color grouping   = which subsystem owns this component
+                    (app-layer, MCP tools, storage, observability)</div>
+
+  <div class="callout mcp"><b>Interview-ready definition:</b> a component diagram is doing its job when a reader who has never seen the code can correctly answer "if this box goes down, what breaks, and does the caller notice immediately or eventually" — which requires the diagram to distinguish blocking from non-blocking calls and in-process from networked calls, not just show that two things are connected.</div>
+</section>
+
+<!-- ============ SECTION 3: WORKED EXAMPLE ============ -->
+<section id="worked">
+  <div class="kicker">03 — This repo's own capstone, documented for real</div>
+  <h2>Worked example: this capstone's architecture doc</h2>
+
+  <p><strong>Start here, before writing your own from scratch.</strong> Applying section 1's five sections to the actual system Weeks 1-2 built.</p>
+
+  <h3>Context / goals</h3>
+  <p>The capstone is a chat-driven agent service: a client sends a message, an orchestrator decides which tools to call (including a hybrid search tool over a document corpus), composes a reply, and every run is fully traced and scored for later inspection via a dashboard. Explicit non-goals: this is not a multi-tenant SaaS product (no auth/billing layer), and it does not need to support real-time streaming responses — the interaction model is request/response per turn, per <code class="inline">backend/capstone_scaffold_fastapi_mcp.html</code>'s original scope.</p>
+
+  <h3>Component diagram</h3>
+  <p>See section 4 below for the full interactive diagram — summarized here: a FastAPI app (<code class="inline">capstone_scaffold_fastapi_mcp.html</code>) exposes <code class="inline">POST /chat</code>, which calls a stateless orchestrator (<code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code>) backed by Redis for in-flight run state. The orchestrator dispatches to MCP tools — including hybrid search (<code class="inline">storage-and-rag/capstone_hybrid_search_integration.html</code>) — mounted in the same process but reached through the real MCP protocol layer, not a direct function call. Every step is instrumented (<code class="inline">evals-and-observability/capstone_dashboard_integration.html</code>), writing traces, spans, and eval scores into Postgres per the finalized schema (<code class="inline">database/capstone_schema_finalization_and_indexes.html</code>), which a separate dashboard reads.</p>
+
+  <h3>Data flow (the core use case: a new chat message)</h3>
+  <ol>
+    <li>Client <code class="inline">POST /chat</code> with no <code class="inline">run_id</code> — a new run</li>
+    <li>The route (thin, per <code class="inline">capstone_orchestrator_integration.html</code> section 2) calls <code class="inline">orchestrator.step()</code></li>
+    <li>The orchestrator starts a trace, routes the message to a tool decision, and dispatches to <code class="inline">hybrid_search</code> over the MCP protocol</li>
+    <li>The search tool queries its index and returns fused, ranked results</li>
+    <li>The orchestrator composes a reply from the results, saves run state to Redis, and calls <code class="inline">score_run()</code> — writing spans and an eval score to Postgres</li>
+    <li>The route returns the reply and <code class="inline">run_id</code> to the client</li>
+  </ol>
+
+  <h3>Key design decisions, with rationale</h3>
+  <ul>
+    <li><strong>Redis for run state, Postgres for traces/evals</strong> — access pattern split (high-write/disposable vs. low-write/durable), per <code class="inline">capstone_orchestrator_integration.html</code> problem 1.</li>
+    <li><strong>The orchestrator calls its own co-located MCP server through the protocol, not a direct import</strong> — keeps every tool call, internal or external, on one instrumentable, schema-validated path, per that lab section 3.</li>
+    <li><strong>Eval scoring happens inline, in the same traced step</strong> — a score with no trace behind it is untrustworthy, per <code class="inline">capstone_dashboard_integration.html</code> section 1.</li>
+  </ul>
+
+  <h3>Known limitations / future work</h3>
+  <ul>
+    <li>Load testing (<code class="inline">systems/capstone_load_testing.html</code>) found the orchestrator's Redis lock becomes the binding constraint above roughly 140 concurrent users — the atomic-operation fix from <code class="inline">capstone_orchestrator_integration.html</code> problem 2 raises this ceiling but doesn't eliminate contention entirely.</li>
+    <li>The three integration bug classes fixed in <code class="inline">backend/capstone_debugging_integration_issues.html</code> (state races, schema drift between tool and orchestrator, silent instrumentation gaps on new early-return paths) are exactly the class of bug most likely to recur as new code paths get added — worth a standing review checklist, not a one-time fix.</li>
+    <li>No authentication or multi-tenancy — explicitly out of scope per the stated goals, but the first thing that would need designing before any real deployment beyond this capstone's own scope.</li>
+  </ul>
+
+  <div class="callout"><b>What separates this from a README:</b> every claim above is traceable to a specific lab and, where relevant, a specific practice problem — "why Redis" isn't asserted, it's pointed at the actual reasoning that produced the decision. A reader who wants to go deeper always has somewhere concrete to go; a reader who just wants the shape gets it from the five sections alone.</div>
+</section>
+
+<!-- ============ SECTION 4: INSPECT DIAGRAM ============ -->
+<section id="inspect">
+  <div class="kicker">04 — Click a component to see its edges explained</div>
+  <h2>Inspect the architecture diagram</h2>
+
+  <p><strong>Start here, before assuming a diagram is just decoration.</strong> Click any box below to see what section 2's conventions (solid vs. dashed, thick vs. thin border) actually mean for that specific component's edges.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>Capstone component diagram — click a node</span></div>
+    <div class="diagram-wrap">
+      <svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg" font-family="JetBrains Mono, monospace">
+        <!-- edges -->
+        <line x1="150" y1="90" x2="150" y2="150" stroke="#9aa0ad" stroke-width="2"/>
+        <line x1="150" y1="190" x2="150" y2="240" stroke="#9aa0ad" stroke-width="2"/>
+        <line x1="220" y1="270" x2="330" y2="270" stroke="#9aa0ad" stroke-width="2.5"/>
+        <line x1="220" y1="270" x2="150" y2="330" stroke="#9aa0ad" stroke-width="2" stroke-dasharray="6 5"/>
+        <line x1="410" y1="270" x2="410" y2="330" stroke="#9aa0ad" stroke-width="3"/>
+        <line x1="220" y1="290" x2="600" y2="360" stroke="#9aa0ad" stroke-width="2" stroke-dasharray="6 5"/>
+        <line x1="600" y1="390" x2="600" y2="330" stroke="#9aa0ad" stroke-width="3"/>
+        <line x1="640" y1="300" x2="740" y2="270" stroke="#9aa0ad" stroke-width="2"/>
+
+        <!-- Client -->
+        <rect id="node-client" class="dnode" x="90" y="40" width="120" height="50" rx="8" fill="#1d212b" stroke="#4fc3f7" stroke-width="1.5" style="cursor:pointer;"/>
+        <text x="150" y="70" text-anchor="middle" fill="#e9e6dd" font-size="13">Client</text>
+
+        <!-- FastAPI route -->
+        <rect id="node-route" class="dnode" x="90" y="150" width="120" height="40" rx="8" fill="#1d212b" stroke="#4fc3f7" stroke-width="1.5" style="cursor:pointer;"/>
+        <text x="150" y="175" text-anchor="middle" fill="#e9e6dd" font-size="12">POST /chat route</text>
+
+        <!-- Orchestrator -->
+        <rect id="node-orch" class="dnode" x="90" y="240" width="130" height="60" rx="8" fill="#1d212b" stroke="#f2c14e" stroke-width="2.5" style="cursor:pointer;"/>
+        <text x="155" y="265" text-anchor="middle" fill="#e9e6dd" font-size="12">Orchestrator</text>
+        <text x="155" y="282" text-anchor="middle" fill="#9aa0ad" font-size="10">stateless process</text>
+
+        <!-- Redis -->
+        <rect id="node-redis" class="dnode" x="90" y="330" width="120" height="50" rx="8" fill="#1d212b" stroke="#ff8a65" stroke-width="2.5" style="cursor:pointer;"/>
+        <text x="150" y="360" text-anchor="middle" fill="#e9e6dd" font-size="12">Redis</text>
+        <text x="150" y="374" text-anchor="middle" fill="#9aa0ad" font-size="9">run state, TTL</text>
+
+        <!-- MCP hybrid_search tool -->
+        <rect id="node-search" class="dnode" x="330" y="240" width="160" height="60" rx="8" fill="#1d212b" stroke="#f2c14e" stroke-width="2.5" style="cursor:pointer;"/>
+        <text x="410" y="265" text-anchor="middle" fill="#e9e6dd" font-size="12">hybrid_search tool</text>
+        <text x="410" y="282" text-anchor="middle" fill="#9aa0ad" font-size="10">MCP protocol, same process</text>
+
+        <!-- Search index -->
+        <rect id="node-index" class="dnode" x="345" y="330" width="130" height="50" rx="8" fill="#1d212b" stroke="#ff8a65" stroke-width="1.5" style="cursor:pointer;"/>
+        <text x="410" y="360" text-anchor="middle" fill="#e9e6dd" font-size="12">Search index</text>
+
+        <!-- Instrumentation -->
+        <rect id="node-obs" class="dnode" x="530" y="330" width="140" height="60" rx="8" fill="#1d212b" stroke="#7fd8a0" stroke-width="1.5" style="cursor:pointer;"/>
+        <text x="600" y="355" text-anchor="middle" fill="#e9e6dd" font-size="12">score_run() /</text>
+        <text x="600" y="371" text-anchor="middle" fill="#e9e6dd" font-size="12">instrumentation</text>
+
+        <!-- Postgres -->
+        <rect id="node-pg" class="dnode" x="530" y="240" width="140" height="60" rx="8" fill="#1d212b" stroke="#ff8a65" stroke-width="2.5" style="cursor:pointer;"/>
+        <text x="600" y="265" text-anchor="middle" fill="#e9e6dd" font-size="12">Postgres</text>
+        <text x="600" y="282" text-anchor="middle" fill="#9aa0ad" font-size="10">traces, spans, evals</text>
+
+        <!-- Dashboard -->
+        <rect id="node-dash" class="dnode" x="720" y="240" width="140" height="60" rx="8" fill="#1d212b" stroke="#7fd8a0" stroke-width="2.5" style="cursor:pointer;"/>
+        <text x="790" y="265" text-anchor="middle" fill="#e9e6dd" font-size="12">Eval / tracing</text>
+        <text x="790" y="281" text-anchor="middle" fill="#e9e6dd" font-size="12">dashboard</text>
+      </svg>
+    </div>
+    <div class="diagram-legend">
+      <span><span class="sw solid"></span>solid = synchronous, blocking call</span>
+      <span><span class="sw dash"></span>dashed = async / fire-and-forget</span>
+      <span>thick border = network hop</span>
+      <span>thin border = in-process</span>
+    </div>
+    <div class="diagram-node-info" id="diagram-node-info">Click a component above to see what its edges mean.</div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now extend the diagram yourself</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · Adding a new component: a response cache</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">Suppose the capstone adds a response cache in front of the orchestrator — identical <code class="inline">(run_id, message)</code> pairs within a short window return a cached reply without re-invoking the orchestrator at all. Where does this box go in section 4's diagram, what kind of edges does it need (per section 2's conventions), and what does it change about the data flow section 3 walked through?</p>
+    <details><summary>Show solution</summary><div class="solution">Placement: between the FastAPI route and the orchestrator -- the
+cache needs to intercept a request BEFORE it reaches the orchestrator
+(a cache hit should skip orchestrator.step() entirely, not just skip
+part of it), so the route now has a conditional edge: check the cache
+first, and only call the orchestrator on a miss. This is a real
+structural change to the diagram, not just a new box floating nearby --
+the existing solid edge from route to orchestrator becomes a solid
+edge from route to cache, with a NEW conditional solid edge from cache
+to orchestrator only on a miss, and a new solid edge from cache
+directly back to the route on a hit (bypassing the orchestrator, Redis,
+and the MCP tool layer entirely for that request).
+
+Edge type: solid and thick-bordered if the cache is a separate service
+(e.g. a real Redis-backed cache, a genuine network hop, matching
+section 2's "network hop" convention) -- or solid and thin-bordered if
+it's an in-process LRU cache inside the FastAPI app itself. This is
+exactly the kind of distinction section 2 argues a real diagram must
+make explicit, since the two choices have completely different failure
+modes (an in-process cache is invisible to other workers, exactly
+capstone_orchestrator_integration.html section 1's stateless-orchestrator
+argument working in reverse -- a per-worker cache would give
+DIFFERENT workers different cache-hit behavior for the same request).
+
+What changes in the data flow: step 2 in section 3's walkthrough
+("the route calls orchestrator.step()") becomes "the route checks the
+cache; on a hit, skip to step 6 with the cached reply; on a miss,
+proceed as before" -- and critically, a cache hit means NO new trace
+or eval_result gets written for that turn (since the orchestrator,
+where instrumentation lives, per capstone_dashboard_integration.html
+section 1, never runs) -- worth flagging explicitly as a NEW known
+limitation in the doc's final section: cached responses are invisible
+to the eval/tracing dashboard unless the cache layer gets its own,
+separate instrumentation hook, echoing exactly the "instrumentation
+near the top of the function, not the bottom" lesson from
+backend/capstone_debugging_integration_issues.html section 4, now
+applied one layer higher in the stack.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before Round 2 of the mock:</b> could you, without notes, (1) name all five sections of a good architecture doc and the question each answers, (2) explain what a plain box-and-arrow diagram hides that section 2's conventions fix, and (3) walk the full data flow for a new chat message from memory? <code class="inline">dsa/capstone_combined_mock_full_loop_round2.html</code> is next — Round 3's system design station will expect exactly this kind of architecture fluency, cold.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone architecture documentation, backend &amp; APIs.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var infoEl = document.getElementById("diagram-node-info");
+
+  var NODE_INFO = {
+    "node-client": "Client: sends POST /chat over HTTP. This is the one edge in the whole diagram that originates outside the system's own trust boundary.",
+    "node-route": "FastAPI route: a THIN, synchronous, in-process call into the orchestrator (thin border on the orchestrator box, solid edge) -- per capstone_orchestrator_integration.html section 2, no orchestration logic lives here.",
+    "node-orch": "Orchestrator: thick-bordered because its state store (Redis) is a real network hop, not in-process. Dispatches to hybrid_search over the MCP protocol (solid, since the orchestrator awaits the tool's result before composing a reply) and triggers instrumentation as a dashed, fire-and-forget-shaped edge to keep user-facing latency independent of write latency, per capstone_dashboard_integration.html's own async-scoring trade-off.",
+    "node-redis": "Redis: thick border (real network hop), read/written synchronously on every orchestrator turn -- disposable, TTL'd state per capstone_orchestrator_integration.html section 1.",
+    "node-search": "hybrid_search tool: thick border despite being in the SAME process as the orchestrator -- deliberately reached through the real MCP protocol layer (a genuine, if local, network-shaped hop), not a direct Python import, per capstone_orchestrator_integration.html section 3.",
+    "node-index": "Search index: queried synchronously by the tool handler -- this edge is exactly what systems/capstone_load_testing.html section 3 identifies as one of the four candidate bottlenecks under load.",
+    "node-obs": "score_run() / instrumentation: the dashed edge INTO this box from the orchestrator is deliberate -- writing traces/evals should not block the user-facing reply, per capstone_dashboard_integration.html's own practice problem 1 trade-off discussion.",
+    "node-pg": "Postgres: thick border, real network hop, durable storage for everything instrumentation writes -- the finalized schema from database/capstone_schema_finalization_and_indexes.html.",
+    "node-dash": "Eval / tracing dashboard: reads FROM Postgres only -- it never talks to the orchestrator or Redis directly, an important isolation property: the dashboard can be slow, down, or under heavy read load without affecting the user-facing chat path at all."
+  };
+
+  document.querySelectorAll(".dnode").forEach(function(node){
+    node.addEventListener("click", function(){
+      document.querySelectorAll(".dnode").forEach(function(n){ n.setAttribute("fill", "#1d212b"); });
+      node.setAttribute("fill", "#262b38");
+      var text = NODE_INFO[node.id] || "No info for this node.";
+      infoEl.innerHTML = "<b>" + node.id.replace("node-", "") + ":</b> " + text;
+    });
+  });
+})();
+</script>
+</body>
+</html>

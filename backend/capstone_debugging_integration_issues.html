@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>The Namespace Lab — Capstone Debugging: Integration Issues</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel-2:#1d212b; --ink:#e9e6dd; --ink-dim:#9aa0ad; --rule:#2a2f3a;
+    --app-c:#4fc3f7; --mcp-c:#f2c14e; --obs-c:#7fd8a0; --accent:#c792ea; --bad-c:#ff6b6b;
+    --mono:'JetBrains Mono',monospace; --display:'Fraunces',serif; --body:'Inter',sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--body); line-height:1.6; padding-bottom:6rem;}
+  ::selection{background:var(--accent); color:#12141a;}
+
+  .hero{padding:5rem 6vw 4rem; position:relative; overflow:hidden; border-bottom:1px solid var(--rule);
+    background:radial-gradient(ellipse at 20% -10%, rgba(255,107,107,0.10), transparent 55%),
+               radial-gradient(ellipse at 90% 0%, rgba(242,193,78,0.08), transparent 50%);}
+  .eyebrow{font-family:var(--mono); font-size:0.75rem; letter-spacing:0.18em; text-transform:uppercase; color:var(--ink-dim); display:flex; align-items:center; gap:0.6rem; margin-bottom:1.4rem;}
+  .eyebrow .dot{width:7px;height:7px;border-radius:50%;background:var(--accent); box-shadow:0 0 12px var(--accent);}
+  h1{font-family:var(--display); font-weight:700; font-size:clamp(2.2rem,5vw,3.6rem); line-height:1.05; margin:0 0 1.2rem; max-width:24ch; letter-spacing:-0.01em;}
+  h1 em{font-style:italic; color:var(--accent); font-weight:600;}
+  .hero p.lede{max-width:62ch; color:var(--ink-dim); font-size:1.08rem;}
+
+  .pipe-hero{margin-top:2.8rem; display:flex; align-items:center; gap:0.8rem; font-family:var(--mono); font-size:0.76rem; flex-wrap:wrap;}
+  .pipe-label{padding:0.55rem 0.9rem; border-radius:8px; border:1.5px solid;}
+  .pipe-label.a{border-color:var(--app-c); color:var(--app-c); background:rgba(79,195,247,0.08);}
+  .pipe-label.b{border-color:var(--mcp-c); color:var(--mcp-c); background:rgba(242,193,78,0.08);}
+  .pipe-label.c{border-color:var(--obs-c); color:var(--obs-c); background:rgba(127,216,160,0.08);}
+
+  nav{display:flex; flex-wrap:wrap; gap:0.5rem; padding:1.1rem 6vw; background:var(--panel); border-bottom:1px solid var(--rule); position:sticky; top:0; z-index:50; backdrop-filter:blur(6px);}
+  nav a{font-family:var(--mono); font-size:0.72rem; color:var(--ink-dim); text-decoration:none; padding:0.4rem 0.75rem; border-radius:20px; border:1px solid var(--rule); transition:all .2s; white-space:nowrap; cursor:pointer;}
+  nav a:hover{color:var(--ink); border-color:var(--accent); background:rgba(199,146,234,0.08);}
+
+  section{padding:4.5rem 6vw; max-width:1000px; margin:0 auto; border-bottom:1px solid var(--rule);}
+  section:last-of-type{border-bottom:none;}
+  .kicker{font-family:var(--mono); font-size:0.72rem; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-dim); margin-bottom:0.6rem;}
+  h2{font-family:var(--display); font-size:clamp(1.7rem,3vw,2.3rem); margin:0 0 1.2rem; font-weight:700;}
+  h3{font-family:var(--display); font-size:1.25rem; margin:2rem 0 0.8rem; font-weight:600; color:var(--ink);}
+  p{color:#cdd0d8; max-width:72ch;}
+  strong{color:var(--ink);}
+  code.inline{font-family:var(--mono); background:var(--panel-2); padding:0.15em 0.45em; border-radius:5px; font-size:0.88em; color:var(--accent); border:1px solid var(--rule);}
+  ul, ol{color:#cdd0d8; max-width:72ch;}
+  li{margin:0.35rem 0;}
+
+  .code{font-family:var(--mono); background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; font-size:0.85rem; overflow-x:auto; margin:1.2rem 0; line-height:1.65; white-space:pre;}
+  .code .c-cmt{color:#5f6675;} .code .c-kw{color:#ff8a65;} .code .c-str{color:#7fd8a0;} .code .c-num{color:#c792ea;} .code .c-fn{color:#6ea8fe;}
+
+  .lab{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .lab-title{font-family:var(--mono); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em; color:var(--ink-dim); margin-bottom:1.2rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem;}
+  .btn{font-family:var(--mono); font-size:0.75rem; background:var(--accent); color:#14100c; border:none; padding:0.5rem 1rem; border-radius:7px; cursor:pointer; font-weight:600; transition:transform .15s, opacity .15s;}
+  .btn:hover{transform:translateY(-1px); opacity:0.92;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1px solid var(--rule);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed; transform:none;}
+
+  .bug-card{background:var(--panel); border:1px solid var(--rule); border-radius:14px; padding:1.6rem; margin:1.6rem 0;}
+  .bug-head{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.6rem; margin-bottom:1rem;}
+  .bug-tag{font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em; padding:0.3rem 0.7rem; border-radius:20px; border:1.5px solid var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.08);}
+
+  .seam-diagram{display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap; font-family:var(--mono); font-size:0.78rem; margin:1.2rem 0;}
+  .seam-box{padding:0.6rem 0.9rem; border-radius:8px; border:1.5px solid var(--rule); background:var(--panel-2); color:var(--ink);}
+  .seam-box.hot{border-color:var(--bad-c); color:var(--bad-c); background:rgba(255,107,107,0.1); box-shadow:0 0 10px rgba(255,107,107,0.25);}
+  .seam-arrow{color:var(--ink-dim);}
+
+  .spot-bug{background:#0b0d11; border:1px solid var(--rule); border-radius:10px; padding:1.1rem 1.3rem; margin:1rem 0;}
+  .spot-bug .code{margin:0.6rem 0 0;}
+
+  table.cmp{width:100%; border-collapse:collapse; margin:1.4rem 0; font-size:0.87rem;}
+  table.cmp th, table.cmp td{border:1px solid var(--rule); padding:0.6rem 0.85rem; text-align:left; vertical-align:top;}
+  table.cmp th{background:var(--panel-2); font-family:var(--mono); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-dim);}
+  table.cmp td{color:#cdd0d8; font-size:0.85rem;} table.cmp code{font-family:var(--mono); color:var(--accent);}
+
+  .checklist{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.4rem 0;}
+  .checklist ul{list-style:none; padding:0; margin:0;}
+  .checklist li{display:flex; align-items:flex-start; gap:0.7rem; margin:0.6rem 0; font-size:0.92rem;}
+  .checklist input[type="checkbox"]{margin-top:0.3rem; accent-color:var(--obs-c); width:16px; height:16px; flex-shrink:0; cursor:pointer;}
+  .checklist label{cursor:pointer;}
+  .checklist code.inline{font-size:0.85em;}
+
+  .problem{background:var(--panel); border:1px solid var(--rule); border-radius:12px; padding:1.3rem 1.5rem; margin:1.2rem 0;}
+  .problem .pnum{font-family:var(--mono); font-size:0.72rem; color:var(--accent); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem; display:block;}
+  details{margin-top:0.9rem;}
+  summary{font-family:var(--mono); font-size:0.78rem; cursor:pointer; color:var(--ink-dim); padding:0.5rem 0; list-style:none; display:flex; align-items:center; gap:0.5rem;}
+  summary::-webkit-details-marker{display:none;}
+  summary:before{content:"▸"; transition:transform .2s;}
+  details[open] summary:before{transform:rotate(90deg);}
+  details[open] summary{color:var(--accent);}
+  .solution{font-family:var(--mono); font-size:0.83rem; background:#0b0d11; border:1px solid var(--rule); border-radius:8px; padding:1rem 1.2rem; margin-top:0.6rem; color:#cdd0d8; white-space:pre-wrap;}
+
+  .callout{border-left:3px solid var(--accent); background:rgba(199,146,234,0.06); padding:0.9rem 1.2rem; border-radius:0 8px 8px 0; margin:1.3rem 0; font-size:0.92rem; color:#dcd9d0;}
+  .callout b{color:var(--accent);}
+  .callout.warn{border-left-color:var(--bad-c); background:rgba(255,107,107,0.06);} .callout.warn b{color:var(--bad-c);}
+  .callout.app{border-left-color:var(--app-c); background:rgba(79,195,247,0.06);} .callout.app b{color:var(--app-c);}
+  .callout.mcp{border-left-color:var(--mcp-c); background:rgba(242,193,78,0.06);} .callout.mcp b{color:var(--mcp-c);}
+
+  footer{text-align:center; padding:3rem 6vw 1rem; color:var(--ink-dim); font-family:var(--mono); font-size:0.75rem;}
+  @media(prefers-reduced-motion: reduce){*{animation-duration:0.001ms !important; transition-duration:0.001ms !important;}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> BACKEND LAB · DEBUGGING INTEGRATION ISSUES</div>
+  <h1>The bugs that only exist at the seams, found and fixed for real.</h1>
+  <p class="lede"><code class="inline">backend/capstone_integration_testing.html</code> built the dress rehearsal — the end-to-end test suite that exercises every seam between the orchestrator, hybrid search, the eval/tracing dashboard, and the finalized schema. A dress rehearsal's whole point is catching problems a table read cannot. This lab is what happens the moment that suite actually starts finding them: three realistic seam-level bug categories, how you'd notice each one, how you'd isolate root cause, and the fix — in real code, before/after.</p>
+
+  <div class="pipe-hero">
+    <div class="pipe-label a">A race: orchestrator writes state, dashboard reads it mid-write</div>
+    <div class="pipe-label b">A schema mismatch: search tool's shape vs. what the orchestrator expects</div>
+    <div class="pipe-label c">A silent gap: an eval score that never gets recorded at all</div>
+  </div>
+</div>
+
+<nav>
+  <a data-target="seams">1 · Why Seam Bugs Are Different</a>
+  <a data-target="race">2 · Bug: The State Race</a>
+  <a data-target="mismatch">3 · Bug: The Schema Mismatch</a>
+  <a data-target="silent">4 · Bug: The Silent Instrumentation Gap</a>
+  <a data-target="spot">5 · Spot the Bug</a>
+  <a data-target="practice">Practice Problems</a>
+</nav>
+
+<!-- ============ SECTION 1: WHY SEAM BUGS ARE DIFFERENT ============ -->
+<section id="seams">
+  <div class="kicker">01 — Every one of these bugs passed its own lab's unit tests</div>
+  <h2>Why seam bugs are a different animal than logic bugs</h2>
+
+  <p><strong>Start here, before opening a debugger.</strong> Think about four musicians who each nailed their individual part in separate practice rooms, then play together for the first time and it falls apart — not because anyone forgot their notes, but because the TIMING between parts, never exercised until this moment, was wrong. Nobody's part has a bug in isolation. The orchestrator's routing logic works. The hybrid search tool's fusion math works. The dashboard's rendering works. <code class="inline">capstone_integration_testing.html</code> exists specifically because none of that proves the pieces agree with each other about ORDER, SHAPE, and WHO IS RESPONSIBLE FOR WHAT — and this week's "fix integration issues" checklist item is what happens once that suite starts actually surfacing where they don't.</p>
+
+  <p>Three categories cover almost every seam bug this capstone can produce, and each one below is built around a specific real seam from Weeks 1-2's labs:</p>
+
+  <table class="cmp">
+    <tr><th>Category</th><th>The seam</th><th>Why unit tests miss it</th></tr>
+    <tr><td>Race condition</td><td>Orchestrator (<code class="inline">RunStateStore.save()</code>, per <code class="inline">mcp-and-agents/capstone_orchestrator_integration.html</code> section 1) writes run state; the dashboard (<code class="inline">capstone_dashboard_integration.html</code>) reads it</td><td>A unit test calls <code class="inline">save()</code> then <code class="inline">load()</code> sequentially in one thread — the actual bug only exists when two operations interleave in time, which a single-threaded test never produces</td></tr>
+    <tr><td>Schema mismatch</td><td><code class="inline">hybrid_search</code> MCP tool's return shape vs. what <code class="inline">Orchestrator.step()</code> assumes when it folds the result into state</td><td>The search tool's own tests assert its OWN output shape is correct; the orchestrator's own tests mock that output using whatever shape the orchestrator's author assumed — if the two assumptions silently diverged, both suites pass and agree with themselves, never with each other</td></tr>
+    <tr><td>Silent instrumentation gap</td><td>A code path that returns a reply without ever reaching <code class="inline">score_run(...)</code> (per <code class="inline">capstone_dashboard_integration.html</code> section 1's "recorded unconditionally" rule)</td><td>The happy-path test asserts the reply is correct and stops there — nothing forces it to also check the database, so a response that LOOKS fine can ship while the eval record behind it silently never landed, exactly the failure mode <code class="inline">capstone_integration_testing.html</code> section 3 warned a response-only assertion would miss</td></tr>
+  </table>
+
+  <div class="callout warn"><b>The pattern to internalize:</b> every seam bug in this lab is a case where two components each did EXACTLY what their own author intended, and the bug lives entirely in the gap between those two correct-in-isolation intentions. Debugging a seam bug is therefore never "find the broken function" — it's "find the two components' disagreeing ASSUMPTION about the other," which is why the isolate-root-cause step below always starts by writing down each side's assumption explicitly, not by single-stepping through one component's code.</div>
+</section>
+
+<!-- ============ SECTION 2: BUG 1 - THE STATE RACE ============ -->
+<section id="race">
+  <div class="bug-card">
+    <div class="bug-head">
+      <h2 style="margin:0;">Bug 1 — the dashboard reads state mid-write</h2>
+      <span class="bug-tag">RACE CONDITION</span>
+    </div>
+
+    <div class="seam-diagram">
+      <div class="seam-box hot">Orchestrator worker A</div>
+      <span class="seam-arrow">— writes run:abc123 →</span>
+      <div class="seam-box hot">Redis</div>
+      <span class="seam-arrow">← reads run:abc123 —</span>
+      <div class="seam-box hot">Dashboard poller</div>
+    </div>
+
+    <h3>How you'd actually notice it</h3>
+    <p><code class="inline">capstone_integration_testing.html</code>'s own suite would not catch this directly — its <code class="inline">test_full_orchestrated_run_produces_reply_and_records</code> test runs one request start to finish and only checks the FINAL state, after everything settled. What surfaces this bug is production-shaped: the dashboard occasionally shows a run's status flipping from <code class="inline">"running"</code> to <code class="inline">"done"</code> and back to <code class="inline">"running"</code> within the same few seconds, or shows a <code class="inline">turns</code> list that's shorter than the reply the user actually received — a reader that's polling faster than the writer's read-modify-write cycle can complete. The tell in the logs: two <code class="inline">RunStateStore.save()</code> calls for the SAME <code class="inline">run_id</code> land within milliseconds of each other, and the dashboard's read timestamp falls between them.</p>
+
+    <h3>How you'd isolate root cause</h3>
+    <p>This is exactly the race <code class="inline">capstone_orchestrator_integration.html</code>'s own practice problem 2 already named for two orchestrator workers racing on the SAME write — the dashboard reintroduces the identical hazard from the READ side. Confirm it by adding a short, deliberate delay inside <code class="inline">RunStateStore.save()</code> in a test environment and firing a dashboard poll during that window — if the poll observes a state object with some fields updated and others stale (an impossible intermediate state that was never actually saved as a whole), that confirms the reader is seeing a write in progress rather than atomic before/after snapshots.</p>
+
+    <div class="code"><span class="c-cmt"># BEFORE -- the dashboard's poller, reading raw state mid-flight
+# app/observability/dashboard_feed.py</span>
+<span class="c-kw">async def</span> <span class="c-fn">get_run_snapshot</span>(run_id: <span class="c-fn">str</span>, store: RunStateStore) -> <span class="c-fn">dict</span>:
+    <span class="c-cmt"># reads whatever RunStateStore.load() returns, right now, no matter
+    # WHEN "now" happens to land relative to an in-flight save() call</span>
+    state = <span class="c-kw">await</span> store.load(run_id)
+    <span class="c-kw">return</span> {<span class="c-str">"run_id"</span>: run_id, <span class="c-str">"status"</span>: state[<span class="c-str">"status"</span>], <span class="c-str">"turns"</span>: state[<span class="c-str">"turns"</span>]}
+
+<span class="c-cmt"># AFTER -- state.save() writes atomically to a NEW key, then flips a
+# pointer -- readers always see either the fully-old or fully-new
+# state, never a value drawn from mid-write
+# app/orchestrator/state.py</span>
+<span class="c-kw">async def</span> <span class="c-fn">save</span>(self, run_id: <span class="c-fn">str</span>, state: <span class="c-fn">dict</span>) -> <span class="c-kw">None</span>:
+    payload = json.dumps(state)
+    <span class="c-cmt"># SET is already atomic at the single-key level in Redis -- the
+    # actual bug was never "SET is non-atomic," it was that the OLD
+    # code let a reader observe a state dict PARTIALLY constructed
+    # in Python before the SET call, if load-mutate-save spanned an
+    # await point. Fixing it means the full new state object is
+    # built BEFORE any I/O, then written in one atomic SET:</span>
+    <span class="c-kw">await</span> self.redis.set(<span class="c-fn">f"run:{run_id}"</span>, payload, ex=<span class="c-num">3600</span>)</div>
+
+    <p>The real fix has two parts, and naming both is what separates a strong debugging answer from a lucky one: first, confirm the state object being serialized is fully built in memory before any <code class="inline">await</code> — a Python dict mutated across an await point can be read half-updated by an unrelated coroutine on the same event loop, a subtler variant of the classic race even without a second process involved; second, apply <code class="inline">capstone_orchestrator_integration.html</code> problem 2's actual fix (a Redis <code class="inline">SET NX</code> lock around the full load-modify-save sequence) for the WRITER side, since the reader can only ever be as consistent as the writer's own atomicity guarantee.</p>
+
+    <div class="callout app"><b>Interview-ready definition:</b> a read-side race at a seam is usually a write-side atomicity problem wearing a read-side symptom — before changing the reader, confirm the writer actually produces one atomic transition per logical update; a reader polling a value that's never guaranteed to be a complete, consistent snapshot will always eventually observe a torn state, no matter how the reader itself is written.</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 3: BUG 2 - SCHEMA MISMATCH ============ -->
+<section id="mismatch">
+  <div class="bug-card">
+    <div class="bug-head">
+      <h2 style="margin:0;">Bug 2 — the search tool's shape drifted from what the orchestrator expects</h2>
+      <span class="bug-tag">SCHEMA MISMATCH</span>
+    </div>
+
+    <div class="seam-diagram">
+      <div class="seam-box hot">hybrid_search tool</div>
+      <span class="seam-arrow">returns list[dict] with "text" key →</span>
+      <div class="seam-box hot">Orchestrator._render_reply()</div>
+      <span class="seam-arrow">reads "content" key →</span>
+      <div class="seam-box hot">KeyError, swallowed</div>
+    </div>
+
+    <h3>How you'd actually notice it</h3>
+    <p>This one is sneaky specifically because it doesn't crash loudly — <code class="inline">storage-and-rag/capstone_hybrid_search_integration.html</code> section 3's merge step reads each result's ranked content to build the context window, and if that read is inside a broad <code class="inline">try/except</code> (common, since a single malformed result shouldn't kill an entire run), a <code class="inline">KeyError</code> gets caught, logged at a level nobody's watching, and the orchestrator silently falls back to composing a reply with ZERO retrieved context. The user gets a plausible-sounding but ungrounded answer. What actually surfaces it: <code class="inline">capstone_integration_testing.html</code>'s empty-search-results test (problem 1 in that lab) would catch a variant of this if extended to assert on REPLY CONTENT, not just status code — but the more direct signal is a spike in a hallucination-rate eval metric (<code class="inline">tool_selection_and_hallucination_metrics.html</code>) with no corresponding drop in search-tool error rate, which is the specific fingerprint of "the tool succeeded, but its result was silently unusable downstream."</p>
+
+    <h3>How you'd isolate root cause</h3>
+    <p>Write down each side's assumption explicitly, per section 1's rule. The search tool's actual MCP response (check the tool's own schema, not the orchestrator's assumption about it) returns each result as <code class="inline">{"doc_id": ..., "score": ..., "text": ...}</code>. The orchestrator's merge code, written independently, assumes <code class="inline">{"content": ..., "relevance": ...}</code> — plausible-sounding field names that were never actually cross-checked against the tool's real schema, because the orchestrator lab was built and tested against a hand-written mock response, not the real tool's actual output.</p>
+
+    <div class="code"><span class="c-cmt"># BEFORE -- app/orchestrator/run.py, the merge step, silently
+# swallowing the mismatch inside a broad except</span>
+<span class="c-kw">def</span> <span class="c-fn">_render_reply</span>(self, tool_result: <span class="c-fn">dict</span>) -> <span class="c-fn">str</span>:
+    context_chunks = []
+    <span class="c-kw">for</span> r <span class="c-kw">in</span> tool_result.get(<span class="c-str">"results"</span>, []):
+        <span class="c-kw">try</span>:
+            context_chunks.append(r[<span class="c-str">"content"</span>])   <span class="c-cmt"># KeyError -- real key is "text"</span>
+        <span class="c-kw">except</span> KeyError:
+            <span class="c-kw">pass</span>                          <span class="c-cmt"># swallowed -- no log, no signal</span>
+    <span class="c-kw">return</span> self._compose(context_chunks)   <span class="c-cmt"># silently composes from an EMPTY list</span>
+
+<span class="c-cmt"># AFTER -- match the tool's REAL schema (verified against
+# storage-and-rag/capstone_hybrid_search_integration.html section 1's
+# actual return shape, not a hand-written assumption), and fail LOUD
+# on a genuine mismatch instead of silently degrading</span>
+<span class="c-kw">def</span> <span class="c-fn">_render_reply</span>(self, tool_result: <span class="c-fn">dict</span>) -> <span class="c-fn">str</span>:
+    context_chunks = []
+    <span class="c-kw">for</span> r <span class="c-kw">in</span> tool_result.get(<span class="c-str">"results"</span>, []):
+        <span class="c-kw">if</span> <span class="c-str">"text"</span> <span class="c-kw">not in</span> r:
+            logger.error(<span class="c-str">"hybrid_search result missing 'text' key: %r"</span>, r)
+            <span class="c-kw">continue</span>                     <span class="c-cmt"># skip THIS result, but LOUDLY, and keep going</span>
+        context_chunks.append(r[<span class="c-str">"text"</span>])
+    <span class="c-kw">if not</span> context_chunks <span class="c-kw">and</span> tool_result.get(<span class="c-str">"results"</span>):
+        <span class="c-cmt"># results existed but NONE were usable -- structurally different
+        # from "search legitimately found nothing," and should be
+        # reported as its own eval_span attribute (schema_mismatch)</span>
+        logger.error(<span class="c-str">"all hybrid_search results were unusable -- schema mismatch suspected"</span>)
+    <span class="c-kw">return</span> self._compose(context_chunks)</div>
+
+    <p>The durable fix is not just correcting the key name — it's removing the SILENT swallow. A schema mismatch between two components should be as loud as possible the first time it happens, not quietly degrade into a worse but still-200-status-code answer. The best long-term fix, worth naming as the actual engineering answer beyond the patch: define the tool's response shape as a shared Pydantic model imported by BOTH the tool handler and the orchestrator, so a real field rename becomes a type error caught at development time, not a runtime <code class="inline">KeyError</code> caught nowhere.</p>
+
+    <div class="callout mcp"><b>Interview-ready definition:</b> a schema mismatch at a seam is a sign the two sides never shared a single source of truth for the contract between them — the fix is never just "correct the field name," it's making the shape impossible to silently disagree on again, typically by having both sides import one shared model rather than each independently guessing the other's shape.</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 4: BUG 3 - SILENT INSTRUMENTATION GAP ============ -->
+<section id="silent">
+  <div class="bug-card">
+    <div class="bug-head">
+      <h2 style="margin:0;">Bug 3 — a code path skips <code class="inline">score_run()</code> entirely</h2>
+      <span class="bug-tag">SILENT GAP</span>
+    </div>
+
+    <div class="seam-diagram">
+      <div class="seam-box hot">Orchestrator.step() early-return</div>
+      <span class="seam-arrow">bypasses →</span>
+      <div class="seam-box hot">score_run()</div>
+      <span class="seam-arrow">never called →</span>
+      <div class="seam-box hot">eval_result row never written</div>
+    </div>
+
+    <h3>How you'd actually notice it</h3>
+    <p><code class="inline">capstone_dashboard_integration.html</code> section 1's interview-ready definition is explicit: "full instrumentation... for every run, unconditionally." This bug is exactly the violation of that rule — a code path exists (say, a fast-path in <code class="inline">Orchestrator.step()</code> that returns immediately when the state store reports the run is already <code class="inline">done</code>, an idempotency guard against duplicate client retries) that returns a valid <code class="inline">StepResult</code> WITHOUT ever reaching the <code class="inline">score_run(...)</code> call. The response looks completely normal. What surfaces it: exactly the assertion <code class="inline">capstone_integration_testing.html</code> section 3 insists on — checking the DATABASE, not just the response — a smoke test or integration test that does <code class="inline">SELECT * FROM eval_result WHERE trace_id = $1</code> after a request and finds nothing, even though the HTTP response was <code class="inline">200</code> with a normal-looking reply body.</p>
+
+    <h3>How you'd isolate root cause</h3>
+    <p>Grep every <code class="inline">return</code> statement inside <code class="inline">Orchestrator.step()</code> and check whether each one is downstream of the <code class="inline">score_run(...)</code> call or upstream of it — this is a purely mechanical check once you know to look for it, but easy to miss during a code review that reads top-to-bottom and doesn't specifically enumerate every exit point.</p>
+
+    <div class="code"><span class="c-cmt"># BEFORE -- app/orchestrator/run.py, an idempotency fast-path added
+# LATER than the original instrumented step() from
+# capstone_dashboard_integration.html section 1 -- and added by
+# someone who didn't realize instrumentation lived further down</span>
+<span class="c-kw">async def</span> <span class="c-fn">step</span>(self, run_id: <span class="c-fn">str</span> | <span class="c-kw">None</span>, user_message: <span class="c-fn">str</span>) -> StepResult:
+    is_new = run_id <span class="c-kw">is</span> <span class="c-kw">None</span>
+    run_id = run_id <span class="c-kw">or</span> <span class="c-fn">str</span>(uuid4())
+    existing = <span class="c-kw">await</span> self.store.load(run_id) <span class="c-kw">if not</span> is_new <span class="c-kw">else</span> <span class="c-kw">None</span>
+
+    <span class="c-kw">if</span> existing <span class="c-kw">and</span> existing[<span class="c-str">"status"</span>] == <span class="c-str">"done"</span>:
+        <span class="c-cmt"># idempotency guard: a retried request for an already-finished
+        # run just re-returns the cached reply -- BUT this return
+        # happens BEFORE the trace_id / score_run() call below,
+        # so a retried request produces ZERO eval_result rows</span>
+        <span class="c-kw">return</span> StepResult(run_id=run_id, reply=existing[<span class="c-str">"last_reply"</span>], done=<span class="c-kw">True</span>)
+
+    trace_id = start_trace()
+    <span class="c-cmt"># ... route, dispatch, compose ...</span>
+    eval_scores = <span class="c-kw">await</span> score_run(trace_id=trace_id, reply=reply, tool_result=tool_result)
+    <span class="c-kw">return</span> StepResult(run_id=run_id, reply=reply, done=done)
+
+<span class="c-cmt"># AFTER -- the fast-path still short-circuits the EXPENSIVE work
+# (routing, tool dispatch), but instrumentation happens on EVERY
+# reachable return, including this one -- scoring a cache hit is
+# cheap and worth doing, or at minimum a lightweight "cache_hit"
+# eval_span attribute gets recorded so the dashboard can tell the
+# two cases apart rather than seeing a silent gap in the data</span>
+<span class="c-kw">async def</span> <span class="c-fn">step</span>(self, run_id: <span class="c-fn">str</span> | <span class="c-kw">None</span>, user_message: <span class="c-fn">str</span>) -> StepResult:
+    is_new = run_id <span class="c-kw">is</span> <span class="c-kw">None</span>
+    run_id = run_id <span class="c-kw">or</span> <span class="c-fn">str</span>(uuid4())
+    existing = <span class="c-kw">await</span> self.store.load(run_id) <span class="c-kw">if not</span> is_new <span class="c-kw">else</span> <span class="c-kw">None</span>
+    trace_id = start_trace()   <span class="c-cmt"># trace starts BEFORE any early-return, no exceptions</span>
+
+    <span class="c-kw">if</span> existing <span class="c-kw">and</span> existing[<span class="c-str">"status"</span>] == <span class="c-str">"done"</span>:
+        <span class="c-kw">await</span> record_span(trace_id, <span class="c-str">"cache_hit"</span>, attributes={<span class="c-str">"run_id"</span>: run_id})
+        <span class="c-kw">return</span> StepResult(run_id=run_id, reply=existing[<span class="c-str">"last_reply"</span>], done=<span class="c-kw">True</span>)
+
+    <span class="c-cmt"># ... route, dispatch, compose ...</span>
+    eval_scores = <span class="c-kw">await</span> score_run(trace_id=trace_id, reply=reply, tool_result=tool_result)
+    <span class="c-kw">return</span> StepResult(run_id=run_id, reply=reply, done=done)</div>
+
+    <p>The general lesson worth stating explicitly: this bug class is created by ADDING a new early-return to an already-instrumented function later, without re-reading the whole function's control flow first. It's not that anyone forgot instrumentation existed — it's that a new exit point was added without checking whether it sits upstream or downstream of it. The durable defense against this class, worth naming in review: any function with instrumentation should have that instrumentation attached as close to the TOP of the function as structurally possible (start the trace first thing, per the AFTER version), so it becomes nearly impossible for a later `return` to bypass it — versus instrumentation attached near the bottom, which every future early-return silently escapes.</p>
+
+    <div class="callout warn"><b>What a response-only smoke test would miss, concretely:</b> <code class="inline">capstone_integration_testing.html</code> section 4's smoke test explicitly checks <code class="inline">eval_span</code>, not just response status — this exact bug is why that design choice matters in practice, not just in principle. A version of the smoke test checking only <code class="inline">response.status_code == 200</code> would pass on every single retried request through the broken fast-path, while the eval pipeline's actual promise (a score for every run) silently failed for every one of them.</div>
+  </div>
+</section>
+
+<!-- ============ SECTION 5: SPOT THE BUG ============ -->
+<section id="spot">
+  <div class="kicker">05 — Find it yourself, before the reveal</div>
+  <h2>Spot the bug</h2>
+
+  <p><strong>Start here, before revealing any answer.</strong> Three wiring snippets below, each with one seam bug in the style of sections 2-4 but not identical to any of them. Read each one and try to name the bug — which two components disagree, and about what — before clicking to reveal.</p>
+
+  <div class="lab">
+    <div class="lab-title"><span>Spot-the-bug exercise</span> <button class="btn secondary" id="spot-next">Next snippet ▸</button></div>
+    <div id="spot-container"></div>
+  </div>
+</section>
+
+<!-- ============ PRACTICE ============ -->
+<section id="practice">
+  <div class="kicker">Now debug one yourself, from scratch</div>
+  <h2>Practice problems</h2>
+
+  <div class="problem">
+    <span class="pnum">Problem 1 · A partial index that silently stopped being used</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;"><code class="inline">database/capstone_schema_finalization_and_indexes.html</code>'s <code class="inline">idx_agent_run_running</code> is a partial index (<code class="inline">WHERE status = 'running'</code>). A teammate changes the orchestrator to use a NEW status value, <code class="inline">"in_progress"</code>, alongside the existing <code class="inline">"running"</code> for a subset of runs, without updating the index. Nothing crashes. What's the seam-level symptom this produces, how would you notice it days later rather than immediately, and what's the fix?</p>
+    <details><summary>Show solution</summary><div class="solution">The symptom is purely a PERFORMANCE regression, not a correctness
+one, which is exactly why it's the kind of bug that survives days
+before anyone notices: the ops query "find long-running, still-active
+orchestrator runs" (idx_agent_run_running's whole purpose, per the
+schema lab section 2) still returns CORRECT results either way -- an
+index only affects how fast a matching query runs, never whether the
+answer is right, so no test asserting on RESULTS would ever fail.
+What actually breaks is that the WHERE status = 'running' partial
+index no longer covers the "in_progress" rows at all, so a query
+looking for all currently-active runs (if written to check both
+status values) falls back to a full sequential scan for the
+in_progress subset while still using the index for the "running"
+subset -- a mixed, silently-degraded plan that gets slower in
+proportion to how much of agent_run's total history the "in_progress"
+status accumulates, per capstone_schema_finalization_and_indexes.html
+problem 2's own reasoning about why a partial index's write-overhead
+advantage depends entirely on staying small.
+
+How you'd notice it days later: not from a failing test (results are
+correct) but from an ops-facing symptom -- the "find stuck runs" query,
+part of on-call tooling, gets slower over time as more historical
+in_progress rows accumulate outside the index's coverage, until
+someone runs EXPLAIN ANALYZE on it (per the schema lab section 4) and
+sees a Seq Scan where an Index Scan used to appear, or notices the
+query's latency climbing on a dashboard that tracks internal tooling
+performance -- a genuinely easy thing to miss unless someone is
+specifically watching for index-usage drift after a status-value
+change, which is why "did this change touch any column referenced in
+a WHERE clause of an existing index" is worth being a standing review
+question, not just a one-time check.
+
+The fix: either normalize on ONE status value for the active state
+(rename in_progress back to running everywhere, simplest and safest if
+the two values were never meant to mean different things), or, if they
+genuinely are meant to be two distinct active substates, widen the
+partial index's WHERE clause to WHERE status IN ('running',
+'in_progress') so both subsets stay covered -- decided by asking
+capstone_schema_finalization_and_indexes.html section 2's own
+question again: what's the REAL query pattern this index needs to
+serve, now that the set of "active" values changed.</div></details>
+  </div>
+
+  <div class="problem">
+    <span class="pnum">Problem 2 · A trace_id that doesn't match between two tables</span>
+    <p style="margin:0.4rem 0 0.8rem; font-size:0.9rem;">A dashboard query joining <code class="inline">eval_result</code> and <code class="inline">eval_span</code> on <code class="inline">trace_id</code> (per <code class="inline">capstone_schema_finalization_and_indexes.html</code>'s <code class="inline">idx_eval_span_trace</code>) starts returning zero rows for a subset of recent runs, even though both tables individually show rows for those runs existing. Given that <code class="inline">eval_result.trace_id</code> and <code class="inline">eval_span.trace_id</code> are populated by two DIFFERENT call sites in the orchestrator's instrumentation code, what's the most likely seam-level cause, and how would you confirm it without guessing?</p>
+    <details><summary>Show solution</summary><div class="solution">The most likely cause is that the two call sites are no longer using
+the SAME trace_id value -- e.g. start_trace() generates a fresh
+trace_id, that value is correctly threaded into every record_span()
+call, but a LATER code change refactored score_run()'s call site to
+generate its own id (perhaps via a different helper, or by reusing
+run_id instead of trace_id by an easy-to-make copy-paste mistake)
+instead of receiving the same trace_id as a parameter. Both tables get
+populated correctly in isolation -- eval_span rows all share one
+trace_id, eval_result rows all have SOME trace_id -- but the two
+values no longer match for the affected runs, so the join predicate
+trace_id = trace_id fails silently for exactly those rows even though
+every individual row is otherwise well-formed.
+
+How to confirm without guessing: pull one affected run's data from
+both tables directly (not through the join) -- SELECT trace_id FROM
+eval_span WHERE ... for that run's known span, and SELECT trace_id
+FROM eval_result WHERE run_id = ... for the same run -- and compare
+the two trace_id STRINGS byte-for-byte. If they differ, that's
+definitive confirmation of exactly this bug, not a hypothesis. Then
+grep every call site that either generates a trace_id or receives one
+as a parameter (start_trace(), record_span(), score_run()) and check
+which ones are threading the SAME variable through versus which one
+independently generates or substitutes a different id -- this is the
+same "write down each side's real assumption, don't guess" isolation
+method section 1 established, applied to a join key instead of a
+JSON field name. The fix is always structural, not a data patch:
+change the diverging call site to accept trace_id as an explicit
+required parameter (never optional, never internally regenerated),
+so a future refactor can't silently reintroduce the same drift.</div></details>
+  </div>
+
+  <div class="callout">
+    <b>Self-check before load testing this system:</b> could you, without notes, (1) explain why a seam bug can exist even when every individual component's own tests pass, (2) name the specific fix for each of this lab's three bug categories without re-reading the code, and (3) explain why instrumentation belongs near the TOP of a function rather than the bottom? <code class="inline">systems/capstone_load_testing.html</code> is next — now that the seams are trustworthy, the question becomes whether they hold up under real concurrent load.
+  </div>
+</section>
+
+<footer>THE NAMESPACE LAB — capstone debugging: integration issues, backend &amp; APIs.</footer>
+
+<script>
+(function(){
+  document.querySelectorAll("nav a[data-target]").forEach(function(a){
+    a.addEventListener("click", function(){
+      var el = document.getElementById(a.dataset.target);
+      if(el){ el.scrollIntoView({behavior:"smooth", block:"start"}); }
+    });
+  });
+})();
+
+(function(){
+  var SNIPPETS = [
+    {
+      title: "Snippet 1 — tool timeout handling",
+      code: "async def step(self, run_id, user_message):\n" +
+            "    try:\n" +
+            "        tool_result = await asyncio.wait_for(\n" +
+            "            self.mcp.call_tool(tool_name, tool_args), timeout=10.0\n" +
+            "        )\n" +
+            "    except asyncio.TimeoutError:\n" +
+            "        tool_result = {\"error\": \"tool_timeout\"}\n" +
+            "\n" +
+            "    reply = self._compose(tool_result)\n" +
+            "    return StepResult(run_id=run_id, reply=reply, done=True)\n" +
+            "    # (score_run(...) call is further down, unreachable from here)",
+      answer: "The timeout path returns a StepResult directly, bypassing whatever\ncomes after it in the function -- including score_run(). This is\nsection 4's silent instrumentation gap, but triggered by a FAILURE\npath instead of a fast-path optimization: a timed-out tool call\nproduces a normal-looking 200 response with a degraded reply, but\nleaves NO eval_result row behind, so the dashboard has no record that\nthis run ever had a problem at all. The fix is the same as section 4:\nstart the trace and call score_run() (scoring the degraded reply\nhonestly, likely with a low score) on EVERY reachable return,\nincluding this one -- error paths need instrumentation exactly as much\nas the happy path, arguably more, since they are the runs a dashboard\nmost needs to be able to find later."
+    },
+    {
+      title: "Snippet 2 — hybrid search result count",
+      code: "# storage-and-rag tool handler\n" +
+            "async def run_hybrid_search(query, top_k=5):\n" +
+            "    results = await fuse_results(query, top_k=top_k)\n" +
+            "    return {\"results\": results[:top_k]}\n" +
+            "\n" +
+            "# orchestrator, assuming AT MOST 3 results ever come back\n" +
+            "def _render_reply(self, tool_result):\n" +
+            "    r1, r2, r3 = tool_result[\"results\"]\n" +
+            "    return self._compose([r1, r2, r3])",
+      answer: "The tool's default top_k is 5, but the orchestrator's merge code\nunpacks EXACTLY 3 values via tuple assignment (r1, r2, r3 = ...) --\na schema mismatch not on FIELD NAMES this time, but on the assumed\nLENGTH of a list. Whenever the search tool legitimately returns 4 or\n5 results (the common case, since top_k defaults to 5), this line\nraises ValueError: too many values to unpack, an unhandled exception\nthat crashes the request outright rather than degrading quietly --\nthe loud opposite failure mode from section 3's silent swallow, but\nthe SAME root cause category: two components' independent, untested\nassumptions about the other's output shape, here specifically about\nCARDINALITY rather than field names. The fix: never destructure a\nvariable-length list by position; iterate over tool_result[\"results\"]\ndirectly (as section 3's AFTER version does), so the orchestrator's\ncode is correct for any top_k value the search tool is configured\nwith, not just whatever value happened to be true when this code was\nfirst written."
+    },
+    {
+      title: "Snippet 3 — dashboard reading two different sources",
+      code: "# capstone_dashboard_integration.html's feed, extended to show\n# in-flight runs by merging TWO sources\nasync def get_active_runs():\n" +
+            "    from_redis = await run_store.list_active()   # in-flight, per orchestrator\n" +
+            "    from_postgres = await db.fetch(\n" +
+            "        \"SELECT run_id, status FROM agent_run WHERE status = 'running'\"\n" +
+            "    )\n" +
+            "    return from_redis + from_postgres   # naive concat, no dedup",
+      answer: "agent_run rows are written to Postgres as part of the SAME\ninstrumented step() that also maintains Redis run state (per\ncapstone_dashboard_integration.html) -- meaning every currently-active\nrun legitimately exists in BOTH stores at once, by design, not by\naccident. A naive concatenation of the two lists therefore shows every\nactive run TWICE on the dashboard, not because either data source is\nwrong, but because the code merging them assumed the two sources were\ndisjoint (Redis for 'not yet durably recorded' vs Postgres for\n'durably recorded') when they are actually overlapping views of the\nSAME underlying set of active runs, per capstone_orchestrator_\nintegration.html section 1's actual design (Redis is fast in-flight\nstate, Postgres is the separate durable trace/eval record -- both\nexist for every run, they were never meant to be mutually exclusive).\nThe fix: dedupe explicitly by run_id, preferring one source as the\nsource of truth for STATUS specifically (Redis, since it updates more\nfrequently and is closer to real orchestrator state) while still using\nPostgres for whatever only IT has (eval scores, span history) --\nnaming which source owns which field, rather than merging two lists\nand hoping for the best."
+    }
+  ];
+
+  var container = document.getElementById("spot-container");
+  var nextBtn = document.getElementById("spot-next");
+  var idx = 0;
+
+  function render(){
+    var s = SNIPPETS[idx % SNIPPETS.length];
+    container.innerHTML = "";
+    var wrap = document.createElement("div");
+    wrap.className = "spot-bug";
+    var h = document.createElement("h3");
+    h.style.marginTop = "0";
+    h.textContent = s.title;
+    wrap.appendChild(h);
+    var codeEl = document.createElement("div");
+    codeEl.className = "code";
+    codeEl.textContent = s.code;
+    wrap.appendChild(codeEl);
+    var details = document.createElement("details");
+    var summary = document.createElement("summary");
+    summary.textContent = "Reveal the bug";
+    details.appendChild(summary);
+    var sol = document.createElement("div");
+    sol.className = "solution";
+    sol.textContent = s.answer;
+    details.appendChild(sol);
+    wrap.appendChild(details);
+    container.appendChild(wrap);
+  }
+
+  nextBtn.addEventListener("click", function(){
+    idx++;
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
